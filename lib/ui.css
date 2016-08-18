@@ -295,10 +295,15 @@ svg.icon-Unk {
 	margin-top: 5px;
 }
 
+.f-form  .bootstrap-select .dropdown-menu .f-select-resource {
+    padding: 2px 0;
+    display: inline-block;
+}
 
 .f-form .bootstrap-select .f-select-resource > svg {
 	height: 18px;
 	width: 18px;
+	margin-right: 5px;
 }
 
 .f-form .bootstrap-select .f-select-resource > * {
@@ -374,6 +379,10 @@ svg.icon-Unk {
 	margin-left: 5px;
 	font-weight: normal;
 }
+
+
+
+
  
 /* @file: src\ui\common.css */ 
 

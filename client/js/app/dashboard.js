@@ -149,7 +149,7 @@
 				this.$element.html(
 					'<div class="db-info jumbotron text-center">'+
 						'<p>'+
-							'No widget set :-('+
+							'No widget :-('+
 						'</p>'+
 						'<p>'+
 							'<button class="btn btn-primary  db-header-add-btn"><span class="glyphicon glyphicon-plus" aria-hidden="true"></span> Add Widget</button>'+

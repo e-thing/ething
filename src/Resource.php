@@ -160,7 +160,7 @@ abstract class Resource implements \JsonSerializable, ResourceInterface
 		return $rules;
 	}
 	
-	public function dispatchEvent($eventType, array $customData = array()) {
+	public function dispatchEvent($eventType, $customData = null) {
 		if(!empty($this->_d['rules'])){
 			
 			if($this->ething->isEventsDelayed()){
