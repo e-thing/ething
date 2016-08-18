@@ -18,6 +18,8 @@ This project can easily be installed on a Raspberry Pi or any computer.
 A web client is also provided to browse, view and edit your data, to manage and communicate with your devices.
 Use the online editor to write your own application using the [Javascript API](http://e-thing.github.io/doc/js).
 
+![ething_screenshot](https://cloud.githubusercontent.com/assets/17341216/17768812/20bf8e22-6536-11e6-8bdf-dfadbc171fb1.jpg)
+
 #### APIs
 
 Many APIs are provided to communicate with the e-Thing server :
