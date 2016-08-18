@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		
+		<!-- JQUERY -->
+		<script src="//ajax.googleapis.com/ajax/libs/jquery/2.1.4/jquery.min.js"></script>
+		
+		<!-- CORE -->
+		<script src="/ething/lib/core.js"></script>
+		
+
+	</head>
+	
+	<body>
+		
+		<!-- your content goes here -->
+		
+		
+		<!-- APP -->
+		<script type="text/javascript">
+			
+			
+			var main = function(){
+				
+				EThing.arbo.load(function(){
+					
+					var $body = $('body');
+					
+					// get all your resource
+					var all_resources = EThing.arbo.find();
+					$body.append('<p>You have '+all_resources.length+' resource(s)</p>');
+					
+					// get only images : apply a filter function on the find method that returns only resource with image mime type.
+					var images_resources = EThing.arbo.find(function(resource){
+						return /^image\//.test(resource.mime());
+					});
+					$body.append('<p>You have '+images_resources.length+' images(s)</p>');
+					
+					// get only the resources that are in the root folder !
+					$body.append('<p>Here are your resources :</p>');
+					var resources_in_root = EThing.arbo.root().children(),
+						$list = $('<ul>').appendTo($body),
+						totalSize = 0;
+					resources_in_root.forEach(function(resource){
+						$('<li>').text(resource.name()+' ['+resource.mime()+']').appendTo($list);
+						
+						if(resource.size) // not every resource have a size attribute
+							totalSize += resource.size();
+					});
+					
+					// the sizeToString function transforms the size in bytes into a human readable string
+					$body.append('<p>Total size : '+EThing.utils.sizeToString(totalSize)+'</p>');
+					
+				});
+				
+			};
+			
+			EThing.auth.authorize(main || null);
+		
+		</script>
+		
+	</body>
+	
+</html>

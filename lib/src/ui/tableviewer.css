@@ -1,0 +1,26 @@
+
+
+
+/* header no wrap + date no wrap*/
+.tableviewer .tableview table>tbody>tr>td.date, .tableviewer .tableview table>thead>tr>th {
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    overflow: hidden;
+}
+
+.tableviewer .view {
+	width: 100%;
+}
+
+.tableviewer .tableview tbody {
+	background-color: white;
+}
+
+.tableviewer .tableview thead {
+	background-color: #777777;
+    color: white;
+}
+
+.tableviewer .tableview thead th.sort-desc, .tableviewer .tableview thead th.sort-asc {
+	color: #f34f92;
+}

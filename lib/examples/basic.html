@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		
+		<!-- CORE -->
+		<script src="/ething/lib/core.js"></script>
+		
+
+	</head>
+	
+	<body>
+		
+		<!-- your content goes here -->
+		
+		
+		<!-- APP -->
+		<script type="text/javascript">
+			
+			
+			var main = function(){
+				
+				/* your script goes here */
+				
+				var textnode = document.createTextNode('hello '+EThing.auth.getUser().name()+' !');
+				document.body.appendChild(textnode);
+				
+			};
+			
+			EThing.auth.authorize(main || null);
+		
+		</script>
+		
+	</body>
+	
+</html>

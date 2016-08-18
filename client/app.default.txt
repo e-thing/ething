@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		
+		<!-- JQUERY -->
+		<script src="//ajax.googleapis.com/ajax/libs/jquery/2.1.4/jquery.min.js"></script>
+		
+		
+		<!-- CORE -->
+		<script src="/ething/lib/core.js"></script>
+		
+		
+		<!-- UI -->
+		<link href='//maxcdn.bootstrapcdn.com/bootstrap/3.3.5/css/bootstrap.min.css' rel='stylesheet' type='text/css'/>
+		<script src="//maxcdn.bootstrapcdn.com/bootstrap/3.3.5/js/bootstrap.min.js"></script>
+		<script src="/ething/lib/ui.js"></script>
+		<link href="/ething/lib/ui.css" rel='stylesheet' type='text/css'/>
+		
+		
+		<!-- APP -->
+		<script type="text/javascript">
+			
+			
+			var main = function(){
+				
+				/* your script goes here */
+				
+				$('body').html('hello '+EThing.auth.getUser().name()+' !');
+				
+			};
+			
+			
+			$(window.document).ready(function() {
+				EThing.auth.authorize(main || null);
+			});
+		
+		</script>
+
+		<style type="text/css">
+			
+			/* your style goes here */
+			
+		</style>
+
+	</head>
+	
+	<body>
+		
+		<!-- your content goes here -->
+	
+	</body>
+	
+</html>

@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8">
+		<meta http-equiv="X-UA-Compatible" content="IE=edge">
+		<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+		
+		<title>eThing | Explore</title>
+		
+		<!-- JQUERY -->
+		<script src="//ajax.googleapis.com/ajax/libs/jquery/2.1.4/jquery.min.js"></script>
+		
+		<!-- BOOTSTRAP -->
+		<link href='//maxcdn.bootstrapcdn.com/bootstrap/3.3.5/css/bootstrap.min.css' rel='stylesheet' type='text/css'/>
+		<script src="//maxcdn.bootstrapcdn.com/bootstrap/3.3.5/js/bootstrap.min.js"></script>
+		
+		<script src="../lib/core.js"></script>
+		<script src="../lib/ui.js"></script>
+		<link href="../lib/ui.css" rel='stylesheet' type='text/css'/>
+		
+		<!-- DEPENDENCIES -->
+		<link href="css/header.css" rel='stylesheet' type='text/css'/>
+		<script src="js/header.js"></script>
+		<link href="css/client.css" rel='stylesheet' type='text/css'/>
+		<script src="js/client.js"></script>
+		<link href="css/lib/breadcrumb.css" rel='stylesheet' type='text/css'/>
+		<script src="js/lib/breadcrumb.js"></script>
+		<script src="js/lib/server.js"></script>
+		
+		
+		<!-- APP -->
+		<link href="css/app/explore.css" rel='stylesheet' type='text/css'/>
+		<script src="js/app/explore.js"></script>
+		
+		
+		<!-- TOOLS -->
+		<!--<script src="//cdnjs.cloudflare.com/ajax/libs/jquery.touchswipe/1.6.15/jquery.touchSwipe.min.js"></script>-->
+		
+		
+		<script src="js/main.js"></script>
+		
+	</head>
+	<body role="document">
+
+		
+		<div id="header">
+			
+			<nav class="navbar navbar-default navbar-static-top">
+			  <div class="container-fluid">
+				
+				<div class="btn-group navbar-btn" id="breadcrumb"></div>
+				  
+				<div class="btn-group navbar-btn navbar-right" role="group" id="header-action"></div>
+				  
+			  </div>
+			</nav>
+			
+			
+		</div>
+		
+		
+		<div id="main">
+			<div style="text-align: center;margin: 20px;">loading ...</div>
+		</div>
+		
+		<div id="right-panel">
+			
+			<div class="bg" onclick="RightPanel.hide();"></div>
+			
+			<div class="content text-center">
+				
+				<div id="details" style="display: none;">
+				
+					<div data-role="thumbnail"></div>
+					
+					<h1 data-role="title" class="ellipsis"></h1>
+					
+					<div class="btn-group" role="group" aria-label="..." data-role="action"></div>
+					
+					<div class="container-fluid" data-role="detail"></div>
+					
+					<div data-role="description"></div>
+				</div>
+				
+				<div id="usage"></div>
+			
+			</div>
+			
+		</div>
+		<script>
+			$(function(){
+				
+				var $target = $("#right-panel .content"),
+					longTouch,
+					movex,
+					touchstartx,
+					disabled;
+				
+				$target.on('touchstart', function (event) {
+					longTouch = false;
+					movex = false;
+					disabled = false;
+					setTimeout(function () {
+						longTouch = true;
+					}, 250);
+					touchstart = event.originalEvent.touches[0];
+				});
+				$target.on('touchmove', function (event) {
+					if(disabled) return;
+					var dx = event.originalEvent.touches[0].pageX - touchstart.pageX,
+						dy = event.originalEvent.touches[0].pageY - touchstart.pageY,
+						d = Math.sqrt(dx*dx+dy*dy);
+					if(d>=20){
+						if(movex===false){
+							if(Math.abs(dy)>Math.abs(dx)){
+								// vertical movement
+								disabled=true;
+								return;
+							}
+							$target.css('transition','none');
+						}
+						movex = dx;
+						if(movex>0)
+							$target.css('transform', 'translate3d(' + movex + 'px,0,0)');
+					}
+				});
+				$target.on('touchend', function (event) {
+					if(movex === false) return; // no movement
+					if (movex > 0 && (movex > $target.width() / 2 || longTouch === false))
+						RightPanel.hide();
+					$target.css('transform', '');
+					$target.css('transition','');
+				});
+				
+			});
+		</script>
+		
+		<div id="notification"></div>
+		
+	</body>
+</html>

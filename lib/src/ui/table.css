@@ -1,0 +1,60 @@
+
+
+/* notification */
+
+.tbl .tbl-notify {
+	text-align: center;
+	margin: 30px 0
+}
+
+.tbl .tbl-notify .tbl-message-info {
+	color: #A0A0A0;
+}
+
+.tbl .tbl-notify .tbl-message-warning {
+	color: #d9534f;
+}
+
+
+/* toolbar */
+
+.tbl .tbl-toolbar {
+	margin-left: 0px;
+    padding: 5px 0;
+}
+
+.tbl .tbl-toolbar [name="page-length"] li.selected a {
+	font-weight: bold;
+}
+.tbl .tbl-toolbar [name="page-length"] li.selected a:after {
+	font-family: 'Glyphicons Halflings';
+	content: "\e013";
+	margin-left: 5px;
+}
+
+
+/* tableview */
+
+
+/* sorting header icons */
+.tbl .tableview th.sort-desc:after {
+	font-family: 'Glyphicons Halflings';
+	font-style: normal;
+    font-weight: 400;
+    line-height: 1;
+	content: "\e094";
+	font-size: 10px;
+}
+.tbl .tableview th.sort-asc:after {
+	font-family: 'Glyphicons Halflings';
+	font-style: normal;
+    font-weight: 400;
+    line-height: 1;
+	content: "\e093";
+	font-size: 10px;
+}
+
+.tbl .tableview th.sortable {
+	cursor: pointer;
+}
+

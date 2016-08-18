@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8">
+		<meta http-equiv="X-UA-Compatible" content="IE=edge">
+		<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+		
+		<title>eThing | Developer</title>
+		
+		<!-- JQUERY -->
+		<script src="//ajax.googleapis.com/ajax/libs/jquery/2.1.4/jquery.min.js"></script>
+		
+		<!-- BOOTSTRAP -->
+		<link href='//maxcdn.bootstrapcdn.com/bootstrap/3.3.5/css/bootstrap.min.css' rel='stylesheet' type='text/css'/>
+		<script src="//maxcdn.bootstrapcdn.com/bootstrap/3.3.5/js/bootstrap.min.js"></script>
+		
+		
+		<script src="../lib/core.js"></script>
+		<script src="../lib/ui.js"></script>
+		<link href="../lib/ui.css" rel='stylesheet' type='text/css'/>
+		
+		
+		<!-- DEPENDENCIES -->
+		<link href="css/header.css" rel='stylesheet' type='text/css'/>
+		<script src="js/header.js"></script>
+		<link href="css/client.css" rel='stylesheet' type='text/css'/>
+		<script src="js/client.js"></script>
+		
+		
+		<!-- APP -->
+		<script src="js/app/developer.js"></script>
+		
+		<script src="js/main.js"></script>
+		
+	</head>
+	<body role="document">
+		
+		<div class="container">
+			<h1 class="page-header"><span class="glyphicon glyphicon-console" aria-hidden="true"></span> Developer section</h1>
+			<div class="row">
+				
+				<div class="panel panel-primary">
+					<!-- Default panel contents -->
+					<div class="panel-heading">API keys</div>
+					<div class="panel-body">
+						<p>
+							API keys are used by devices to make requests to the HTTP API.
+							When a new device is created, an API key is automatically generated.
+							Your devices are listed below with their respective API key.
+						</p>
+						
+						<p class="text-center">
+							<button class="btn btn-default" id="device-add-btn">
+								<span class="glyphicon glyphicon-plus" aria-hidden="true"></span> device
+							</button>
+						</p>
+					</div>
+					<table class="table" id="apikey-table">
+						<thead>
+							<tr>
+								<th>Name</th>
+								<th>API key</th>
+								<th>Created</th>
+							</tr>
+						</thead>
+						<tbody>
+							<tr><td colspan="3">Loading ...</td></tr>
+						</tbody>
+					</table>
+				</div>
+				
+		  </div>
+		</div>
+		
+	</body>
+</html>
