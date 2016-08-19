@@ -84,7 +84,7 @@
 				);
 			
 			$html.find('button[data-name="app"]').click(function(){
-				EThing.ui.createApp();
+				createApp();
 			});
 			
 			return $html;
@@ -347,7 +347,19 @@
 	
 	
 	
-	
+	function createApp(){
+		EThing.ui.createApp(function(mode){
+			switch(mode){
+				case 'example':
+				case 'code':
+					EThing.ui.edit(this);
+					break;
+				case 'repository':
+					Server.set('app:'+this.id());
+					break;
+			}
+		});
+	};
 	
 	
 	
@@ -361,8 +373,6 @@
 			});
 		});
 		$.when.apply($, promises).then(function(){
-			Server.reload();
-			
 			if(typeof cb == 'function')
 				cb();
 		});
@@ -496,7 +506,7 @@
 			function createAction(name, icon, callback, data){
 				if(data && $.isFunction(data.domValidator) && !data.domValidator($action))
 					return;
-				var $a = $('<button type="button" class="btn btn-default" aria-label="'+name+'" data-toggle="tooltip" data-placement="bottom" title="'+name+'">'+
+				var $a = $('<button type="button" class="btn btn-default" aria-label="'+name+'">'+
 								'<span class="glyphicon glyphicon-'+icon+'" aria-hidden="true"></span>'+
 							'</button>');
 
@@ -504,7 +514,12 @@
 					$a.click(callback);
 				
 				if(!EThing.utils.isTouchDevice)
-					$a.tooltip({container: 'body',trigger:'hover'});
+					$a.tooltip({
+						container: $action,
+						trigger:'hover',
+						placement: 'bottom',
+						title: name
+					});
 
 				$a.appendTo($action);
 			}
@@ -1066,9 +1081,7 @@
 			name:'new',
 			icon:'plus',
 			click:function(){
-				EThing.ui.createDevice(function(){
-					Server.set('browser:'+this.id());
-				});
+				EThing.ui.createDevice();
 			}
 		});
 		
@@ -1097,17 +1110,7 @@
 			name:'new',
 			icon:'plus',
 			click:function(){
-				EThing.ui.createApp(function(mode){
-					switch(mode){
-						case 'example':
-						case 'code':
-							EThing.ui.edit(this)
-							break;
-						case 'repository':
-							Server.set('app:'+this.id());
-							break;
-					}
-				});
+				createApp();
 			}
 		});
 		
@@ -1390,11 +1393,12 @@
 	
 	
 	
-	EThing.arbo.on('resource-remove resource-add',function(resource){
+	EThing.arbo.on('resource-remove resource-add',function(e){
+		var resource = e.resource;
 		// update the browser
-		var isOpened = Server.match(new RegExp(':'+resource.id()+'$'));
 		if(Server.match(/^(browser|app|device)(:.*)?$/)){
-			Server.reload();
+			if(!(e.type == 'resource-add' && Server.match(/^app/)))
+				Server.reload();
 		}
 		else {
 			Server.set('browser:'+resource.parent().id()); // go to the parent directory

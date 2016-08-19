@@ -35,8 +35,7 @@
             ],
             lineWidth: 0,
             minorTickInterval: null,
-            tickPixelInterval: 400,
-            tickWidth: 0,
+			tickAmount: 2,
             title: {
                 y: -70
             },
@@ -83,7 +82,9 @@
 			length: 1
 		}).done(function(data){
 			if(data.length && data[0].hasOwnProperty(options.value.field)){
-				var value = data[0][options.value.field];
+				var value = data[0][options.value.field],
+					unit = (options.unit || '').trim(),
+					digits = Math.round(options['significant digits'] || 1);
 				
 				// The RPM gauge
 				$element.highcharts(Highcharts.merge(gaugeOptions, {
@@ -103,8 +104,8 @@
 						data: [value],
 						dataLabels: {
 							format: '<div style="text-align:center"><span style="font-size:25px;color:' +
-								((Highcharts.theme && Highcharts.theme.contrastTextColor) || 'black') + '">{y:.1f}</span><br/>' +
-								   '</div>'
+								((Highcharts.theme && Highcharts.theme.contrastTextColor) || 'black') + '">{y:.'+digits+'f}</span><br/>' +
+								   (unit ? ('<span style="font-size:12px;color:silver">'+options.unit+'</span>') : '')+'</div>'
 						}
 					}]
 
@@ -117,12 +118,25 @@
 	
 	
 	return {
+		description: 'Create a gauge widget showing the lastest data stored in a table !',
+		
 		// must return a function which returns an options object
 		factory: function(container, preset){
 			var form = new $.Form(container,{
 				'value': new $.Form.TableFieldSelect(),
 				'minimum':'number',
-				'maximum':'number'
+				'maximum':'number',
+				'unit':'text',
+				'significant digits': new $.Form.StandardItem({
+					'input': 'number',
+					'attr':{
+						'min': 0,
+						'max': 8,
+						'step': 1
+					},
+					'value': 1,
+					'validator': $.Form.validator.Integer
+				})
 			});
 			
 			if(preset)

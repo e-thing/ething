@@ -9,6 +9,10 @@ body {
 	margin-top: 15px;
 }
 
+.db-info img {
+	max-width: 100%;
+}
+
 .db-widget-box {
 	padding-bottom: 5px;
 }
@@ -43,6 +47,21 @@ body {
 	height: 100%;
 	width: 100%;
 	
+}
+
+.db-widget-err {
+    color: #c7254e;
+    text-align: center;
+    padding: 20px;
+	position: relative;
+}
+
+.db-widget-err p {
+    margin: 0;
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
 }
 
 .db-header {

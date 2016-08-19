@@ -60,6 +60,8 @@
 	
 	
 	return {
+		description: 'Draw a label containing the lastest data stored in a table !',
+		
 		// must return a function which returns an options object
 		factory: function(container, preset){
 			var form = new $.Form(container,{

@@ -275,6 +275,8 @@ document.body.appendChild(sheet);
 	return {
 		require: '//cdnjs.cloudflare.com/ajax/libs/jquery-color/2.1.2/jquery.color.min.js',
 		
+		description: "Execute a request by clicking a button.",
+		
 		// must return a function which returns an options object
 		factory: function(container, preset){
 			

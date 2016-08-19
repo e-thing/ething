@@ -142,6 +142,8 @@ document.body.appendChild(sheet);
 	
 	return {
 		
+		description: 'Display a video comming from either a file or a custom URL. Only ogg or mp4 videos are compatible !',
+		
 		// must return a function which returns an options object
 		factory: function(container, preset){
 			

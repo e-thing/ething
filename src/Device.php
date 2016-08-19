@@ -178,6 +178,7 @@ class Device extends Resource
 						$r->setDescriptor($descriptor);
 					};
 				}
+				unset($attr[$key]);
 				break;
 			case 'auth':
 				if(is_object($value))
@@ -318,7 +319,7 @@ class Device extends Resource
 			if(empty($swagger->swagger))
 				$swagger->swagger = '2.0';
 			if(!isset($swagger->info))
-				$swagger->info = new stdClass();
+				$swagger->info = new \stdClass();
 			if(is_object($swagger->info)){
 				if(empty($swagger->info->version))
 					$swagger->info->version = "0.0.0";
@@ -326,7 +327,7 @@ class Device extends Resource
 					$swagger->info->title = $defaultTitle;
 			}
 			if(!isset($swagger->paths))
-				$swagger->paths = new stdClass();
+				$swagger->paths = new \stdClass();
 			
 			
 			// validate the swagger description object
@@ -409,12 +410,12 @@ class Device extends Resource
 	
 	protected function defaultDescriptor() {
 		// return a minimal swagger object
-		$d = new stdClass();
+		$d = new \stdClass();
 		$d->swagger = '2.0';
-		$d->info = new stdClass();
+		$d->info = new \stdClass();
 		$d->info->title = "{$this->name()}";
 		$d->info->version = '0.1.0';
-		$d->paths = new stdClass();
+		$d->paths = new \stdClass();
 		return $d;
 	}
 	

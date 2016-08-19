@@ -725,7 +725,9 @@
 					$html.modal('hide');// will be autoremoved
 					if(EThing.arbo.isLoaded())
 						EThing.arbo.add(app);
-					callback.call(app,$h.attr('name'));
+					
+					if(typeof callback == 'function')
+						callback.call(app,$h.attr('name'));
 				}
 				else
 					// print the error message but do not close the modal dialog
@@ -801,7 +803,7 @@
 				merge: true,
 				items: [{
 					name: 'general',
-					item: new $.Form.FormLayout(getResourceForm('Device', null, ['name','scope','description']))
+					item: new $.Form.FormLayout(getResourceForm('Device', null, ['name','scope','location','description']))
 				}, {
 					name: 'server',
 					item: new $.Form.FieldsEnabler({

@@ -24,3 +24,7 @@
 .tableviewer .tableview thead th.sort-desc, .tableviewer .tableview thead th.sort-asc {
 	color: #f34f92;
 }
+
+.tableviewer-add-data button[data-role="remove"] {
+	width: 100%;
+}

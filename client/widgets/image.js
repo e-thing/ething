@@ -254,6 +254,8 @@ document.body.appendChild(sheet);
 	
 	return {
 		
+		description: 'Display an image comming from either a file or a device (e.g. the latest picture of an IP camera) or a custom URL. If the source is a device or an URL, it is also possible to display a MJPEG stream.',
+		
 		// must return a function which returns an options object
 		factory: function(container, preset){
 			

@@ -15,7 +15,7 @@
 	
 	var Dashboard = {
 		
-		widgetTypes: ['video','image','button','label','chart','gauge','map'],
+		widgetTypes: ['chart','gauge','label','image','button','map','video'],
 		
 		configFilename : '.dashboard.json',
 		
@@ -154,6 +154,9 @@
 						'<p>'+
 							'<button class="btn btn-primary  db-header-add-btn"><span class="glyphicon glyphicon-plus" aria-hidden="true"></span> Add Widget</button>'+
 						'</p>'+
+						'<p>'+
+							'<img src="images/dashboard-overview.png">'+
+						'</p>'+
 					'</div>'
 				);
 			}
@@ -259,20 +262,28 @@
 				}
 			});
 			
-			
+			function setWidgetErr(e){
+				$widget.addClass('db-widget-err').html('<p>'+((typeof e == 'object' && e !== null && typeof e.message == 'string') ? e.message : (e || 'error'))+'</p>');
+			}
 			this.loadWidgetPlugin(widgetType)
 				.done(function(plugin){
 					if(typeof plugin.instanciate == 'function'){
 						try{
-							plugin.instanciate.call(plugin, $widget, widgetOptions);
+							var res = plugin.instanciate.call(plugin, $widget, widgetOptions);
+							if(res===false) setWidgetErr('error');
+							else $.when(res).fail(function(e){
+								setWidgetErr(e);
+							});
 						}
-						catch(e){}
+						catch(e){
+							setWidgetErr(e);
+						}
 					}
 					else
-						$widget.html('error');
+						setWidgetErr('This widget plugin is invalid');
 				})
 				.fail(function(error){
-					$widget.html(error);
+					setWidgetErr(error);
 				});
 			
 			var $w = $('<div>').addClass('db-widget-box col-xs-12 col-sm-6 col-lg-4')
@@ -315,13 +326,23 @@
 					widgetType = $this.val(),
 					$factory = $html.children('.factory').html('loading ...');
 				
+				$html.children('.description').remove();
+				
 				widgetFactory = null;
 				plugin = null;
 				
 				self.loadWidgetPlugin(widgetType)
 					.done(function(w){
+						
 						$factory.empty();
 						plugin = w;
+						
+						var description = plugin.description;
+						if(typeof description == 'function')
+							description = description.call(plugin);
+						if(description)
+							$('<p class="description">').html(description).insertBefore($factory);
+						
 						if(typeof plugin.factory == 'function'){
 							widgetFactory = plugin.factory.call(plugin,$factory[0],widget ? widget.options : null);
 						}

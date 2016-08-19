@@ -2,6 +2,9 @@
 		
 	
 	return {
+		
+		description: "Display resource position on map.",
+		
 		// must return a function which returns an options object
 		factory: function(container, preset){
 			var form = new $.Form(container,{
@@ -21,7 +24,7 @@
 		},
 		
 		instanciate: function(element, options){
-			EThing.get(options.resource).done(function(resource){
+			return EThing.get(options.resource).done(function(resource){
 				new $.MapViewer(element,{
 					resources: [resource]
 				});

@@ -2,6 +2,9 @@
 		
 	
 	return {
+		
+		description: 'Draw a chart from data stored in your table !',
+		
 		// must return a function which returns an options object
 		factory: function(container, preset){
 			var form = new $.Form(container,{
@@ -19,8 +22,9 @@
 						'1 month': 2678400,
 						'all': 0,
 					},
-					defaultValue: 86400
-				})
+					value: 86400
+				}),
+				'unit': 'text'
 			});
 			
 			if(preset)
@@ -32,10 +36,11 @@
 		},
 		
 		instanciate: function(element, options){
-			EThing.get(options.value.tableId).done(function(table){
+			return EThing.get(options.value.tableId).done(function(table){
 				
 				var length = 0,
-					query = '';
+					query = '',
+					unit = (options.unit || '').trim();
 				
 				if(options.range && options.range != '0'){
 					if(/^[0-9]+p$/.test(options.range)){
@@ -72,9 +77,9 @@
 					}
 				});
 				
-				// remove y axis title
+				// set y axis title
 				for(var i=0; i<hcopt.yAxis.length; i++)
-					hcopt.yAxis[i].title = null;
+					hcopt.yAxis[i].title = unit ? { text: unit } : null;
 				
 				new $.Graph(element,hcopt);
 			});
