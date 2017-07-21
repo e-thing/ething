@@ -1,0 +1,123 @@
+
+
+
+#editor .TextViewer .tv-toolbar {
+	position: absolute;
+    top: 0;
+    right: 0;
+    left: 0;
+    z-index: 10;
+    background-color: rgba(255, 255, 255, 0.9);
+}
+
+#editor .TextViewer .tv-content {
+	position: absolute;
+    top: 0;
+    right: 0;
+    left: 0;
+    bottom: 0;
+}
+
+#editor .TextViewer .tv-notification {
+	top: 100px;
+	opacity: 0.8;
+}
+
+
+#editor .TextViewer.tv-toolbar .tv-content {
+	padding-top: 40px;
+}
+
+
+#editor .TextViewer .tv-mode > ul.dropdown-menu {
+	overflow-y: auto;
+	max-height: 400px;
+}
+
+
+#editor .TextViewer .editor-dirname {
+	color: #11ad83;
+}
+
+@media (max-width: 767px) {
+#editor .TextViewer .editor-dirname {
+	display: none;
+}
+}
+
+#editor .TextViewer .editor-basename {
+	color: #D43375;
+    font-weight: bold;
+}
+
+
+
+	
+/* absolute layout */
+
+#editor .ui-container {
+	overflow-y: auto;
+	position: absolute;
+	bottom: 0px;
+	left: 0px;
+	right: 0px;
+	margin: 0px;
+}
+
+
+
+
+#editor #tv-editor, #editor #tv-panel ,#editor .gutter.gutter-horizontal {
+    height: 100%;
+    float: left;
+}
+
+#editor .gutter.gutter-horizontal {
+	cursor: ew-resize;
+    background-color: #e0e0e0;
+}
+
+#editor #tv-panel {
+	position: relative;
+}
+
+#editor #tv-console {
+	overflow: auto;
+	position: absolute;
+	top: 74px;
+	bottom: 0px;
+	width: 100%;
+}
+
+#editor #tv-arguments, #editor #tv-status, #editor #tv-console {
+	padding: 5px;
+}
+
+#editor #tv-panel .placeholder {
+	color: grey;
+}
+#editor #tv-panel .stderr {
+	color: #f34f4f;
+}
+#editor #tv-panel .return {
+	color: #1f72f3;
+}
+
+#editor #tv-panel .info {
+	color: grey;
+}
+
+#editor #tv-console > pre {
+    display: block;
+    margin: initial;
+	padding: initial;
+    font-size: inherit;
+    line-height: initial;
+    color: inherit;
+    word-break: initial;
+    word-wrap: initial;
+    background-color: inherit;
+    border: initial;
+    border-radius: initial;
+	overflow: visible;
+}

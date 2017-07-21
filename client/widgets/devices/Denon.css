@@ -1,0 +1,43 @@
+
+
+.db-widget-type-devices-Denon .d-header {
+	margin: 4px;
+}
+
+.db-widget-type-devices-Denon .d-header-title {
+	display: inline-block;
+	margin-left: 5px;
+}
+
+.db-widget-type-devices-Denon .d-view {
+	text-align: center;
+    position: absolute;
+    top: 30px;
+    bottom: 0px;
+    left: 0px;
+    right: 0px;
+}
+
+.db-widget-type-devices-Denon .d-view-OFF,
+.db-widget-type-devices-Denon .d-view-CD,
+.db-widget-type-devices-Denon .d-view-NET {
+	display: -webkit-box;
+	display: -moz-box;
+	display: -ms-flexbox;
+	display: -webkit-flex;
+	display: flex;
+	-webkit-flex-direction: column;
+	-moz-flex-direction: column;
+	-ms-flex-direction: column;
+	-o-flex-direction: column;
+	flex-direction: column;
+	justify-content: center;
+	color: grey;
+}
+
+.db-widget-type-devices-Denon .d-view-OFF > div,
+.db-widget-type-devices-Denon .d-view-CD > div,
+.db-widget-type-devices-Denon .d-view-NET > div {
+	text-align: center;
+}
+

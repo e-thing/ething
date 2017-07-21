@@ -1,0 +1,97 @@
+
+#apps .explorer .item {
+	cursor: default;
+}
+
+#apps .explorer .item:not(.selected) {
+	color: grey;
+}
+
+#apps .explorer .item:not(.selected):hover {
+	color: black;
+}
+
+#apps .explorer .col-name {
+    display: inline-block;
+    width: 100px;
+	text-align: left;
+	vertical-align: middle;
+	margin: 5px 0;
+	font-weight: bold;
+}
+
+#apps .explorer .col-info {
+	display: inline-block;
+    cursor: pointer;
+	vertical-align: middle;
+}
+
+/* hide info icon on desktop device (ie: when the right panel is shown) */
+@media (min-width: 768px) {
+#apps .explorer .col-info {
+	display: none;
+}
+}
+
+
+#apps .explorer .item.selected {
+	background-color: #4285f4;
+	color: white;
+}
+
+
+#apps #apps-header {
+	padding: 5px;
+}
+
+#apps .clear {
+  clear: both;
+}
+
+#apps {
+	background-color: #F8F8F8;
+}
+
+
+/* subpart (used to highlight some text information) */
+
+#apps .subpart {
+    padding: 20px;
+    margin: 20px 0;
+    border: 1px solid #eee;
+    border-left-width: 5px;
+}
+
+#apps .subpart-primary {
+    border-left-color: #337ab7;
+}
+
+#apps .subpart-primary h4 {
+    color: #337ab7;
+}
+#apps .subpart h4 {
+    margin-top: 0;
+    margin-bottom: 5px;
+}
+
+#apps .subpart p:last-child {
+    margin-bottom: 0;
+}
+
+
+
+
+@media (min-width: 768px) {
+
+/* absolute layout */
+
+#apps .ui-container {
+	overflow-y: auto;
+	position: absolute;
+	bottom: 0px;
+	left: 0px;
+	right: 0px;
+	margin: 0px;
+}
+
+}

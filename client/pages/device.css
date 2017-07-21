@@ -1,0 +1,151 @@
+
+@media (max-width: 767px) {
+#device > .ui-container .container {
+    padding-right: 5px;
+    padding-left: 5px;
+}
+}
+
+#device > .ui-container > div {
+	margin: 40px 0;
+}
+
+#device > .ui-container .info {
+
+}
+
+
+#device > .ui-container .info-title {
+	position: relative;
+}
+#device > .ui-container .info-title button {
+	position: absolute;
+    bottom: 0;
+    right: 0;
+}
+#device > .ui-container .info-title small {
+	font-size: medium;
+}
+
+#device > .ui-container .info.hasWidget .widget {
+    float: left;
+	width: 140px;
+	margin: 10px;
+}
+
+#device > .ui-container .info.hasWidget .info-meta {
+	margin-left: 150px;
+}
+
+#device > .ui-container .info-meta-item > svg {
+    vertical-align: middle;
+}
+
+#device > .ui-container .info-description {
+	
+}
+
+
+#device > .ui-container .api {
+
+}
+
+#device > .ui-container .operation {
+	margin: 0 0 20px 0;
+	background-color: #ffffff;
+    /*border: 1px solid #eaeaea;*/
+}
+
+
+
+#device > .ui-container .operation-header {
+	cursor: pointer;
+	padding: 10px;
+    font-weight: bold;
+	background-color: #f7f7f7;
+	color: #333333;
+	border-radius: 4px;
+    border: 1px solid #f1f1f1;
+}
+
+#device > .ui-container .operation .operation-header:after {
+	position: relative;
+    top: 1px;
+    display: inline-block;
+    font-family: 'Glyphicons Halflings';
+    font-style: normal;
+    font-weight: 400;
+    line-height: 1;
+	vertical-align: text-top;
+	color: #afafaf;
+	margin-left: 10px;
+}
+
+#device > .ui-container .operation:not(.opened) .operation-header:after {
+	content: "\e114";
+}
+
+#device > .ui-container .operation.opened .operation-header:after {
+	content: "\e113";
+}
+
+#device > .ui-container .operation-body {
+	padding: 5px;
+	/*border-top: 1px solid;*/
+    /*border-color: inherit;*/
+}
+
+#device > .ui-container .operation-body > * {
+	margin: 20px 0;
+}
+
+#device > .ui-container .operation-body-description {
+	
+}
+
+#device > .ui-container .operation-body-parameters {
+	
+}
+
+#device > .ui-container .operation-body-toolbar {
+	
+}
+
+#device > .ui-container .operation-body-toolbar-execute {
+	
+}
+
+#device > .ui-container .operation-body-toolbar-hide {
+	
+}
+
+#device > .ui-container .operation-body-result {
+	
+}
+
+#device > .ui-container .operation-body-result.error, .operation-body-result.error pre {
+	color: #ca2f2f;
+}
+
+#device > .ui-container .operation-body-result-view {
+	max-width: 100%;
+}
+
+#device > .ui-container .operation-body-result-view code {
+	background-color: inherit;
+}
+
+#device > .ui-container .operation-body-result-details {
+	max-width: 100%;
+	background-color: #f5f5f5;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    padding: 9.5px;
+    margin: 0 0 20px;
+	color: #4a4a4a;
+}
+
+#device > .ui-container .typeahead.dropdown-menu {
+    max-height: 200px;
+    overflow-y: auto;
+}

@@ -6,7 +6,8 @@
 	"slim/slim": "2.*",
 	"phpmailer/phpmailer": "~5.2",
 	"firebase/php-jwt": "3.*",
-	"mtdowling/cron-expression": "~1.1"
+	"mtdowling/cron-expression": "~1.1",
+    "mongodb/mongodb": "^1.1"
   },
   "authors": [
     {

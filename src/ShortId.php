@@ -26,5 +26,8 @@ class ShortId {
 		return static::$randomGenerator->generateString(static::$length, static::$alphabet);
 	}
 	
+	static public function validate($id){
+		return is_string($id) && strlen($id)==static::$length && strspn($id, static::$alphabet)==static::$length;
+	}
 	
 }

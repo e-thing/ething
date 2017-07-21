@@ -1,0 +1,220 @@
+
+#devices {
+	background-color: #F8F8F8;
+}
+
+
+#devices #devices-header {
+	padding: 5px 15px;
+}
+
+#devices .clear {
+  clear: both;
+}
+
+
+@media (min-width: 768px) {
+
+/* absolute layout */
+
+#devices .ui-container {
+	overflow-y: auto;
+	position: absolute;
+	bottom: 0px;
+	left: 0px;
+	right: 0px;
+	margin: 0px;
+}
+
+}
+
+/* DeviceView */
+
+
+#devices .explorer .deviceview .item {
+	margin-bottom: 10px;
+	cursor: default !important;
+}
+
+#devices .explorer .deviceview .item > div.desc {
+	background-color: #FFFFFF;
+	cursor: pointer;
+}
+
+#devices .explorer .deviceview .item.selected > div.desc {
+    background-color: #4285f4;
+	color: white;
+}
+
+#devices .explorer .deviceview .item > div.desc > .col-icon {
+	float: left;
+	position: relative;
+	width: 112px;
+	height: 112px;
+	background-color: #9b59b6;
+}
+
+#devices .explorer .deviceview .item > div.desc > .col-icon svg, .explorer .deviceview .item > div.desc > .col-icon img{
+	width: 100%;
+	height: 100%;
+}
+
+
+
+
+#devices .explorer .deviceview .item > div.desc > .meta {
+	margin-left: 112px;
+	padding: 5px;
+}
+
+
+#devices .explorer .deviceview .col-info {
+    float: right;
+    margin: 10px;
+}
+
+#devices .explorer .deviceview .col-share {
+	margin-left: 5px;
+	font-size: smaller;
+	color: grey;
+}
+
+#devices .explorer .deviceview .col-battery svg {
+    vertical-align: middle;
+}
+
+@media (min-width: 768px) {
+#devices .explorer .col-info {
+	display: none;
+}
+}
+
+
+#devices .explorer .deviceview .item > .children {
+	margin-left: 20px;
+	margin-top: 10px;
+}
+
+
+#devices .explorer .deviceview .item > .children .col-icon {
+    background-color: #7580ec !important;
+}
+
+#devices .explorer .deviceview .item > .children svg.icon-Device {
+    fill: #7580ec;
+}
+
+#devices .explorer .children > .item::before, #devices .explorer .children > .item::after {
+	border-color: #7580ec !important;
+}
+
+#devices .explorer .deviceview .item > .children .children .col-icon {
+    background-color: #75cc97 !important;
+}
+
+#devices .explorer .deviceview .item > .children .children svg.icon-Device {
+    fill: #75cc97;
+}
+
+#devices .explorer .children .children > .item::before, #devices .explorer .children .children > .item::after {
+	border-color: #75cc97 !important;
+}
+
+
+
+
+/* tree view */
+
+#devices .explorer .deviceview .item {
+	position: relative;
+}
+
+#devices .explorer .children > .item::before, #devices .explorer .children > .item::after {
+    content: '';
+    left: -10px;
+    position: absolute;
+    right: auto
+}
+
+#devices .explorer .children > .item::before {
+    border-left: 2px solid #9b59b6;
+    bottom: 0px;
+    top: -10px;
+    width: 1px
+}
+
+#devices .explorer .children > .item::after {
+    border-top: 2px solid #9b59b6;
+    height: 20px;
+    top: 56px;
+    width: 10px
+}
+
+#devices .explorer .children > .item:last-child::before {
+    height: 66px
+}
+
+
+/* BS dropdown submenu */
+
+#devices .dropdown-menu a {
+	cursor: pointer;
+}
+
+#devices .dropdown-submenu {
+    position: relative;
+}
+
+#devices .dropdown-submenu>.dropdown-menu:not(.dropdown-menu-right) {
+    top: 0;
+    left: 100%;
+    margin-top: -6px;
+    margin-left: -1px;
+    -webkit-border-radius: 0 6px 6px 6px;
+    -moz-border-radius: 0 6px 6px;
+    border-radius: 0 6px 6px 6px;
+}
+
+#devices .dropdown-submenu>.dropdown-menu.dropdown-menu-right {
+    top: 0;
+    right: 100%;
+    margin-top: -6px;
+    margin-right: -1px;
+    -webkit-border-radius: 6px 0 6px 6px;
+    -moz-border-radius: 6px 0 6px 6px;
+    border-radius: 6px 0 6px 6px;
+}
+
+#devices .dropdown-submenu:hover>.dropdown-menu {
+    display: block;
+}
+
+#devices .dropdown-submenu>a:after {
+    display: block;
+    content: " ";
+    float: right;
+    width: 0;
+    height: 0;
+    border-color: transparent;
+    border-style: solid;
+    border-width: 5px 0 5px 5px;
+    border-left-color: #ccc;
+    margin-top: 5px;
+    margin-right: -10px;
+}
+
+#devices .dropdown-submenu:hover>a:after {
+    border-left-color: #fff;
+}
+
+#devices .dropdown-submenu.pull-left {
+    float: none;
+}
+
+#devices .dropdown-submenu.pull-left>.dropdown-menu {
+    left: -100%;
+    margin-left: 10px;
+    -webkit-border-radius: 6px 0 6px 6px;
+    -moz-border-radius: 6px 0 6px 6px;
+    border-radius: 6px 0 6px 6px;
+}

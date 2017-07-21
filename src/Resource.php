@@ -8,15 +8,11 @@ namespace Ething;
 	 *   "type": "object",
 	 *   "description": "The base representation of a resource object",
 	 *   "required":["name"],
+	 *   "discriminator": "type",
 	 * 	 "properties":{
 	 * 		"id":{  
 	 * 		   "type":"string",
 	 * 		   "description":"The id of the resource.",
-	 *         "readOnly": true
-	 * 		},
-	 * 		"user":{  
-	 * 		   "$ref": "#/definitions/User",
-	 * 		   "description":"The owner of the resource.",
 	 *         "readOnly": true
 	 * 		},
 	 * 		"name":{  
@@ -26,11 +22,6 @@ namespace Ething;
 	 * 		"type":{  
 	 * 		   "type":"string",
 	 * 		   "description":"The type of the resource.",
-	 *         "readOnly": true
-	 * 		},
-	 * 		"mime":{  
-	 * 		   "type":"string",
-	 * 		   "description":"The MIME type of the resource.",
 	 *         "readOnly": true
 	 * 		},
 	 * 		"createdDate":{  
@@ -57,31 +48,20 @@ namespace Ething;
 	 * 	       	   "description":"id."
 	 * 	       	}
 	 *         },
-	 * 		   "description":"The id of the resource responsible of the creation of this resource.",
+	 * 		   "description":"The id of the resource responsible of the creation of this resource, or null.",
 	 *         "readOnly": true
-	 * 		},
-	 *      "location": {
-	 *         "type":"object",
-	 *         "required":["latitude","longitude"],
-	 * 	       "properties":{  
-	 * 	       	"latitude":{  
-	 * 	       	   "type":"number",
-	 * 	       	   "description":"the latitude"
-	 * 	       	},
-	 * 	       	"longitude":{  
-	 * 	       	   "type":"number",
-	 * 	       	   "description":"the longitude"
-	 * 	       	},
-	 * 	       	"altitude":{  
-	 * 	       	   "type":"number",
-	 * 	       	   "description":"the altitude"
-	 * 	       	}
-	 *         },
-	 * 		   "description":"The location of this resource."
 	 * 		},
 	 * 		"description":{  
 	 * 		   "type":"string",
 	 * 		   "description":"A description of this resource. Limited to 4096 characters"
+	 * 		},
+	 * 		"data":{  
+	 * 		   "type":"object",
+	 * 		   "description":"A collection of arbitrary key-value pairs. Entries with null values are cleared in update. The keys must not be empty or longer than 64 characters, and must contain only the following characters : letters, digits, underscore and dash. Values must be either a string or a boolean or a number"
+	 * 		},
+	 * 		"public":{  
+	 * 		   "type":"boolean",
+	 * 		   "description":"False: this resource is not publicly accessible. 'readonly': this resource is accessible for reading by anyone. 'readwrite': this resource is accessible for reading and writing by anyone."
 	 * 		}
 	 * 	 }
 	 * }
@@ -89,7 +69,7 @@ namespace Ething;
 
 	 
 interface ResourceInterface {
-	static public function create(Ething $ething, User $user, array $attributes, Resource $createdBy = null);
+	static public function create(Ething $ething, array $attributes, Resource $createdBy = null);
 }
 
 abstract class Resource implements \JsonSerializable, ResourceInterface
@@ -97,318 +77,382 @@ abstract class Resource implements \JsonSerializable, ResourceInterface
 	
 	const VALIDATE_NAME = '/^[a-zA-Z0-9 !#$%&\'()+,\-.;=@^_`{}]+(\\/[a-zA-Z0-9 !#$%&\'()+,\-.;=@^_`{}]+)*$/';
 	
-	private $ething = null;
+	public $ething = null;
 	
-	private $updatePrevented = false;
+	private $_d = null; // the mongodb document associated to the current resource
 	
-	protected $_d = null; // the mongodb document associated to the current resource
+	private $dirtyFields = array();
 	
-	public static $defaultAttr = array(
+	protected static $defaultAttr = array(
 		'name'   => null,
 		'data'       => null,
-		'description'=> null,
-		'rules' => array(),
-		'location' => null // the location of this resource
+		'description'=> null
 	);
 	
 	public function __construct(Ething $ething, $doc)
 	{
 		$this->ething = $ething;
 		$this->_d = $doc;
+		$this->_d['data'] = (object) $this->_d['data'];
 	}
 	
-	public function getEthingInstance(){
-		return $this->ething;
+	public function __toString(){
+		return sprintf("%s {#%s}", $this->name(), $this->id());
 	}
 	
 	public function id() {
 		return $this->_d['_id'];
 	}
 	
-	public function user() {
-		return $this->ething->findOneUserById($this->_d['user']);
-	}
-	
-	public function mime() {
-		return $this->_d['mime'];
-	}
-	
 	public function createdBy() {
-		return (isset($this->_d['createdBy'])) ? $this->ething->get($this->_d['createdBy']['id']) : null;
+		return $this->ething->get($this->_d['createdBy']['id']);
 	}
 	
 	public function name() {
-		return basename($this->_d['name']);
+		return $this->_d['name'];
 	}
 	
 	public function type() {
 		return $this->_d['type'];
 	}
 	
-	public function createdDate() {
-		return $this->_d['createdDate']->sec;
+	public function baseType() {
+		$pt = explode('\\', $this->_d['type']);
+		return $pt[0];
 	}
 	
-	public function modifiedDate() {
-		return $this->_d['modifiedDate']->sec;
-	}
-	
-	public function rules() {
-		$rules = array();
-		foreach($this->_d['rules'] as &$ruledata)
-			$rules[] = new Rule($ruledata, $this);
-		return $rules;
-	}
-	
-	public function dispatchEvent($eventType, $customData = null) {
-		if(!empty($this->_d['rules'])){
-			
-			if($this->ething->isEventsDelayed()){
-				$this->ething->delayEvent($this,$eventType,$customData);
-			}
-			else {
-				$eventClass = 'Ething\\Event\\'.$eventType;
-				if(class_exists($eventClass)){
-					$event = new $eventClass($this,$customData);
-					$rules = $this->rules();
-					foreach($rules as $rule){
-						$rule->execute($event, $errors);
-						$this->ething->dispatchEventException($errors);
-					}
-				}
-				else
-					throw new Exception('Unknown event "'.$eventType.'"');
-			}
-		}
-	}
-	
-	public function location() {
-		return $this->_d['location'];
+	public function isTypeof($type) {
+		return \is_a($this, '\\Ething\\'.$type);
 	}
 	
 	public function jsonSerialize() {
-		return array_merge(self::r_encode($this->_d),array(
-			'id' => (string)$this->_d['_id'],
-			'user' => $this->user()
-		));
+		return Ething::r_encode($this->_d);
 	}
 	
+	public function dispatchSignal(Event\Signal $signal) {
+		$this->ething->dispatchSignal($signal);
+	}
 	
-	// validate the value at the key $key in an associative array $attr
-	// this function is used in validation of constructing and setting (that's why it is a static function)
-	// if $self is set, it means that this function is called for updating the property, else this function is called for constructing the resource
-	protected static function validate(Ething $ething, $key,array &$attr,User $user,Resource $self = null) {
-		//$isConstructor = !isset($self);
-		$value = &$attr[$key];
+	protected function getAttr($name) {
+		return isset($this->_d[$name]) ? $this->_d[$name] : null;
+	}
+	
+	protected function hasAttr($name) {
+		return isset($this->_d[$name]);
+	}
+	
+	protected function setAttr($name, $value) {
+		if(!isset($this->_d[$name]) || $this->_d[$name] !== $value || is_object($value) || is_array($value)){
+			$this->_d[$name] = $value;
+			$this->setDirtyAttr($name);
+		}
+	}
+	
+	protected function removeAttr($name) {
+		if(isset($this->_d[$name])){
+			unset($this->_d[$name]);
+			$this->setDirtyAttr($name);
+		}
+	}
+	
+	protected function setDirtyAttr($name) {
+		if($name[0] != '_' && !in_array($name, $this->dirtyFields))
+			$this->dirtyFields[] = $name;
+	}
+	
+	/*
+	
+	the validation is a 3 steps process :
+	  - validate each field separately (call the static 'validate' function), the validation stops if an exception is thrown or if false is returned
+	  - execute the 'postfns' functions, the validation stops if an exception is thrown or if false is returned
+	  - the validation has succeeded, the callback functions are executed and the resource is updated !
+	
+	$context is an associative array containing the following properties :
+	  'ething' : the ething instance
+	  'resourceType' : the type of the resource to be modified/created
+	  'resource' : only available when setting a property on an existing resource
+	  'createdBy' : only available on resource creation validation
+	  'postfns' : {function($resource)[]} a collection of functions that are executed after validating every fields. Never execute update() inside those functions (use instead the 'callbacks' property). If these functions throw an error, the validation process fail.
+	  'callbacks' : {function($resource)[]} a collection of functions that are executed only once the validation has succeeded. Should never fail.
+	  'config' : the options to be validated.
+	*/
+	protected static function validate($key, &$value, &$context) {
 		$ret = false; // return false by default
 		switch($key){
 			case 'name':
 				$ret = (is_string($value) && preg_match(self::VALIDATE_NAME, $value));
 				break;
 			case 'data':
-				if(strlen(json_encode($value)) > 4096)
-					throw new \Ething\Exception("the field '{$key}' is too big.");
+				
+				$reset = !isset($context['resource']);
+				
+				if($value === null){
+					$reset = true;
+					$value = new \stdClass();
+				}
+				if(is_array($value))
+					$value = (object)$value;
+				if(!is_object($value))
+					throw new Exception('must be an associative array');
+				
+				$keysToRemove = array();
+				
+				// check the key value
+				foreach(get_object_vars($value) as $k => $v){
+					
+					// check the key
+					if(!preg_match('/^[a-zA-Z0-9_\-]{1,64}$/',$k))
+						throw new Exception("the keys of the attribute 'data' must not be empty or longer than 64 characters, and must contain only the following characters : letters, digits, underscore and dash.");
+					
+					if($v===null){
+						// remove that key
+						$keysToRemove[] = $k;
+						unset($value->$k);
+						continue;
+					}
+					
+					// check the value, only scalara value accepted
+					if(!(is_int($v) || is_string($v) || is_bool($v) || is_float($v)))
+						throw new Exception("invalid value for key'{$k}'");
+				}
+				
 				$ret = true;
+				
+				if($reset){
+					// set the values as is
+				} else {
+					// extend the current values
+					$currentValues = $context['resource']->data;
+					
+					foreach($keysToRemove as $k){
+						unset($currentValues->$k);
+					}
+					$extendedValues = (object)array_merge((array)$currentValues, (array)$value);
+					$value = $extendedValues;
+				}
+				
 				break;
 			case 'description':
 				if(is_null($value))
 					$ret = true;
 				else if(is_string($value)){
 					if(strlen($value) > 4096)
-						throw new \Ething\Exception("the field '{$key}' is limited to 4096 characters.");
+						throw new Exception("the field '{$key}' is limited to 4096 characters.");
 					$ret = true;
 				}
 				break;
-			case 'rules':
-				// sanitize
-				if(is_null($value))
-					$value = array();
-				
-				if(is_array($value)){
-					$rules = $value;
-					$ret = function($r) use ($rules) {
-						foreach($rules as $k => &$rule){
-							$rule = json_decode(json_encode($rule), true); // cast object into associative array
-							if(!is_array($rule) || !Rule::check($rule,$r)){
-								throw new Exception("Invalid rules #{$k}");
-							}
-						}
-						return $rules;
-					};
-				}
-				break;
-			case 'location':
-				if(is_object($value))
-					$value = (array)$value;
-				if(is_array($value) && isset($value['longitude']) && isset($value['latitude'])){
-					foreach($value as $key => $v){
-						switch($key){
-							case 'longitude':
-							case 'latitude':
-							case 'altitude':
-								if(!(is_int($v) || is_float($v)))
-									throw new \Ething\Exception("invalid 'location.{$key}' field, must be a number");
-								break;
-							default:
-								throw new \Ething\Exception("invalid 'location.{$key}' field");
-						}
-					}
-					$ret = true;
-				}
-				else if(is_null($value)){
-					$ret = true;
-				}
+			case 'public':
+				$ret = in_array($value, array(false,"readonly","readwrite"), true);
 				break;
 			default:
-				throw new \Ething\Exception('invalid field "'.$key.'"');
+				throw new Exception('unknown field "'.$key.'"');
 		}
 		return $ret;
+	}
+	
+	
+	public function get($name, $default = null) {
+		if($name[0] == '_') return $default;
+		if($name === 'id') $name = '_id';
+		if($this->hasAttr($name)){
+			$v = $this->getAttr($name);
+			if($v instanceOf \MongoDB\BSON\UTCDateTime)
+				return $v->toDateTime()->getTimestamp();
+			return $v;
+		} else return $default;
+	}
+	
+	public function __get ( $name ){
+		return $this->get($name);
+	}
+	
+	public function __isset ( $name ){
+		if($name === 'id') $name = '_id';
+		return $this->hasAttr($name) && $name[0] != '_';
 	}
 	
 	public function set($name, $value = null) {
 		
 		$props = is_array($name) ? $name : array( $name => $value );
 		
-		$s = true;
-		$callbacks = array();
 		$keys = array_keys($props);
-		$user = $this->user();
+		$context = array(
+			'ething' => $this->ething,
+			'resourceType' => $this->type,
+			'resource' => $this,
+			'postfns' => array(),
+			'callbacks' => array(),
+			'config' => &$props
+		);
+		
+		// field validation
 		foreach($keys as $key){
+			if(!isset($props[$key]) && !is_null($props[$key])) continue;
 			
-			$res=false;
 			try {
-				$res = static::validate($this->ething,$key,$props,$user,$this);
-				if(!$res)
+				if(!static::validate($key,$props[$key],$context))
 					throw new Exception('Invalid value');
 			}
 			catch(Exception $e){
 				throw new Exception("[{$key}] ".$e->getMessage(),$e->getCode(),$e);
 			}
-			
-			if(is_callable($res))
-				$callbacks[$key] = $res;
 		}
+		$save = $this->_d;
 		$this->_d = array_merge($this->_d,$props);
 		
-		// post treatment
-		$this->updatePrevented = true;
+		// post checks
 		try {
-			foreach($callbacks as $key => $callback){
-				$res = $callback($this);
-				if(isset($res)) $this->_d[$key] = $res;
+			foreach($context['postfns'] as $fn){
+				if($fn($this,$context)===false) throw new Exception('Invalid value');
 			}
+			
+			$this->dirtyFields = array_unique(array_merge($this->dirtyFields,Helpers::array_diff($save,$this->_d)));
+			
 		} catch (\Exception $e) {
-			$this->updatePrevented = false;
+			$this->_d = $save;
 			throw new Exception("[{$key}] ".$e->getMessage(),$e->getCode(),$e);
 		}
 		
-		// update only if every thing is successfull
-		$this->updatePrevented = false;
 		$this->update();
+		
+		// callbacks
+		foreach($context['callbacks'] as $fn){
+			$fn($this,$context);
+		}
+		
+		
 		
 		return true;
 	}
 	
-	public function remove() {
-		
-		$c = $this->ething->db()->selectCollection("resources");
-		$c->remove(array('_id' => $this->id()), array('justOne' => true));
-		$this->_d = null;
-		
+	/* internal data getter/setter */
+	
+	public function getData($name, $default = null){
+		return isset($this->data->$name) ? $this->data->$name : $default;
 	}
 	
-	public function update($tsUpdate = true) {
-		if($this->updatePrevented) return;
-		if($tsUpdate) $this->_d['modifiedDate'] = new \MongoDate(); // update the modification time
+	public function setData($name, $value){
+		return $this->set('data',array(
+			$name => $value
+		));
+	}
+	
+	public function hasData($name, $value){
+		return isset($this->data->$name);
+	}
+	
+	public function removeData($name){
+		return $this->set('data',array(
+			$name => null
+		));
+	}
+	
+	
+	public function remove() {
 		$c = $this->ething->db()->selectCollection("resources");
-		$c->save($this->_d);
+		$c->deleteOne(array('_id' => $this->id()));
+		$this->_d = null;
+		$this->ething->dispatchSignal(Event\ResourceDeleted::emit($this));
+	}
+	
+	protected function update($force = false) {
+		if($force || count($this->dirtyFields)){
+			$this->setAttr('modifiedDate', new \MongoDB\BSON\UTCDateTime()); // update the modification time
+			$c = $this->ething->db()->selectCollection("resources");
+			$c->replaceOne(array('_id' => $this->id()), $this->_d);
+			$this->ething->dispatchSignal(Event\ResourceMetaUpdated::emit($this, $this->dirtyFields));
+			//$this->ething->log(implode(',',$this->dirtyFields));
+			$this->dirtyFields = array();
+		}
 	}
 	
 	// create a new resource
 	// the values of the $meta associative array will not be validated unlike the $attr associative array
 	// so the $meta array is intended only for internal purpose
-	protected static function createRessource(Ething $ething, User $user, array $attr, array $meta=array(), Resource $createdBy = null) {
-		$now = new \MongoDate();
+	protected static function createRessource(Ething $ething, array $attr, array $meta=array(), Resource $createdBy = null) {
+		$now = new \MongoDB\BSON\UTCDateTime();
 		$class = get_called_class();
 		$type = preg_replace('/^Ething\\\/','',$class); // remove the namespace
 		
 		$attr = array_merge(self::$defaultAttr,$attr);
 		
-		$callbacks = array();
+		$context = array(
+			'ething' => $ething,
+			'resourceType' => $class,
+			'createdBy' => $createdBy,
+			'postfns' => array(),
+			'callbacks' => array(),
+			'config' => &$attr
+		);
 		
 		// validation of the attributes 
 		$keys = array_keys($attr);
 		foreach($keys as $key){
-			
-			$res=false;
+			if(!array_key_exists($key, $attr)) continue;
 			try {
-				$res = call_user_func_array($class.'::validate',array($ething,$key,&$attr,$user,null));
-				if(!$res)
+				if(!call_user_func_array($class.'::validate',array($key,&$attr[$key],&$context)))
 					throw new Exception('Invalid value');
 			}
 			catch(Exception $e){
 				throw new Exception("[{$key}] ".$e->getMessage(),$e->getCode(),$e);
 			}
-			
-			if(is_callable($res))
-				$callbacks[$key] = $res;
 		}
 		
-		$mime = 'x-'.strtolower($type).'/x-'.strtolower($type);
-		
 		$attr = array_merge($attr,array(
-			'user'       => $user->id(),
 			'type'       => $type,
-			'createdBy' => isset($createdBy) ? array('id'=>$createdBy->id(),'type'=>$createdBy->type()) : null,
+			'createdBy' => isset($createdBy) ? array('type'=>$createdBy->type(), 'id'=>$createdBy->id()) : null,
 			'createdDate' => $now,
-			'modifiedDate' => $now,
-			'mime' => $mime
+			'modifiedDate' => $now
 		),$meta);
 		
-			
-		$c = $ething->db()->selectCollection("resources");
 		
+		$attr['_id'] = ShortId::generate();
+		$instance = new $class($ething,$attr);
+		
+		// post checks
+		try {
+			foreach($context['postfns'] as $fn){
+				if($fn($instance,$context)===false) throw new Exception('Invalid value');
+			}
+		} catch (\Exception $e) {
+			throw new Exception("[{$key}] ".$e->getMessage(),$e->getCode(),$e);
+		}
+		
+		// insertion
+		$c = $ething->db()->selectCollection("resources");
 		$err = false;
 		try {
-			$attr['_id'] = ShortId::generate();
-			$c->insert($attr);
+			$c->insertOne($instance->_d);
 		}
 		catch(\Exception $e) {
 			//echo "message d'erreur : ".$e->getMessage()."\n";
 			//echo "code de l'erreur : ".$e->getCode()."\n";
 			// code 11000 on duplicate error
-			throw new \Ething\Exception('internal error');
+			throw new Exception('internal error');
 		}
 		
-		$instance = new $class($user->getEthingInstance(),$attr);
 		
-		// post treatment
-		try {
-			foreach($callbacks as $key => $callback){
-				$res = $callback($instance);
-				if(isset($res)) $instance->_d[$key] = $res;
-			}
-		} catch (\Exception $e) {
-			// remove this resource on error
-			$instance->remove();
-			throw new Exception("[{$key}] ".$e->getMessage(),$e->getCode(),$e);
+		// callbacks
+		foreach($context['callbacks'] as $fn){
+			$fn($instance,$context);
 		}
+		
+		$instance->update();
+		
+		$ething->dispatchSignal(Event\ResourceCreated::emit($instance));
 		
 		return $instance;
 	}
 	
-	private static function r_encode(array $data){
-		$o=array();
-		foreach($data as $k => $v)
-			if($k[0] != '_'){
-				if($v instanceof \MongoDate)
-					$o[$k] = date(\DateTime::RFC3339, $v->sec);
-				else if(is_array($v))
-					$o[$k] = self::r_encode($v);
-				else
-					$o[$k] = $v;
-			}
-		return $o;
+	
+	public function match($expression){
+		return boolval( $this->ething->findOne( array(
+			'$and' => array(
+				array( '_id' => $this->id() ),
+				$this->ething->resourceQueryParser()->parse($expression) // use the parser because of the 'me' constant !
+			)
+		) ) );
 	}
+	
 
 }

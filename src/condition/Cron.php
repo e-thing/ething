@@ -7,23 +7,42 @@ namespace Ething\Condition;
 	
 class Cron extends Condition {
 	
-	public $cron;
 	
-	
-	static public function check(array &$json, $eventName, $resourceTypeName){
-		if(!(isset($json['cron']) && is_string($json['cron']) && !empty($json['cron']) && \Cron\CronExpression::isValidExpression($json['cron'])))
-			throw new \Ething\Exception('invalid cron expression');
+	static public function validate(array &$attributes, array $context){
 		
-		return true;
+		$attributes = array_merge(
+			array( 
+				'cron' => null
+			),
+			$attributes
+		);
+		
+		foreach(array_keys($attributes) as $key){
+			
+			switch($key){
+				
+				case 'cron':
+					
+					if(!is_string($attributes[$key]))
+						throw new \Exception("field '{$key}' must be a string.");
+					
+					if(empty($attributes[$key]) || !\Cron\CronExpression::isValidExpression($attributes[$key]))
+						throw new \Ething\Exception('invalid cron expression');
+					
+					break;
+				
+				default:
+					throw new \Exception("field '{$key}' unknown.");
+			}
+			
+		}
+		
+		return true; 
 	}
 	
-	public function test(\Ething\Event\Event $event){
+	protected function call(\Ething\Event\Signal $signal){
 		$cron = \Cron\CronExpression::factory($this->cron);
 		return $cron->isDue();
-	}
-	
-	public function description(){
-		return "the current time matches the cron expression '{$this->cron}'";
 	}
 	
 }

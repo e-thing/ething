@@ -2,23 +2,20 @@
 
 namespace Ething\Event;
 
-
-
-class LowBatteryDevice extends Event {
+class LowBatteryDevice extends AbstractResourceEvent {
 	
-	public function __construct(\Ething\Resource $target){
-		parent::__construct($target, array(
-			'batteryLevel' => $target->battery()
+	static public function emit(\Ething\Device\Device $resource){
+		return new Signal('LowBatteryDevice', array(
+			'resource' => $resource->id()
 		));
 	}
 	
-	public function description(){
-		return "the battery level of the device '{$this->target()->name()}' is under ".\Ething\Device::BATTERY_LOW."% (current: {$this->batteryLevel}%)";
+	static public function validate(array &$attributes, array $context){
+		$context['onlyTypes'] = array('Device\\Device');
+		return parent::validate($attributes, $context);
 	}
 	
-	static public function check($resourceTypeName){
-		return $resourceTypeName == 'Device';
-	}
 }
+
 
 

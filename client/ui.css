@@ -1,0 +1,54 @@
+::-webkit-scrollbar {
+	width: 8px;
+	height:8px;
+}
+::-webkit-scrollbar-button {
+	width: 8px;
+	height:8px;
+}
+::-webkit-scrollbar-track {
+	background: transparent;
+}
+::-webkit-scrollbar-thumb {
+	background: rgba(115, 115, 115, 0.38);
+	border-radius: 0px;
+}
+::-webkit-scrollbar-thumb:hover {
+	background: rgba(115, 115, 115, 0.58);
+}
+
+
+.ellipsis {
+	overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+a.nostyle {
+  color: inherit;
+  text-decoration: inherit; /* no underline */
+}
+
+
+/* json specification codemirror theming */
+
+.CodeMirror.cm-s-json-api-spec .cm-atom {
+	color: #AB4DCA;
+}
+.CodeMirror.cm-s-json-api-spec .cm-string {
+	color: #D61F8D;
+}
+.CodeMirror.cm-s-json-api-spec .cm-number {
+	color: #28B940;
+}
+.CodeMirror.cm-s-json-api-spec .cm-string.cm-property {
+	color: #3C5FDE;
+}
+
+
+/* bootstrap conflict */
+
+.highcharts-contextmenu hr {
+	margin-top: 5px;
+    margin-bottom: 5px;
+}

@@ -4,46 +4,95 @@ namespace Ething;
 
 class Scope
 {
-
-	const RESOURCE_WRITE = '/(^|\s)resource(\.owndata)?($|\s)/';   // check if a scope can write to a resource ?
-	const RESOURCE_READ = '/(^|\s)resource($|\.|\s)/';             // check if a scope can read a resource ?
-	const NOTIFICATION = '/(^|\s)notification($|\s)/';             // allow notification
-	const PROFILE_WRITE = '/(^|\s)profile($|\s)/';                 // allow profile editing ?
-	const PROFILE_READ = '/(^|\s)profile($|\.|\s)/';               // allow to see the profile ?
-	const RESOURCE_OWNDATA = '/(^|\s)resource.owndata($|\s)/';     // allow a device to create resources and to read/write only those resources ?
-	const RESOURCE_ALL = '/(^|\s)resource(\.readonly)?($|\s)/';    // allow to read to any resource ?
-	const RESOURCE_ALL_WRITE = '/(^|\s)resource($|\s)/';           // allow to write to any resource ?
-	
-	
+    
 	
 	public static $list = array(
-		'resource', // allow to read and write to any resource
-		'resource.readonly', // allow to read only to any resource
-		'resource.owndata', // allow a device to create resources and to read/write only those resources (default)
-		'notification',  // allow to send notification
-		'profile', // allow to edit the profile of this user
-		'profile.readonly', // allow to see the profile of this user
+		
+		'resource:read' => array(
+			'description' => 'read the content of any resource'
+		),
+		'resource:write' => array(
+			'description' => 'create resources of any kind and modify the content of any resource'
+		),
+		'resource:admin' => array(
+			'description' => 'modify resource properties, delete resource and access to apikeys'
+		),
+		'file:read' => array(
+			'description' => 'read the content of any file'
+		),
+		'file:write' => array(
+			'description' => 'create files and modify the content of any file'
+		),
+		'table:read' => array(
+			'description' => 'read the content of any table'
+		),
+		'table:write' => array(
+			'description' => 'create tables and modify the content of any table'
+		),
+		'table:append' => array(
+			'description' => 'append data to any existing table'
+		),
+		'app:read' => array(
+			'description' => 'read the raw script content of any apps'
+		),
+		'app:write' => array(
+			'description' => 'create and edit apps'
+		),
+		'app:execute' => array(
+			'description' => 'execute apps'
+		),
+		'device:read' => array(
+			'description' => 'send GET request to any device'
+		),
+		'device:write' => array(
+			'description' => 'send POST,PUT,PATCH,DELETE request to any device'
+		),
+		'notification' => array(
+			'description' => 'send notification'
+		),
+		'settings:read' => array(
+			'description' => 'read the settings'
+		),
+		'settings:write' => array(
+			'description' => 'modify the settings'
+		),
+		'proxy:read' => array(
+			'description' => 'send GET request through your local network'
+		),
+		'proxy:write' => array(
+			'description' => 'send POST,PUT,PATCH,DELETE through your local network'
+		),
+		'rule:read' => array(
+			'description' => 'read rules attributes'
+		),
+		'rule:write' => array(
+			'description' => 'create rules'
+		),
+		'rule:execute' => array(
+			'description' => 'execute rules'
+		),
+		'rule:admin' => array(
+			'description' => 'delete rules'
+		)
+		
+		
 	);
 	
-	public static function valide(&$scope){
-		if(empty($scope))
-			$scope = '';
-		if(is_string($scope)){
-			$scopes = preg_split('/ +/',$scope);
-			if(array_reduce($scopes, function($scope) {
-				return in_array($scope, Scope::$list);
-			}, true)){
-				$scope = implode($scopes, ' ');
-				return true;
+	
+	static public function validate(&$scopes){
+		if(is_string($scopes)){
+			$_scopes = array();
+			foreach( explode(' ',$scopes) as $scope ){
+				if(!$scope) continue;
+				if(!array_key_exists($scope,static::$list)) return false;
+				$_scopes[] = $scope;
 			}
+			$scopes = implode(' ',$_scopes);
+			return true;
 		}
 		return false;
 	}
 	
-	// ex:  Scope::check(Scope::RESOURCE_WRITE,$device);
-	public static function check($scope, Resource $resource){
-		return preg_match($scope,method_exists($resource,'scope') ? $resource->scope() : '')===1;
-	}
 	
 }
 

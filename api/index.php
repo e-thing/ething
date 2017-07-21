@@ -4,14 +4,13 @@
  * @swagger
  * {  
  *      "swagger": "2.0",
- *      "paths": [],
  *      "info": {
  *         "title": "eThing HTTP api",
  *         "description": "
  
-The eThing project is an 'Internet of Things' application. Store and retrieve data from devices using HTTP requests.
+The eThing project is an 'Internet of Things' application. Store and retrieve data from your devices using simple HTTP requests.
 
-Access to your resources (file, table, device ...) through HTTP requests.
+This API describe how to access to your resources (file, table, device ...) through HTTP requests.
 
 -------------
 
@@ -22,7 +21,7 @@ There are different types of resources. A resource can either be :
 
  - file : use this kind of objects to store text data or binary data (image, ...)
  - table : tables are used to store a collection of related data. Table consists of fields and rows.
- - device : this resource describes a device. You can send HTTP requests to your device through it.
+ - device : this resource describes a device.
  - app : this resource is used to store a HTML/JavaScript script. Use it to handle your data (for instance, you can create an interface to communicate with your device).
 
 
@@ -42,15 +41,30 @@ The code value correspond to the HTTP status code of the response.
 
 ### Authorization
 
-Currently you can authenticate via an API Key or via an Access Token (acquired using regular login (see /user/login endpoint) ).
+There are several options for authenticating with the API.
+
+#### Basic authentication
+
+HTTP Basic authentication is the simplest way of interacting with the API. 
+Simply pass the username (always 'ething') and password with each request through the `Authorization` header.
+This value should be encoded (using base64 encoding) as per the HTTP Basic specification.
+
+```bash
+curl -u username:password ...
+```
+
 
 #### API key
 
-You can generate an API key by creating a new device. Then the API key will be listed on developer page [http://<YOUR_SERVER_ADDRESS>/ething/client/developer.html](http://localhost/ething/client/developer.html).
+Every device or app has an API key. API keys are listed on developer page [http://<YOUR_SERVER_ADDRESS>/ething/client/#!developer](http://localhost/ething/client/#!developer).
+
+API calls authenticated with API key are made on behalf of the Application or Device that own this it ! The permissions can be modified in the resource settings.
 
 Send the following header below on every request :
 
 ```
+GET /ething/api/resources HTTP/1.1
+Host: localhost
 X-API-KEY: <YOUR_API_KEY>
 ```
 
@@ -65,6 +79,10 @@ You can also simply pass the key as a URL query parameter when making Web servic
 ```bash
 curl http://localhost/ething/api/resources?api_key=<YOUR_API_KEY>
 ```
+
+
+
+
 
 ### Partial response
 
@@ -92,7 +110,7 @@ You can search or filter resources or table's rows using a search query combinin
 Combine clauses with the conjunctions and or or.
 
 
-The available fields for resource filtering (see the HTTP API documentation for their meaning) :
+The available fields for resource filtering :
 
  - 'type'
  - 'name'
@@ -103,16 +121,19 @@ The available fields for resource filtering (see the HTTP API documentation for 
  - 'location.altitude'
  - 'createdDate'
  - 'modifiedDate'
+ - 'createdBy'
  - 'createdBy.type'
  - 'createdBy.id'
  - 'description'
+ - 'data.*'
  - 'length' : only available for Table resources
  - 'size' : only available for File resources
  - 'hasThumbnail' : only available for File resources
  - 'hasIcon' : only available for App resources
  - 'battery' : only available for Device resources
  - 'lastSeenDate' : only available for Device resources
-
+ 
+ 
 
 The available operators :
 
@@ -134,9 +155,13 @@ Value types :
  - String : surround with single quotes ' or double quotes.
  - Number : either integer numbers or floating numbers.
  - Boolean : true or false.
- - Date : *RFC 3339* format,  e.g., *2015-03-24T12:00:00+02:00*.
+ - Date : *RFC 3339* format,  e.g., *2015-03-24T12:00:00+02:00*. (All formats described here http://php.net/manual/en/datetime.formats.php are also available)
 
+Constants :
 
+ - 'me' : available only when using API key authentication method. It corresponds to the current Device or App.
+
+ 
 Examples:
 
 All examples on this page show the unencoded q parameter, where name == 'foobar' is encoded as name+%3d%3d+%27foobar%27.
@@ -170,32 +195,77 @@ Search for resources modified after Mars 4th 2016
 
 `modifiedDate > '2016-03-04T00:00:00+01:00'`
 
+Search for resources created by the current authenticated Device or App
+
+`createdBy == me`
+
+Search for resources with internal data \"temperature\" greater than 32
+
+`data.temperature > 32`
+
+
+
+
+### Scopes
+
+
+Scopes let you specify exactly what type of data access your application or device needs.
+
+| Scope          | Description                                                          |
+|----------------|----------------------------------------------------------------------|
+| resource:read  | read the content of any resource                                     |
+| resource:write | create resources of any kind and modify the content of any resource  |
+| resource:admin | modify resource properties, delete resource and access to apikeys    |
+| file:read      | read the content of any file                                         |
+| file:write     | create files and modify the content of any file                      |
+| table:read     | read the content of any table                                        |
+| table:write    | create tables and modify the content of any table                    |
+| table:append   | append data to any existing table                                    |
+| app:read       | execute apps                                                         |
+| app:write      | create and edit apps                                                 |
+| app:execute    | execute apps                                                         |
+| device:read    | send GET request to any device                                       |
+| device:write   | send POST,PUT,PATCH,DELETE request to any device                     |
+| notification   | send notification                                                    |
+| settings:read  | read the settings                                                |
+| settings:write | modify the settings                                              |
+| proxy:read     | send GET request through your local network                          |
+| proxy:write    | send POST,PUT,PATCH,DELETE through your local network                |
+| rule:read      | read rules attributes                                                |
+| rule:write     | create rules                                                         |
+| rule:execute   | execute rules                                                        |
+| rule:admin     | delete rules                                                         |
+
+
 
 
  ",
  *         "version": "0.1.0"
  *      },
+ *      "host": "localhost",
  *      "basePath": "/ething/api",
  *      "schemes": ["http"],
  *      "consumes": ["application/json"],
  *      "produces": ["application/json"],
- *      "security":[{
- *      	"access_token": []
- *      }],
  *      "securityDefinitions":{
- *        "access_token": {
- *          "type": "apiKey",
- *          "description": "authentication through an access token, use /user/login request to generate an access token",
- *          "name": "X-ACCESS-TOKEN",
- *          "in": "header"
- *        },
  *        "api_key": {
  *          "type": "apiKey",
- *          "description": "authentication through an API key, used only by device.",
+ *          "description": "authentication through an API key, used only by devices or apps.",
  *          "name": "X-API-KEY",
  *          "in": "header"
+ *        },
+ *        "api_key_query": {
+ *          "type": "apiKey",
+ *          "description": "authentication through an API key, used only by devices or apps.",
+ *          "name": "api_key",
+ *          "in": "query"
+ *        },
+ *        "basic_auth": {
+ *          "type": "basic",
+ *          "description": "basic authentication."
  *        }
  *      },
+ *      "security":[ {"api_key":[]}, {"api_key_query":[]}, {"basic_auth":[]} ],
  *      "tags": [
  *      	{
  *      		"name": "auth",
@@ -222,35 +292,47 @@ Search for resources modified after Mars 4th 2016
  *      		"description": "Operations specific to Device resource"
  *      	},
  *      	{
- *      		"name": "user",
- *      		"description": "Operations to manage User"
+ *      		"name": "settings",
+ *      		"description": "Operations to manage settings"
  *      	}
- *      ]
+ *      ],
+ *      "paths": []
  *   }
  */
 
 $rootDir = __DIR__.'/..';
 
-$config = include($rootDir.'/config.php');
-
 require_once __DIR__.'/utils.php';
 
 // composer
-require $rootDir.'/vendor/autoload.php';
+require_once $rootDir.'/vendor/autoload.php';
 
 $app = new \Slim\Slim(array(
     'debug' => false
 ));
 
-$debug = isset($config['debug']) && $config['debug'];
-
 require_once $rootDir.'/src/Ething.php';
-$ething = new \Ething\Ething($config);
+$ething = new \Ething\Ething();
 
-require_once __DIR__.'/auth.php';
-$auth = new \Auth\HttpAuth($ething, isset($config['jwt']) ? $config['jwt'] : array());
+$debug = $ething->config('debug');
 
 error_reporting($debug ? E_ALL : 0);
+
+
+
+
+/* auth */
+require_once __DIR__.'/auth.php';
+$auth = new \Auth\HttpAuth($ething);
+
+# never transmit these parameters/headers to any device
+\Ething\Proxy::$deny_request_headers[] = 'X-API-KEY';
+\Ething\Proxy::$deny_request_headers[] = 'X-AUTH';
+\Ething\Proxy::$deny_request_headers[] = 'Cookie';
+\Ething\Proxy::$deny_request_headers[] = 'x-csrf-token';
+\Ething\Proxy::$deny_request_headers[] = 'Authorization';
+\Ething\Proxy::$deny_request_query[] = 'api_key';
+\Ething\Proxy::$deny_request_query[] = 'auth';
 
 
 
@@ -276,190 +358,91 @@ $app->get('/swagger.json',
     }
 );
 
-
-
-
-
-
-
 /**
  * @swagger-path
- * "/auth/authorize":{  
- *      "post":{
- *         "tags": ["auth"],
- *         "security":[],
- *         "summary": "initialize a new session",
- *         "description":"The login endpoint is used to initialize a new session. A JSON web token will be generated. Use this token to make further API requests.",
- *         "parameters":[  
- *            {  
- *               "name":"credentials",
- *               "in":"body",
- *               "description":"the credentials of the user to be authenticated.
- 
- example :
- 
-```json
-{
-	\"user\":\"john\",
-	\"password\":\"secret\"
-}
-```
-
- ",
- *               "required":true,
+ * "/auth":{  
+ *      "get":{
+ *         "description":"Returns information about the current authentication. The properties \"device\" and \"app\" are only available with API key authentication.",
+ *         "responses":{
+ *            "200":{
+ *               "description":"authentication information",
  *               "schema":{
- *               	"type":"object",
+ *                  "type":"object",
  * 	                "properties":{  
- * 	                	"user":{
+ * 	                	"scope":{
  * 	                	   "type":"string",
- * 	                	   "description":"the user name"
+ * 	                	   "description":"The space-delimited set of permissions. If the field is missing, it means \"full permissions\"."
  * 	                	},
- * 	                	"password":{
- * 	                	   "type":"string",
- * 	                	   "description":"the password"
+ * 	                	"device":{  
+ * 	                	   "$ref":"#/definitions/Device"
+ * 	                	},
+ * 	                	"app":{
+ * 	                	   "$ref":"#/definitions/App"
  * 	                	}
  *                  }
- *               }
- *            }
- *         ],
- *         "responses":{
- *            "200":{
- *               "description":"Successfully authenticated. The answer contains a JSON web token.",
- *               "schema":{
- *               	"type":"object",
- * 	                "properties":{  
- * 	                	"token":{
- * 	                	   "type":"string",
- * 	                	   "description":"a JSON web token."
- * 	                	}
- *                  }
- *               }
- *            },
- *            "401":{
- *               "description":"The authentication fails. Invalid credentials.",
- *               "schema":{
- *                  "$ref":"#/definitions/Error"
  *               }
  *            }
  *         }
  *      }
  *   }
  */
-$app->post('/auth/authorize',
-    function () use ($app,$auth,$ething) {
-	
-		$data = Utils\getJSON($app,true);
+$app->get('/auth',
+    function () use ($app,$auth) {
 		
-        if(is_array($data) && isset($data['user']) && isset($data['password']) && is_string($data['user']) && is_string($data['password']) && ($user = $ething->findOneUserByName($data['user'])) && $user->password() === md5($data['password']) ) {
-			
-			$auth->authenticate($user);
-			
-			// generate a new token
-			$jwt = $auth->generateToken();
-			
-			// send back the token
-			$app->contentType('application/json');
-			echo json_encode(array(
-				'token' => $jwt
-			),JSON_PRETTY_PRINT|JSON_UNESCAPED_SLASHES);
-			
-        }
-		else
-			throw new \Utils\Exception('not authorized',401);
+		$data = array(
+			'type' => $auth->mode()
+		);
 		
-    }
-);
-
-/**
- * @swagger-path
- * "/auth/token":{
- *      "get":{
- *         "security":[{"access_token":[]}],
- *         "tags": ["auth"],
- *         "summary": "Refresh a JSON web token",
- *         "description":"Use this endpoint to refresh the expiration date of a token.
-
-If it returns an unauthorized error (401), it means that your token has expired.
-You need to login to get a new token (see /auth/authorize endpoint).
-
-If it returns with no error, the answer contains the token with the expiration date renewed.
-",
- *         "responses":{
- *            "200":{
- *               "description":"Your token is still valid.",
- *               "schema":{
- *               	"type":"object",
- * 	                "properties":{  
- * 	                	"token":{
- * 	                	   "type":"string",
- * 	                	   "description":"a JSON web token."
- * 	                	}
- *                  }
- *               }
- *            },
- *            "401":{
- *               "description":"Your token has expired.",
- *               "schema":{
- *                  "$ref":"#/definitions/Error"
- *               }
- *            }
- *         }
- *      }
- *   }
- */
-$app->get('/auth/token',
-    function () use ($app,$auth,$ething) {
+		$originator = $auth->originator();
 		
-		// only the 'token' mode can ask for a new token !
-		if($auth->mode() !== 'token')
-			throw new \Utils\Exception('Forbidden',403);
+		if($originator instanceof \Ething\Device)
+			$data['device'] = $originator;
+		else if($originator instanceof \Ething\App)
+			$data['app'] = $originator;
 		
-		// generate a new token
-		$jwt = $auth->generateToken();
+		if(!is_null($auth->scope()))
+			$data['scope'] = $auth->scope();
 		
-		// send back the token
+		
 		$app->contentType('application/json');
-		echo json_encode(array(
-			'token' => $jwt
-		),JSON_PRETTY_PRINT|JSON_UNESCAPED_SLASHES);
+		echo json_encode($data,JSON_PRETTY_PRINT|JSON_UNESCAPED_SLASHES);
 		
     }
 );
 
 
+
 /**
  * @swagger-path
- * "/profile":{  
+ * "/settings":{  
  *      "get":{
- *         "tags": ["user"],
- *         "security":[{"access_token":[]}],
- *         "description":"Returns the profile of the authenticated user.",
+ *         "tags": ["settings"],
+ *         "description":"Returns the settings",
  *         "responses":{
  *            "200":{
- *               "description":"The user profile",
+ *               "description":"The settings",
  *               "schema":{
- *               	"$ref":"#/definitions/Profile"
+ *               	"$ref":"#/definitions/Settings"
  *               }
  *            }
  *         }
  *      }
  *   }
  */
-$app->get('/profile',
-    function () use ($app,$auth,$ething) {
+$app->get('/settings',
+    function () use ($app,$ething) {
 		$app->contentType('application/json');
-		echo json_encode($auth->user()->profile(),JSON_PRETTY_PRINT|JSON_UNESCAPED_SLASHES);
+		echo json_encode($ething->config,JSON_PRETTY_PRINT|JSON_UNESCAPED_SLASHES);
 		
     }
 );
 
 /**
  * @swagger-path
- * "/profile":{  
+ * "/settings":{  
  *      "patch":{
- *         "tags": ["user"],
- *         "security":[{"access_token":[]}],
- *         "description":"update information about the authenticated user. Use this endpoint if you want to change your mail or any other information about your profile (except for your username).",
+ *         "tags": ["settings"],
+ *         "description":"update your settings.",
  *         "parameters":[  
  *            {  
  *               "name":"data",
@@ -467,15 +450,15 @@ $app->get('/profile',
  *               "description":"the attributes to modify",
  *               "required":true,
  *               "schema":{
- *                  "$ref":"#/definitions/Profile"
+ *                  "$ref":"#/definitions/Settings"
  *               }
  *            }
  *         ],
  *         "responses":{
  *            "200":{
- *               "description":"user successfully updated",
+ *               "description":"settings successfully updated",
  *               "schema":{
- *                  "$ref":"#/definitions/Profile"
+ *                  "$ref":"#/definitions/Settings"
  *               }
  *            },
  *            "400":{
@@ -488,19 +471,56 @@ $app->get('/profile',
  *      }
  *   }
  */
-$app->patch('/profile',
-    function () use ($app,$auth,$ething) {
-		if($auth->user()->set((array)Utils\getJSON($app))){
-			$app->contentType('application/json');
-			echo json_encode($auth->user()->profile(),JSON_PRETTY_PRINT|JSON_UNESCAPED_SLASHES);
-		}
-		else {
-			throw new \Utils\Exception('Invalid request');
-		}
+$app->patch('/settings',
+    function () use ($app,$ething) {
+		$ething->config->attr(Utils\getJSON($app));
+		$ething->config->save();
+		$app->contentType('application/json');
+		echo json_encode($ething->config,JSON_PRETTY_PRINT|JSON_UNESCAPED_SLASHES);
     }
 );
 
 
+
+/**
+ * @swagger-path
+ * "/usage":{  
+ *      "get":{
+ *         "tags": ["resource"],
+ *         "description":"Returns information about the resource usage",
+ *         "responses":{
+ *            "200":{
+ *               "description": "Some usage information",
+ *               "schema":{
+ *                  "type":"object",
+ * 	                "properties":{  
+ * 	                	"used":{  
+ * 	                	   "type":"number",
+ * 	                	   "description":"The space used in bytes"
+ * 	                	},
+ * 	                	"quota_size":{  
+ * 	                	   "type":"number",
+ * 	                	   "description":"The maximum space authorized in bytes"
+ * 	                	}
+ *                  }
+ *               },
+ *               "examples":{
+ *               	"application/json": {
+ *                     "quota_size":100000000,
+ *                     "used":697699
+ *               	}
+ *               }
+ *            }
+ *         }
+ *      }
+ *   }
+ */
+$app->get('/usage', $auth->permissions('resource:read'), 
+    function () use ($app,$ething) {
+		$app->contentType('application/json');
+		echo json_encode($ething->stats(),JSON_PRETTY_PRINT|JSON_UNESCAPED_SLASHES);
+    }
+);
 
 
 
@@ -509,10 +529,8 @@ $app->patch('/profile',
  * "/resources":{  
  *      "get":{
  *         "tags": ["resource"],
- *         "security":[{"access_token":[]}],
- *         "summary":"Lists the user's resources.",
  *         "description":"
-Lists the user's resources.
+Lists the resources.
 
 #### cURL example
 
@@ -568,56 +586,49 @@ curl -H 'X-API-KEY: <YOUR_API_KEY>' http://localhost/ething/api/resources
  *   }
  */
 
-$app->get('/resources',
+$app->get('/resources', $auth->permissions('resource:read resource:write file:read file:write table:read table:write table:append device:read device:write app:read app:write'),
     function () use ($app,$auth,$ething) {
+		
+		$query = Utils\getParameter('q',Utils\CHK_STRING, true, null);
+		
+		$scopes = $auth->scope();
+		if($scopes !== null){
+			$scopes = explode(' ', $scopes);
+			
+			$filteredTypes = array_reduce($scopes, function($filteredTypes, $scope){
+				$type = explode(':',$scope,2)[0];
+				if(!in_array($type, $filteredTypes))
+					$filteredTypes[] = $type;
+				return $filteredTypes;
+			}, array());
+			
+			if(!in_array('resource', $filteredTypes)){
+				
+				$typeQuery = array(
+					'type' => array( '$in' => array_map(function($type){
+						return new \MongoDB\BSON\Regex("^$type");
+					}, $filteredTypes) )
+				);
+				
+				if(empty($query)){
+					$query = $typeQuery;
+				} else {
+					// merge the query
+					$query = array(
+						'$and' => array( $ething->resourceQueryParser()->parse($query), $typeQuery )
+					);
+				}
+			}
+			
+		}
+		
 		$app->contentType('application/json');
-		echo Utils\jsonEncodeFilterByFields($auth->fs()->all(
-			Utils\getParameter('q',Utils\CHK_STRING, true, null),
+		echo Utils\jsonEncodeFilterByFields($ething->find(
+			$query,
 			Utils\getParameter('limit',Utils\CHK_UNSIGNED_INT, true, null),
 			Utils\getParameter('skip',Utils\CHK_UNSIGNED_INT, true, null),
 			Utils\getParameter('sort',Utils\CHK_STRING,true,null)
 		),Utils\getParameter('fields',Utils\CHK_STRING_ARRAY, true, null));
-    }
-);
-
-/**
- * @swagger-path
- * "/usage":{  
- *      "get":{
- *         "tags": ["resource"],
- *         "security":[{"access_token":[]}],
- *         "description":"Returns information about the resource usage",
- *         "responses":{
- *            "200":{
- *               "description": "Some usage information",
- *               "schema":{
- *                  "type":"object",
- * 	                "properties":{  
- * 	                	"used":{  
- * 	                	   "type":"number",
- * 	                	   "description":"The space used in bytes"
- * 	                	},
- * 	                	"quota_size":{  
- * 	                	   "type":"number",
- * 	                	   "description":"The maximum space authorized in bytes"
- * 	                	}
- *                  }
- *               },
- *               "examples":{
- *               	"application/json": {
- *                     "quota_size":100000000,
- *                     "used":697699
- *               	}
- *               }
- *            }
- *         }
- *      }
- *   }
- */
-$app->get('/usage',
-    function () use ($app,$auth,$ething) {
-		$app->contentType('application/json');
-		echo json_encode($auth->fs()->stats(),JSON_PRETTY_PRINT|JSON_UNESCAPED_SLASHES);
     }
 );
 
@@ -628,7 +639,6 @@ $app->get('/usage',
  * "/resources/{id}":{  
  *      "get":{
  *         "tags": ["resource"],
- *         "security":[{"access_token":[]}],
  *         "summary":"Gets the meta-data of a resource.",
  *         "description":"
  Returns the meta-data of a resource in JSON.
@@ -637,7 +647,7 @@ $app->get('/usage',
  *            {  
  *               "name":"id",
  *               "in":"path",
- *               "description":"id of the resource",
+ *               "description":"id of the resource. Devices or Apps using the api key authentication may use the word 'me' to replace their id.",
  *               "required":true,
  *               "type":"string"
  *            }
@@ -678,9 +688,28 @@ $app->get('/usage',
  *      }
  *   }
  */
-$app->get('/resources/:id',
-    function ($id) use ($app,$auth,$ething) {
+$app->get('/resources/:id', $auth->permissions('resource:read resource:write file:read file:write table:read table:write table:append device:read device:write app:read app:write'),
+    function ($id) use ($app,$auth) {
 		$r = Utils\getResource($auth, $id);
+		
+		$scopes = $auth->scope();
+		if($scopes !== null){
+			$scopes = explode(' ', $scopes);
+			
+			$filteredTypes = array_reduce($scopes, function($filteredTypes, $scope){
+				$type = explode(':',$scope,2)[0];
+				if(!in_array($type, $filteredTypes))
+					$filteredTypes[] = $type;
+				return $filteredTypes;
+			}, array());
+			
+			if(!in_array('resource', $filteredTypes)){
+				
+				if(!in_array(strtolower($r->baseType()), $filteredTypes))
+					throw new Exception('Unknown resource',404);
+			}
+			
+		}
 		
 		$app->contentType('application/json');
 		echo Utils\jsonEncodeFilterByFields($r,Utils\getParameter('fields',Utils\CHK_STRING_ARRAY, true, null));
@@ -692,13 +721,12 @@ $app->get('/resources/:id',
  * "/resources/{id}":{  
  *      "delete":{
  *         "tags": ["resource"],
- *         "security":[{"access_token":[]}],
  *         "description":"deletes a resource",
  *         "parameters":[  
  *            {  
  *               "name":"id",
  *               "in":"path",
- *               "description":"id of the resource",
+ *               "description":"id of the resource. Devices or Apps using the api key authentication may use the word 'me' to replace their id.",
  *               "required":true,
  *               "type":"string"
  *            }
@@ -711,8 +739,8 @@ $app->get('/resources/:id',
  *      }
  *   }
  */
-$app->delete('/resources/:id',
-    function ($id) use ($app,$auth,$ething) {
+$app->delete('/resources/:id', $auth->permissions('resource:admin'),
+    function ($id) use ($app,$auth) {
 		$r = Utils\getResource($auth, $id);
 		$r->remove();
     }
@@ -723,7 +751,6 @@ $app->delete('/resources/:id',
  * "/resources/{id}":{  
  *      "patch":{
  *         "tags": ["resource"],
- *         "security":[{"access_token":[]}],
  *         "description":"update a resource. Only properties which are not readonly can be modified.
  
 Rename a resource :
@@ -738,7 +765,7 @@ Set a location for a resource :
 
 ```json
 {
-   \"loc\":{
+   \"location\":{
       \"latitude\": 5.12,
 	  \"longitude\": -45.78
    }
@@ -757,7 +784,7 @@ Clear a description :
  *            {  
  *               "name":"id",
  *               "in":"path",
- *               "description":"id of the resource",
+ *               "description":"id of the resource. Devices or Apps using the api key authentication may use the word 'me' to replace their id.",
  *               "required":true,
  *               "type":"string"
  *            },
@@ -789,10 +816,22 @@ Clear a description :
  *   }
  */
 $app->patch('/resources/:id',
-    function ($id) use ($app,$auth,$ething) {
+    function ($id) use ($app,$auth) {
 		$r = Utils\getResource($auth, $id);
+		$data = (array)Utils\getJSON($app);
 		
-		if($r->set((array)Utils\getJSON($app))){
+		if(!$auth->hasPermission('resource:admin')){
+			// only the resource who create this resource can modify only the data attribute
+			$originator = $auth->originator();
+			if($originator && ($originator->id() === $r->id() || $originator->id() === $r->createdBy['id'])){
+				if( array_keys($data) != array('data') )
+					throw new \Exception("access denied. Only the attribute 'data' is allowed.",403);
+			}
+			else
+				throw new \Exception('access denied',403);
+		}
+		
+		if($r->set($data)){
 			$app->contentType('application/json');
 			echo Utils\jsonEncodeFilterByFields($r,Utils\getParameter('fields',Utils\CHK_STRING_ARRAY, true, null));
 		}
@@ -802,60 +841,14 @@ $app->patch('/resources/:id',
     }
 );
 
-/**
- * @swagger-path
- * "/file":{  
- *      "get":{
- *         "tags": ["file"],
- *         "security":[{"access_token":[]}],
- *         "description":"Lists the user's files",
- *         "parameters":[ 
- *            {  
- *               "name":"limit",
- *               "in":"query",
- *               "description":"Limits the number of files returned",
- *               "required":false,
- *               "type":"integer"
- *            },
- *            {  
- *               "name":"skip",
- *               "in":"query",
- *               "description":"Skips a number of files",
- *               "required":false,
- *               "type":"integer"
- *            }
- *         ],
- *         "responses":{
- *            "200":{
- *               "description":"A list of files",
- *               "schema":{
- *                  "type":"array",
- *                  "items":{  
- *                     "$ref":"#/definitions/File"
- *                  }
- *               }
- *            }
- *         }
- *      }
- *   }
- */
-$app->get('/file',
-    function () use ($app,$auth,$ething) {
-		$app->contentType('application/json');
-		echo Utils\jsonEncodeFilterByFields($auth->fs()->all(
-			'type == "File"',
-			Utils\getParameter('limit',Utils\CHK_UNSIGNED_INT, true, null),
-			Utils\getParameter('skip',Utils\CHK_UNSIGNED_INT, true, null)
-		),Utils\getParameter('fields',Utils\CHK_STRING_ARRAY, true, null));
-    }
-);
+
+
 
 /**
  * @swagger-path
- * "/file":{  
+ * "/files":{  
  *      "post":{
  *         "tags": ["file"],
- *         "security":[{"access_token":[]}],
  *         "description":"
 
 Creates a new file.
@@ -878,7 +871,7 @@ There are 2 ways to pass directly the content of the file on the same request :
  example:
  
 ```
-POST /ething/api/file HTTP/1.1
+POST /ething/api/files HTTP/1.1
 Host: <YOUR_HOST>
 Content-Type: multipart/related; boundary=foo_bar_baz
 
@@ -906,7 +899,7 @@ curl
 	-H \"Content-Type: application/json\"
 	-X POST
 	-d '{\"name\":\"myfile.txt\"}'
-	http://localhost/ething/api/file
+	http://localhost/ething/api/files
 ```
 
 If the command was successful, a response containing the meta data of the created file will be given back.
@@ -916,22 +909,20 @@ This id is a unique string identifying this file and is necessary to make any op
 ```json
 {
   \"id\":\"73c66-4\",
-  \"name\":\"descriptor.txt\",
+  \"name\":\"myfile.txt\",
   \"data\":null,
   \"description\":null,
   \"expireAfter\":null,
-  \"user\":{
-	 \"id\":\"56731a7\",
-	 \"name\":\"john\"
-  },
   \"type\":\"File\",
-  \"createdBy\":null,
+  \"createdBy\":{
+   \"id\":\"56a7B-5\",
+   \"type\":\"Device\"
+  },
   \"createdDate\":\"2016-01-27T07:46:43+00:00\",
   \"modifiedDate\":\"2016-02-13T10:34:31+00:00\",
   \"mime\":\"text/plain\",
   \"size\":0,
-  \"rules\":[],
-  \"loc\":null,
+  \"location\":null,
   \"hasThumbnail\":false,
   \"isText\": true
 }
@@ -973,10 +964,6 @@ example:
  *                    "data":null,
  *                    "description":null,
  *                    "expireAfter":null,
- *                    "user":{
- *                  	 "id":"56731_a",
- *                  	 "name":"john"
- *                    },
  *                    "type":"File",
  *                    "createdBy":{
  *                  	 "id":"56a7B-5",
@@ -997,7 +984,7 @@ example:
  *      }
  *   }
  */
-$app->post('/file',
+$app->post('/files', $auth->permissions('file:write resource:write'),
     function () use ($app,$auth,$ething) {
 		$multipart = Utils\readMultipartRelated();
 		
@@ -1014,7 +1001,7 @@ $app->post('/file',
 		else
 			$attr = (array)Utils\getJSON($app);
 		
-		$r = $ething->create($auth->user(),'File',$attr,$auth->device());
+		$r = $ething->create('File',$attr,$auth->originator());
 		if(!$r) throw new \Utils\Exception('Unable to create the file');
 		if(isset($content))
 			$r->write($content);
@@ -1027,10 +1014,9 @@ $app->post('/file',
 
 /**
  * @swagger-path
- * "/file/{id}":{  
+ * "/files/{id}":{  
  *      "get":{
  *         "tags": ["file"],
- *         "security":[{"access_token":[]}],
  *         "description":"
 
 Retrieves the content of a file.
@@ -1040,7 +1026,7 @@ Retrieves the content of a file.
 The next command show you how to read the content of a file identified by its id.
 
 ```bash
-curl -H 'X-API-KEY: <YOUR_API_KEY>' http://localhost/ething/api/file/<FILE_ID>
+curl -H 'X-API-KEY: <YOUR_API_KEY>' http://localhost/ething/api/files/<FILE_ID>
 ```
 
 ",
@@ -1065,23 +1051,32 @@ curl -H 'X-API-KEY: <YOUR_API_KEY>' http://localhost/ething/api/file/<FILE_ID>
  *      }
  *   }
  */
-$app->get('/file/:id',
-    function ($id) use ($app,$auth,$ething) {
+
+$app->get('/files/~/:fn+',  $auth->permissions('file:read resource:read'),
+	function ($fn) use ($app,$auth) {
+		$route = $app->router()->getNamedRoute('get-files');
+		$route->setParams(array('id' => \Utils\getResourceByName($auth,implode('/',$fn),'File')->id()));
+		$route->dispatch();
+		$app->stop();
+	}
+);
+
+$app->get('/files/:id', $auth->permissions('file:read resource:read'),
+    function ($id) use ($app,$auth) {
 		$r = Utils\getResource($auth, $id, 'File');
-		$app->lastModified($r->modifiedDate());
+		$app->lastModified($r->modifiedDate);
 		$content = $r->read();
-		$app->contentType($r->mime());
+		$app->contentType($r->mime);
 		$app->response->headers->set('Content-Length', strlen($content));
 		echo $content;
     }
-);
+)->name('get-files');
 
 /**
  * @swagger-path
- * "/file/{id}":{  
+ * "/files/{id}":{  
  *      "put":{
  *         "tags": ["file"],
- *         "security":[{"access_token":[]}],
  *         "description":"
 Upload the content of a file.
 
@@ -1094,7 +1089,7 @@ curl
 	-H 'X-API-KEY: <YOUR_API_KEY>'
 	-X PUT
 	--data @data.txt
-	http://localhost/ething/api/file/<FILE_ID>
+	http://localhost/ething/api/files/<FILE_ID>
 ```
 
 ",
@@ -1137,13 +1132,29 @@ curl
  *      }
  *   }
  */
-$app->put('/file/:id',
-    function ($id) use ($app,$auth,$ething) {
+
+$app->put('/files/~/:fn+',  $auth->permissions('file:read resource:read'),
+	function ($fn) use ($app,$auth,$ething) {
+		$filename = implode('/',$fn);
+		
+		if(!($r = \Utils\getResourceByName($auth,$filename,'File',false))){
+			$r = $ething->create('File',array(
+				'name' => $filename
+			),$auth->originator());
+		}
+		
+		$route = $app->router()->getNamedRoute('put-files');
+		$route->setParams(array('id' => $r->id()));
+		$route->dispatch();
+		$app->stop();
+	}
+);
+
+$app->put('/files/:id', $auth->permissions('file:write resource:write'),
+    function ($id) use ($app,$auth) {
 		$r = Utils\getResource($auth, $id, 'File');
 		$append = Utils\getParameter('APPEND',Utils\CHK_LOGIC,true,false);
 		$bytes = $app->request->getBody();
-		
-		Utils\spaceControl($auth,mb_strlen($bytes, '8bit'));
 		
 		if(!$append)
 			$r->write($bytes);
@@ -1154,14 +1165,13 @@ $app->put('/file/:id',
 		echo Utils\jsonEncodeFilterByFields($r,Utils\getParameter('fields',Utils\CHK_STRING_ARRAY, true, null));
 		
     }
-);
+)->name('put-files');
 
 /**
  * @swagger-path
- * "/file/{id}/thumbnail":{  
+ * "/files/{id}/thumbnail":{  
  *      "get":{
  *         "tags": ["file"],
- *         "security":[{"access_token":[]}],
  *         "description":"Retrieves the thumbnail of a file. Only image can have a thumbnail. The thumbnail is automatically generated when the content is uploaded.",
  *         "parameters":[  
  *            {  
@@ -1184,10 +1194,10 @@ $app->put('/file/:id',
  *      }
  *   }
  */
-$app->get('/file/:id/thumbnail',
-    function ($id) use ($app,$auth,$ething) {
+$app->get('/files/:id/thumbnail', $auth->permissions('file:read resource:read'),
+    function ($id) use ($app,$auth) {
 		$r = Utils\getResource($auth, $id, 'File');
-		$app->lastModified($r->modifiedDate());
+		$app->lastModified($r->modifiedDate);
 		$content = $r->readThumbnail();
 		if(is_null($content))
 			throw new \Utils\Exception('No thumbnail available',404);
@@ -1199,34 +1209,51 @@ $app->get('/file/:id/thumbnail',
 
 /**
  * @swagger-path
- * "/table":{  
+ * "/files/{id}/execute":{  
  *      "get":{
- *         "tags": ["table"],
- *         "security":[{"access_token":[]}],
- *         "description":"Lists the user's tables",
- *         "parameters":[ 
+ *         "tags": ["file"],
+ *         "description":"Execute a script. Only available for File representing a javascript script.",
+ *         "parameters":[  
  *            {  
- *               "name":"limit",
+ *               "name":"id",
+ *               "in":"path",
+ *               "description":"id of the resource",
+ *               "required":true,
+ *               "type":"string"
+ *            },{  
+ *               "name":"args",
  *               "in":"query",
- *               "description":"Limits the number of tables returned",
+ *               "description":"the arguments to pass to the script",
  *               "required":false,
- *               "type":"integer"
- *            },
- *            {  
- *               "name":"skip",
- *               "in":"query",
- *               "description":"Skips a number of tables",
- *               "required":false,
- *               "type":"integer"
+ *               "type":"string"
  *            }
  *         ],
  *         "responses":{
  *            "200":{
- *               "description":"A list of tables",
+ *               "description":"The result object",
  *               "schema":{
- *                  "type":"array",
- *                  "items":{  
- *                     "$ref":"#/definitions/Table"
+ *                  "type":"object",
+ * 	                "properties":{  
+ * 	                	"ok":{
+ * 	                	   "type":"boolean",
+ * 	                	   "description":"True if the script was executed successfully."
+ * 	                	},
+ * 	                	"return":{
+ * 	                	   "type":"object",
+ * 	                	   "description":"The return value."
+ * 	                	},
+ * 	                	"stdout":{
+ * 	                	   "type":"string",
+ * 	                	   "description":"The stdout output."
+ * 	                	},
+ * 	                	"stderr":{
+ * 	                	   "type":"string",
+ * 	                	   "description":"The stderr output."
+ * 	                	},
+ * 	                	"executionTime":{
+ * 	                	   "type":"number",
+ * 	                	   "description":"The execution time in seconds."
+ * 	                	}
  *                  }
  *               }
  *            }
@@ -1234,23 +1261,33 @@ $app->get('/file/:id/thumbnail',
  *      }
  *   }
  */
-$app->get('/table',
-    function () use ($app,$auth,$ething) {
-		$app->contentType('application/json');
-		echo Utils\jsonEncodeFilterByFields($auth->fs()->all(
-			'type == "Table"',
-			Utils\getParameter('limit',Utils\CHK_UNSIGNED_INT, true, null),
-			Utils\getParameter('skip',Utils\CHK_UNSIGNED_INT, true, null)
-		),Utils\getParameter('fields',Utils\CHK_STRING_ARRAY, true, null));
+$app->get('/files/:id/execute', $auth->permissions('file:read resource:read'),
+    function ($id) use ($app,$auth,$ething) {
+		$r = Utils\getResource($auth, $id, 'File');
+		
+		if($r->mime === 'application/javascript'){
+			
+			$args = Utils\getParameter('args',Utils\CHK_STRING, true, null);
+			$res = Ething\Script::runFromFile($r, $args);
+			
+			if(!$res){
+				throw new \Utils\Exception('Unable to execute');
+			}
+			
+			$app->contentType('application/json');
+			echo json_encode($res,JSON_PRETTY_PRINT|JSON_UNESCAPED_SLASHES);
+			
+		} else {
+			throw new \Utils\Exception('Not executable');
+		}
     }
 );
 
 /**
  * @swagger-path
- * "/table":{  
+ * "/tables":{  
  *      "post":{
  *         "tags": ["table"],
- *         "security":[{"access_token":[]}],
  *         "description":"
 Creates a new table.
 
@@ -1280,7 +1317,7 @@ curl
 	-H \"Content-Type: application/json\"
 	-X POST
 	-d '{\"name\":\"mytable.db\"}'
-	http://localhost/ething/api/table
+	http://localhost/ething/api/tables
 ```
 
 If the command was successful, a response containing the meta data of the created table will be given back.
@@ -1295,25 +1332,16 @@ This id is a unique string identifying this table and is necessary to make any o
   \"description\":null,
   \"maxLength\":null,
   \"expireAfter\":null,
-  \"user\":{
-	 \"id\":\"56731a7\",
-	 \"name\":\"lebios\"
-  },
   \"type\":\"Table\",
-  \"createdBy\":{
-	 \"id\":\"5Ab-32a\",
-	 \"name\":\"lebios\"
-  },
+  \"createdBy\":null,
   \"createdDate\":\"2016-02-12T14:49:30+00:00\",
   \"modifiedDate\":\"2016-02-15T13:03:20+00:00\",
-  \"mime\":\"x-table/x-table\",
-  \"rules\":[],
   \"length\":421,
   \"keys\":{
 	 \"temp1\":421,
 	 \"temp2\":421
   },
-  \"loc\":null
+  \"location\":null
 }
 ```
 
@@ -1354,10 +1382,6 @@ example:
  *                     "description":null,
  *                     "maxLength":null,
  *                     "expireAfter":null,
- *                     "user":{
- *                   	 "id":"56731_a",
- *                   	 "name":"John"
- *                     },
  *                     "type":"Table",
  *                     "createdBy":{
  *                  	 "id":"56a7B-5",
@@ -1365,7 +1389,6 @@ example:
  *                    },
  *                     "createdDate":"2016-02-12T14:49:30+00:00",
  *                     "modifiedDate":"2016-02-15T13:03:20+00:00",
- *                     "mime":"x-table\/x-table",
  *                     "rules":[],
  *                     "length":421,
  *                     "keys":{
@@ -1380,9 +1403,9 @@ example:
  *      }
  *   }
  */
-$app->post('/table',
+$app->post('/tables', $auth->permissions('table:write resource:write'),
     function () use ($app,$auth,$ething) {
-		$r = $ething->create($auth->user(),'Table',(array)Utils\getJSON($app),$auth->device());
+		$r = $ething->create('Table',(array)Utils\getJSON($app),$auth->originator());
 		if(!$r) throw new \Utils\Exception('Unable to create the table');
 		$app->response()->setStatus(201);
 		$app->contentType('application/json');
@@ -1392,10 +1415,9 @@ $app->post('/table',
 
 /**
  * @swagger-path
- * "/table/{id}":{  
+ * "/tables/{id}":{  
  *      "get":{
  *         "tags": ["table"],
- *         "security":[{"access_token":[]}],
  *         "description":"
 Retrieves the content of a table.
 
@@ -1403,17 +1425,17 @@ Retrieves the content of a table.
 
 ```bash
 # get all the data of a table :
-curl -H 'X-API-KEY: <YOUR_API_KEY>' http://localhost/ething/api/table/<TABLE_ID>
+curl -H 'X-API-KEY: <YOUR_API_KEY>' http://localhost/ething/api/tables/<TABLE_ID>
 
 # only the first 20 rows :
-curl -H 'X-API-KEY: <YOUR_API_KEY>' http://localhost/ething/api/table/<TABLE_ID>?start=0&length=20
+curl -H 'X-API-KEY: <YOUR_API_KEY>' http://localhost/ething/api/tables/<TABLE_ID>?start=0&length=20
 
 # only the last 20 rows :
-curl -H 'X-API-KEY: <YOUR_API_KEY>' http://localhost/ething/api/table/<TABLE_ID>?start=-20
+curl -H 'X-API-KEY: <YOUR_API_KEY>' http://localhost/ething/api/tables/<TABLE_ID>?start=-20
 
 # only the last 10 rows sorted by the field \"temperature\" in ascending order
 # (put a minus before the name of the field if you want to sort in descending order)
-curl -H 'X-API-KEY: <YOUR_API_KEY>' http://localhost/ething/api/table/<TABLE_ID>?start=-10&sort=temperature
+curl -H 'X-API-KEY: <YOUR_API_KEY>' http://localhost/ething/api/tables/<TABLE_ID>?start=-10&sort=temperature
 ```
 
 ",
@@ -1473,7 +1495,7 @@ curl -H 'X-API-KEY: <YOUR_API_KEY>' http://localhost/ething/api/table/<TABLE_ID>
  *               "required":false,
  *               "default":"RFC3339",
  *               "type":"string",
- *               "enum":["RFC3339","TIMESTAMP"]
+ *               "enum":["RFC3339","TIMESTAMP","TIMESTAMP_MS","ISO8601","RSS"]
  *            }
  *         ],
  *         "responses":{
@@ -1511,10 +1533,19 @@ curl -H 'X-API-KEY: <YOUR_API_KEY>' http://localhost/ething/api/table/<TABLE_ID>
  *      }
  *   }
  */
-$app->get('/table/:id',
-    function ($id) use ($app,$auth,$ething) {
+$app->get('/tables/~/:fn+',  $auth->permissions('table:read resource:read'),
+	function ($fn) use ($app,$auth,$ething) {
+		$route = $app->router()->getNamedRoute('get-tables');
+		$route->setParams(array('id' => \Utils\getResourceByName($auth,implode('/',$fn),'Table')->id()));
+		$route->dispatch();
+		$app->stop();
+	}
+);
+
+$app->get('/tables/:id',  $auth->permissions('table:read resource:read'),
+    function ($id) use ($app,$auth) {
 		$r = Utils\getResource($auth, $id, 'Table');
-		$app->lastModified($r->modifiedDate());
+		$app->lastModified($r->modifiedDate);
 			
 		$start = Utils\getParameter('START',Utils\CHK_INT,true,0);
 		$length = Utils\getParameter('LENGTH',Utils\CHK_UNSIGNED_INT,true,null);
@@ -1524,6 +1555,7 @@ $app->get('/table/:id',
 		$query = Utils\getParameter('Q',Utils\CHK_STRING,true,null);
 		\Ething\Table::$dateFormat = Utils\getParameter('DATEFMT',Utils\CHK_DATEFORMAT,true,\DateTime::RFC3339);
 		
+		//var_dump(\Ething\Table::$dateFormat); exit;
 		$selection = $r->select($start,$length,$fields,$sort,$query);
 		
 		if($format==Utils\FMT_JSON || $format==Utils\FMT_JSON_PRETTY){
@@ -1532,20 +1564,20 @@ $app->get('/table/:id',
 		}
 		else if($format==Utils\FMT_CSV || $format==Utils\FMT_CSV_NOHEADER){
 			if(is_null($fields))
-				$fields = array_merge(array('id','date'),array_keys($r->keys()));
+				$fields = array_merge(array('id','date'),array_keys($r->keys));
 			$app->contentType('text/plain');
 			Utils\csv_encode($selection, $fields, $format!=Utils\FMT_CSV_NOHEADER);
 		}
     }
-);
+)->name('get-tables');
 
 /**
  * @swagger-path
- * "/table/{id}":{  
+ * "/tables/{id}":{  
  *      "put":{
  *         "tags": ["table"],
- *         "security":[{"access_token":[]}],
  *         "description":"Set the content of a table. The new data will erase the previous one.",
+ *         "consumes": ["application/json"],
  *         "parameters":[  
  *            {  
  *               "name":"id",
@@ -1625,8 +1657,24 @@ If an 'id' field is present, it will be automatically be resetted to a new value
  *      }
  *   }
  */
-$app->put('/table/:id',
-    function ($id) use ($app,$auth,$ething) {
+
+$app->put('/tables/~/:fn+',  $auth->permissions('table:write resource:write'),
+	function ($fn) use ($app,$auth,$ething) {
+		$filename = implode('/',$fn);
+		if(!($r = \Utils\getResourceByName($auth,$filename,'Table',false))){
+			$r = $ething->create('Table',array(
+				'name' => $filename
+			),$auth->originator());
+		}
+		$route = $app->router()->getNamedRoute('put-tables');
+		$route->setParams(array('id' => $r->id()));
+		$route->dispatch();
+		$app->stop();
+	}
+);
+
+$app->put('/tables/:id', $auth->permissions('table:write resource:write'),
+    function ($id) use ($app,$auth) {
 		$r = Utils\getResource($auth, $id, 'Table');
 		
 		$data = Utils\getJSON($app,true);
@@ -1635,8 +1683,6 @@ $app->put('/table/:id',
 		$skipError = Utils\getParameter('SKIP_ERROR',Utils\CHK_LOGIC,true,true);
 		
 		if(!empty($data)){
-		
-			Utils\spaceControl($auth,mb_strlen($app->request->getBody(), '8bit'));
 			
 			$r->import($data,$invalidFieldMode,$skipError);
 			
@@ -1648,15 +1694,14 @@ $app->put('/table/:id',
 		}
 		
     }
-);
+)->name('put-tables');
 
 
 /**
  * @swagger-path
- * "/table/{id}":{  
+ * "/tables/{id}":{  
  *      "post":{
  *         "tags": ["table"],
- *         "security":[{"access_token":[]}],
  *         "description":"Insert a new record in a table",
  *         "parameters":[  
  *            {  
@@ -1696,7 +1741,7 @@ curl
 	-H \"Content-Type: application/json\"
 	-X POST
 	-d '{\"temperature\":15.2, \"comment\":\"outdoor\"}'
-	http://localhost/ething/api/table/<TABLE_ID>
+	http://localhost/ething/api/tables/<TABLE_ID>
 ```
 
  
@@ -1718,8 +1763,23 @@ curl
  *      }
  *   }
  */
-$app->post('/table/:id',
-    function ($id) use ($app,$auth,$ething) {
+$app->post('/tables/~/:fn+',  $auth->permissions('table:write resource:write'),
+	function ($fn) use ($app,$auth,$ething) {
+		$filename = implode('/',$fn);
+		if(!($r = \Utils\getResourceByName($auth,$filename,'Table',false))){
+			$r = $ething->create('Table',array(
+				'name' => $filename
+			),$auth->originator());
+		}
+		$route = $app->router()->getNamedRoute('post-tables');
+		$route->setParams(array('id' => $r->id()));
+		$route->dispatch();
+		$app->stop();
+	}
+);
+
+$app->post('/tables/:id', $auth->permissions('table:write table:append resource:write'),
+    function ($id) use ($app,$auth) {
 		$r = Utils\getResource($auth, $id, 'Table');
 		
 		$data = ($app->request->getMediaType() === 'application/json') ? Utils\getJSON($app,true) : $app->request->post();
@@ -1727,9 +1787,6 @@ $app->post('/table/:id',
 		$invalidFieldMode = Utils\getParameter('INVALID_FIELD',Utils\CHK_INVALIDFIELDMODE,true,\Ething\Table::INVALID_FIELD_RENAME);
 		
 		if(!empty($data)){
-		
-			Utils\spaceControl($auth,mb_strlen($app->request->getBody(), '8bit'));
-			
 			$r->insert($data, $invalidFieldMode);
 			$app->contentType('application/json');
 			echo Utils\jsonEncodeFilterByFields($r,Utils\getParameter('fields',Utils\CHK_STRING_ARRAY, true, null));
@@ -1739,14 +1796,13 @@ $app->post('/table/:id',
 		}
 		
     }
-);
+)->name('post-tables');
 
 /**
  * @swagger-path
- * "/table/{id}/remove":{  
+ * "/tables/{id}/remove":{  
  *      "post":{
  *         "tags": ["table"],
- *         "security":[{"access_token":[]}],
  *         "description":"Remove one or more records in a table",
  *         "parameters":[  
  *            {  
@@ -1781,8 +1837,8 @@ $app->post('/table/:id',
  *   }
  */
 // delete multiple rows
-$app->post('/table/:id/remove',
-    function ($id) use ($app,$auth,$ething) {
+$app->post('/tables/:id/remove', $auth->permissions('table:write resource:write'),
+    function ($id) use ($app,$auth) {
 		$r = Utils\getResource($auth, $id, 'Table');
 		
 		$data = ($app->request->getMediaType() === 'application/json') ? Utils\getJSON($app) : $app->request->post('id');
@@ -1805,20 +1861,191 @@ $app->post('/table/:id/remove',
     }
 );
 
+/**
+ * @swagger-path
+ * "/tables/{id}/replace":{  
+ *      "post":{
+ *         "tags": ["table"],
+ *         "description":"
+Replace the first row that match the query by a new set of data given in the body.
+If no row match the query and the upsert flag is set to true, a new row is appended.
+
+",
+ *         "produces": ["application/json","text/plain"],
+ *         "parameters":[  
+ *            {  
+ *               "name":"id",
+ *               "in":"path",
+ *               "description":"id of the resource",
+ *               "required":true,
+ *               "type":"string"
+ *            },
+ *            {  
+ *               "name":"q",
+ *               "in":"query",
+ *               "description":"Query string",
+ *               "required":false,
+ *               "type":"string"
+ *            },
+ *            {  
+ *               "name":"upsert",
+ *               "in":"query",
+ *               "description":"If set to true, creates a new row when no row matches the query criteria.",
+ *               "required":false,
+ *               "default":false,
+ *               "type":"boolean"
+ *            }
+ *         ],
+ *         "responses":{
+ *            "200":{
+ *               "description":"Success",
+ *               "schema":{
+ *               	"$ref":"#/definitions/Table"
+ *               }
+ *            }
+ *         }
+ *      }
+ *   }
+ */
+$app->post('/tables/:id/replace', $auth->permissions('table:write table:append resource:write'),
+    function ($id) use ($app,$auth) {
+		$r = Utils\getResource($auth, $id, 'Table');
+		
+		$query = Utils\getParameter('q',Utils\CHK_STRING);
+		$data = ($app->request->getMediaType() === 'application/json') ? Utils\getJSON($app,true) : $app->request->post();
+		
+		$upsert = Utils\getParameter('UPSERT',Utils\CHK_LOGIC,true,false);
+		$invalidFieldMode = Utils\getParameter('INVALID_FIELD',Utils\CHK_INVALIDFIELDMODE,true,\Ething\Table::INVALID_FIELD_RENAME);
+		
+		if(!empty($data)){
+			$doc = $r->replaceRow($query, $data, $invalidFieldMode, $upsert);
+			
+			$app->contentType('application/json');
+			echo Utils\jsonEncodeFilterByFields($r,Utils\getParameter('fields',Utils\CHK_STRING_ARRAY, true, null));
+		}
+		else {
+			throw new \Utils\Exception('No POST data.');
+		}
+		
+    }
+);
+
+/**
+ * @swagger-path
+ * "/tables/{id}/statistics":{  
+ *      "get":{
+ *         "tags": ["table"],
+ *         "description":"Returns statistics of a specific key (=column)",
+ *         "parameters":[  
+ *            {  
+ *               "name":"id",
+ *               "in":"path",
+ *               "description":"id of the table",
+ *               "required":true,
+ *               "type":"string"
+ *            },
+ *            {
+ *               "name":"key",
+ *               "in":"query",
+ *               "description":"The name of the key (=column).",
+ *               "required":true,
+ *               "type":"string"
+ *            }
+ *         ],
+ *         "responses":{
+ *            "200":{
+ *               "description":"The statistics object",
+ *               "schema":{
+ *                  "type":"object",
+ * 	                "properties":{  
+ * 	                	"sum":{
+ * 	                	   "type":"number",
+ * 	                	   "description":"The sum of numeric values."
+ * 	                	},
+ * 	                	"min":{
+ * 	                	   "type":"number",
+ * 	                	   "description":"The minimum value."
+ * 	                	},
+ * 	                	"max":{
+ * 	                	   "type":"number",
+ * 	                	   "description":"The maximum value."
+ * 	                	},
+ * 	                	"count":{
+ * 	                	   "type":"number",
+ * 	                	   "description":"The number of values."
+ * 	                	},
+ * 	                	"minDate":{
+ * 	                	   "type":"date",
+ * 	                	   "format":"date-time",
+ * 	                	   "description":"The date of the minimum value."
+ * 	                	},
+ * 	                	"maxDate":{
+ * 	                	   "type":"date",
+ * 	                	   "format":"date-time",
+ * 	                	   "description":"The date of the maximum value."
+ * 	                	},
+ * 	                	"minId":{
+ * 	                	   "type":"string",
+ * 	                	   "description":"The id of the minimum value."
+ * 	                	},
+ * 	                	"maxId":{
+ * 	                	   "type":"string",
+ * 	                	   "description":"The id of the maximum value."
+ * 	                	},
+ * 	                	"avg":{
+ * 	                	   "type":"number",
+ * 	                	   "description":"The average value of the numeric values."
+ * 	                	},
+ * 	                	"variance":{
+ * 	                	   "type":"number",
+ * 	                	   "description":"The variance value of the numeric values."
+ * 	                	},
+ * 	                	"stddev":{
+ * 	                	   "type":"number",
+ * 	                	   "description":"The standard error value of the numeric values."
+ * 	                	},
+ * 	                	"startDate":{
+ * 	                	   "type":"date",
+ * 	                	   "format":"date-time",
+ * 	                	   "description":"The date of the oldest value."
+ * 	                	},
+ * 	                	"endDate":{
+ * 	                	   "type":"date",
+ * 	                	   "format":"date-time",
+ * 	                	   "description":"The date of the newest value."
+ * 	                	}
+ *                  }
+ *               }
+ *            }
+ *         }
+ *      }
+ *   }
+ */
+$app->get('/tables/:id/statistics', $auth->permissions('table:read resource:read'),
+    function ($id) use ($app,$auth) {
+		$r = Utils\getResource($auth, $id, 'Table');
+		
+		$key = Utils\getParameter('KEY',Utils\CHK_STRING);
+		$query = Utils\getParameter('q',Utils\CHK_STRING, true, null);
+				
+		$app->contentType('application/json');
+		echo json_encode($r->computeStatistics($key, $query),JSON_PRETTY_PRINT|JSON_UNESCAPED_SLASHES|JSON_PARTIAL_OUTPUT_ON_ERROR );
+    }
+);
 
 
 // returns a single document in a table
 
 // by id
 
-$app->get('/table/:id/id/:docId',
-    function ($id,$docId) use ($app,$auth,$ething) {
+$app->get('/tables/:id/id/:docId', $auth->permissions('table:read resource:read'),
+    function ($id,$docId) use ($app,$auth) {
 		$r = Utils\getResource($auth, $id, 'Table');
-		$app->lastModified($r->modifiedDate());
+		$app->lastModified($r->modifiedDate);
 		
 		Utils\check(Utils\CHK_ID,$docId);
 		
-		if($doc = $r->get($docIdentifier)){
+		if($doc = $r->getRow($docId)){
 			$app->contentType('application/json');
 			echo Utils\jsonEncodeFilterByFields($doc,Utils\getParameter('fields',Utils\CHK_STRING_ARRAY, true, null));
 		}
@@ -1827,31 +2054,48 @@ $app->get('/table/:id/id/:docId',
     }
 );
 
-$app->delete('/table/:id/id/:docId',
-    function ($id,$docId) use ($app,$auth,$ething) {
+$app->delete('/tables/:id/id/:docId', $auth->permissions('table:write resource:write'),
+    function ($id,$docId) use ($app,$auth) {
 		$r = Utils\getResource($auth, $id, 'Table');
-		$app->lastModified($r->modifiedDate());
+		$app->lastModified($r->modifiedDate);
 		
 		Utils\check(Utils\CHK_ID,$docId);
 		
-		if($doc = $r->get($docIdentifier)){
-			$r->remove_rows($doc->id);
-			$app->contentType('application/json');
-			echo Utils\jsonEncodeFilterByFields($doc,Utils\getParameter('fields',Utils\CHK_STRING_ARRAY, true, null));
-		}
-		else
-			throw new \Utils\Exception('The document does not exist.');
+		$r->remove_rows($docId);
     }
 );
 
-$app->get('/table/:id/id/:docId/:field',
-    function ($id,$docId,$field) use ($app,$auth,$ething) {
+$app->patch('/tables/:id/id/:docId', $auth->permissions('table:write resource:write'),
+    function ($id,$docId) use ($app,$auth) {
 		$r = Utils\getResource($auth, $id, 'Table');
-		$app->lastModified($r->modifiedDate());
 		
 		Utils\check(Utils\CHK_ID,$docId);
 		
-		if($doc = $r->get($docIdentifier)){
+		$data = ($app->request->getMediaType() === 'application/json') ? Utils\getJSON($app,true) : $app->request->post();
+		$invalidFieldMode = Utils\getParameter('INVALID_FIELD',Utils\CHK_INVALIDFIELDMODE,true,\Ething\Table::INVALID_FIELD_RENAME);
+		
+		if(!empty($data)){
+			if($doc = $r->replaceRowById($docId, $data, $invalidFieldMode)){
+				$app->contentType('application/json');
+				echo Utils\jsonEncodeFilterByFields($doc,Utils\getParameter('fields',Utils\CHK_STRING_ARRAY, true, null));
+			}
+			else
+				throw new \Utils\Exception('The document does not exist.');
+		}
+		else {
+			throw new \Utils\Exception('No POST data.');
+		}
+    }
+);
+
+$app->get('/tables/:id/id/:docId/:field', $auth->permissions('table:read resource:read'),
+    function ($id,$docId,$field) use ($app,$auth) {
+		$r = Utils\getResource($auth, $id, 'Table');
+		$app->lastModified($r->modifiedDate);
+		
+		Utils\check(Utils\CHK_ID,$docId);
+		
+		if($doc = $r->getRow($docId)){
 			if(array_key_exists($field,$doc)){
 				$content = $doc->$field;
 				$finfo = new finfo(FILEINFO_MIME);
@@ -1868,10 +2112,10 @@ $app->get('/table/:id/id/:docId/:field',
 
 // by index
 
-$app->get('/table/:id/index/:index',
-    function ($id,$index) use ($app,$auth,$ething) {
+$app->get('/tables/:id/index/:index', $auth->permissions('table:read resource:read'),
+    function ($id,$index) use ($app,$auth) {
 		$r = Utils\getResource($auth, $id, 'Table');
-		$app->lastModified($r->modifiedDate());
+		$app->lastModified($r->modifiedDate);
 		
 		Utils\check(Utils\CHK_INT,$index);
 		
@@ -1886,10 +2130,10 @@ $app->get('/table/:id/index/:index',
     }
 );
 
-$app->delete('/table/:id/index/:index',
-    function ($id,$index) use ($app,$auth,$ething) {
+$app->delete('/tables/:id/index/:index', $auth->permissions('table:write resource:write'),
+    function ($id,$index) use ($app,$auth) {
 		$r = Utils\getResource($auth, $id, 'Table');
-		$app->lastModified($r->modifiedDate());
+		$app->lastModified($r->modifiedDate);
 		
 		Utils\check(Utils\CHK_INT,$index);
 		
@@ -1897,8 +2141,6 @@ $app->delete('/table/:id/index/:index',
 		if(count($doc)){
 			$doc = $doc[0];
 			$r->remove_rows($doc->id);
-			$app->contentType('application/json');
-			echo Utils\jsonEncodeFilterByFields($doc,Utils\getParameter('fields',Utils\CHK_STRING_ARRAY, true, null));
 		}
 		else
 			throw new \Utils\Exception('Index out of bound.');
@@ -1906,10 +2148,39 @@ $app->delete('/table/:id/index/:index',
     }
 );
 
-$app->get('/table/:id/index/:index/:field',
-    function ($id,$index,$field) use ($app,$auth,$ething) {
+$app->patch('/tables/:id/index/:index', $auth->permissions('table:write resource:write'),
+    function ($id,$index) use ($app,$auth) {
 		$r = Utils\getResource($auth, $id, 'Table');
-		$app->lastModified($r->modifiedDate());
+		
+		Utils\check(Utils\CHK_INT,$index);
+		
+		$data = ($app->request->getMediaType() === 'application/json') ? Utils\getJSON($app,true) : $app->request->post();
+		$invalidFieldMode = Utils\getParameter('INVALID_FIELD',Utils\CHK_INVALIDFIELDMODE,true,\Ething\Table::INVALID_FIELD_RENAME);
+		
+		if(!empty($data)){
+			
+			$doc = $r->select($index,1);
+			if(count($doc)){
+				if($doc = $r->replaceRowById($doc[0]->id, $data, $invalidFieldMode)){
+					$app->contentType('application/json');
+					echo Utils\jsonEncodeFilterByFields($doc,Utils\getParameter('fields',Utils\CHK_STRING_ARRAY, true, null));
+				}
+				else
+					throw new \Utils\Exception('The document does not exist.');
+			}
+			else
+				throw new \Utils\Exception('Index out of bound.');
+		}
+		else {
+			throw new \Utils\Exception('No POST data.');
+		}
+    }
+);
+
+$app->get('/tables/:id/index/:index/:field', $auth->permissions('table:read resource:read'),
+    function ($id,$index,$field) use ($app,$auth) {
+		$r = Utils\getResource($auth, $id, 'Table');
+		$app->lastModified($r->modifiedDate);
 		
 		Utils\check(Utils\CHK_INT,$index);
 		
@@ -1933,62 +2204,74 @@ $app->get('/table/:id/index/:index/:field',
 
 
 
-/**
- * @swagger-path
- * "/app":{  
- *      "get":{
- *         "tags": ["app"],
- *         "security":[{"access_token":[]}],
- *         "description":"Lists the user's applications",
- *         "parameters":[ 
- *            {  
- *               "name":"limit",
- *               "in":"query",
- *               "description":"Limits the number of applications returned",
- *               "required":false,
- *               "type":"integer"
- *            },
- *            {  
- *               "name":"skip",
- *               "in":"query",
- *               "description":"Skips a number of applications",
- *               "required":false,
- *               "type":"integer"
- *            }
- *         ],
- *         "responses":{
- *            "200":{
- *               "description":"A list of applications",
- *               "schema":{
- *                  "type":"array",
- *                  "items":{  
- *                     "$ref":"#/definitions/App"
- *                  }
- *               }
- *            }
- *         }
- *      }
- *   }
- */
-$app->get('/app',
-    function () use ($app,$auth,$ething) {
-		$app->contentType('application/json');
-		echo Utils\jsonEncodeFilterByFields($auth->fs()->all(
-			'type == "App"',
-			Utils\getParameter('limit',Utils\CHK_UNSIGNED_INT, true, null),
-			Utils\getParameter('skip',Utils\CHK_UNSIGNED_INT, true, null)
-		),Utils\getParameter('fields',Utils\CHK_STRING_ARRAY, true, null));
-    }
-);
+
 
 /**
  * @swagger-path
- * "/app":{  
+ * "/apps":{  
  *      "post":{
  *         "tags": ["app"],
- *         "security":[{"access_token":[]}],
  *         "description":"
 Creates a new application.
+
+An application consists of a single HTML page. Use the Javascript SDK to easily build an application.
+
+ example:
+ 
+```html
+<!DOCTYPE html>
+<html>
+
+  <head>
+
+    <!-- CORE -->
+    <script src=\"__API_URL__/../lib/core.js\"></script>
+
+  </head>
+
+  <body>
+
+    <!-- your content goes here -->
+
+    <!-- APP -->
+    <script type=\"text/javascript\">
+      var main = function() {
+		var app = EThing.auth.getApp();
+
+        var textnode = document.createTextNode('application : ' + app.name());
+        document.body.appendChild(textnode);
+
+      };
+
+      EThing.initialize({
+        apiUrl: '__API_URL__',
+        apiKey: '__API_KEY__'
+      }, main || null, function(error) {
+        // on error
+        alert(error.message);
+      });
+      
+    </script>
+
+  </body>
+</html>
+```
+
+#### Preprocessor definitions
+
+
+The following string are automatically replaced in the HTML code :
+
+| Definition     | Value                                                                |
+|----------------|----------------------------------------------------------------------|
+| __API_KEY__    | the API key of this application                                      |
+| __ID__         | the ID of this application                                           |
+| __NAME__       | the name of this application                                         |
+| __API_URL__    | the url of this API                                                  |
+
+
+
+
 
 There are 2 ways to pass directly the code and the icon data of the application on the same request :
 
@@ -2010,7 +2293,7 @@ There are 2 ways to pass directly the code and the icon data of the application 
  example:
  
 ```
-POST /ething/api/app HTTP/1.1
+POST /ething/api/apps HTTP/1.1
 Host: <YOUR_HOST>
 Content-Type: multipart/related; boundary=foo_bar_baz
 
@@ -2065,7 +2348,7 @@ Content-Type: text/html
  *      }
  *   }
  */
-$app->post('/app',
+$app->post('/apps', $auth->permissions('app:write resource:write'),
     function () use ($app,$auth,$ething) {
 		
 		$multipart = Utils\readMultipartRelated();
@@ -2116,7 +2399,7 @@ $app->post('/app',
 			$attr = (array)Utils\getJSON($app);
 		
 		
-		$r = $ething->create($auth->user(),'App',$attr,$auth->device());
+		$r = $ething->create('App',$attr,$auth->originator());
 		if(!$r) throw new \Utils\Exception('Unable to create the app');
 		$app->response()->setStatus(201);
 		$app->contentType('application/json');
@@ -2126,18 +2409,24 @@ $app->post('/app',
 
 /**
  * @swagger-path
- * "/app/{id}":{  
+ * "/apps/{id}":{  
  *      "get":{
  *         "tags": ["app"],
- *         "security":[{"access_token":[]}],
- *         "description":"Retrieves the script of an application",
+ *         "description":"Retrieves the script of an application.",
  *         "parameters":[  
  *            {  
  *               "name":"id",
  *               "in":"path",
- *               "description":"id of the resource",
+ *               "description":"id of the resource. Devices or Apps using the api key authentication may use the word 'me' to replace their id.",
  *               "required":true,
  *               "type":"string"
+ *            },
+ *            {  
+ *               "name":"exec",
+ *               "in":"query",
+ *               "description":"Set this parameter to '1' to get the HTML code ready to be executed in a browser (i.e. content-type set to 'text/html' and the preprocessor definitions set).",
+ *               "required":false,
+ *               "type":"integer"
  *            }
  *         ],
  *         "produces":["text/html"],
@@ -2152,13 +2441,12 @@ $app->post('/app',
  *      },
  *      "put":{
  *         "tags": ["app"],
- *         "security":[{"access_token":[]}],
  *         "description":"Set the script for this application. The script must be a single HTML page.",
  *         "parameters":[  
  *            {  
  *               "name":"id",
  *               "in":"path",
- *               "description":"id of the resource",
+ *               "description":"id of the resource. Devices or Apps using the api key authentication may use the word 'me' to replace their id.",
  *               "required":true,
  *               "type":"string"
  *            },
@@ -2185,23 +2473,47 @@ $app->post('/app',
  *      }
  *   }
  */
-$app->get('/app/:id',
-    function ($id) use ($app,$auth,$ething) {
+$app->get('/apps/:id', $auth->permissions('app:read app:execute resource:read'),
+    function ($id) use ($app,$auth) {
 		$r = Utils\getResource($auth, $id, 'App');
-		$app->lastModified($r->modifiedDate());
-		$app->contentType('text/html');
-		echo $r->readScript();
+		
+		if( $execute = ($app->request->get('exec') === '1') ){
+			
+			// limited to the app:execute permission
+			$auth->checkPermission('app:execute');
+			$app->lastModified($r->modifiedDate);
+			
+			$content = $r->readScript();
+			
+			// replace some SUPER GLOBALS
+			$globals = array(
+				'__API_URL__' => Utils\hostname() . $app->request->getRootUri(),
+				'__API_KEY__' => $r->apikey(),
+				'__ID__' => $r->id(),
+				'__NAME__' => $r->name()
+			);
+			
+			$app->contentType('text/html');
+			echo str_replace(array_keys($globals), array_values($globals), $content);	
+			
+		}
+		else {
+			$app->lastModified($r->modifiedDate);
+			$app->contentType('text/plain'); // for security reason, will not be executed in browsers
+			echo $r->readScript();
+		}
     }
 );
 
-$app->put('/app/:id',
-    function ($id) use ($app,$auth,$ething) {
+
+
+$app->put('/apps/:id', $auth->permissions('app:write resource:write'),
+    function ($id) use ($app,$auth) {
 		$r = Utils\getResource($auth, $id, 'App');
 		$acceptedMime = array("text/plain","text/html");
 		if(!in_array($app->request->getMediaType(),$acceptedMime))
 			throw new \Utils\Exception('The script must be one of the following format : '.implode(', ',$acceptedMime));
 		$bytes = $app->request->getBody();
-		Utils\spaceControl($auth,mb_strlen($bytes, '8bit'));
 		$r->setScript($bytes);
 		$app->contentType('application/json');
 		echo Utils\jsonEncodeFilterByFields($r,Utils\getParameter('fields',Utils\CHK_STRING_ARRAY, true, null));
@@ -2210,16 +2522,15 @@ $app->put('/app/:id',
 
 /**
  * @swagger-path
- * "/app/{id}/icon":{  
+ * "/apps/{id}/icon":{  
  *      "get":{
  *         "tags": ["app"],
- *         "security":[{"access_token":[]}],
  *         "description":"Retrieves the icon of an application if there is one defined.",
  *         "parameters":[  
  *            {  
  *               "name":"id",
  *               "in":"path",
- *               "description":"id of the resource",
+ *               "description":"id of the resource. Devices or Apps using the api key authentication may use the word 'me' to replace their id.",
  *               "required":true,
  *               "type":"string"
  *            }
@@ -2236,10 +2547,10 @@ $app->put('/app/:id',
  *      }
  *   }
  */
-$app->get('/app/:id/icon',
-    function ($id) use ($app,$auth,$ething) {
+$app->get('/apps/:id/icon', $auth->permissions('app:read resource:read'),
+    function ($id) use ($app,$auth) {
 		$r = Utils\getResource($auth, $id, 'App');
-		$app->lastModified($r->modifiedDate());
+		$app->lastModified($r->modifiedDate);
 		$content = $r->readIcon();
 		if(is_null($content))
 			throw new \Utils\Exception('No icon available',404);
@@ -2252,62 +2563,12 @@ $app->get('/app/:id/icon',
 
 
 
-
 /**
  * @swagger-path
- * "/device":{  
- *      "get":{
- *         "tags": ["device"],
- *         "security":[{"access_token":[]}],
- *         "description":"Lists the user's devices",
- *         "parameters":[ 
- *            {  
- *               "name":"limit",
- *               "in":"query",
- *               "description":"Limits the number of devices returned",
- *               "required":false,
- *               "type":"integer"
- *            },
- *            {  
- *               "name":"skip",
- *               "in":"query",
- *               "description":"Skips a number of devices",
- *               "required":false,
- *               "type":"integer"
- *            }
- *         ],
- *         "responses":{
- *            "200":{
- *               "description":"A list of devices",
- *               "schema":{
- *                  "type":"array",
- *                  "items":{  
- *                     "$ref":"#/definitions/Device"
- *                  }
- *               }
- *            }
- *         }
- *      }
- *   }
- */
-$app->get('/device',
-    function () use ($app,$auth,$ething) {
-		$app->contentType('application/json');
-		echo Utils\jsonEncodeFilterByFields($auth->fs()->all(
-			'type == "Device"',
-			Utils\getParameter('limit',Utils\CHK_UNSIGNED_INT, true, null),
-			Utils\getParameter('skip',Utils\CHK_UNSIGNED_INT, true, null)
-		),Utils\getParameter('fields',Utils\CHK_STRING_ARRAY, true, null));
-    }
-);
-
-/**
- * @swagger-path
- * "/device":{  
+ * "/devices":{  
  *      "post":{
  *         "tags": ["device"],
- *         "security":[{"access_token":[]}],
- *         "description":"Creates a new device",
+ *         "description":"Creates a new device.",
  *         "parameters":[  
  *            {  
  *               "name":"metadata",
@@ -2320,7 +2581,11 @@ example:
 ```json
 {
    \"name\": \"mydevice.txt\",
-   \"loc\": \"Toulouse, France\"
+   \"location\":{
+      \"latitude\": 5.12,
+	  \"longitude\": -45.78
+   },
+   \"scope\": \"resource:read notification\",
 }
 ```
 ",
@@ -2334,16 +2599,67 @@ example:
  *            "200":{
  *               "description":"The device was successfully created",
  *               "schema":{
- *               	"$ref":"#/definitions/Device"
+ *               	"allOf": [
+ *               	  {
+ *               	     "type": "object",
+ *               	     "required": [
+ *               	       "type"
+ *               	     ],
+ *               	     "properties": {
+ *               	       "type": {
+ *               	         "type": "string",
+ *               	         "description": "The type of the device to create (eg: 'Http' or 'MySensorsEthernetGateway')."
+ *               	       }
+ *               	     }
+ *               	   },
+ *               	   {
+ *               	     "$ref": "#/definitions/Device"
+ *               	   }
+ *               	]
  *               }
  *            }
  *         }
  *      }
  *   }
  */
-$app->post('/device',
+$app->post('/devices', $auth->permissions('device:write resource:write'),
     function () use ($app,$auth,$ething) {
-		$r = $ething->create($auth->user(),'Device',(array)Utils\getJSON($app),$auth->device());
+		$data = (array)Utils\getJSON($app);
+		
+		if(empty($data['type']))
+			throw new \Utils\Exception('the type attribute is mandatory');
+		
+		$type = $data['type'];
+		unset($data['type']);
+		
+		if(!preg_match('@^Device\\\\@', $type)) $type = 'Device\\'.$type;
+		
+		if(!is_subclass_of('Ething\\'.$type, 'Ething\\Device\\Device'))
+			throw new \Utils\Exception("invalid 'type' attribute : {$type}");
+		
+		// special cases
+		switch($type){
+			case 'Device\\MySensorsNode':
+				if(empty($data['gateway']))
+					throw new \Utils\Exception('the gateway attribute is mandatory');
+				$gateway = Utils\getResource($auth, $data['gateway'], 'Device\\MySensors.+Gateway');
+				unset($data['gateway']);
+				
+				$r = $gateway->addNode($data);
+				break;
+			case 'Device\\MySensorsSensor':
+				if(empty($data['node']))
+					throw new \Utils\Exception('the node attribute is mandatory');
+				$node = Utils\getResource($auth, $data['node'], 'Device\\MySensorsNode');
+				unset($data['node']);
+				
+				$r = $node->addSensor($data);
+				break;
+			default:
+				$r = $ething->create($type,$data,$auth->originator());
+				break;
+		}
+		
 		if(!$r) throw new \Utils\Exception('Unable to create the device');
 		$app->response()->setStatus(201);
 		$app->contentType('application/json');
@@ -2352,55 +2668,248 @@ $app->post('/device',
 );
 
 
+
+
 /**
  * @swagger-path
- * "/device/{id}/apikey":{  
+ * "/devices/{id}/api":{  
  *      "get":{
  *         "tags": ["device"],
- *         "security":[{"access_token":[]}],
- *         "description":"Gets the API key of a device",
+ *         "description":"Retrieves an object describing the operations available for this device.",
  *         "parameters":[  
  *            {  
  *               "name":"id",
  *               "in":"path",
- *               "description":"id of the resource",
+ *               "description":"id of the resource. Devices or Apps using the api key authentication may use the word 'me' to replace their id.",
  *               "required":true,
  *               "type":"string"
  *            }
  *         ],
  *         "responses":{
  *            "200":{
- *               "description":"The API key of the current device",
- *               "schema":{
- *               	"type":"object",
- * 	                "properties":{  
- * 	                	"key":{
- * 	                	   "type":"string",
- * 	                	   "description":"key"
- * 	                	}
- *                  }
- *               }
+ *               "description":"object describing the operations available for this device."
  *            }
  *         }
  *      }
  *   }
  */
-$app->get('/device/:id/apikey',
-    function ($id) use ($app,$auth,$ething) {
-		$r = Utils\getResource($auth, $id, 'Device');
+$app->get('/devices/:id/api', $auth->permissions('device:read resource:read'),
+    function ($id) use ($app,$auth) {
+		$r = Utils\getResource($auth, $id, 'Device\\.*');
+		$app->lastModified($r->modifiedDate);
+		
 		$app->contentType('application/json');
-		echo json_encode($r->apiKey(),JSON_PRETTY_PRINT|JSON_UNESCAPED_SLASHES);
+		echo json_encode($r->operations(),JSON_PRETTY_PRINT|JSON_UNESCAPED_SLASHES);
     }
 );
 
 /**
  * @swagger-path
- * "/device/{id}/request/{path}":{  
+ * "/devices/{id}/api/{operationId}":{  
  *      "get":{
  *         "tags": ["device"],
- *         "security":[{"access_token":[]}],
+ *         "description":"Retrieves an object describing the operation identified by operationId.",
+ *         "parameters":[  
+ *            {  
+ *               "name":"id",
+ *               "in":"path",
+ *               "description":"id of the resource. Devices or Apps using the api key authentication may use the word 'me' to replace their id.",
+ *               "required":true,
+ *               "type":"string"
+ *            },{  
+ *               "name":"operationId",
+ *               "in":"path",
+ *               "description":"id of the operation.",
+ *               "required":true,
+ *               "type":"string"
+ *            }
+ *         ],
+ *         "responses":{
+ *            "200":{
+ *               "description":"object describing the operation."
+ *            }
+ *         }
+ *      }
+ *   }
+ */
+$app->get('/devices/:id/api/:operationId', $auth->permissions('device:read resource:read'),
+    function ($id, $operationId) use ($app,$auth) {
+		$r = Utils\getResource($auth, $id, 'Device\\.*');
+		$app->lastModified($r->modifiedDate);
+		
+		$operation = $r->operation($operationId);
+		if(!$operation)
+			throw new Exception("unknown operation {$operationId}");
+		
+		$app->contentType('application/json');
+		echo json_encode($operation,JSON_PRETTY_PRINT|JSON_UNESCAPED_SLASHES);
+    }
+);
+
+/**
+ * @swagger-path
+ * "/devices/{id}/call/{operationId}":{  
+ *      "get":{
+ *         "tags": ["device"],
+ *         "description":"Execute an operation identified by operationId. The parameters must be passed in the query string.",
+ *         "parameters":[  
+ *            {  
+ *               "name":"id",
+ *               "in":"path",
+ *               "description":"id of the resource. Devices or Apps using the api key authentication may use the word 'me' to replace their id.",
+ *               "required":true,
+ *               "type":"string"
+ *            },{  
+ *               "name":"operationId",
+ *               "in":"path",
+ *               "description":"id of the operation.",
+ *               "required":true,
+ *               "type":"string"
+ *            },{  
+ *               "name":"paramData",
+ *               "in":"query",
+ *               "description":"required parameters for this operation. Must be json encoded.",
+ *               "required":false,
+ *               "type":"string"
+ *            }
+ *         ],
+ *         "responses":{
+ *            "200":{
+ *               "description":"The response of the device."
+ *            }
+ *         }
+ *      }
+ *   }
+ */
+$app->get('/devices/:id/call/:operationId', $auth->permissions('device:write resource:write'),
+    function ($id, $operationId) use ($app,$auth) {
+		$device = Utils\getResource($auth, $id, 'Device\\.*');
+		
+		// the data must be json_encoded and passed throught the query parameter "paramData"
+		$data = null;
+		$paramData = $app->request->get('paramData');
+		if($paramData){
+			$data = json_decode($jsonStr, true);
+			if(json_last_error() !== JSON_ERROR_NONE){
+				throw new Exception('Invalid paramData: JSON parse error: '.json_last_error_msg());
+			}
+		}
+		
+		ob_implicit_flush(true);
+		
+		$stream = new \Ething\Stream(null, function($stream, $chunk, $no){
+			
+			if(!headers_sent()){
+				
+				$errCode = $stream->errCode();
+				http_response_code($errCode === 0 ? 200 : ( $errCode>=100 && $errCode<600 ? $errCode : 400));
+				
+				$contentType = $stream->contentType();
+				if(empty($contentType))
+					$contentType = 'application/octet-stream';
+				
+				header(sprintf("Content-Type: %s", $contentType));
+			}
+			
+			echo $chunk;
+			flush();
+			
+		});
+		
+		// remove any intermediate cache (Slim created one)
+		while(ob_get_level()) ob_end_clean();
+		
+		$device->call($operationId, $stream, $data, array());
+		exit;
+		
+    }
+);
+
+/**
+ * @swagger-path
+ * "/devices/{id}/call/{operationId}":{  
+ *      "post":{
+ *         "tags": ["device"],
+ *         "description":"Execute an operation identified by operationId. The parameters can either be passed in the query string or in the body as a JSON object or a x-www-form-urlencoded string.",
+ *         "parameters":[  
+ *            {  
+ *               "name":"id",
+ *               "in":"path",
+ *               "description":"id of the resource. Devices or Apps using the api key authentication may use the word 'me' to replace their id.",
+ *               "required":true,
+ *               "type":"string"
+ *            },{  
+ *               "name":"operationId",
+ *               "in":"path",
+ *               "description":"id of the operation.",
+ *               "required":true,
+ *               "type":"string"
+ *            },{  
+ *               "name":"data",
+ *               "in":"body",
+ *               "description":"required parameters for this operation.",
+ *               "required":false,
+ *               "schema": {
+ *                 "type": "object"
+ *               }
+ *            }
+ *         ],
+ *         "responses":{
+ *            "200":{
+ *               "description":"The response of the device."
+ *            }
+ *         }
+ *      }
+ *   }
+ */
+$app->post('/devices/:id/call/:operationId', $auth->permissions('device:write resource:write'),
+    function ($id, $operationId) use ($app,$auth) {
+		$device = Utils\getResource($auth, $id, 'Device\\.*');
+		
+		// the data can either be in the query string or in the post body as a JSON object or a x-www-form-urlencoded string
+		$data = $app->request->params();
+		try {
+			$jsonData = Utils\getJSON($app, true);
+			$data = array_merge($data, $jsonData);
+		} catch (\Exception $e){}
+		
+		ob_implicit_flush(true);
+		
+		$stream = new \Ething\Stream(null, function($stream, $chunk, $no){
+			if(!headers_sent()){
+				$errCode = $stream->errCode();
+				http_response_code($errCode === 0 ? 200 : ( $errCode>=100 && $errCode<600 ? $errCode : 400));
+				
+				$contentType = $stream->contentType();
+				if(empty($contentType))
+					$contentType = 'application/octet-stream';
+				header(sprintf("Content-Type: %s", $contentType));
+			}
+			
+			echo $chunk;
+			flush();
+		});
+		
+		// remove any intermediate cache (Slim created one)
+		while(ob_get_level()) ob_end_clean();
+		
+		$res = $device->call($operationId, $stream, $data, array());
+		
+		exit;
+		
+    }
+);
+
+
+
+
+/**
+ * @swagger-path
+ * "/devices/{id}/request/{path}":{  
+ *      "get":{
+ *         "tags": ["device"],
  *         "summary":"send a GET request to a device.",
- *         "description":"Forward this HTTP request to a device with the specified path.",
+ *         "description":"Only available for HTTP device. Forward this HTTP request to a device with the specified path.",
  *         "responses":{
  *           "default":{
  *              "description":"The answer from the device"
@@ -2409,9 +2918,8 @@ $app->get('/device/:id/apikey',
  *      },
  *      "post":{
  *         "tags": ["device"],
- *         "security":[{"access_token":[]}],
  *         "summary":"send a POST request to a device.",
- *         "description":"Forward this HTTP request to a device with the specified path.",
+ *         "description":"Only available for HTTP device. Forward this HTTP request to a device with the specified path.",
  *         "responses":{
  *           "default":{
  *              "description":"The answer from the device"
@@ -2420,9 +2928,8 @@ $app->get('/device/:id/apikey',
  *      },
  *      "put":{
  *         "tags": ["device"],
- *         "security":[{"access_token":[]}],
  *         "summary":"send a PUT request to a device.",
- *         "description":"Forward this HTTP request to a device with the specified path.",
+ *         "description":"Only available for HTTP device. Forward this HTTP request to a device with the specified path.",
  *         "responses":{
  *           "default":{
  *              "description":"The answer from the device"
@@ -2431,9 +2938,8 @@ $app->get('/device/:id/apikey',
  *      },
  *      "delete":{
  *         "tags": ["device"],
- *         "security":[{"access_token":[]}],
  *         "summary":"send a DELETE request to a device.",
- *         "description":"Forward this HTTP request to a device with the specified path.",
+ *         "description":"Only available for HTTP device. Forward this HTTP request to a device with the specified path.",
  *         "responses":{
  *           "default":{
  *              "description":"The answer from the device"
@@ -2442,9 +2948,8 @@ $app->get('/device/:id/apikey',
  *      },
  *      "patch":{
  *         "tags": ["device"],
- *         "security":[{"access_token":[]}],
  *         "summary":"send a PATCH request to a device.",
- *         "description":"Forward this HTTP request to a device with the specified path.",
+ *         "description":"Only available for HTTP device. Forward this HTTP request to a device with the specified path.",
  *         "responses":{
  *           "default":{
  *              "description":"The answer from the device"
@@ -2455,7 +2960,7 @@ $app->get('/device/:id/apikey',
  *         {  
  *            "name":"id",
  *            "in":"path",
- *            "description":"id of the resource",
+ *            "description":"id of the resource. Devices or Apps using the api key authentication may use the word 'me' to replace their id.",
  *            "required":true,
  *            "type":"string"
  *         },
@@ -2469,51 +2974,44 @@ $app->get('/device/:id/apikey',
  *      ]
  *   }
  */
-$app->any('/device/:id/request(/(:path+))',
-    function ($id) use ($app,$auth,$ething) {
-		
-		$args = func_get_args();
-		$path = (count($args)>1) ? $args[1] : array();
-		
-		$r = Utils\getResource($auth, $id, 'Device');
-		$path = implode('/',$path);
-		// send the current request to the specified device
-		$query = \Ething\Proxy::getQuery();
-		if(!empty($query)) $path .= '?'.$query;
-		
-		$r->forward($path, function($path,$device) use ($app){
-			$url = $app->request->getRootUri().'/device/'.$device->id().'/request'.$path;
-			
-			// append the black listed query parameters
-			$query = array();
-			foreach(\Ething\Proxy::$blackListQuery as $key){
-				if(isset($_GET[$key]))
-					$query[$key] = $_GET[$key];
-			}
-			if(!empty($query)){
-				$url .= empty(parse_url($url,PHP_URL_QUERY)) ? '?' : '&';
-				$url .= http_build_query($query);
-			}
-			
-			return $url;
-		});
-		
-    }
-);
+
+function processDeviceRequestRoute($id){
+	global $app,$auth;
+	
+	$device = Utils\getResource($auth, $id, 'Device\\Http');
+	
+	// construct the path
+	$args = func_get_args();
+	$path = implode('/', (count($args)>1) ? $args[1] : array() );
+	
+	// build the request from the globals
+	$request = \Ething\Request::createFromGlobals();
+	// append the current query to the path
+	$query = $request->url->query;
+	if(!empty($query))
+		$path .= '?'.$query;
+	
+	// send the request
+	$device->request($path, $request->getMethod(), $request->getHeaders(), $request->body, true);
+	
+	die();
+}
+
+$app->get('/devices/:id/request(/(:path+))', $auth->permissions('device:read resource:read'), 'processDeviceRequestRoute');
+$app->any('/devices/:id/request(/(:path+))', $auth->permissions('device:write resource:write'), 'processDeviceRequestRoute');
 
 
 /**
  * @swagger-path
- * "/device/{id}/descriptor":{  
+ * "/devices/{id}/specification":{  
  *      "get":{
  *         "tags": ["device"],
- *         "security":[{"access_token":[]}],
- *         "description":"Retrieves the descriptor of a device. Only device with an URL set has a descriptor. The descriptor is an object based on the Swagger specification",
+ *         "description":"Only available for HTTP device. Retrieves the API specification of a device. Only device with an URL set has a Swagger specification",
  *         "parameters":[  
  *            {  
  *               "name":"id",
  *               "in":"path",
- *               "description":"id of the resource",
+ *               "description":"id of the resource. Devices or Apps using the api key authentication may use the word 'me' to replace their id.",
  *               "required":true,
  *               "type":"string"
  *            }
@@ -2521,7 +3019,7 @@ $app->any('/device/:id/request(/(:path+))',
  *         "produces":["application/json"],
  *         "responses":{
  *            "200":{
- *               "description":"The descriptor of this device.",
+ *               "description":"The API specification of this device.",
  *               "schema": {
  *               	"type":"file"
  *               }
@@ -2530,17 +3028,21 @@ $app->any('/device/:id/request(/(:path+))',
  *      }
  *   }
  */
-$app->get('/device/:id/descriptor',
-    function ($id) use ($app,$auth,$ething) {
-		$r = Utils\getResource($auth, $id, 'Device');
-		$app->lastModified($r->modifiedDate());
-		$descriptor = $r->getDescriptor();
-		if(!$descriptor)
-			throw new \Utils\Exception('No descriptor available',404);
+$app->get('/devices/:id/specification', $auth->permissions('device:read resource:read'),
+    function ($id) use ($app,$auth) {
+		$r = Utils\getResource($auth, $id, 'Device\\Http');
+		$app->lastModified($r->modifiedDate);
+		$spec = $r->getSpecification();
 		$app->contentType('application/json');
-		echo json_encode($descriptor,JSON_PRETTY_PRINT|JSON_UNESCAPED_SLASHES);
+		echo json_encode($spec,JSON_PRETTY_PRINT|JSON_UNESCAPED_SLASHES);
     }
 );
+
+
+
+
+
+
 
 
 
@@ -2549,8 +3051,7 @@ $app->get('/device/:id/descriptor',
  * @swagger-path
  * "/notification":{  
  *      "post":{
- *         "security":[{"access_token":[]}],
- *         "description":"Send a notification to the current user.",
+ *         "description":"Send a notification to the registered email addresses (cf. settings).",
  *         "parameters":[  
  *            {  
  *               "name":"notification data",
@@ -2580,61 +3081,316 @@ $app->get('/device/:id/descriptor',
  *      }
  *   }
  */
-$app->post('/notification',
-    function () use ($app,$auth,$ething) {
+$app->post('/notification', $auth->permissions('notification'),
+    function () use ($app, $ething) {
 		$noti = array_merge(array(
 			'subject' => null,
 			'body' => null
 		),Utils\getJSON($app,true));
-		$auth->user()->sendMail($noti['subject'],$noti['body']);
+		$ething->notify($noti['subject'],$noti['body']);
     }
 );
  
 
 
+function processProxyRoute(){
+	global $app,$ething;
+	
+	$url = Utils\getParameter('url',Utils\CHK_URL);
+	
+	$request = \Ething\Request::createFromGlobals($url);
+	
 
-$app->any('/proxy',
-    function () use ($app,$auth,$ething) {
-		$url = Utils\getParameter('url',Utils\CHK_URL);
-		
-		$curl_options = array();
-
-		// auth ?
-		$auth = $app->request->headers->get('X-AUTH');
-		if(!$auth)
-			$auth = $app->request->get('auth');
-		if($auth){
-			$a = explode(';',$auth);
-			if(is_array($a) && count($a)==3){
-				$a = array_map('urldecode',$a);
-				$mode = strtolower($a[0]);
-				$user = $a[1];
-				$password = $a[2];
-				switch($mode){
-					case 'basic':
-						$curl_options[CURLOPT_HTTPAUTH] = CURLAUTH_BASIC; // The HTTP authentication method(s) to use.
-						break;
-					case 'digest':
-						$curl_options[CURLOPT_HTTPAUTH] = CURLAUTH_DIGEST; // The HTTP authentication method(s) to use.
-						break;
-				}
-				$curl_options[CURLOPT_USERPWD] = $user.':'.$password;
-			}
+	// auth ?
+	$user = null;
+	$password = null;
+	$mode = null;
+	$auth = $app->request->headers->get('X-AUTH');
+	if(!$auth)
+		$auth = $app->request->get('auth');
+	if($auth){
+		$a = explode(';',$auth);
+		if(is_array($a) && count($a)==3){
+			$a = array_map('urldecode',$a);
+			$mode = strtolower($a[0]);
+			$user = $a[1];
+			$password = $a[2];
 		}
-		
-		\Ething\Proxy::$blackListHeaders[] = 'X-AUTH';
-		
-		$p = new \Ething\Proxy($ething);
-		$p->setUrlProxify(function($url){
-			return preg_replace('/(?<=(\?|&))url=[^&#]*/','url='.urlencode($url),$_SERVER['REQUEST_URI']);
-		});
-		$p->forward($url, $curl_options);
+	}
+	
+	$proxy = new \Ething\Proxy($ething);
+	$proxy->request($request, true, $user, $password, $mode);
+	
+}
+
+$app->get('/proxy', $auth->permissions('proxy:read'), 'processProxyRoute');
+$app->any('/proxy', $auth->permissions('proxy:write'), 'processProxyRoute');
+
+
+
+
+
+
+
+
+
+
+
+
+
+/**
+ * @swagger-path
+ * "/rules":{  
+ *      "get":{
+ *         "tags": ["rule"],
+ *         "description":"Lists the rules.",
+ *         "parameters":[],
+ *         "responses":{
+ *            "200":{
+ *               "description":"A list of rules",
+ *               "schema":{
+ *                  "type":"array",
+ *                  "items":{  
+ *                     "$ref":"#/definitions/Rule"
+ *                  }
+ *               }
+ *            }
+ *         }
+ *      }
+ *   }
+ */
+
+$app->get('/rules', $auth->permissions('rule:read'),
+    function () use ($app,$ething) {
+		$app->contentType('application/json');
+		echo Utils\jsonEncodeFilterByFields($ething->findRules(),Utils\getParameter('fields',Utils\CHK_STRING_ARRAY, true, null));
     }
 );
 
 
 
+/**
+ * @swagger-path
+ * "/rules/{id}":{  
+ *      "get":{
+ *         "tags": ["rule"],
+ *         "description":"
+ Returns the attributes of a rule.
+ ",
+ *         "parameters":[  
+ *            {  
+ *               "name":"id",
+ *               "in":"path",
+ *               "description":"id of the rule",
+ *               "required":true,
+ *               "type":"string"
+ *            }
+ *         ],
+ *         "responses":{
+ *            "200":{
+ *               "description":"resource object",
+ *               "schema":{
+ *                  "$ref":"#/definitions/Rule"
+ *               }
+ *            }
+ *         }
+ *      }
+ *   }
+ */
+$app->get('/rules/:id', $auth->permissions('rule:read'),
+    function ($id) use ($app,$ething) {
+		Utils\check(Utils\CHK_ID,$id);
+		$rules = $ething->findRules(array(
+			'_id' => $id
+		));
+		if(!count($rules))
+			throw new Exception('Unknown rule',404);
+		
+		$app->contentType('application/json');
+		echo Utils\jsonEncodeFilterByFields($rules[0],Utils\getParameter('fields',Utils\CHK_STRING_ARRAY, true, null));
+    }
+);
 
+/**
+ * @swagger-path
+ * "/rules/{id}":{  
+ *      "delete":{
+ *         "tags": ["rule"],
+ *         "description":"delete a rule",
+ *         "parameters":[  
+ *            {  
+ *               "name":"id",
+ *               "in":"path",
+ *               "description":"id of the rule",
+ *               "required":true,
+ *               "type":"string"
+ *            }
+ *         ],
+ *         "responses":{
+ *            "200":{
+ *               "description":"the rule has been deleted successfully"
+ *            }
+ *         }
+ *      }
+ *   }
+ */
+$app->delete('/rules/:id', $auth->permissions('rule:admin'),
+    function ($id) use ($app,$ething) {
+		Utils\check(Utils\CHK_ID,$id);
+		$rules = $ething->findRules(array(
+			'_id' => $id
+		));
+		if(!count($rules))
+			throw new Exception('Unknown rule',404);
+		$rules[0]->remove();
+    }
+);
+
+/**
+ * @swagger-path
+ * "/rules/{id}":{  
+ *      "patch":{
+ *         "tags": ["rule"],
+ *         "description":"update a rule. Only properties which are not readonly can be modified.",
+ *         "parameters":[  
+ *            {  
+ *               "name":"id",
+ *               "in":"path",
+ *               "description":"id of the rule",
+ *               "required":true,
+ *               "type":"string"
+ *            },
+ *            {  
+ *               "name":"modification",
+ *               "in":"body",
+ *               "description":"the attributes to modify",
+ *               "required":true,
+ *               "schema":{
+ *                  "$ref":"#/definitions/Rule"
+ *               }
+ *            }
+ *         ],
+ *         "responses":{
+ *            "200":{
+ *               "description":"rule successfully updated",
+ *               "schema":{
+ *                  "$ref":"#/definitions/Rule"
+ *               }
+ *            },
+ *            "400":{
+ *               "description":"an error occurs",
+ *               "schema":{
+ *                  "$ref":"#/definitions/Error"
+ *               }
+ *            }
+ *         }
+ *      }
+ *   }
+ */
+$app->patch('/rules/:id',
+    function ($id) use ($app,$ething) {
+		
+		Utils\check(Utils\CHK_ID,$id);
+		$rules = $ething->findRules(array(
+			'_id' => $id
+		));
+		if(!count($rules))
+			throw new Exception('Unknown rule',404);
+		
+		$data = (array)Utils\getJSON($app);
+		
+		if($rules[0]->set($data)){
+			$app->contentType('application/json');
+			echo Utils\jsonEncodeFilterByFields($rules[0],Utils\getParameter('fields',Utils\CHK_STRING_ARRAY, true, null));
+		}
+		else {
+			throw new \Utils\Exception('Invalid patch request');
+		}
+    }
+);
+
+
+/**
+ * @swagger-path
+ * "/rules":{  
+ *      "post":{
+ *         "tags": ["rule"],
+ *         "description":"
+
+Creates a new rule.
+
+",
+ *         "parameters":[  
+ *            {  
+ *               "name":"attributes",
+ *               "in":"body",
+ *               "description":"
+the metadata of the rule to be created
+ ",
+ *               "required":true,
+ *               "schema":{
+ *               	"$ref":"#/definitions/Rule"
+ *               }
+ *            }
+ *         ],
+ *         "responses":{
+ *            "200":{
+ *               "description":"The rule was successfully created",
+ *               "schema":{
+ *               	"$ref":"#/definitions/Rule"
+ *               }
+ *            }
+ *         }
+ *      }
+ *   }
+ */
+$app->post('/rules', $auth->permissions('rule:write'),
+    function () use ($app,$ething) {
+		
+		$attr = (array)Utils\getJSON($app);
+		
+		$rule = $ething->createRule($attr);
+		if(!$rule) throw new \Utils\Exception('Unable to create the rule');
+		
+		$app->response()->setStatus(201);
+		$app->contentType('application/json');
+		echo Utils\jsonEncodeFilterByFields($rule,Utils\getParameter('fields',Utils\CHK_STRING_ARRAY, true, null));
+		
+    }
+);
+
+
+
+/**
+ * @swagger-path
+ * "/rules/trigger/{eventName}":{  
+ *      "post":{
+ *         "tags": ["rule"],
+ *         "description":"
+Trigger a custom event. The rules which are configured with that event name will be triggered.
+",
+ *         "parameters":[  
+ *            {  
+ *               "name":"eventName",
+ *               "in":"path",
+ *               "description":"the name of the custom event to dispatch",
+ *               "required":true,
+ *               "type":"string"
+ *            }
+ *         ],
+ *         "responses":{
+ *            "200":{
+ *               "description":"The event has been dispatched"
+ *            }
+ *         }
+ *      }
+ *   }
+ */
+$app->post('/rules/trigger/:eventName', $auth->permissions('rule:execute'),
+    function ($eventName) use ($app,$ething, $auth) {
+		$ething->dispatchSignal( Ething\Event\Custom::emit($eventName, $auth->originator()) );
+    }
+);
 
 
 
@@ -2664,21 +3420,24 @@ $app->any('/proxy',
  * }
  */
 
-$app->error(function (\Exception $e) use ($app,$auth,$ething,$debug) {
+$app->error(function (\Exception $e) use ($app,$debug,$ething,$auth) {
 	
 	$internalerr = $e->getCode() < 100 || $e->getCode() >= 600;
 	
 	// set the response code
 	$responseCode = $internalerr ? 400 : $e->getCode();
 	$app->response()->setStatus($responseCode);
+	
 	// send the error message as JSON
 	$app->contentType('application/json');
 	
-	\Utils\log($e);
+	$ething->log($e, 'HTTP API');
 	
-	if($debug){
+	$message = utf8_encode($e->getMessage());
+	
+	if($debug && $auth->mode() === 'session'){
 		$error = array(
-			'message' => $e->getMessage(),
+			'message' => $message,
 			'trace' => $e->getTraceAsString(),
 			'line' => $e->getLine(),
 			'file' => $e->getFile(),
@@ -2688,15 +3447,16 @@ $app->error(function (\Exception $e) use ($app,$auth,$ething,$debug) {
 	}
 	else {
 		$error = array(
-			'message' => (!$internalerr) ? $e->getMessage() : 'internal error',
+			'message' => (!$internalerr) ? $message : 'internal error',
 			'code' => $responseCode
 		);
 	}
+	
 	echo json_encode($error,JSON_PRETTY_PRINT|JSON_UNESCAPED_SLASHES);
 	
 });
 
-$app->notFound(function () use ($app,$auth,$ething) {
+$app->notFound(function () use ($app) {
 	
 	// send the error message as JSON
 	$app->contentType('application/json');
@@ -2727,33 +3487,22 @@ $app->add($auth);
 /*
 * CORS middleware
 */
-if(isset($config['cors']) && $config['cors']){
+if($ething->config('cors')){
 	require_once __DIR__.'/cors.php';
 	$app->add(new CorsMiddleware());
+	
+	\Ething\Proxy::$response_transform = function($proxy){
+		$proxy->response->addHeader('Access-Control-Allow-Origin','*');
+	};
 }
 
 
 
-$ething->setEventExceptionHandler(function($exception){
-	\Utils\log($exception);
-});
-$ething->setDelayEvents(true);
+
+$ething->setDelaySignals(true);
 
 $app->run();
 
-if($ething->hasPendingEvents()){
-	
-	ignore_user_abort(true);
-	set_time_limit(0);
-	
-	// send the response first
-	ob_end_flush();
-	flush();
-	session_write_close();
-	
-	// dispatch the events
-	$ething->dispatchPendingEvents();
-	
-}
+
 
 

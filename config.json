@@ -1,0 +1,23 @@
+{
+    "db": {
+        "host": "localhost",
+        "port": 27017,
+        "user": null,
+        "password": null,
+        "database": "ething"
+    },
+    "notification": false,
+    "proxy": false,
+    "quota": 100000000,
+    "auth": {
+        "password": "admin",
+        "localonly": false
+    },
+    "cors": true,
+    "debug": true,
+    "session": {
+        "expiration": 864000,
+        "cookie_name": "ething_session",
+        "secret": "taupesecretstring"
+    }
+}

@@ -3,16 +3,18 @@
 
 namespace Ething\Action;
 	
-class ResourceRemove extends Action {
+class ResourceRemove extends AbstractResourceAction {
 	
-	// this action is compatible with all events
-	static public function check(array &$json, $eventName, $resourceTypeName){
-		return true;
-	}
 	
-	public function execute(\Ething\Event\Event $event, \Ething\Rule $rule){
-		$target = $event->target();
-		$target->remove();
+	
+	protected function call(\Ething\Event\Signal $signal){
+		
+		$resources = $this->getResources($signal);
+		
+		foreach($resources as $r){
+			$r->remove();
+		}
+		
 	}
 	
 }

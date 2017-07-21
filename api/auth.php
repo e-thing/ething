@@ -5,103 +5,76 @@
 namespace Auth;
 
 
-
+require_once __DIR__.'/../session/session.php';
 
 class HttpAuth extends \Slim\Middleware
 {
-	private $_ething = null;
-	private $_user = null;
-	private $_device = null;
-	private $_fs = null;
+	public $ething = null;
+	private $_originator = null; // only available for apikey authentication, return the resource of the apikey
+	private $_scope = null;
 	private $_mode = 'unauthenticated';
 	
-	private $_opt = array(
-		'secret' => 'taupesecretstring',
-		'expiration' => 86400 // in seconds, the time after wich the token is expired
-	);
 	
-	public function __construct(\Ething\Ething $ething, array $options = array())
+	public function __construct(\Ething\Ething $ething)
     {
-        $this->_ething = $ething;
-		$this->_opt = array_replace_recursive($this->_opt, $options);
+        $this->ething = $ething;
     }
 	
 	
 	private static $noRestrictedResourceUri = array(
-		'POST' => array('/auth/authorize','/user'),
 		'GET' => array('/swagger.json')
 	);
 	
-	private static $scopeMap = array(
-		'#^/(resources|file|table|app|device|usage)(/|$)#' => array(
-				'GET' => \Ething\Scope::RESOURCE_READ,
-				'*' => \Ething\Scope::RESOURCE_WRITE
-			),
-		'#^/profile(/|$)#' => array(
-				'GET' => \Ething\Scope::PROFILE_READ,
-				'*' => \Ething\Scope::PROFILE_WRITE
-			),
-		'#^/notification(/|$)#' => array('*' => \Ething\Scope::NOTIFICATION)
-	);
-	
-	
-	
-	public function user() {
-		return $this->_user;
+	public function originator() {
+		return $this->_originator;
 	}
 	
-	public function device() {
-		return $this->_device;
-	}
-	
-	public function fs() {
-		return $this->_fs;
+	public function scope() {
+		return $this->_scope;
 	}
 	
 	public function isAuthenticated() {
-		return !is_null($this->_user);
+		return $this->_mode !== 'unauthenticated';
 	}
 	
-	// 'unauthenticated' , 'api' , 'token' or 'apikey'
+	// 'unauthenticated' , 'api' , 'session' , 'apikey' , 'basic', 'public'
 	public function mode(){
 		return $this->_mode;
 	}
 	
-	public function authenticate(\Ething\User $user = null){
-		if($user){
-			$this->_mode = 'api';
-			$this->_user = $user;
-			$this->_fs = new \Ething\Fs($this->_ething,$user);
+	private function authenticate($mode, $scope = null, $originator = null){
+		if($mode){
+			$this->_mode = $mode;
+			$this->_scope = $scope;
+			$this->_originator = $originator;
 		}
 		else {
 			$this->_mode = 'unauthenticated';
-			$this->_user = null;
-			$this->_fs = null;
-			$this->_device = null;
+			$this->_scope = null;
+			$this->_originator = null;
 		}
 	}
 	
-	public function generateToken(){
-		$issuedAt   = time();
-		return $this->isAuthenticated() ? 
-			\Firebase\JWT\JWT::encode(array(
-				'iat' => $issuedAt,
-				'exp' => $issuedAt + $this->_opt['expiration'],
-				'user' => $this->user()
-			), $this->_opt['secret']) :
-			null;
+	public function unauthenticate(){
+		$this->authenticate(null);
 	}
 	
 	
     /**
      * Call
      *
-     * This method will check the HTTP request headers for previous authentication. If
+     * This method will check the HTTP request for previous authentication. If
      * the request has already authenticated, the next middleware is called. Otherwise,
      * a 401 Authentication Required response is returned to the client.
      */
     public function call()
     {
+		
+		$this->authenticate(null);
+		
+		if($this->ething->config('auth.localonly') && !\Ething\Helpers::isLocalClient()){
+			$this->app->error(new \Exception('not authenticated',401));
+		}
 		
 		$req = $this->app->request();
 		$method = $req->getMethod();
@@ -113,90 +86,97 @@ class HttpAuth extends \Slim\Middleware
 		}
 		else {
 			try {
-				if(($token = $req->headers('HTTP_X_ACCESS_TOKEN')) || ($token = $req->get('access_token'))){
-					// a token was provided
+				
+				/*
+				* SESSION AUTH
+				*/
+				if( $session = \Session\isAuthenticated(true) ){
 					
-					try{ // try to decode it !
-						$decodedJwt = \Firebase\JWT\JWT::decode($token, $this->_opt['secret'], array('HS256'));
-					}
-					catch(\Exception $e){
-						// the token is invalid
-						throw new \Exception('invalid JSON web token',401);
-					}
-					
-					if($user = $this->_ething->findOneUserById($decodedJwt->user->id)){
-						$this->_mode = 'token';
-						$this->_user = $user;
-						$this->_fs = new \Ething\Fs($this->_ething,$user);
-						
-						$this->next->call(); // ok
-					}
-					else {
-						// the user does not exist any more !
-						throw new \Exception('not authenticated',401);
-					}
+					$this->_mode = 'session';
 					
 				}
+				/*
+				* APIKEY AUTH
+				*/
 				else if(($apiKey = $req->headers('HTTP_X_API_KEY')) || ($apiKey = $req->get('api_key'))){
 					// is there an API key ?
 					
-					if( $device = $this->_ething->findOne(array(
-							'_apiKey.key' => $apiKey,
-							'type' => 'Device'
+					if( $originator = $this->ething->findOne(array(
+							'#apikey' => $apiKey
 						)) ){
 						
-						$device->updateSeenDate();
-						
-						/*
-							look for 'X-DEV-PROP' headers
-							ie:  X-DEV-PROP: {"bat"=45,"loc":{"latitude":1.45,"longitude":-45.5}}
-						*/
-						$devProps = $req->headers('HTTP_X_DEV_PROP');
-						if($devProps){
-							// parsing JSON
-							$props = \json_decode($devProps, true);
-							if(json_last_error() === JSON_ERROR_NONE && !empty($props)){
-								try{
-									$device->set($props);
-								}
-								catch(\Exception $e){}
+						if($originator instanceof \Ething\Device\Device){
+							$originator->updateSeenDate();
+							
+							$devBat = $req->headers('HTTP_X_DEV_BAT');
+							if(is_numeric($devBat)) $devBat = floatval($devBat);
+							else if($devBat==="null") $devBat = null;
+							else $devBat = false;
+							if($devBat!==false){
+								$originator->set(array(
+									'battery' => $devBat
+								));
 							}
+							
 						}
 						
-						/*
-							scope control
-						*/
-						$scope = null;
-						$matches = array();
-						foreach(static::$scopeMap as $routeRegEx => $methods){
-							if(preg_match($routeRegEx, $uri)){
-								$scope = isset($methods[$method]) ? $methods[$method] : $methods['*'];
-								break;
-							}
-						}
+						$this->authenticate('apikey', $originator->scope, $originator);
 						
-						if(empty($scope) || !\Ething\Scope::check($scope, $device))
-							throw new \Exception('Forbidden', 403);
-						
-						
-						
-						
-						$this->_mode = 'apikey';
-						$this->_user = $device->user();
-						$this->_device = $device;
-						$this->_fs = new \Ething\Fs($this->_ething,$device);
-						
-						
-						$this->next->call();
 					}
-					else 
-						// unknown api key
-						throw new \Exception('not authenticated',401);
 					
 				}
-				else
-					throw new \Exception('not authenticated',401);
+				/*
+				* BASIC AUTH
+				*/
 				
+				else if( isset($_SERVER['PHP_AUTH_USER']) && isset($_SERVER['PHP_AUTH_PW']) ){
+					
+					$username = $_SERVER['PHP_AUTH_USER'];
+					$password = $_SERVER['PHP_AUTH_PW'];
+					
+					if( $username === 'ething' && $this->ething->config('auth.password') === $password){
+						$this->authenticate('basic');
+					}
+					
+				}
+				
+				/*
+				* PUBLIC ACCESS
+				*/
+				else if(preg_match('@/([^/]+)/([a-zA-Z0-9_-]{7})($|/|\\?)@',$uri,$matches)){
+					if($r = $this->ething->get($matches[2])){
+						$publicMode = $r->get('public');
+						switch($publicMode){
+							case 'readonly':
+								$this->authenticate('public', 'resource:read');
+								break;
+							case 'readwrite':
+								$this->authenticate('public', 'resource:read resource:write');
+								break;
+						}
+					}
+				}
+				
+				
+				if($this->isAuthenticated()){
+					
+					
+					
+					if($this->_originator)
+						$this->ething->resourceQueryParser()->addConstant('me',(string)$this->_originator->id());
+					
+					// global scope
+					$scopes = $this->scope();
+					if( $scopes !== null ){
+						if( !in_array('resource:admin', explode(' ', $scopes)) )
+							\Ething\Ething::$showPrivateField = false;
+					}
+					
+					$this->next->call();
+				}
+				else
+					throw new \Exception('not authenticated',401); // auth fallback
+					
 				
 			} catch(\Exception $e){
 				try {
@@ -209,5 +189,60 @@ class HttpAuth extends \Slim\Middleware
 		
 		
     }
+	
+	
+	public function hasPermission($permission){
+		$permissions = $this->scope();
+		if($permissions !== null){
+			if(!in_array($permission, explode(' ', $permissions)))
+				return false;
+		}
+		return true;
+	}
+	
+	public function checkPermission($permission){
+		if(!$this->hasPermission($permission))
+			throw new \Exception('access denied',403);
+	}
+	
+	/*
+	* return a slim route middleware function that validate the permission.
+	* 
+	* $allowedPermissions : allowed permissions of the route
+	*/
+	public function permissions($allowedPermissions){
+		$auth = $this;
+		
+		return function () use ( $allowedPermissions, $auth ) {
+			
+			$permissions = $auth->scope();
+			
+			if($permissions !== null){
+				
+				$allowedPermissions = explode(' ', $allowedPermissions);
+				$permissions = explode(' ', $permissions);
+				
+				// check if the given permissions is able to execute this route
+				
+				$npass = 0;
+				
+				foreach($permissions as $permission){
+					
+					if(empty($permission)) continue;
+					
+					if(in_array($permission, $allowedPermissions)){
+						$npass++;
+					}
+					
+				}
+				
+				if($npass === 0)
+					throw new \Exception('access denied',403);
+				
+			}
+			
+		};
+		
+	}
 }
 

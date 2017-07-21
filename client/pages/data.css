@@ -1,0 +1,59 @@
+
+
+@media (min-width: 768px) {
+
+/* absolute layout */
+
+#data .ui-container {
+	overflow-y: auto;
+	position: absolute;
+	bottom: 0px;
+	left: 0px;
+	right: 0px;
+	margin: 0px;
+}
+
+}
+
+
+#data .explorer .item:not(.selected) .col-info {
+	color: grey;
+}
+
+
+/* hide info icon on desktop device (ie: when the right panel is shown) */
+@media (min-width: 768px) {
+#data .explorer .col-info {
+	display: none;
+}
+}
+/* hide header on small screen*/
+@media (max-width: 767px) {
+#data .explorer thead {
+	display: none;
+}
+}
+
+
+#data .explorer .col-name .col-name-size {
+	font-weight: normal;
+	color: #b5b4b4;
+	font-size: smaller;
+    font-style: italic;
+}
+
+#data #data-header {
+	padding: 5px;
+}
+
+#data .clear {
+  clear: both;
+}
+
+#data {
+	background-color: #F8F8F8;
+}
+
+#data .breadcrumb {
+	margin-bottom: 0;
+}

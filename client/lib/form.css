@@ -1,0 +1,258 @@
+
+
+
+/*
+ FormLayout
+*/
+
+.f-form .f-formlayout > div > div > label {
+    padding-right: 10px;
+}
+
+.f-form  .f-formlayout > div > div > .f-item {
+	margin-top: 10px;
+}
+
+.f-form  .f-formlayout > div > div > button {
+	margin-left: 10px;
+}
+
+.f-formlayout-item > .checkbox {
+	display: inline-block;
+}
+
+/*
+ TabsLayout
+*/
+
+.f-form .f-tabslayout .tab-content>.tab-pane {
+	margin-top: 10px;
+}
+
+.f-form .f-tabslayout > ul > li.f-has-error > a {
+	color: #a94442;
+}
+.f-form .f-tabslayout > ul > li.f-has-error > a:after {
+	font-family: 'Glyphicons Halflings';
+	content: " \e101";
+	vertical-align: bottom;
+}
+
+
+/*
+ ArrayLayout
+*/
+
+
+
+.f-form .f-array-item {
+	margin-bottom: 10px;
+}
+.f-form .f-array-item > .form-inline {
+	display: inline-block;
+	margin-right: 5px;
+}
+
+.f-form .f-array-item > .f-item {
+	background-color: #fefefe;
+    border: 1px solid #eee;
+    padding: 5px;
+    border-radius: 4px;
+	border-bottom-right-radius: 0px;
+	width: 100%;
+}
+
+.f-form .f-array-item-edit {
+	text-align: right;
+}
+
+.f-form .f-array-item-edit > div {
+	display: inline-block;
+	background-color: #fefefe;
+    padding: 5px;
+    border-bottom-right-radius: 4px;
+    border-bottom-left-radius: 4px;
+    position: relative;
+    top: -1px;
+    border-bottom: #eee 1px solid;
+    border-left: #eee 1px solid;
+    border-right: #eee 1px solid;
+}
+
+
+/*
+Layout
+*/
+
+.f-form  .f-formlayout > div > div > .f-formlayout,
+.f-form  .f-formlayout > div > div > .f-arraylayout,
+.f-form  .f-formlayout > div > div > .f-selectpanels > div > .f-formlayout,
+.f-form  .f-formlayout > div > div > .f-selectpanels > div > .f-arraylayout
+ {
+	margin-left: 10px;
+    border-left-width: 2px;
+    border-left-style: solid;
+    border-left-color: rgba(154,154,154,1);
+    padding-left: 10px;
+}
+
+.f-form  .f-formlayout > div > div > .f-formlayout:hover,
+.f-form  .f-formlayout > div > div > .f-arraylayout:hover,
+.f-form  .f-formlayout > div > div > .f-selectpanels > div > .f-formlayout:hover,
+.f-form  .f-formlayout > div > div > .f-selectpanels > div > .f-arraylayout:hover
+{
+    border-left-color: #15a1f3;
+}
+
+
+.f-formlayout-edit-tb, .f-arraylayout-edit-tb {
+	opacity: 0.5;
+}
+
+.f-formlayout-edit-tb:hover, .f-arraylayout-edit-tb:hover {
+	opacity: 1;
+}
+
+.f-form .f-arraylayout-empty-msg, .f-form .f-formlayout-empty-msg {
+	color: grey;
+	margin: 5px 0;
+	font-size: smaller;
+}
+
+
+/*
+ File
+*/
+
+.f-form .f-file {
+	overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+}
+
+
+/*
+ Image
+*/
+
+
+
+.f-form .f-image-thumbnail-empty, .f-form img {
+	height: 128px;
+	max-width: 100%;
+	margin-right: auto;
+    margin-left: auto;
+	display: block;
+}
+
+.f-form .f-image-thumbnail-empty {
+	width: 128px;
+    background-color: #f1f1f1;
+    color: #9e9e9e;
+    text-align: center;
+    line-height: 128px;
+    font-weight: bold;
+}
+
+.f-form .f-image-meta  {
+	color: grey;
+}
+
+.f-form .f-image-btns {
+	margin-top: 5px;
+}
+
+.f-form .f-image-btns > button:not(:first-child) {
+	margin-left: 4px;
+}
+
+.f-form .f-image.f-image-drop {
+    background-color: #f3f3f3;
+	position: relative;
+}
+.f-form .f-image.f-image-drop > *{
+	visibility: hidden;
+}
+.f-form .f-image.f-image-drop:after {
+	font-family: 'Glyphicons Halflings';
+	content: "\e026";
+	font-size: 32px;
+	margin-top: -24px;
+	margin-left: -18px;
+	top: 50%;
+	left: 50%;
+	position: absolute;
+}
+
+
+
+/*
+ Duration
+*/
+
+
+.f-form .f-duration input {
+	width: 4em !important;
+	display: inline-block !important;
+}
+.f-form .f-duration .form-group {
+	display: inline-block !important;
+}
+.f-form .f-duration label {
+	margin-right: 5px;
+	margin-left: 5px;
+	font-weight: normal;
+}
+
+
+
+
+/*
+ Textarea
+*/
+
+.f-form .f-textarea textarea {
+	max-width: 100%;
+}
+
+
+/*
+ HttpRequest
+*/
+
+
+.f-form .f-httprequest  .typeahead.dropdown-menu {
+	max-height: 160px;
+    overflow-y: auto;
+}
+
+
+
+/*
+ Checkbox
+*/
+
+.f-form .f-checkbox > label {
+    min-height: 20px;
+    font-weight: 400;
+    cursor: pointer;
+	margin-bottom: 10px;
+}
+
+
+/*
+ Global
+*/
+
+
+.f-form .alert {
+	margin-top: 5px;
+	background-color: inherit;
+	border: none;
+	padding: 0;
+	font-size: smaller;
+}
+
+
+
+

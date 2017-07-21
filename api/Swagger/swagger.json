@@ -1,122 +1,128 @@
 {
     "swagger": "2.0",
+    "info": {
+        "title": "eThing HTTP api",
+        "description": "\n \nThe eThing project is an 'Internet of Things' application. Store and retrieve data from devices using HTTP requests.\n\nAccess to your resources (file, table, device ...) through HTTP requests.\n\n-------------\n\n\n### Resource description\n\nThere are different types of resources. A resource can either be :\n\n - file : use this kind of objects to store text data or binary data (image, ...)\n - table : tables are used to store a collection of related data. Table consists of fields and rows.\n - device : this resource describes a device. You can send HTTP requests to your device through it.\n - app : this resource is used to store a HTML/JavaScript script. Use it to handle your data (for instance, you can create an interface to communicate with your device).\n\n\n### Event-condition-action rules\n\nCreate custom rules to execute tasks when an event occurs and only under certains conditions.\n\n#### Events\n\n - Timer\n    \n    This event is fired at fixed times, dates, or intervals. A cron expression must be given.\n     \n    ```json\n    {\n    \t\"cron\": \"* * * * * *\" \n    }\n    ```\n\n - DeviceUnreachable\n    \n    This event is fired when a device could not be reached. A device id must be given.\n     \n    ```json\n    {\n    \t\"resource\": \"G6fd4af\" \n    }\n    ```\n\n - LowBatteryDevice\n    \n    This event is fired when a device has a battery level below 10%. A device id must be given.\n     \n    ```json\n    {\n    \t\"resource\": \"G6fd4af\" \n    }\n    ```\n\n - FileDataModified\n    \n    This event is fired when the content of a file has been modified. A file id must be given.\n     \n    ```json\n    {\n    \t\"resource\": \"G6fd4af\" \n    }\n    ```\n\n - TableDataAdded\n    \n    This event is fired when new data has been added to a table. A table id must be given.\n     \n    ```json\n    {\n    \t\"resource\": \"G6fd4af\" \n    }\n    ```\n\n#### Conditions\n\n\n - ResourceMatch\n    \n    This condition is satified when a resource match the given expression. A resource id and an expression must be given.\n     \n    ```json\n    {\n    \t\"resource\": \"G6fd4af\",\n\t\t\"expression\": \"size > 0\" \n    }\n    ```\n\n - TableValueMatch\n    \n    This condition is satified when the last value of a table match the given expression. A table id and an expression must be given.\n     \n    ```json\n    {\n    \t\"resource\": \"G6fd4af\",\n\t\t\"expression\": \"temperature > 20\" \n    }\n    ```\n\n - Cron\n    \n    This condition is satified when the time match the given cron expression. A cron expression must be given.\n     \n    ```json\n    {\n\t\t\"cron\": \"* * * * * *\" \n    }\n    ```\n\n\n#### Actions\n\n\n - Notify\n    \n    Send an email. A subject and a content must be given.\n     \n    ```json\n    {\n    \t\"subject\": \"mail's subject\",\n\t\t\"content\": \"mail's content\" \n    }\n    ```\n\n - ResourceClear\n    \n    Clear a table or a File. A table or file id must be given.\n     \n    ```json\n    {\n    \t\"resource\": \"G6fd4af\"\n    }\n    ```\n\n - ResourceRemove\n    \n    Remove a resource. A resource id must be given.\n     \n    ```json\n    {\n    \t\"resource\": \"G6fd4af\"\n    }\n    ```\n\n - TableStatistics\n    \n    Make some statistics on a data subset of a table and append the result into a table.\n\t\n\tThe \"resource\" and \"destination\" attributes must be table id.\n\tThe \"field\" attribute correspond the table field to make the statistics.\n\tThe \"dataset\" attribute must be a positive integer representing a number of seconds or a negative integer representing a number of rows. 0 means all the data.\n     \n    ```json\n    {\n    \t\"resource\": \"G6fd4af\",\n\t\t\"field\": \"the column name\",\n\t\t\"dataset\": 3600,\n\t\t\"destination\": \"2a89r45\"\n    }\n    ```\n\n - EventTrigger\n    \n    Trigger the custom event with the given name. Usefull for nesting rules.\n     \n    ```json\n    {\n    \t\"name\": \"MyCustomEventName\"\n    }\n    ```\n\n\n\n\n\n### Error messages\n\nWhen the API returns error messages, it does so in JSON format. For example, an error might look like this:\n\n```json\n{\n  \"message\": \"The resource does not exist\",\n  \"code\" : 404\n}\n```\n\nThe code value correspond to the HTTP status code of the response.\n\n\n### Authorization\n\nThere are several options for authenticating with the API.\n\n#### Basic authentication\n\nHTTP Basic authentication is the simplest way of interacting with the API. \nSimply pass the username (always 'ething') and password with each request through the `Authorization` header.\nThis value should be encoded (using base64 encoding) as per the HTTP Basic specification.\n\n```bash\ncurl -u username:password ...\n```\n\n\n#### API key\n\nEvery device or app has an API key. API keys are listed on developer page [http://<YOUR_SERVER_ADDRESS>/ething/client/developer.html](http://localhost/ething/client/developer.html).\n\nAPI calls authenticated with API key are made on behalf of the Application or Device that own this it ! The permissions can be modified in the resource settings.\n\nSend the following header below on every request :\n\n```\nGET /ething/api/resources HTTP/1.1\nHost: localhost\nX-API-KEY: <YOUR_API_KEY>\n```\n\nHere is a cURL example of how to send this header :\n\n```bash\ncurl -H 'X-API-KEY: <YOUR_API_KEY>' ...\n```\n\nYou can also simply pass the key as a URL query parameter when making Web service requests. For example:\n\n```bash\ncurl http://localhost/ething/api/resources?api_key=<YOUR_API_KEY>\n```\n\n\n\n\n### Scopes\n\nScopes let you specify exactly what type of data access your application or device needs.\n\n| Scope          | Description                                                          |\n|----------------|----------------------------------------------------------------------|\n| resource:read  | read the content of any resource                                     |\n| resource:write | create resources of any kind and modify the content of any resource  |\n| resource:admin | modify resource properties, delete resource and access to apikeys    |\n| file:read      | read the content of any file                                         |\n| file:write     | create files and modify the content of any file                      |\n| table:read     | read the content of any table                                        |\n| table:write    | create tables and modify the content of any table                    |\n| table:append   | append data to any existing table                                    |\n| app:read       | execute apps                                                         |\n| app:write      | create and edit apps                                                 |\n| app:execute    | execute apps                                                         |\n| device:read    | send GET request to any device                                       |\n| device:write   | send POST,PUT,PATCH,DELETE request to any device                     |\n| notification   | send notification                                                    |\n| settings:read  | read the settings                                                |\n| settings:write | modify the settings                                              |\n| proxy:read     | send GET request through your local network                          |\n| proxy:write    | send POST,PUT,PATCH,DELETE through your local network                |\n| rule:read      | read rules attributes                                                |\n| rule:write     | create rules                                                         |\n| rule:execute   | execute rules                                                        |\n| rule:admin     | delete rules                                                         |\n\n### Partial response\n\nBy default, the server sends back the full representation of a resource after processing requests.\nFor better performance, you can ask the server to send only the fields you really need and get a partial response instead.\n\nTo request a partial response, use the fields request parameter to specify the fields you want returned.\nYou can use this parameter with any request that returns response data.\n\nexample:\n\nThis request will return the meta-data representation containing only the specified keys of a resource\n\n`/resource/56731_a?fields=id,name`\n\n\n### Filter resource or table data\n\nYou can search or filter resources or table's rows using a search query combining one or more search clauses. Each search clause is made up of three parts.\n\n - Field : in case of resource filtering, it corresponds to the attribute of the resource that is searched (e.g. 'name'). In case of table's rows filtering, it corresponds to the column's name.\n - Operator : test that is performed on the data to provide a match.\n - Value : The content of the field that is tested.\n \nCombine clauses with the conjunctions and or or.\n\n\nThe available fields for resource filtering :\n\n - 'type'\n - 'name'\n - 'mime'\n - 'id'\n - 'location.latitude'\n - 'location.longitude'\n - 'location.altitude'\n - 'createdDate'\n - 'modifiedDate'\n - 'createdBy'\n - 'createdBy.type'\n - 'createdBy.id'\n - 'description'\n - 'length' : only available for Table resources\n - 'size' : only available for File resources\n - 'hasThumbnail' : only available for File resources\n - 'hasIcon' : only available for App resources\n - 'battery' : only available for Device resources\n - 'lastSeenDate' : only available for Device resources\n\n\nThe available operators :\n\n - '==' : equal to ... This operator is compatible with any types of value.\n - '!=' : not equal to ... This operator is compatible with any types of value.\n - 'is' : is of type ... This operator is compatible with any types of value.\n - '>' : greater than ... This operator is only compatible with numbers or dates.\n - '<' : less than ... This operator is only compatible with numbers or dates.\n - '>=' : greater than or equal to ... This operator is only compatible with numbers.\n - '<=' : less than or equal to ... This operator is only compatible with numbers.\n - '^=' : start with ... This operator is only compatible with strings.\n - '$=' : end with ... This operator is only compatible with strings.\n - '*=' : contain ... This operator is only compatible with strings.\n - '~=' : contain the word ... This operator is only compatible with strings.\n \n \nValue types :\n\n - String : surround with single quotes ' or double quotes.\n - Number : either integer numbers or floating numbers.\n - Boolean : true or false.\n - Date : *RFC 3339* format,  e.g., *2015-03-24T12:00:00+02:00*.\n\nConstants :\n\n - 'me' : available only when using API key authentication method. It corresponds to the current Device or App.\n\n \nExamples:\n\nAll examples on this page show the unencoded q parameter, where name == 'foobar' is encoded as name+%3d%3d+%27foobar%27.\nClient libraries handle this encoding automatically.\n\nSearch for resources with the name \"foobar\"\n\n`name == 'foobar'`\n\nSearch for plain text files\n\n`mime == 'text/plain'`\n\nSearch for tables resources only\n\n`type == 'Table'`\n\nSearch for non empty files or tables\n\n`size > 0 OR length > 0`\n\nSearch for resources with the name starting with \"foo\"\n\n`name ^= 'foobar'`\n\nSearch for tables with the extension 'db' or files with the extension 'csv'\n\n`( type == 'Table' AND name $= '.db' ) OR ( type == 'File' AND name $= '.csv' )`\n\nSearch for resources modified after Mars 4th 2016\n\n`modifiedDate > '2016-03-04T00:00:00+01:00'`\n\nSearch for resources created by the current authenticated Device or App\n\n`createdBy > self`\n\n\n ",
+        "version": "0.1.0"
+    },
+    "host": "localhost",
+    "basePath": "/ething/api",
+    "schemes": [
+        "http"
+    ],
+    "consumes": [
+        "application/json"
+    ],
+    "produces": [
+        "application/json"
+    ],
+    "securityDefinitions": {
+        "api_key": {
+            "type": "apiKey",
+            "description": "authentication through an API key, used only by devices or apps.",
+            "name": "X-API-KEY",
+            "in": "header"
+        },
+        "api_key_query": {
+            "type": "apiKey",
+            "description": "authentication through an API key, used only by devices or apps.",
+            "name": "api_key",
+            "in": "query"
+        },
+        "basic_auth": {
+            "type": "basic",
+            "description": "basic authentication."
+        }
+    },
+    "security": [
+        {
+            "api_key": []
+        },
+        {
+            "api_key_query": []
+        },
+        {
+            "basic_auth": []
+        }
+    ],
+    "tags": [
+        {
+            "name": "auth",
+            "description": "Authentication endpoints."
+        },
+        {
+            "name": "resource",
+            "description": "Operations on resources no matter his type."
+        },
+        {
+            "name": "file",
+            "description": "Operations specific to File resource"
+        },
+        {
+            "name": "table",
+            "description": "Operations specific to Table resource"
+        },
+        {
+            "name": "app",
+            "description": "Operations specific to Application resource"
+        },
+        {
+            "name": "device",
+            "description": "Operations specific to Device resource"
+        },
+        {
+            "name": "settings",
+            "description": "Operations to manage settings"
+        }
+    ],
     "paths": {
-        "/auth/authorize": {
-            "post": {
-                "tags": [
-                    "auth"
-                ],
-                "security": [],
-                "summary": "initialize a new session",
-                "description": "The login endpoint is used to initialize a new session. A JSON web token will be generated. Use this token to make further API requests.",
-                "parameters": [
-                    {
-                        "name": "credentials",
-                        "in": "body",
-                        "description": "the credentials of the user to be authenticated.\n \n example :\n \n    {\n    \t\"user\":\"john\",\n    \t\"password\":\"secret\"\n    }\n \n ",
-                        "required": true,
+        "/auth": {
+            "get": {
+                "description": "Returns information about the current authentication. The properties \"device\" and \"app\" are only available with API key authentication.",
+                "responses": {
+                    "200": {
+                        "description": "authentication information",
                         "schema": {
                             "type": "object",
                             "properties": {
-                                "user": {
+                                "scope": {
                                     "type": "string",
-                                    "description": "the user name"
+                                    "description": "The space-delimited set of permissions. If the field is missing, it means \"full permissions\"."
                                 },
-                                "password": {
-                                    "type": "string",
-                                    "description": "the password"
+                                "device": {
+                                    "$ref": "#/definitions/Device"
+                                },
+                                "app": {
+                                    "$ref": "#/definitions/App"
                                 }
                             }
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Successfully authenticated. The answer contains a JSON web token.",
-                        "schema": {
-                            "type": "object",
-                            "properties": {
-                                "token": {
-                                    "type": "string",
-                                    "description": "a JSON web token."
-                                }
-                            }
-                        }
-                    },
-                    "401": {
-                        "description": "The authentication fails. Invalid credentials.",
-                        "schema": {
-                            "$ref": "#/definitions/Error"
-                        }
-                    }
-                }
-            }
-        },
-        "/auth/token": {
-            "get": {
-                "security": [
-                    {
-                        "access_token": []
-                    }
-                ],
-                "tags": [
-                    "auth"
-                ],
-                "summary": "Refresh a JSON web token",
-                "description": "Use this endpoint to refresh the expiration date of a token.\n \n If it returns an unauthorized error (401), it means that your token has expired.\n You need to login to get a new token (see /auth/authorize endpoint).\n \n If it returns with no error, the answer contains the token with the expiration date renewed.",
-                "responses": {
-                    "200": {
-                        "description": "Your token is still valid.",
-                        "schema": {
-                            "type": "object",
-                            "properties": {
-                                "token": {
-                                    "type": "string",
-                                    "description": "a JSON web token."
-                                }
-                            }
-                        }
-                    },
-                    "401": {
-                        "description": "Your token has expired.",
-                        "schema": {
-                            "$ref": "#/definitions/Error"
-                        }
-                    }
-                }
-            }
-        },
-        "/profile": {
-            "get": {
-                "tags": [
-                    "user"
-                ],
-                "security": [
-                    {
-                        "access_token": []
-                    }
-                ],
-                "description": "Returns the profile of the authenticated user.",
-                "responses": {
-                    "200": {
-                        "description": "The user profile",
-                        "schema": {
-                            "$ref": "#/definitions/Profile"
                         }
                     }
                 },
-                "summary": "Returns the profile of the authenticated user."
+                "summary": "Returns information about the current authentication."
+            }
+        },
+        "/settings": {
+            "get": {
+                "tags": [
+                    "settings"
+                ],
+                "description": "Returns the settings",
+                "responses": {
+                    "200": {
+                        "description": "The settings",
+                        "schema": {
+                            "$ref": "#/definitions/Settings"
+                        }
+                    }
+                },
+                "summary": "Returns the settings"
             },
             "patch": {
                 "tags": [
-                    "user"
+                    "settings"
                 ],
-                "security": [
-                    {
-                        "access_token": []
-                    }
-                ],
-                "description": "update information about the authenticated user. Use this endpoint if you want to change your mail or any other information about your profile (except for your username).",
+                "description": "update your settings.",
                 "parameters": [
                     {
                         "name": "data",
@@ -124,15 +130,15 @@
                         "description": "the attributes to modify",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/Profile"
+                            "$ref": "#/definitions/Settings"
                         }
                     }
                 ],
                 "responses": {
                     "200": {
-                        "description": "user successfully updated",
+                        "description": "settings successfully updated",
                         "schema": {
-                            "$ref": "#/definitions/Profile"
+                            "$ref": "#/definitions/Settings"
                         }
                     },
                     "400": {
@@ -142,7 +148,40 @@
                         }
                     }
                 },
-                "summary": "update information about the authenticated user."
+                "summary": "update your settings."
+            }
+        },
+        "/usage": {
+            "get": {
+                "tags": [
+                    "resource"
+                ],
+                "description": "Returns information about the resource usage",
+                "responses": {
+                    "200": {
+                        "description": "Some usage information",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "used": {
+                                    "type": "number",
+                                    "description": "The space used in bytes"
+                                },
+                                "quota_size": {
+                                    "type": "number",
+                                    "description": "The maximum space authorized in bytes"
+                                }
+                            }
+                        },
+                        "examples": {
+                            "application/json": {
+                                "quota_size": 100000000,
+                                "used": 697699
+                            }
+                        }
+                    }
+                },
+                "summary": "Returns information about the resource usage"
             }
         },
         "/resources": {
@@ -150,12 +189,7 @@
                 "tags": [
                     "resource"
                 ],
-                "security": [
-                    {
-                        "access_token": []
-                    }
-                ],
-                "description": "Lists the user's resources",
+                "description": "Lists the resources.\n\n#### cURL example\n\n```bash\ncurl -H 'X-API-KEY: <YOUR_API_KEY>' http://localhost/ething/api/resources\n```",
                 "parameters": [
                     {
                         "name": "q",
@@ -199,45 +233,7 @@
                         }
                     }
                 },
-                "summary": "Lists the user's resources"
-            }
-        },
-        "/usage": {
-            "get": {
-                "tags": [
-                    "resource"
-                ],
-                "security": [
-                    {
-                        "access_token": []
-                    }
-                ],
-                "description": "Returns information about the resource usage",
-                "responses": {
-                    "200": {
-                        "description": "Some usage information",
-                        "schema": {
-                            "type": "object",
-                            "properties": {
-                                "used": {
-                                    "type": "number",
-                                    "description": "The space used in bytes"
-                                },
-                                "quota_size": {
-                                    "type": "number",
-                                    "description": "The maximum space authorized in bytes"
-                                }
-                            }
-                        },
-                        "examples": {
-                            "application/json": {
-                                "quota_size": 100000000,
-                                "used": 697699
-                            }
-                        }
-                    }
-                },
-                "summary": "Returns information about the resource usage"
+                "summary": "Lists the resources."
             }
         },
         "/resources/{id}": {
@@ -245,18 +241,13 @@
                 "tags": [
                     "resource"
                 ],
-                "security": [
-                    {
-                        "access_token": []
-                    }
-                ],
                 "summary": "Gets the meta-data of a resource.",
                 "description": "Returns the meta-data of a resource in JSON.",
                 "parameters": [
                     {
                         "name": "id",
                         "in": "path",
-                        "description": "id of the resource",
+                        "description": "id of the resource. Devices or Apps using the api key authentication may use the word 'me' to replace their id.",
                         "required": true,
                         "type": "string"
                     }
@@ -299,17 +290,12 @@
                 "tags": [
                     "resource"
                 ],
-                "security": [
-                    {
-                        "access_token": []
-                    }
-                ],
                 "description": "deletes a resource",
                 "parameters": [
                     {
                         "name": "id",
                         "in": "path",
-                        "description": "id of the resource",
+                        "description": "id of the resource. Devices or Apps using the api key authentication may use the word 'me' to replace their id.",
                         "required": true,
                         "type": "string"
                     }
@@ -325,17 +311,12 @@
                 "tags": [
                     "resource"
                 ],
-                "security": [
-                    {
-                        "access_token": []
-                    }
-                ],
-                "description": "update a resource. Only properties which are not readonly can be modified.\n \nRename a resource :\n \n    {\n       \"name\":\"myFileRenamed.txt\"\n    }\n\nSet a location for a resource :\n \n    {\n       \"loc\":{\n\t      \"latitude\": 5.12,\n\t\t  \"longitude\": -45.78\n\t   }\n    }\n\nClear a description :\n \n    {\n       \"description\":null\n    }",
+                "description": "update a resource. Only properties which are not readonly can be modified.\n \nRename a resource :\n\n```json\n{\n   \"name\":\"myFileRenamed.txt\"\n}\n```\n\nSet a location for a resource :\n\n```json\n{\n   \"location\":{\n      \"latitude\": 5.12,\n\t  \"longitude\": -45.78\n   }\n}\n```\n\nClear a description :\n\n```json\n{\n   \"description\":null\n}\n```",
                 "parameters": [
                     {
                         "name": "id",
                         "in": "path",
-                        "description": "id of the resource",
+                        "description": "id of the resource. Devices or Apps using the api key authentication may use the word 'me' to replace their id.",
                         "required": true,
                         "type": "string"
                     },
@@ -366,61 +347,17 @@
                 "summary": "update a resource."
             }
         },
-        "/file": {
-            "get": {
-                "tags": [
-                    "file"
-                ],
-                "security": [
-                    {
-                        "access_token": []
-                    }
-                ],
-                "description": "Lists the user's files",
-                "parameters": [
-                    {
-                        "name": "limit",
-                        "in": "query",
-                        "description": "Limits the number of files returned",
-                        "required": false,
-                        "type": "integer"
-                    },
-                    {
-                        "name": "skip",
-                        "in": "query",
-                        "description": "Skips a number of files",
-                        "required": false,
-                        "type": "integer"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "A list of files",
-                        "schema": {
-                            "type": "array",
-                            "items": {
-                                "$ref": "#/definitions/File"
-                            }
-                        }
-                    }
-                },
-                "summary": "Lists the user's files"
-            },
+        "/files": {
             "post": {
                 "tags": [
                     "file"
                 ],
-                "security": [
-                    {
-                        "access_token": []
-                    }
-                ],
-                "description": "Creates a new file",
+                "description": "Creates a new file.\n\nThere are 2 ways to pass directly the content of the file on the same request :\n\n - pass the content as a base-64 encoded ASCII string through the key 'content' of the metadata object.\n \n example:\n\n```json\n{\n   \"name\": \"myfile.txt\",\n   \"content\": \"SGVsbG8gd29ybGQgIQ==\" // 'Hello world !' in base-64\n}\n```\n \n - multipart/related request: transfers the content along with metadata that describes it. *The metadata part must come first*.\n \n example:\n \n```\nPOST /ething/api/files HTTP/1.1\nHost: <YOUR_HOST>\nContent-Type: multipart/related; boundary=foo_bar_baz\n\n--foo_bar_baz\nContent-Type: application/json; charset=UTF-8\n\n{\n  \"name\": \"image.jpg\"\n}\n\n--foo_bar_baz\nContent-Type: image/jpeg\n\n<JPEG DATA>\n--foo_bar_baz--\n```\n\n#### cURL example\n\nThe next command will create a new file 'myfile.txt'.\n\n```bash\ncurl\n\t-H 'X-API-KEY: <YOUR_API_KEY>'\n\t-H \"Content-Type: application/json\"\n\t-X POST\n\t-d '{\"name\":\"myfile.txt\"}'\n\thttp://localhost/ething/api/files\n```\n\nIf the command was successful, a response containing the meta data of the created file will be given back.\nYou will find in it the id of that file.\nThis id is a unique string identifying this file and is necessary to make any operation on it.\n\n```json\n{\n  \"id\":\"73c66-4\",\n  \"name\":\"myfile.txt\",\n  \"data\":null,\n  \"description\":null,\n  \"expireAfter\":null,\n  \"type\":\"File\",\n  \"createdBy\":{\n   \"id\":\"56a7B-5\",\n   \"type\":\"Device\"\n  },\n  \"createdDate\":\"2016-01-27T07:46:43+00:00\",\n  \"modifiedDate\":\"2016-02-13T10:34:31+00:00\",\n  \"mime\":\"text/plain\",\n  \"size\":0,\n  \"location\":null,\n  \"hasThumbnail\":false,\n  \"isText\": true\n}\n```",
                 "parameters": [
                     {
                         "name": "metadata",
                         "in": "body",
-                        "description": "\n the metadata of the file to be created\n \n example:\n \n    {\n       \"name\": \"myfile.txt\",\n \t   \"description\": \"an optional description\"\n    }\n \n There are 2 ways to pass directly the content of the file on the same request :\n \n  - pass the content as a base-64 encoded ASCII string through the key 'content' of the metadata object.\n  \n  example:\n \n    {\n       \"name\": \"myfile.txt\",\n \t   \"content\": \"SGVsbG8gd29ybGQgIQ==\" // 'Hello world !' in base-64\n    }\n  \n  - multipart/related request: transfers the content along with metadata that describes it. *The metadata part must come first*.\n  \n  example:\n  \n    POST /ething/api/file HTTP/1.1\n    Host: <YOUR_HOST>\n    Content-Type: multipart/related; boundary=foo_bar_baz\n    \n    --foo_bar_baz\n    Content-Type: application/json; charset=UTF-8\n    \n    {\n      \"name\": \"image.jpg\"\n    }\n    \n    --foo_bar_baz\n    Content-Type: image/jpeg\n    \n    <JPEG DATA>\n    --foo_bar_baz--\n \n ",
+                        "description": "\nthe metadata of the file to be created\n\nexample:\n\n```json\n{\n   \"name\": \"myfile.txt\",\n   \"description\": \"an optional description\"\n}\n```\n ",
                         "required": true,
                         "schema": {
                             "$ref": "#/definitions/File"
@@ -439,10 +376,6 @@
                                 "data": null,
                                 "description": null,
                                 "expireAfter": null,
-                                "user": {
-                                    "id": "56731_a",
-                                    "name": "john"
-                                },
                                 "type": "File",
                                 "createdBy": {
                                     "id": "56a7B-5",
@@ -460,20 +393,15 @@
                         }
                     }
                 },
-                "summary": "Creates a new file"
+                "summary": "Creates a new file."
             }
         },
-        "/file/{id}": {
+        "/files/{id}": {
             "get": {
                 "tags": [
                     "file"
                 ],
-                "security": [
-                    {
-                        "access_token": []
-                    }
-                ],
-                "description": "Retrieves the content of a file",
+                "description": "Retrieves the content of a file.\n\n#### cURL example\n\nThe next command show you how to read the content of a file identified by its id.\n\n```bash\ncurl -H 'X-API-KEY: <YOUR_API_KEY>' http://localhost/ething/api/files/<FILE_ID>\n```",
                 "produces": [
                     "*/*"
                 ],
@@ -494,18 +422,13 @@
                         }
                     }
                 },
-                "summary": "Retrieves the content of a file"
+                "summary": "Retrieves the content of a file."
             },
             "put": {
                 "tags": [
                     "file"
                 ],
-                "security": [
-                    {
-                        "access_token": []
-                    }
-                ],
-                "description": "Upload the content of a file",
+                "description": "Upload the content of a file.\n\n#### cURL example\n\nThe next command show you how to send the content of the local file 'data.txt' into a file.\n\n```bash\ncurl\n\t-H 'X-API-KEY: <YOUR_API_KEY>'\n\t-X PUT\n\t--data @data.txt\n\thttp://localhost/ething/api/files/<FILE_ID>\n```",
                 "consumes": [
                     "*/*"
                 ],
@@ -528,7 +451,7 @@
                     {
                         "name": "content",
                         "in": "body",
-                        "description": "The new content. Could be of any type.\n \n cURL example, upload the content of the file 'data.txt' :\n \n\tcurl -X PUT --data @data.txt http://localhost/ething/api/file/<FILE_ID>\n \n ",
+                        "description": "The new content. Could be of any type.",
                         "required": true,
                         "schema": {
                             "type": "string",
@@ -544,18 +467,13 @@
                         }
                     }
                 },
-                "summary": "Upload the content of a file"
+                "summary": "Upload the content of a file."
             }
         },
-        "/file/{id}/thumbnail": {
+        "/files/{id}/thumbnail": {
             "get": {
                 "tags": [
                     "file"
-                ],
-                "security": [
-                    {
-                        "access_token": []
-                    }
                 ],
                 "description": "Retrieves the thumbnail of a file. Only image can have a thumbnail. The thumbnail is automatically generated when the content is uploaded.",
                 "parameters": [
@@ -582,61 +500,17 @@
                 "summary": "Retrieves the thumbnail of a file."
             }
         },
-        "/table": {
-            "get": {
-                "tags": [
-                    "table"
-                ],
-                "security": [
-                    {
-                        "access_token": []
-                    }
-                ],
-                "description": "Lists the user's tables",
-                "parameters": [
-                    {
-                        "name": "limit",
-                        "in": "query",
-                        "description": "Limits the number of tables returned",
-                        "required": false,
-                        "type": "integer"
-                    },
-                    {
-                        "name": "skip",
-                        "in": "query",
-                        "description": "Skips a number of tables",
-                        "required": false,
-                        "type": "integer"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "A list of tables",
-                        "schema": {
-                            "type": "array",
-                            "items": {
-                                "$ref": "#/definitions/Table"
-                            }
-                        }
-                    }
-                },
-                "summary": "Lists the user's tables"
-            },
+        "/tables": {
             "post": {
                 "tags": [
                     "table"
                 ],
-                "security": [
-                    {
-                        "access_token": []
-                    }
-                ],
-                "description": "Creates a new table",
+                "description": "Creates a new table.\n\nYou may want to pass directly the content of the table in the same request. To do so, just pass the data through the key 'content' of the metadata object;\n \nexample:\n\n```json\n{\n   \"name\": \"matable.db\",\n   \"content\": [\n\t\t{\n\t\t\t\"temperature\": 12.5,\n\t\t\t\"pressure\": 101325\n\t\t}\n   ]\n}\n```\n\n#### cURL example\n\nThe next command will create a new table 'mytable.db'.\n\n```bash\ncurl\n\t-H 'X-API-KEY: <YOUR_API_KEY>'\n\t-H \"Content-Type: application/json\"\n\t-X POST\n\t-d '{\"name\":\"mytable.db\"}'\n\thttp://localhost/ething/api/tables\n```\n\nIf the command was successful, a response containing the meta data of the created table will be given back.\nYou will find in it the id of that table.\nThis id is a unique string identifying this table and is necessary to make any operation on it.\n\n```json\n{\n  \"id\":\"56_df0f\",\n  \"name\":\"mytable.db\",\n  \"data\":null,\n  \"description\":null,\n  \"maxLength\":null,\n  \"expireAfter\":null,\n  \"type\":\"Table\",\n  \"createdBy\":null,\n  \"createdDate\":\"2016-02-12T14:49:30+00:00\",\n  \"modifiedDate\":\"2016-02-15T13:03:20+00:00\",\n  \"length\":421,\n  \"keys\":{\n\t \"temp1\":421,\n\t \"temp2\":421\n  },\n  \"location\":null\n}\n```",
                 "parameters": [
                     {
                         "name": "metadata",
                         "in": "body",
-                        "description": "the metadata of the table to be created\n \n example:\n \n    {\n    \t\"name\":\"mytable.db\"\n    }\n \n You may want to pass directly the content of the table in the same request. To do so, just pass the data through the key 'content' of the metadata object;\n  \n  example:\n \n    {\n       \"name\": \"matable.db\",\n \t   \"content\": [\n\t\t\t{\n\t\t\t\t\"temperature\": 12.5,\n\t\t\t\t\"pressure\": 101325\n\t\t\t}\n\t   ]\n    }\n \n ",
+                        "description": "\n\nThe metadata of the table to be created.\n\nexample:\n\n```json\n{\n\t\"name\":\"mytable.db\"\n}\n```\n ",
                         "required": true,
                         "schema": {
                             "$ref": "#/definitions/Table"
@@ -657,10 +531,6 @@
                                 "description": null,
                                 "maxLength": null,
                                 "expireAfter": null,
-                                "user": {
-                                    "id": "56731_a",
-                                    "name": "John"
-                                },
                                 "type": "Table",
                                 "createdBy": {
                                     "id": "56a7B-5",
@@ -668,7 +538,6 @@
                                 },
                                 "createdDate": "2016-02-12T14:49:30+00:00",
                                 "modifiedDate": "2016-02-15T13:03:20+00:00",
-                                "mime": "x-table/x-table",
                                 "rules": [],
                                 "length": 421,
                                 "keys": {
@@ -680,20 +549,15 @@
                         }
                     }
                 },
-                "summary": "Creates a new table"
+                "summary": "Creates a new table."
             }
         },
-        "/table/{id}": {
+        "/tables/{id}": {
             "get": {
                 "tags": [
                     "table"
                 ],
-                "security": [
-                    {
-                        "access_token": []
-                    }
-                ],
-                "description": "Retrieves the content of a table",
+                "description": "Retrieves the content of a table.\n\n#### cURL examples\n\n```bash\n# get all the data of a table :\ncurl -H 'X-API-KEY: <YOUR_API_KEY>' http://localhost/ething/api/tables/<TABLE_ID>\n\n# only the first 20 rows :\ncurl -H 'X-API-KEY: <YOUR_API_KEY>' http://localhost/ething/api/tables/<TABLE_ID>?start=0&length=20\n\n# only the last 20 rows :\ncurl -H 'X-API-KEY: <YOUR_API_KEY>' http://localhost/ething/api/tables/<TABLE_ID>?start=-20\n\n# only the last 10 rows sorted by the field \"temperature\" in ascending order\n# (put a minus before the name of the field if you want to sort in descending order)\ncurl -H 'X-API-KEY: <YOUR_API_KEY>' http://localhost/ething/api/tables/<TABLE_ID>?start=-10&sort=temperature\n```",
                 "produces": [
                     "application/json",
                     "text/plain"
@@ -760,7 +624,10 @@
                         "type": "string",
                         "enum": [
                             "RFC3339",
-                            "TIMESTAMP"
+                            "TIMESTAMP",
+                            "TIMESTAMP_MS",
+                            "ISO8601",
+                            "RSS"
                         ]
                     }
                 ],
@@ -796,18 +663,16 @@
                         }
                     }
                 },
-                "summary": "Retrieves the content of a table"
+                "summary": "Retrieves the content of a table."
             },
             "put": {
                 "tags": [
                     "table"
                 ],
-                "security": [
-                    {
-                        "access_token": []
-                    }
-                ],
                 "description": "Set the content of a table. The new data will erase the previous one.",
+                "consumes": [
+                    "application/json"
+                ],
                 "parameters": [
                     {
                         "name": "id",
@@ -841,7 +706,7 @@
                     {
                         "name": "content",
                         "in": "body",
-                        "description": "The content to be inserted as an array of object.\n \nThe data must be sent in a JSON formatted object :\n\n    [{\n    \t\"<KEY>\":<VALUE>\n    }]\n\nexample:\n    [\n\t\t{\n\t\t  \"date\": \"2016-02-06T15:03:07+01:00\",\n\t\t  \"temperature\": 12.5,\n\t\t  \"pressure\": 101325\n\t\t},\n\t\t{\n\t\t  \"date\": \"2016-02-06T16:03:07+01:00\",\n\t\t  \"temperature\": 13.5,\n\t\t  \"pressure\": 101212\n\t\t}\n    ]\n \n If the 'date' field is not present, the current date will be set automatically.\n If an 'id' field is present, it will be automatically be resetted to a new value.\n \n ",
+                        "description": "The content to be inserted as an array of object.\n \nThe data must be sent in a JSON formatted object :\n\n```json\n[{\n\t\"<KEY>\":<VALUE>\n}]\n```\n\nexample:\n\n```json\n[\n\t{\n\t  \"date\": \"2016-02-06T15:03:07+01:00\",\n\t  \"temperature\": 12.5,\n\t  \"pressure\": 101325\n\t},\n\t{\n\t  \"date\": \"2016-02-06T16:03:07+01:00\",\n\t  \"temperature\": 13.5,\n\t  \"pressure\": 101212\n\t}\n]\n```\n\nIf the 'date' field is not present, the current date will be set automatically.\nIf an 'id' field is present, it will be automatically be resetted to a new value.\n \n ",
                         "required": true,
                         "schema": {
                             "type": "array",
@@ -864,11 +729,6 @@
             "post": {
                 "tags": [
                     "table"
-                ],
-                "security": [
-                    {
-                        "access_token": []
-                    }
                 ],
                 "description": "Insert a new record in a table",
                 "parameters": [
@@ -896,7 +756,7 @@
                     {
                         "name": "record",
                         "in": "body",
-                        "description": "The record to be inserted.\n \nThe data must be sent in a JSON formatted object :\n\n    {\n    \t\"<KEY>\":<VALUE>\n    }\n\ncURL example :\n\n    curl\n    \t-H \"Content-Type: application/json\"\n    \t-X POST\n    \t-d '{\"temperature\":15.2, \"comment\":\"outdoor\"}'\n    \thttp://localhost/ething/api/table/<TABLE_ID>\n \n ",
+                        "description": "The record to be inserted.\n \nThe data must be sent in a JSON formatted object :\n\n```json\n{\n\t\"<KEY>\":<VALUE>\n}\n```\n\ncURL example :\n\n```bash\ncurl\n\t-H 'X-API-KEY: <YOUR_API_KEY>'\n\t-H \"Content-Type: application/json\"\n\t-X POST\n\t-d '{\"temperature\":15.2, \"comment\":\"outdoor\"}'\n\thttp://localhost/ething/api/tables/<TABLE_ID>\n```\n\n \n ",
                         "required": true,
                         "schema": {
                             "type": "object"
@@ -914,15 +774,10 @@
                 "summary": "Insert a new record in a table"
             }
         },
-        "/table/{id}/remove": {
+        "/tables/{id}/remove": {
             "post": {
                 "tags": [
                     "table"
-                ],
-                "security": [
-                    {
-                        "access_token": []
-                    }
                 ],
                 "description": "Remove one or more records in a table",
                 "parameters": [
@@ -957,61 +812,17 @@
                 "summary": "Remove one or more records in a table"
             }
         },
-        "/app": {
-            "get": {
-                "tags": [
-                    "app"
-                ],
-                "security": [
-                    {
-                        "access_token": []
-                    }
-                ],
-                "description": "Lists the user's applications",
-                "parameters": [
-                    {
-                        "name": "limit",
-                        "in": "query",
-                        "description": "Limits the number of applications returned",
-                        "required": false,
-                        "type": "integer"
-                    },
-                    {
-                        "name": "skip",
-                        "in": "query",
-                        "description": "Skips a number of applications",
-                        "required": false,
-                        "type": "integer"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "A list of applications",
-                        "schema": {
-                            "type": "array",
-                            "items": {
-                                "$ref": "#/definitions/App"
-                            }
-                        }
-                    }
-                },
-                "summary": "Lists the user's applications"
-            },
+        "/apps": {
             "post": {
                 "tags": [
                     "app"
                 ],
-                "security": [
-                    {
-                        "access_token": []
-                    }
-                ],
-                "description": "Creates a new application",
+                "description": "Creates a new application.\n\nAn application consists of a single HTML page. Use the Javascript SDK to easily build an application.\n\n example:\n \n```html\n<!DOCTYPE html>\n<html>\n\n  <head>\n\n    <!-- CORE -->\n    <script src=\"__API_URL__/../lib/core.js\"></script>\n\n  </head>\n\n  <body>\n\n    <!-- your content goes here -->\n\n    <!-- APP -->\n    <script type=\"text/javascript\">\n      var main = function() {\n\t\tvar app = EThing.auth.getApp();\n\n        var textnode = document.createTextNode('application : ' + app.name());\n        document.body.appendChild(textnode);\n\n      };\n\n      EThing.initialize({\n        apiUrl: '__API_URL__',\n        apiKey: '__API_KEY__'\n      }, main || null, function(error) {\n        // on error\n        alert(error.message);\n      });\n      \n    </script>\n\n  </body>\n</html>\n```\n\n#### Preprocessor definitions\n\n\nThe following string are automatically replaced in the HTML code :\n\n| Definition     | Value                                                                |\n|----------------|----------------------------------------------------------------------|\n| __API_KEY__    | the API key of this application                                      |\n| __ID__         | the ID of this application                                           |\n| __NAME__       | the name of this application                                         |\n| __API_URL__    | the url of this API                                                  |\n\n\n\n\n\nThere are 2 ways to pass directly the code and the icon data of the application on the same request :\n\n - pass the code or/and the icon data as a base-64 encoded ASCII string through the key 'content' and 'icon' respectively of the metadata object.\n \n example:\n\n```json\n{\n   \"name\": \"myapp\",\n   \"content\": \"SGVsb...GQgIQ==\", // your code in base-64\n   \"icon\": \"bXkga...biBkYXRh\" // your icon data in base-64\n}\n```\n\n - multipart/related request: transfers the code and/or the icon binary data along with metadata. The order of the different part does not matter. The code part must have the Content-Type header set to 'text/html' or 'text/plain'.\n   The icon part must have the Content-Type header set to a compatible image MIME type.\n \n example:\n \n```\nPOST /ething/api/apps HTTP/1.1\nHost: <YOUR_HOST>\nContent-Type: multipart/related; boundary=foo_bar_baz\n\n--foo_bar_baz\nContent-Type: application/json; charset=UTF-8\n\n{\n  \"name\": \"myapp\"\n}\n\n--foo_bar_baz\nContent-Type: image/jpeg\n\n<JPEG DATA>\n\n--foo_bar_baz\nContent-Type: text/html\n\n<!doctype html>\n<html lang=\"en\">\n<head>\n  <meta charset=\"utf-8\">\n  <title>myapp</title>\n</head>\n<body>\n  Hello World !\n</body>\n</html>\n--foo_bar_baz--\n```",
                 "parameters": [
                     {
                         "name": "metadata",
                         "in": "body",
-                        "description": "the metadata of the application to be created\n \n There are 2 ways to pass directly the code and the icon data of the application on the same request :\n \n  - pass the code or/and the icon data as a base-64 encoded ASCII string through the key 'content' and 'icon' respectively of the metadata object.\n  \n  example:\n \n    {\n       \"name\": \"myapp\",\n \t   \"content\": \"SGVsb...GQgIQ==\", // your code in base-64\n\t   \"icon\": \"bXkga...biBkYXRh\" // your icon data in base-64\n    }\n  \n  - multipart/related request: transfers the code and/or the icon binary data along with metadata. The order of the different part does not matter. The code part must have the Content-Type header set to 'text/html' or 'text/plain'.\n    The icon part must have the Content-Type header set to a compatible image MIME type.\n  \n  example:\n  \n    POST /ething/api/app HTTP/1.1\n    Host: <YOUR_HOST>\n    Content-Type: multipart/related; boundary=foo_bar_baz\n    \n    --foo_bar_baz\n    Content-Type: application/json; charset=UTF-8\n    \n    {\n      \"name\": \"myapp\"\n    }\n    \n    --foo_bar_baz\n    Content-Type: image/jpeg\n    \n    <JPEG DATA>\n\t\n\t--foo_bar_baz\n    Content-Type: text/html\n    \n    <!doctype html>\n    <html lang=\"en\">\n    <head>\n      <meta charset=\"utf-8\">\n      <title>myapp</title>\n    </head>\n    <body>\n      Hello World !\n    </body>\n    </html>\n    --foo_bar_baz--\n \n ",
+                        "description": "The metadata of the application to be created.",
                         "required": true,
                         "schema": {
                             "$ref": "#/definitions/App"
@@ -1026,27 +837,29 @@
                         }
                     }
                 },
-                "summary": "Creates a new application"
+                "summary": "Creates a new application."
             }
         },
-        "/app/{id}": {
+        "/apps/{id}": {
             "get": {
                 "tags": [
                     "app"
                 ],
-                "security": [
-                    {
-                        "access_token": []
-                    }
-                ],
-                "description": "Retrieves the script of an application",
+                "description": "Retrieves the script of an application.",
                 "parameters": [
                     {
                         "name": "id",
                         "in": "path",
-                        "description": "id of the resource",
+                        "description": "id of the resource. Devices or Apps using the api key authentication may use the word 'me' to replace their id.",
                         "required": true,
                         "type": "string"
+                    },
+                    {
+                        "name": "exec",
+                        "in": "query",
+                        "description": "Set this parameter to '1' to get the HTML code ready to be executed in a browser (i.e. content-type set to 'text/html' and the preprocessor definitions set).",
+                        "required": false,
+                        "type": "integer"
                     }
                 ],
                 "produces": [
@@ -1060,23 +873,18 @@
                         }
                     }
                 },
-                "summary": "Retrieves the script of an application"
+                "summary": "Retrieves the script of an application."
             },
             "put": {
                 "tags": [
                     "app"
-                ],
-                "security": [
-                    {
-                        "access_token": []
-                    }
                 ],
                 "description": "Set the script for this application. The script must be a single HTML page.",
                 "parameters": [
                     {
                         "name": "id",
                         "in": "path",
-                        "description": "id of the resource",
+                        "description": "id of the resource. Devices or Apps using the api key authentication may use the word 'me' to replace their id.",
                         "required": true,
                         "type": "string"
                     },
@@ -1106,22 +914,17 @@
                 "summary": "Set the script for this application."
             }
         },
-        "/app/{id}/icon": {
+        "/apps/{id}/icon": {
             "get": {
                 "tags": [
                     "app"
-                ],
-                "security": [
-                    {
-                        "access_token": []
-                    }
                 ],
                 "description": "Retrieves the icon of an application if there is one defined.",
                 "parameters": [
                     {
                         "name": "id",
                         "in": "path",
-                        "description": "id of the resource",
+                        "description": "id of the resource. Devices or Apps using the api key authentication may use the word 'me' to replace their id.",
                         "required": true,
                         "type": "string"
                     }
@@ -1141,61 +944,17 @@
                 "summary": "Retrieves the icon of an application if there is one defined."
             }
         },
-        "/device": {
-            "get": {
-                "tags": [
-                    "device"
-                ],
-                "security": [
-                    {
-                        "access_token": []
-                    }
-                ],
-                "description": "Lists the user's devices",
-                "parameters": [
-                    {
-                        "name": "limit",
-                        "in": "query",
-                        "description": "Limits the number of devices returned",
-                        "required": false,
-                        "type": "integer"
-                    },
-                    {
-                        "name": "skip",
-                        "in": "query",
-                        "description": "Skips a number of devices",
-                        "required": false,
-                        "type": "integer"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "A list of devices",
-                        "schema": {
-                            "type": "array",
-                            "items": {
-                                "$ref": "#/definitions/Device"
-                            }
-                        }
-                    }
-                },
-                "summary": "Lists the user's devices"
-            },
+        "/devices": {
             "post": {
                 "tags": [
                     "device"
                 ],
-                "security": [
-                    {
-                        "access_token": []
-                    }
-                ],
-                "description": "Creates a new device",
+                "description": "Creates a new device.",
                 "parameters": [
                     {
                         "name": "metadata",
                         "in": "body",
-                        "description": "\n the metadata of the device to be created\n \n example:\n \n    {\n       \"name\": \"mydevice.txt\",\n\t   \"loc\": \"Toulouse, France\"\n    }\n",
+                        "description": "\nThe metadata of the device to be created.\n\nexample:\n\n```json\n{\n   \"name\": \"mydevice.txt\",\n   \"location\":{\n      \"latitude\": 5.12,\n\t  \"longitude\": -45.78\n   },\n   \"scope\": \"resource:read notification\",\n}\n```\n",
                         "required": true,
                         "schema": {
                             "$ref": "#/definitions/Device"
@@ -1206,62 +965,163 @@
                     "200": {
                         "description": "The device was successfully created",
                         "schema": {
-                            "$ref": "#/definitions/Device"
+                            "allOf": [
+                                {
+                                    "type": "object",
+                                    "required": [
+                                        "type"
+                                    ],
+                                    "properties": {
+                                        "type": {
+                                            "type": "string",
+                                            "description": "The type of the device to create (eg: 'Http' or 'MySensorsEthernetGateway')."
+                                        }
+                                    }
+                                },
+                                {
+                                    "$ref": "#/definitions/Device"
+                                }
+                            ]
                         }
                     }
                 },
-                "summary": "Creates a new device"
+                "summary": "Creates a new device."
             }
         },
-        "/device/{id}/apikey": {
+        "/devices/{id}/api": {
             "get": {
                 "tags": [
                     "device"
                 ],
-                "security": [
-                    {
-                        "access_token": []
-                    }
-                ],
-                "description": "Gets the API key of a device",
+                "description": "Retrieves an object describing the operations available for this device.",
                 "parameters": [
                     {
                         "name": "id",
                         "in": "path",
-                        "description": "id of the resource",
+                        "description": "id of the resource. Devices or Apps using the api key authentication may use the word 'me' to replace their id.",
                         "required": true,
                         "type": "string"
                     }
                 ],
                 "responses": {
                     "200": {
-                        "description": "The API key of the current device",
-                        "schema": {
-                            "type": "object",
-                            "properties": {
-                                "key": {
-                                    "type": "string",
-                                    "description": "key"
-                                }
-                            }
-                        }
+                        "description": "object describing the operations available for this device."
                     }
                 },
-                "summary": "Gets the API key of a device"
+                "summary": "Retrieves an object describing the operations available for this device."
             }
         },
-        "/device/{id}/request/{path}": {
+        "/devices/{id}/api/{operationId}": {
             "get": {
                 "tags": [
                     "device"
                 ],
-                "security": [
+                "description": "Retrieves an object describing the operation identified by operationId.",
+                "parameters": [
                     {
-                        "access_token": []
+                        "name": "id",
+                        "in": "path",
+                        "description": "id of the resource. Devices or Apps using the api key authentication may use the word 'me' to replace their id.",
+                        "required": true,
+                        "type": "string"
+                    },
+                    {
+                        "name": "operationId",
+                        "in": "path",
+                        "description": "id of the operation.",
+                        "required": true,
+                        "type": "string"
                     }
                 ],
+                "responses": {
+                    "200": {
+                        "description": "object describing the operation."
+                    }
+                },
+                "summary": "Retrieves an object describing the operation identified by operationId."
+            }
+        },
+        "/devices/{id}/call/{operationId}": {
+            "get": {
+                "tags": [
+                    "device"
+                ],
+                "description": "Execute an operation identified by operationId. The parameters must be passed in the query string.",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "description": "id of the resource. Devices or Apps using the api key authentication may use the word 'me' to replace their id.",
+                        "required": true,
+                        "type": "string"
+                    },
+                    {
+                        "name": "operationId",
+                        "in": "path",
+                        "description": "id of the operation.",
+                        "required": true,
+                        "type": "string"
+                    },
+                    {
+                        "name": "paramData",
+                        "in": "query",
+                        "description": "required parameters for this operation. Must be json encoded.",
+                        "required": false,
+                        "type": "string"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "The response of the device."
+                    }
+                },
+                "summary": "Execute an operation identified by operationId."
+            },
+            "post": {
+                "tags": [
+                    "device"
+                ],
+                "description": "Execute an operation identified by operationId. The parameters can either be passed in the query string or in the body as a JSON object or a x-www-form-urlencoded string.",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "description": "id of the resource. Devices or Apps using the api key authentication may use the word 'me' to replace their id.",
+                        "required": true,
+                        "type": "string"
+                    },
+                    {
+                        "name": "operationId",
+                        "in": "path",
+                        "description": "id of the operation.",
+                        "required": true,
+                        "type": "string"
+                    },
+                    {
+                        "name": "data",
+                        "in": "body",
+                        "description": "required parameters for this operation.",
+                        "required": false,
+                        "schema": {
+                            "type": "object"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "The response of the device."
+                    }
+                },
+                "summary": "Execute an operation identified by operationId."
+            }
+        },
+        "/devices/{id}/request/{path}": {
+            "get": {
+                "tags": [
+                    "device"
+                ],
                 "summary": "send a GET request to a device.",
-                "description": "Forward this HTTP request to a device with the specified path.",
+                "description": "Only available for HTTP device. Forward this HTTP request to a device with the specified path.",
                 "responses": {
                     "default": {
                         "description": "The answer from the device"
@@ -1272,13 +1132,8 @@
                 "tags": [
                     "device"
                 ],
-                "security": [
-                    {
-                        "access_token": []
-                    }
-                ],
                 "summary": "send a POST request to a device.",
-                "description": "Forward this HTTP request to a device with the specified path.",
+                "description": "Only available for HTTP device. Forward this HTTP request to a device with the specified path.",
                 "responses": {
                     "default": {
                         "description": "The answer from the device"
@@ -1289,13 +1144,8 @@
                 "tags": [
                     "device"
                 ],
-                "security": [
-                    {
-                        "access_token": []
-                    }
-                ],
                 "summary": "send a PUT request to a device.",
-                "description": "Forward this HTTP request to a device with the specified path.",
+                "description": "Only available for HTTP device. Forward this HTTP request to a device with the specified path.",
                 "responses": {
                     "default": {
                         "description": "The answer from the device"
@@ -1306,13 +1156,8 @@
                 "tags": [
                     "device"
                 ],
-                "security": [
-                    {
-                        "access_token": []
-                    }
-                ],
                 "summary": "send a DELETE request to a device.",
-                "description": "Forward this HTTP request to a device with the specified path.",
+                "description": "Only available for HTTP device. Forward this HTTP request to a device with the specified path.",
                 "responses": {
                     "default": {
                         "description": "The answer from the device"
@@ -1323,13 +1168,8 @@
                 "tags": [
                     "device"
                 ],
-                "security": [
-                    {
-                        "access_token": []
-                    }
-                ],
                 "summary": "send a PATCH request to a device.",
-                "description": "Forward this HTTP request to a device with the specified path.",
+                "description": "Only available for HTTP device. Forward this HTTP request to a device with the specified path.",
                 "responses": {
                     "default": {
                         "description": "The answer from the device"
@@ -1340,7 +1180,7 @@
                 {
                     "name": "id",
                     "in": "path",
-                    "description": "id of the resource",
+                    "description": "id of the resource. Devices or Apps using the api key authentication may use the word 'me' to replace their id.",
                     "required": true,
                     "type": "string"
                 },
@@ -1353,22 +1193,17 @@
                 }
             ]
         },
-        "/device/{id}/descriptor": {
+        "/devices/{id}/specification": {
             "get": {
                 "tags": [
                     "device"
                 ],
-                "security": [
-                    {
-                        "access_token": []
-                    }
-                ],
-                "description": "Retrieves the descriptor of a device. Only device with an URL set has a descriptor. The descriptor is an object based on the Swagger specification",
+                "description": "Only available for HTTP device. Retrieves the API specification of a device. Only device with an URL set has a Swagger specification",
                 "parameters": [
                     {
                         "name": "id",
                         "in": "path",
-                        "description": "id of the resource",
+                        "description": "id of the resource. Devices or Apps using the api key authentication may use the word 'me' to replace their id.",
                         "required": true,
                         "type": "string"
                     }
@@ -1378,23 +1213,18 @@
                 ],
                 "responses": {
                     "200": {
-                        "description": "The descriptor of this device.",
+                        "description": "The API specification of this device.",
                         "schema": {
                             "type": "file"
                         }
                     }
                 },
-                "summary": "Retrieves the descriptor of a device."
+                "summary": "Only available for HTTP device."
             }
         },
         "/notification": {
             "post": {
-                "security": [
-                    {
-                        "access_token": []
-                    }
-                ],
-                "description": "Send a notification to the current user.",
+                "description": "Send a notification to the registered email addresses (cf. settings).",
                 "parameters": [
                     {
                         "name": "notification data",
@@ -1421,74 +1251,166 @@
                         "description": "The notification was successfully sent"
                     }
                 },
-                "summary": "Send a notification to the current user."
+                "summary": "Send a notification to the registered email addresses (cf."
+            }
+        },
+        "/rules": {
+            "get": {
+                "tags": [
+                    "rule"
+                ],
+                "description": "Lists the rules.",
+                "parameters": [],
+                "responses": {
+                    "200": {
+                        "description": "A list of rules",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/Rule"
+                            }
+                        }
+                    }
+                },
+                "summary": "Lists the rules."
+            },
+            "post": {
+                "tags": [
+                    "rule"
+                ],
+                "description": "Creates a new rule.",
+                "parameters": [
+                    {
+                        "name": "attributes",
+                        "in": "body",
+                        "description": "\nthe metadata of the rule to be created\n ",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/Rule"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "The rule was successfully created",
+                        "schema": {
+                            "$ref": "#/definitions/Rule"
+                        }
+                    }
+                },
+                "summary": "Creates a new rule."
+            }
+        },
+        "/rules/{id}": {
+            "get": {
+                "tags": [
+                    "rule"
+                ],
+                "description": "Returns the attributes of a rule.",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "description": "id of the rule",
+                        "required": true,
+                        "type": "string"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "resource object",
+                        "schema": {
+                            "$ref": "#/definitions/Rule"
+                        }
+                    }
+                },
+                "summary": "Returns the attributes of a rule."
+            },
+            "delete": {
+                "tags": [
+                    "rule"
+                ],
+                "description": "delete a rule",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "description": "id of the rule",
+                        "required": true,
+                        "type": "string"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "the rule has been deleted successfully"
+                    }
+                },
+                "summary": "delete a rule"
+            },
+            "patch": {
+                "tags": [
+                    "rule"
+                ],
+                "description": "update a rule. Only properties which are not readonly can be modified.",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "description": "id of the rule",
+                        "required": true,
+                        "type": "string"
+                    },
+                    {
+                        "name": "modification",
+                        "in": "body",
+                        "description": "the attributes to modify",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/Rule"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "rule successfully updated",
+                        "schema": {
+                            "$ref": "#/definitions/Rule"
+                        }
+                    },
+                    "400": {
+                        "description": "an error occurs",
+                        "schema": {
+                            "$ref": "#/definitions/Error"
+                        }
+                    }
+                },
+                "summary": "update a rule."
+            }
+        },
+        "/rules/trigger/{eventName}": {
+            "post": {
+                "tags": [
+                    "rule"
+                ],
+                "description": "Trigger a custom event. The rules which are configured with that event name will be triggered.",
+                "parameters": [
+                    {
+                        "name": "eventName",
+                        "in": "path",
+                        "description": "the name of the custom event to dispatch",
+                        "required": true,
+                        "type": "string"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "The event has been dispatched"
+                    }
+                },
+                "summary": "Trigger a custom event."
             }
         }
     },
-    "info": {
-        "title": "eThing HTTP api",
-        "description": "\n \n The eThing project is an 'Internet of Things' application. Store and retrieve data from devices using HTTP requests.\n \n Access to your resources (file, table, device ...) through HTTP requests.\n \n -------------\n\n \n ### Resource description\n \n There are different types of resources. A resource can either be :\n \n  - file : use this kind of objects to store text data or binary data (image, ...)\n  - table : tables are used to store a collection of related data. Table consists of fields and rows.\n  - device : this resource describes a device. You can send HTTP requests to your device through it.\n  - app : this resource is used to store a HTML/JavaScript script. Use it to handle your data (for instance, you can create an interface to communicate with your device).\n \n \n ### Error messages\n \n When the API returns error messages, it does so in JSON format. For example, an error might look like this:\n\n```json\n{\n  \"message\": \"The resource does not exist\",\n  \"code\" : 404\n}\n```\n \n The code value correspond to the HTTP status code of the response.\n \n \n ### Authorization\n \n Currently you can authenticate via an API Key or via an Access Token (acquired using regular login (see /user/login endpoint) ).\n\n #### API key\n\n You can generate your API key on developer page.\n \n To get the authentication send headers below on every request :\n \n    X-API-KEY: <YOUR_API_KEY>\n \n Here is a cURL example of how to send this header :\n\n```bash\ncurl -H 'X-API-KEY: <YOUR_API_KEY>' ...\n```\n \n You can also simply pass the key as a URL query parameter when making Web service requests. For example:\n\n```bash\ncurl http://localhost/ething/api/resources?api_key=<YOUR_API_KEY>\n```\n \n ### Partial response\n \n By default, the server sends back the full representation of a resource after processing requests.\n For better performance, you can ask the server to send only the fields you really need and get a partial response instead.\n \n To request a partial response, use the fields request parameter to specify the fields you want returned.\n You can use this parameter with any request that returns response data.\n \n example:\n \n This request will return the meta-data representation containing only the specified keys of a resource\n \n    /resource/56731_a?fields=id,name\n \n \n ### Filter resource or table data\n\n You can search or filter resources or table's rows using a search query combining one or more search clauses. Each search clause is made up of three parts.\n \n  - Field : in case of resource filtering, it corresponds to the attribute of the resource that is searched (e.g. 'name'). In case of table's rows filtering, it corresponds to the column's name.\n  - Operator : test that is performed on the data to provide a match.\n  - Value : The content of the field that is tested.\n  \n Combine clauses with the conjunctions and or or.\n \n \n The available fields for resource filtering (see the HTTP API documentation for their meaning) :\n \n  - 'type'\n  - 'name'\n  - 'mime'\n  - 'id'\n  - 'location.latitude'\n  - 'location.longitude'\n  - 'location.altitude'\n  - 'createdDate'\n  - 'modifiedDate'\n  - 'createdBy.type'\n  - 'createdBy.id'\n  - 'description'\n  - 'length' : only available for Table resources\n  - 'size' : only available for File resources\n  - 'hasThumbnail' : only available for File resources\n  - 'hasIcon' : only available for App resources\n  - 'battery' : only available for Device resources\n  - 'lastSeenDate' : only available for Device resources\n \n \n The available operators :\n \n  - '==' : equal to ... This operator is compatible with any types of value.\n  - '!=' : not equal to ... This operator is compatible with any types of value.\n  - 'is' : is of type ... This operator is compatible with any types of value.\n  - '>' : greater than ... This operator is only compatible with numbers or dates.\n  - '<' : less than ... This operator is only compatible with numbers or dates.\n  - '>=' : greater than or equal to ... This operator is only compatible with numbers.\n  - '<=' : less than or equal to ... This operator is only compatible with numbers.\n  - '^=' : start with ... This operator is only compatible with strings.\n  - '$=' : end with ... This operator is only compatible with strings.\n  - '*=' : contain ... This operator is only compatible with strings.\n  - '~=' : contain the word ... This operator is only compatible with strings.\n  \n  \n Value types :\n \n  - String : surround with single quotes ' or double quotes.\n  - Number : either integer numbers or floating numbers.\n  - Boolean : true or false.\n  - Date : *RFC 3339* format,  e.g., *2015-03-24T12:00:00+02:00*.\n \n \n Examples:\n  \n  All examples on this page show the unencoded q parameter, where name == 'foobar' is encoded as name+%3d%3d+%27foobar%27.\n  Client libraries handle this encoding automatically.\n \n  Search for resources with the name \"foobar\"\n  \n    name == 'foobar'\n  \n  Search for plain text files\n  \n    mime == 'text/plain'\n  \n  Search for tables resources only\n  \n    type == 'Table'\n  \n  Search for non empty files or tables\n  \n    size > 0 OR length > 0\n  \n  Search for resources with the name starting with \"foo\"\n  \n    name ^= 'foobar'\n  \n  Search for tables with the extension 'db' or files with the extension 'csv'\n  \n    ( type == 'Table' AND name $= '.db' ) OR ( type == 'File' AND name $= '.csv' )\n  \n  Search for resources modified after Mars 4th 2016\n  \n    modifiedDate > '2016-03-04T00:00:00+01:00'\n  \n  \n \n ",
-        "version": "0.1.0"
-    },
-    "basePath": "/ething/api",
-    "schemes": [
-        "http"
-    ],
-    "consumes": [
-        "application/json"
-    ],
-    "produces": [
-        "application/json"
-    ],
-    "security": [
-        {
-            "access_token": []
-        }
-    ],
-    "securityDefinitions": {
-        "access_token": {
-            "type": "apiKey",
-            "description": "authentication through an access token, use /user/login request to generate an access token",
-            "name": "X-ACCESS-TOKEN",
-            "in": "header"
-        },
-        "api_key": {
-            "type": "apiKey",
-            "description": "authentication through an API key, used only by device.",
-            "name": "X-API-KEY",
-            "in": "header"
-        }
-    },
-    "tags": [
-        {
-            "name": "auth",
-            "description": "Authentication endpoints."
-        },
-        {
-            "name": "resource",
-            "description": "Operations on resources no matter his type."
-        },
-        {
-            "name": "file",
-            "description": "Operations specific to File resource"
-        },
-        {
-            "name": "table",
-            "description": "Operations specific to Table resource"
-        },
-        {
-            "name": "app",
-            "description": "Operations specific to Application resource"
-        },
-        {
-            "name": "device",
-            "description": "Operations specific to Device resource"
-        },
-        {
-            "name": "user",
-            "description": "Operations to manage User"
-        }
-    ],
     "definitions": {
         "Error": {
             "type": "object",
@@ -1526,21 +1448,30 @@
                             "description": "True if the application has an icon set. See the /app/<id>/icon endpoint for more details.",
                             "readOnly": true
                         },
-                        "acceptedMime": {
-                            "type": "array",
-                            "items": {
-                                "type": "string"
-                            },
-                            "description": "A list of MIME types the application can consume",
-                            "readOnly": true
+                        "scope": {
+                            "type": "string",
+                            "description": "\nThe allowed scopes for this application (space separated list).\nNo permissions by default.\n"
+                        },
+                        "apikey": {
+                            "type": "string",
+                            "description": "The apikey for authenticating this app."
+                        },
+                        "version": {
+                            "type": "string",
+                            "description": "The version of this application"
                         }
                     }
                 }
             ]
         },
+        "Settings": {
+            "type": "object",
+            "description": "The settings object",
+            "properties": {}
+        },
         "Device": {
             "type": "object",
-            "description": "Device resource representation",
+            "description": "Device base class representation",
             "allOf": [
                 {
                     "$ref": "#/definitions/Resource"
@@ -1548,10 +1479,6 @@
                 {
                     "type": "object",
                     "properties": {
-                        "url": {
-                            "type": "string",
-                            "description": "The URL of the device, or null if there is none defined. No URL defined means that the device cannot be reached.\nOnly device with an URL set has a descriptor object based on the Swagger specification (see /device/<id>/descriptor endpoint).\nThe descriptor object define all the available HTTP requests this device accepts."
-                        },
                         "lastSeenDate": {
                             "type": "string",
                             "format": "date-time",
@@ -1562,17 +1489,65 @@
                             "type": "number",
                             "description": "The battery level of this device (must be between 0 (empty) and 100 (full) , or null if the device has no battery information)."
                         },
+                        "location": {
+                            "type": "object",
+                            "properties": {
+                                "latitude": {
+                                    "type": "number",
+                                    "description": "the latitude"
+                                },
+                                "longitude": {
+                                    "type": "number",
+                                    "description": "the longitude"
+                                },
+                                "altitude": {
+                                    "type": "number",
+                                    "description": "the altitude"
+                                },
+                                "place": {
+                                    "type": "string",
+                                    "description": "the name of the place. For instance 'home'."
+                                },
+                                "floor": {
+                                    "type": "number",
+                                    "description": "the floor number"
+                                },
+                                "room": {
+                                    "type": "string",
+                                    "description": "the name of the room"
+                                }
+                            },
+                            "description": "The location of this device."
+                        },
+                        "operations": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            },
+                            "description": "The list of the operations available.",
+                            "readOnly": true
+                        }
+                    }
+                }
+            ]
+        },
+        "HttpDevice": {
+            "type": "object",
+            "description": "Http Device resource representation",
+            "allOf": [
+                {
+                    "$ref": "#/definitions/Device"
+                },
+                {
+                    "type": "object",
+                    "properties": {
+                        "url": {
+                            "type": "string",
+                            "description": "The URL of the device, or null if there is none defined. No URL defined means that the device cannot be reached.\nOnly device with an URL set has a Swagger specification (see /device/<id>/specification endpoint).\nThe specification object define all the available HTTP requests this device accepts."
+                        },
                         "scope": {
                             "type": "string",
-                            "enum": [
-                                "resource",
-                                "resource.readonly",
-                                "resource.owndata",
-                                "notification",
-                                "profile",
-                                "profile.readonly"
-                            ],
-                            "description": "\nThe allowed scopes for this device (space separated list).\nDefault to \"resource.owndata notification\".\n\n - resource: allow to read and write to any resource\n - resource.readonly: allow to read only to any resource\n - resource.owndata: allow this device to create resources and to read/write only those resources\n - notification: allow to send notification\n - profile: allow to edit the profile of this user\n - profile.readonly: allow to see the profile of this user"
+                            "description": "\nThe allowed scopes for this device (space separated list). Restrict the Http api access.\nDefault to an empty string (no access).\n"
                         },
                         "auth": {
                             "type": "object",
@@ -1595,6 +1570,11 @@
                                 }
                             },
                             "description": "An object describing the authentication method to use on HTTP request."
+                        },
+                        "apikey": {
+                            "type": "string",
+                            "description": "The apikey for authenticating this device.",
+                            "readOnly": true
                         }
                     }
                 }
@@ -1628,6 +1608,11 @@
                             "type": "boolean",
                             "description": "True if this file has text based content.",
                             "readOnly": true
+                        },
+                        "mime": {
+                            "type": "string",
+                            "description": "The MIME type of the file (automatically detected from the content).",
+                            "readOnly": true
                         }
                     }
                 }
@@ -1639,15 +1624,11 @@
             "required": [
                 "name"
             ],
+            "discriminator": "type",
             "properties": {
                 "id": {
                     "type": "string",
                     "description": "The id of the resource.",
-                    "readOnly": true
-                },
-                "user": {
-                    "$ref": "#/definitions/User",
-                    "description": "The owner of the resource.",
                     "readOnly": true
                 },
                 "name": {
@@ -1657,11 +1638,6 @@
                 "type": {
                     "type": "string",
                     "description": "The type of the resource.",
-                    "readOnly": true
-                },
-                "mime": {
-                    "type": "string",
-                    "description": "The MIME type of the resource.",
                     "readOnly": true
                 },
                 "createdDate": {
@@ -1688,34 +1664,139 @@
                             "description": "id."
                         }
                     },
-                    "description": "The id of the resource responsible of the creation of this resource.",
+                    "description": "The id of the resource responsible of the creation of this resource, or null.",
                     "readOnly": true
-                },
-                "location": {
-                    "type": "object",
-                    "required": [
-                        "latitude",
-                        "longitude"
-                    ],
-                    "properties": {
-                        "latitude": {
-                            "type": "number",
-                            "description": "the latitude"
-                        },
-                        "longitude": {
-                            "type": "number",
-                            "description": "the longitude"
-                        },
-                        "altitude": {
-                            "type": "number",
-                            "description": "the altitude"
-                        }
-                    },
-                    "description": "The location of this resource."
                 },
                 "description": {
                     "type": "string",
                     "description": "A description of this resource. Limited to 4096 characters"
+                },
+                "data": {
+                    "type": "object",
+                    "description": "A collection of arbitrary key-value pairs. Entries with null values are cleared in update. The keys must not be empty or longer than 64 characters, and must contain only the following characters : letters, digits, underscore and dash. Values must be either a string or a boolean or a number"
+                },
+                "public": {
+                    "type": "boolean",
+                    "description": "False: this resource is not publicly accessible. 'readonly': this resource is accessible for reading by anyone. 'readwrite': this resource is accessible for reading and writing by anyone."
+                }
+            }
+        },
+        "Rule": {
+            "type": "object",
+            "description": "\n\nA rule object. A rule is consisted of three parts:\n\n- The event part specifies the signal that triggers the invocation of the rule\n- The condition part is a logical test that, if satisfied, causes the action to be carried out\n- The action part\n\n",
+            "required": [
+                "events",
+                "actions"
+            ],
+            "properties": {
+                "events": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/Event"
+                    },
+                    "description": "A collection of events. The rule will be executed each time an event from the collection is dispatched."
+                },
+                "conditions": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/Condition"
+                    },
+                    "description": "A collection of conditions. May be empty."
+                },
+                "actions": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/Action"
+                    },
+                    "description": "A collection of actions. Must not be empty !"
+                },
+                "executedDate": {
+                    "type": "string",
+                    "format": "date-time",
+                    "description": "The last time this rule has been executed.",
+                    "readOnly": true
+                },
+                "executedCount": {
+                    "type": "integer",
+                    "description": "The number of time this rule has been executed.",
+                    "readOnly": true
+                },
+                "createdDate": {
+                    "type": "string",
+                    "format": "date-time",
+                    "description": "The time this rule was created.",
+                    "readOnly": true
+                },
+                "state": {
+                    "type": "string",
+                    "description": "The state of this rule.",
+                    "readOnly": true,
+                    "enum": [
+                        "active",
+                        "inactive",
+                        "invalid"
+                    ]
+                },
+                "enabled": {
+                    "type": "boolean",
+                    "description": "If this rule is enabled or not."
+                },
+                "name": {
+                    "type": "string",
+                    "description": "The name of this rule. Two or more rules can share the same name."
+                },
+                "priority": {
+                    "type": "integer",
+                    "description": "The priority of this rule. Rules with highest priority will be executed first."
+                }
+            }
+        },
+        "Event": {
+            "type": "object",
+            "description": "\nThe base representation of an event object used in rule.\n\nFor exemple, a rule that will be running every hour will have the following event :\n\n```json\n{\n  \"type\": \"Timer\",\n  \"cron\" : \"0 * * * *\"\n}\n```\n\n",
+            "required": [
+                "type"
+            ],
+            "properties": {
+                "type": {
+                    "type": "string",
+                    "description": "The type of the event."
+                }
+            }
+        },
+        "Condition": {
+            "type": "object",
+            "description": "\nThe base representation of a condition object used in rule.\n",
+            "required": [
+                "type"
+            ],
+            "properties": {
+                "type": {
+                    "type": "string",
+                    "description": "The type of the condition."
+                },
+                "isInvalid": {
+                    "type": "boolean",
+                    "description": "Set to true if this condition is invalid.",
+                    "readOnly": true
+                }
+            }
+        },
+        "Action": {
+            "type": "object",
+            "description": "\nThe base representation of an action object used in rule.\n",
+            "required": [
+                "type"
+            ],
+            "properties": {
+                "type": {
+                    "type": "string",
+                    "description": "The type of the action."
+                },
+                "isInvalid": {
+                    "type": "boolean",
+                    "description": "Set to true if this action is invalid.",
+                    "readOnly": true
                 }
             }
         },
@@ -1750,54 +1831,6 @@
                     }
                 }
             ]
-        },
-        "User": {
-            "type": "object",
-            "description": "The User object",
-            "properties": {
-                "id": {
-                    "type": "string",
-                    "description": "The id of the user.",
-                    "readOnly": true
-                },
-                "name": {
-                    "type": "string",
-                    "description": "The name of the user.",
-                    "readOnly": true
-                }
-            }
-        },
-        "Profile": {
-            "type": "object",
-            "description": "The User profile",
-            "properties": {
-                "id": {
-                    "type": "string",
-                    "description": "The id of the user.",
-                    "readOnly": true
-                },
-                "name": {
-                    "type": "string",
-                    "description": "The name of the user.",
-                    "readOnly": true
-                },
-                "email": {
-                    "type": "string",
-                    "description": "The email address of the user.",
-                    "readOnly": false
-                },
-                "createdDate": {
-                    "type": "string",
-                    "format": "date-time",
-                    "description": "Create time for this user (formatted RFC 3339 timestamp).",
-                    "readOnly": true
-                },
-                "quota": {
-                    "type": "number",
-                    "description": "The allowed quota in bytes.",
-                    "readOnly": true
-                }
-            }
         }
     }
 }

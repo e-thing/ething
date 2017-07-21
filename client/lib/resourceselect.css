@@ -1,0 +1,51 @@
+
+.resource-select .resource-select-item {
+    display: inline-block;
+}
+
+.resource-select .resource-select-item > svg {
+	height: 18px;
+	width: 18px;
+	margin-right: 5px;
+	vertical-align: middle;
+}
+
+.resource-select .resource-select-item .createdBy {
+    font-weight: normal;
+    color: #b5b4b4;
+    font-size: smaller;
+    font-style: italic;
+}
+
+.resource-select .bs-create {
+	padding: 4px 8px;
+}
+.resource-select .bs-create > select {
+    width: 35%;
+}
+.resource-select .bs-create > input:not(:first-child) {
+    width: 65%;
+}
+
+.resource-select .bs-empty {
+	padding: 4px 8px;
+    color: grey;
+}
+
+.form-inline .resource-select {
+	display: inline-block;
+}
+
+
+.f-resourceselect .bootstrap-select {
+	width: 100% !important;
+}
+
+
+.resource-select .dropdown-menu>.disabled .resource-select-item > svg[class*="icon-"] {
+	fill: #c1c1c1;
+}
+
+
+
+

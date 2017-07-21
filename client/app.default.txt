@@ -1,53 +1,43 @@
 <!DOCTYPE html>
 <html>
-	<head>
-		
-		<!-- JQUERY -->
-		<script src="//ajax.googleapis.com/ajax/libs/jquery/2.1.4/jquery.min.js"></script>
-		
-		
-		<!-- CORE -->
-		<script src="/ething/lib/core.js"></script>
-		
-		
-		<!-- UI -->
-		<link href='//maxcdn.bootstrapcdn.com/bootstrap/3.3.5/css/bootstrap.min.css' rel='stylesheet' type='text/css'/>
-		<script src="//maxcdn.bootstrapcdn.com/bootstrap/3.3.5/js/bootstrap.min.js"></script>
-		<script src="/ething/lib/ui.js"></script>
-		<link href="/ething/lib/ui.css" rel='stylesheet' type='text/css'/>
-		
-		
-		<!-- APP -->
-		<script type="text/javascript">
-			
-			
-			var main = function(){
-				
-				/* your script goes here */
-				
-				$('body').html('hello '+EThing.auth.getUser().name()+' !');
-				
-			};
-			
-			
-			$(window.document).ready(function() {
-				EThing.auth.authorize(main || null);
-			});
-		
-		</script>
 
-		<style type="text/css">
-			
-			/* your style goes here */
-			
-		</style>
+  <head>
 
-	</head>
-	
-	<body>
+    <!-- CORE -->
+    <script src="__API_URL__/../lib/core.js"></script>
+
+
+  </head>
+
+  <body>
+
+    <!-- your content goes here -->
+
+    <!-- APP -->
+    <script type="text/javascript">
+      var main = function() {
+		var app = EThing.auth.getApp();
 		
-		<!-- your content goes here -->
-	
-	</body>
-	
+		var title = document.createElement("H1");
+		title.appendChild(document.createTextNode(app.name()));
+        document.body.appendChild(title);
+		
+		var description = document.createElement("P");
+		description.appendChild(document.createTextNode('This is a very basic app example'));
+		document.body.appendChild(description);
+		
+      };
+
+      EThing.initialize({
+        apiUrl: '__API_URL__',
+        apiKey: '__API_KEY__'
+      }, main || null, function(error) {
+        // on error
+        alert(error.message);
+      });
+      
+    </script>
+
+  </body>
+
 </html>

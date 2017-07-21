@@ -32,16 +32,18 @@
 	
 	function jsonEncodeFilterByFields($resources,$fields){
 		if(is_array($fields)){
+			$fields = array_flip($fields);
 			if(is_array($resources)){
 				$out = array();
-				foreach($resources as $resource)
-					$out[] = array_intersect_key($resource->jsonSerialize(), array_flip($fields));
+				foreach($resources as $resource){
+					$out[] = array_intersect_key($resource->jsonSerialize(), $fields);
+				}
+			} else {
+				$out = array_intersect_key($resources->jsonSerialize(), $fields);
 			}
-			else
-				$out = array_intersect_key($resources->jsonSerialize(), array_flip($fields));
-		}
-		else
+		} else {
 			$out = $resources;
+		}
 		return json_encode($out,JSON_PRETTY_PRINT|JSON_UNESCAPED_SLASHES);
 	}
 	
@@ -75,8 +77,14 @@
 		$fmt=strtolower($fmt);
 		if($fmt=="timestamp")
 			$fmt=\Ething\Table::TIMESTAMP;
+		else if($fmt=="timestamp_ms")
+			$fmt=\Ething\Table::TIMESTAMP_MS;
 		else if($fmt=="rfc3339")
 			$fmt=\DateTime::RFC3339;
+		else if($fmt=="iso8601")
+			$fmt=\DateTime::ISO8601;
+		else if($fmt=="rss")
+			$fmt=\DateTime::RSS;
 		else
 			return false;
 		return true;
@@ -175,12 +183,17 @@
 	}
 	
 	function getResource($auth, $id, $typeCheck = null) {
-		check(CHK_ID,$id);
 		
-		$r = $auth->fs()->get($id);
+		if($id === 'me'){
+			// special case, needs api key auth
+			$r = $auth->originator();
+		} else {
+			check(CHK_ID,$id);
+			$r = $auth->ething->get($id);
+		}
 		
 		if($r){
-			if(is_null($typeCheck) || $r->type() === $typeCheck)
+			if(is_null($typeCheck) || preg_match('/^'.str_replace('\\', '\\\\', $typeCheck).'$/', $r->type()))
 				return $r;
 			else {
 				throw new Exception('The resource is not a '.$typeCheck);
@@ -189,6 +202,28 @@
 		else {
 			throw new Exception('Unknown resource',404);
 		}
+	}
+	
+	function getResourceByName($auth, $filename, $type, $throwExceptionOnFail = true) {
+		
+		$filter = array(
+			'name' => $filename,
+			'type' => $type
+		);
+		
+		if($originator = $auth->originator()){
+			$filter['createdBy.id'] = $originator->id();
+		} else {
+			$filter['createdBy'] = null;
+		}
+		
+		$r = $auth->ething->findOne($filter);
+		
+		if(!$r && $throwExceptionOnFail){
+			throw new Exception('Unknown resource',404);
+		}
+		
+		return $r;
 	}
 	
 	function getParameter($key,$checker,$optionnal = false, $defaultValue = null)
@@ -222,13 +257,6 @@
 		}
 		else {
 			throw new Exception('only JSON data is accepted');
-		}
-	}
-	
-	// check if there is enough space to store the given amount of bytes for the current user
-	function spaceControl($auth, $length) {
-		if($length > $auth->fs()->freeSpace()){
-			throw new Exception('Not enough space available.');
 		}
 	}
 	
@@ -383,27 +411,19 @@
 	}
 	
 	
-	
-	function log($e){
-		global $config;
-		$logFile = isset($config['log']) ? $config['log'] : false;
-		if(!empty($logFile)){
-			$message = '?';
-			
-			if($e instanceof \Exception){
-				$message = "Exception: {$e->getMessage()} {$e->getFile()}[line:{$e->getLine()} code:{$e->getCode()}]";
-			}
-			else if(is_string($e)){
-				$message = $e;
-			}
-			else {
-				ob_start();
-				var_dump($e);
-				$message = ob_get_clean();
-			}
-			
-			@file_put_contents($logFile, date(\DateTime::RFC3339).' '.$message.PHP_EOL , FILE_APPEND);
-		}
+	function hostname() {
+		
+		$hn = isset($_SERVER['HTTPS']) && 'on' === $_SERVER['HTTPS'] ? 'https' : 'http';
+		$hn .= '://'.$_SERVER['SERVER_NAME'];
+		$hn .= in_array((string)$_SERVER['SERVER_PORT'], array('80', '443')) ? '' : ':'.$_SERVER['SERVER_PORT'];
+		
+		return $hn;
+		
 	}
 	
+	function url() {
+		
+		return hostname() . $_SERVER['REQUEST_URI'];
+		
+	}
 	

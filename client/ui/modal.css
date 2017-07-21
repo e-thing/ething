@@ -1,0 +1,17 @@
+
+
+
+.modal {
+	z-index: 1100 !important;
+}
+
+.modal-backdrop {
+	z-index: 1099 !important;
+}
+
+.modal .modal-header {
+    background-color: #337AB7;
+    color: white;
+	border-top-left-radius: inherit;
+    border-top-right-radius: inherit;
+}

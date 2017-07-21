@@ -3,14 +3,18 @@
 namespace Ething\Event;
 
 
-class FileDataModified extends Event {
+class FileDataModified extends AbstractResourceEvent {
 	
-	public function description(){
-		return "the content of the file '{$this->target()->name()}' is modified";
+	
+	static public function emit(\Ething\File $resource){
+		return new Signal('FileDataModified', array(
+			'resource' => $resource->id()
+		));
 	}
 	
-	static public function check($resourceTypeName){
-		return $resourceTypeName == 'File';
+	static public function validate(array &$attributes, array $context){
+		$context['onlyTypes'] = array('File');
+		return parent::validate($attributes, $context);
 	}
 }
 

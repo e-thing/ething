@@ -3,39 +3,41 @@
 namespace Ething\Event;
 
 
-interface EventInterface {
-	static public function check($resourceTypeName);
-}
+use \Ething\RuleItem;
+use \Ething\InvalidRuleException;
 
-abstract class Event implements EventInterface {
+abstract class Event extends RuleItem {
 	
-	private $target = null;
 	
-	public function __construct(\Ething\Resource $target, array $customData = array())
-	{
-		foreach($customData as $key => $value){
-			$this->$key = $value;
+	final public function match(Signal $signal){
+		if($this->isValid()){
+			
+			// reset error
+			$this->setError(false);
+			
+			try {
+				return boolval($this->call($signal));
+			}
+			catch(InvalidRuleException $e){
+				// this exception is fired when an action is no more valid.
+				$this->setInvalid();
+				$this->setError($e->getMessage());
+			}
+			catch(\Exception $e){
+				$this->setError($e->getMessage());
+			}
+			
 		}
 		
-		$this->target = $target;
-		$this->timeStamp = time();
-		$this->type = substr(get_class($this),13); // remove Ething\Event\
+		return false;
 	}
 	
-	public function target(){
-		return $this->target;
-	}
+	abstract protected function call(Signal $signal);
 	
-	// must be implemented in the derived class !
-	public function description(){
-		return "the event ".get_class()." was emitted";
-	}
-	
-	// default
-	static public function check($resourceTypeName){
-		return true;
-	}
 	
 }
+
+
+	
 
 

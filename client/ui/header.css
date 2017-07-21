@@ -1,0 +1,107 @@
+body {
+	margin-top: 51px !important;
+}
+
+#navbar {
+	z-index: 1090;
+}
+
+#navbar li.selected>a {
+	color: #1abc9c;
+}
+#navbar ul.navbar-nav>li.selected:after {
+	content: " ";
+	background-color: #1abc9c;
+	height: 5px;
+	width: 100%;
+	bottom: 0px;
+	position: absolute;
+}
+@media (max-width: 767px) {
+#navbar ul.navbar-nav>li.selected:after {
+	width: 5px;
+	height: 100%;
+	left: 0px;
+	top: 0px;
+}
+}
+
+#navbar ul.dropdown-menu>li.selected {
+	position: relative;
+}
+#navbar ul.dropdown-menu>li.selected:after {
+	content: " ";
+	background-color: #1abc9c;
+	width: 5px;
+	height: 100%;
+	left: 0px;
+	top: 0px;
+	position: absolute;
+}
+
+#navbar .navbar-collapse-btn {
+	position: relative;
+    float: right;
+    margin-top: 8px;
+    margin-right: 15px;
+    margin-bottom: 8px;
+    background-color: transparent;
+    border: 1px solid transparent;
+}
+
+#navbar .navbar-title {
+	float: left;
+    height: 50px;
+    padding: 15px 15px;
+    font-size: 18px;
+    line-height: 20px;
+	white-space: nowrap;
+    text-overflow: ellipsis;
+    overflow: hidden;
+    max-width: 180px;
+	color: #777;
+    text-decoration: none;
+}
+
+#navbar .navbar-title[href] {
+	cursor: pointer;
+}
+
+
+@media (max-width: 300px) {
+#navbar .navbar-title {
+	max-width: 150px;
+}
+}
+
+@media (min-width: 400px) {
+#navbar .navbar-title {
+	max-width: 220px;
+}
+}
+@media (min-width: 440px) {
+#navbar .navbar-title {
+	max-width: 260px;
+}
+}
+@media (min-width: 480px) {
+#navbar .navbar-title {
+	max-width: 300px;
+}
+}
+@media (min-width: 520px) {
+#navbar .navbar-title {
+	max-width: 340px;
+}
+}
+@media (min-width: 560px) {
+#navbar .navbar-title {
+	max-width: 380px;
+}
+}
+
+@media (min-width: 768px) {
+#navbar .dropdown-hover:hover>.dropdown-menu {
+	display: block;
+}
+}

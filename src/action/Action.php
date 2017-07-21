@@ -2,34 +2,37 @@
 
 namespace Ething\Action;
 
+use \Ething\RuleItem;
+use \Ething\InvalidRuleException;
+use \Ething\Event\Signal;
 
-interface ActionInterface {
-	static public function check(array &$json, $eventName, $resourceTypeName);
-}
+	
+abstract class Action extends RuleItem {
 	
 	
-abstract class Action implements \JsonSerializable, ActionInterface {
-	
-	public $type;
-	
-	abstract public function execute(\Ething\Event\Event $event, \Rule $rule);
-	
-	
-	public function __construct(array $json){
-		// set the property's value of this instance
-		foreach($json as $attr => $value)
-			$this->$attr = $value;
-		$this->type = get_class($this);
+	final public function execute(Signal $signal){
+		if($this->isValid()){
+			
+			// reset error
+			$this->setError(false);
+			
+			try {
+				$this->call($signal);
+			}
+			catch(InvalidRuleException $e){
+				// this exception is fired when an action is no more valid.
+				$this->setInvalid();
+				$this->setError($e->getMessage());
+			}
+			catch(\Exception $e){
+				$this->setError($e->getMessage());
+			}
+			
+		}
 	}
 	
-	public function jsonSerialize(){
-		return get_object_vars($this);
-	}
+	abstract protected function call(\Ething\Event\Signal $signal);
 	
-	// default : compatible with all events
-	static public function check(array &$json, $eventName, $resourceTypeName){
-		return true;
-	}
 }
 
 

@@ -3,17 +3,19 @@
 namespace Ething\Event;
 
 
-
-class DeviceUnreachable extends Event {
+class DeviceUnreachable extends AbstractResourceEvent {
 	
-	
-	public function description(){
-		return "the device '{$this->target()->name()}' is unreachable";
+	static public function emit(\Ething\Device\Device $resource){
+		return new Signal('DeviceUnreachable', array(
+			'resource' => $resource->id()
+		));
 	}
 	
-	static public function check($resourceTypeName){
-		return $resourceTypeName == 'Device';
+	static public function validate(array &$attributes, array $context){
+		$context['onlyTypes'] = array('Device\\Http', 'Device\\RTSP');
+		return parent::validate($attributes, $context);
 	}
+	
 }
 
 

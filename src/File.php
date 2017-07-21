@@ -31,6 +31,11 @@
 	 * 		          "type":"boolean",
 	 * 		          "description":"True if this file has text based content.",
 	 *                "readOnly": true
+	 * 		       },
+	 * 		       "mime":{  
+	 * 		          "type":"string",
+	 * 		          "description":"The MIME type of the file (automatically detected from the content).",
+	 *                "readOnly": true
 	 * 		       }
 	 * 		   }
 	 * 		}
@@ -48,17 +53,9 @@ class File extends Resource
 	];
 	
 	
-	public function expireAfter() {
-		return $this->_d['expireAfter'];
-	}
-	
-	public function size() {
-		return $this->_d['size'];
-	}
-	
 	public function jsonSerialize() {
 		$o = parent::jsonSerialize();
-		$o['hasThumbnail'] = isset($this->_d['_thumb']);
+		$o['hasThumbnail'] = $this->hasAttr('_thumb');
 		return $o;
 	}
 	
@@ -66,50 +63,47 @@ class File extends Resource
 	public function remove() {
 		
 		// remove the file from GridFS
-		if(isset($this->_d['_data']))
-			$this->getEthingInstance()->db()->getGridFS()->delete($this->_d['_data']);
+		$this->ething->fs->removeFile($this->getAttr('_data'));
 		
 		// remove any thumbnail
-		if(isset($this->_d['_thumb']))
-			$this->getEthingInstance()->db()->getGridFS()->delete($this->_d['_thumb']);
+		$this->ething->fs->removeFile($this->getAttr('_thumb'));
 		
 		// remove the resource
 		parent::remove();
 		
 	}
 	
-	public static function validate(Ething $ething, $key,array &$attr,User $user,Resource $self = null) {
-		$isConstructor = !isset($self);
-		$value = &$attr[$key];
+	public static function validate($key, &$value, &$context) {
 		$ret = false;
 		switch($key){
 			case 'name':
-				if(parent::validate($ething,$key,$attr,$user,$self))
-					$ret = function($r) {
+				if($ret = parent::validate($key,$value,$context)){
+					$context['callbacks'][] = function($r) {
 						$r->updateMeta(static::META_MIME|static::META_TEXT);
 					};
+				}
 				break;
 			case 'expireAfter':
 				if($value===0) $value=null;
 				$ret = is_null($value) || (is_int($value) && $value>0);
 				break;
-			case 'content': // only available on creation
-				if(!$isConstructor)
-					break;
-				if(is_string($value)){
+			case 'content':
+				if(is_string($value) || is_null($value)){
+					
 					$content = base64_decode($value);
 					if($content===false)
-						throw new \Ething\Exception('invalid base64 data for the field "content"');
-					$ret = function($r) use ($content) {
+						throw new Exception('invalid base64 data for the field "content"');
+					
+					$context['callbacks'][] = function($r) use ($content) {
 						$r->write($content);
 					};
-				}
-				else if(is_null($value))
+					
 					$ret = true;
-				unset($attr[$key]); // remove attribute 'content'
+				}
+				unset($context['config'][$key]);// remove this key
 				break;
 			default:
-				$ret = parent::validate($ething,$key,$attr,$user,$self);
+				$ret = parent::validate($key,$value,$context);
 				break;
 		}
 		return $ret;
@@ -124,30 +118,28 @@ class File extends Resource
 	}
 	
 	public function isExpired() {
-		return $this->expireAfter() && ($this->modifiedDate() + $this->expireAfter() < time());
+		return $this->expireAfter && ($this->modifiedDate + $this->expireAfter < time());
 	}
 	
 	
 	
 	public function read() {
-		$f = isset($this->_d['_data']) ? $this->getEthingInstance()->db()->getGridFS()->get($this->_d['_data']) : null;
-		return $f ? $f->getBytes() : '';
+		$contents = $this->ething->fs->retrieveFile($this->getAttr('_data'));
+		return isset($contents) ? $contents : '';
 	}
 	
 	public function write($bytes) {
-		$gridfs = $this->getEthingInstance()->db()->getGridFS();
-		if(isset($this->_d['_data'])){
-			// remove that file if it exists
-			$gridfs->delete($this->_d['_data']);
-			unset($this->_d['_data']);
-			$this->_d['size'] = 0;
-		}
+		
+		// remove that file if it exists
+		$this->ething->fs->removeFile($this->getAttr('_data'));
+		$this->removeAttr('_data');
+		$this->setAttr('size', 0);
+		
 		if(!empty($bytes)){
-			$this->_d['_data'] = $gridfs->storeBytes($bytes, array(
-				'filename' => 'File/'.$this->name(),
+			$this->setAttr('_data', $this->ething->fs->storeFile('File/'.$this->id().'/content', $bytes, array(
 				'parent' => $this->id()
-			));
-			$this->_d['size'] = $gridfs->get($this->_d['_data'])->getSize();
+			)));
+			$this->setAttr('size', $this->ething->fs->getFileSize($this->getAttr('_data')));
 		}
 		
 		$this->updateMeta(static::META_ALL, $bytes);
@@ -155,7 +147,7 @@ class File extends Resource
 		$this->update();
 		
 		// generate an event
-		$this->dispatchEvent('FileDataModified');
+		$this->dispatchSignal(Event\FileDataModified::emit($this));
 		
 		return true;
 	}
@@ -168,14 +160,14 @@ class File extends Resource
 	
 	
 	// create a new resource
-	public static function create(Ething $ething, User $user, array $attributes, Resource $createdBy = null) {
+	public static function create(Ething $ething, array $attributes, Resource $createdBy = null) {
 		return parent::createRessource( 
 			$ething,
-			$user,
 			array_merge(self::$defaultAttr, $attributes),
 			array(
 				'size' => 0,
-				'isText' => true // will be updated through the 'name' validator callback !
+				'isText' => true, // will be updated through the 'name' validator callback !
+				'mime' => '' // will be updated through the 'name' validator callback !
 			),
 			$createdBy
 		);
@@ -207,13 +199,13 @@ class File extends Resource
 				$mime = $finfo->buffer($content);
 			}
 			
-			$this->_d['mime'] = $mime;
+			$this->setAttr('mime',$mime);
 			
 		}
 		
 		if($opt & self::META_TEXT){
 			
-			$mime = $this->_d['mime'];
+			$mime = $this->mime;
 			if(preg_match('/^text\//i',$mime))
 				$isText = true;
 			else if(preg_match('/^(image|audio|video)\//i',$mime))
@@ -227,7 +219,7 @@ class File extends Resource
 				$isText = static::isPrintable($content);
 			}
 			
-			$this->_d['isText'] = $isText;
+			$this->setAttr('isText',$isText);
 			
 		}
 		
@@ -236,18 +228,15 @@ class File extends Resource
 			if(!isset($content))
 				$content = $this->read();
 		
-			$thumb = (!empty($content) && preg_match('/^image\//i',$this->mime()) && extension_loaded('gd')) ? self::createThumb($content,128) : null;
-			$gridfs = $this->getEthingInstance()->db()->getGridFS();
-			if(isset($this->_d['_thumb'])){
-				// remove that file if it exists
-				$gridfs->delete($this->_d['_thumb']);
-				unset($this->_d['_thumb']);
-			}
+			$thumb = (!empty($content) && preg_match('/^image\//i',$this->mime) && extension_loaded('gd')) ? self::createThumb($content,128) : null;
+			
+			$this->ething->fs->removeFile($this->getAttr('_thumb'));
+			$this->removeAttr('_thumb');
+			
 			if(!empty($thumb))
-				$this->_d['_thumb'] = $gridfs->storeBytes($thumb, [
-					'filename' => 'App/'.$this->name().'/thumb',
+				$this->setAttr('_thumb', $this->ething->fs->storeFile('App/'.$this->id().'/thumb', $thumb, array(
 					'parent' => $this->id()
-				]);
+				)));
 			
 		}
 		
@@ -411,45 +400,44 @@ class File extends Resource
 	
 	
 	public function readThumbnail() {
-		$f = isset($this->_d['_thumb']) ? $this->getEthingInstance()->db()->getGridFS()->get($this->_d['_thumb']) : null;
-		return $f ? $f->getBytes() : null;
+		return $this->ething->fs->retrieveFile($this->getAttr('_thumb'));
 	}
 	
 	public static function createThumb( $imagedata, $thumbWidth ) 
 	{
 		  $thumbdata = null;
 		  // load image and get image size
-		  $img = imagecreatefromstring( $imagedata );
+		  $img = @imagecreatefromstring( $imagedata );
 		  if($img){ // else unknown format
-			  $width = imagesx( $img );
-			  $height = imagesy( $img );
+			$width = imagesx( $img );
+			$height = imagesy( $img );
 
-			  // calculate size
-			  $ratio = (($width / $height) < 1) ?
-					$thumbWidth / $width : $thumbWidth / $height;
-			   $x = max(0, round($width / 2 - ($thumbWidth / 2) / $ratio));
-			   $y = max(0, round($height / 2 - ($thumbWidth / 2) / $ratio));
+			// calculate size
+			$ratio = (($width / $height) < 1) ?
+				$thumbWidth / $width : $thumbWidth / $height;
+			$x = max(0, round($width / 2 - ($thumbWidth / 2) / $ratio));
+			$y = max(0, round($height / 2 - ($thumbWidth / 2) / $ratio));
 
-			  // create a new temporary image
-			  $tmp_img = imagecreatetruecolor( $thumbWidth, $thumbWidth );
-			  imagealphablending( $tmp_img, false );
-			  imagesavealpha( $tmp_img, true );
+			// create a new temporary image
+			$tmp_img = imagecreatetruecolor( $thumbWidth, $thumbWidth );
+			imagealphablending( $tmp_img, false );
+			imagesavealpha( $tmp_img, true );
 
-			  // copy and resize old image into new image 
-			  if(imagecopyresized( $tmp_img, $img, 0, 0, $x, $y, $thumbWidth, $thumbWidth, round($thumbWidth / $ratio, 0), round($thumbWidth / $ratio) )){
-				
-				  // save thumbnail into a string
-				  ob_start();
-					imagepng( $tmp_img );
-					$thumbdata = ob_get_contents(); // read from buffer
-					ob_end_clean(); // delete buffer
-				}
+			// copy and resize old image into new image 
+			if(imagecopyresized( $tmp_img, $img, 0, 0, $x, $y, $thumbWidth, $thumbWidth, round($thumbWidth / $ratio, 0), round($thumbWidth / $ratio) )){
+
+				// save thumbnail into a string
+				ob_start();
+				imagepng($tmp_img);
+				$thumbdata = ob_get_contents(); // read from buffer
+				ob_end_clean(); // delete buffer
 			}
-		  
-		  imagedestroy($tmp_img);
-		  imagedestroy($img);
-		  
-		  return $thumbdata;
+			
+			imagedestroy($tmp_img);
+			imagedestroy($img);
+		}
+		
+		return $thumbdata;
 	}
 	
 }

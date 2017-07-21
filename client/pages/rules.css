@@ -1,0 +1,211 @@
+
+
+#rules .rule-editor .empty-notification {
+	color: #ababab;
+	font-size: small;
+}
+
+#rules .rule-editor .list {
+	margin: 10px 0;
+}
+
+#rules .rule-editor table.list {
+	border-collapse: separate;
+    border-spacing: 0 5px;
+}
+
+#rules .rule-editor table.list tr > td {
+    padding: 5px;
+}
+
+#rules .rule-editor table.list tr > td:first-child {
+	max-width: 1px;
+	width: 100%;
+	border-left: 5px solid #6ad873;
+}
+
+/*#rules .rule-editor table.list tr > td:first-child * {
+	overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+}*/
+
+#rules .rule-editor table.list tr.invalid > td:first-child {
+	border-left-color: #d9534f;
+}
+
+#rules .rule-editor table.list tr.hasError:not(.invalid) > td:first-child {
+	border-left-color: #f5c843;
+}
+
+#rules .rule-editor table.list tr:hover {
+	background-color: #e9ffeb
+}
+
+#rules .rule-editor table.list tr.invalid:hover {
+	background-color: #f9e3dc
+}
+
+#rules .rule-editor table.list tr.hasError:not(.invalid):hover {
+	background-color: #fbf0d0
+}
+
+
+
+#rules .rule-editor table.list .btn-group {
+	white-space: nowrap;
+}
+
+#rules .rule-editor table.list .btn-group .btn {
+	float: none;
+	display: inline-block;
+}
+
+#rules .rule-editor table.list tr.item .error {
+    margin-top: 10px;
+    font-size: small;
+    color: #d9534f;
+}
+
+#rules .rule-editor .subpart {
+	margin-top: 20px;
+}
+
+#rules .subpart.event {
+    border-color: #c085d4;
+}
+#rules .subpart.condition {
+    border-color: #fbb54d;
+}
+#rules .subpart.action {
+    border-color: #58b9ce;
+}
+#rules .subpart.event > h4 {
+    color: #c085d4;
+}
+#rules .subpart.condition > h4 {
+    color: #fbb54d;
+}
+#rules .subpart.action > h4 {
+    color: #58b9ce;
+}
+#rules .subpart.event > button > span {
+    color: #c085d4;
+}
+#rules .subpart.condition > button > span {
+    color: #fbb54d;
+}
+#rules .subpart.action > button > span {
+    color: #58b9ce;
+}
+
+
+#rules .TableStatistics-dataset .form-control.inline {
+	width: initial;
+    display: inline-block;
+    height: 20px;
+    padding: 0px;
+}
+
+
+
+
+#rules .rule-table table {
+	width: 100%;
+}
+
+#rules .rule-table table > thead {
+	background-color: #4285f4;
+    color: white;
+}
+
+@media (max-width: 767px) {
+	#rules .rule-table table .col-executed, .rule-table table .col-priority {
+		display: none;
+	}
+}
+
+#rules .rule-table table tr td.col-state {
+	font-size: large;
+	width: 0%;
+	position: relative;
+    top: 4px;
+}
+#rules .rule-table table tr.rule-error td.col-state {
+	color: #d9534f;
+}
+#rules .rule-table table tr.rule-warning td.col-state {
+	color: #f5c843;
+}
+
+#rules .rule-table table td.col-tb > .btn-group {
+	white-space: nowrap;
+}
+#rules .rule-table table td.col-tb > .btn-group .btn {
+	float: none;
+	display: inline-block;
+}
+
+#rules .rule-table table tr:not(.details) {
+    cursor: pointer;
+}
+
+#rules .rule-table table tr td {
+    vertical-align: middle;
+}
+
+#rules .rule-table table tr td > small {
+	color: #c1c1c1;
+}
+
+#rules .rule-table table tr td.col-name {
+	height: 51px;
+    width: 100%;
+}
+
+#rules .rule-table table tr td.col-pc {
+	padding: 0;
+	width: 0%;
+}
+
+#rules .rule-table table tr td.col-pc > div {
+	height: 51px;
+    //width: 100%;
+}
+
+#rules .rule-table tr.details {
+	background-color: #f9f9f9;
+    color: #404040;
+}
+#rules .rule-table tr.details td {
+    border-top: none;
+}
+#rules .rule-table tr.details .item {
+	border-left: 5px solid #6ad873;
+	padding: 5px;
+    margin-bottom: 10px;
+}
+
+#rules .rule-table tr.details .item.invalid {
+	border-left-color: #d9534f;
+}
+
+#rules .rule-table tr.details .item.hasError:not(.invalid) {
+	border-left-color: #f5c843;
+}
+
+#rules .rule-table tr.details .item .error {
+    margin-top: 10px;
+    font-size: small;
+    color: #d9534f;
+}
+
+#rules .rule-table tr.details td > div > *:not(h4) {
+    margin-left: 10px;
+}
+
+
+
+
+
+

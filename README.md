@@ -67,14 +67,7 @@ a value greater than a threshold or if it has low battery.
 
 - Install MongoDB PHP driver
 
- link: http://us.php.net/manual/en/mongo.installation.php
-
- ```bash
- # if PEAR is not installed
- sudo apt-get install php-pear php5-dev
- # then install the driver
- sudo pecl install mongo
- ```
+ link: http://php.net/manual/fr/set.mongodb.php
 
 - Install Curl PHP driver
 
@@ -87,8 +80,29 @@ a value greater than a threshold or if it has low battery.
  ```bash
  sudo apt-get install php5-gd
  ```
+ 
+- Install Python 2.7 & pyserial
 
-- Go to your web server’s document root (e.g., /var/www/html) and download the project package using Git
+ ```bash
+ sudo apt-get install python
+ sudo apt-get install python-pip
+ sudo pip install --upgrade pyserial
+ ```
+
+- Install Mosquitto (optional)
+
+ ```bash
+ sudo apt-get install mosquitto
+ ```
+
+- Install NodeJS
+
+ ```bash
+ curl -sL https://deb.nodesource.com/setup_8.x | sudo -E bash -
+ sudo apt-get install nodejs
+ ```
+ 
+- Go to your web server's document root (e.g., /var/www/html) and download the project package using Git
 
  ```bash
  git clone https://github.com/e-thing/ething.git
@@ -116,7 +130,6 @@ a value greater than a threshold or if it has low battery.
  `http://<YOUR_SERVER_ADDRESS>/ething`
 
 
-> **_IMPORTANT_** : It is mandatory that the URL's path is '/ething' and not something else !
 
 
  
@@ -125,22 +138,16 @@ a value greater than a threshold or if it has low battery.
 The configuration file **config.php** is located in the root directory.
 
 * set your mongodb server address here with the correct port number.
-* [optional] change the default username and/or password to access the admin page.
+* [optional] change the default password.
 * [optional] configure a SMTP server if you want some notification to be sent.
 * [optional] set proxy settings if needed.
 
 
 ## Installation check
 
-To check if the installation worked, go to the admin interface [http://&lt;YOUR_SERVER_ADDRESS&gt;/ething/admin](http://localhost/ething/admin).
-Connect with the credentials set in the **config.php** file (default is admin/admin).
-In the status paragraph, you will see if something is missing.
+To check if the installation worked, go to the admin interface [http://&lt;YOUR_SERVER_ADDRESS&gt;/ething/client/#!settings?page=status](http://localhost/ething/client/#!settings?page=status).
+Connect with the credentials set in the **config.php** file (default is admin).
+In that page, you will see if something is missing.
 
 
-## Add a new user
-
-After the installation, you need to add at least one user to communicated with e-Thing.
-To do so, go to the admin interface [http://&lt;YOUR_SERVER_ADDRESS&gt;/ething/admin](http://localhost/ething/admin) .
-Connect with the credentials set in the **config.php** file (default is admin/admin).
-Go to the "user" tab and click to the "Add user" button. Fill the form and click on "Add".
 

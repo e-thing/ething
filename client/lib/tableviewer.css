@@ -1,0 +1,77 @@
+
+
+
+/* header no wrap + date no wrap*/
+.tableviewer .tableview table>tbody>tr>td.date, .tableviewer .tableview table>thead>tr>th {
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    overflow: hidden;
+}
+
+.tableviewer .view {
+	width: 100%;
+}
+
+.tableviewer .tableview tbody {
+	background-color: white;
+}
+
+.tableviewer .tableview thead {
+	background-color: #4285f4;
+    color: white;
+}
+
+.tableviewer-add-data button[data-role="remove"] {
+	width: 100%;
+}
+
+.tableviewer-add-data button[data-role="type"] {
+	background-color: #e8e8e8;
+}
+
+@media (max-width: 768px) {
+	
+	.tableviewer-add-data .input-group, .tableviewer-add-data button[data-role="remove"] {
+		margin-bottom: 10px;
+	}
+	
+}
+
+
+.tableviewer .dropdown-menu > li > label {
+  width: 100%;
+  margin-bottom: 0px;
+  font-weight: normal;
+  padding-left: 5px
+}
+
+
+.tableviewer [data-name="col-select"] li {
+	padding: 0 5px;
+}
+
+.tableviewer [name="tablename"] {
+	padding: 6px 10px;
+	font-size: 12px;
+	line-height: 1.5;
+	float: left;
+}
+
+.tableviewer td {
+	position: relative;
+}
+
+.tableviewer .editabletableview-editcell {
+	position: absolute;
+	top: 0;
+	right: 0;
+	/*float: right;*/
+    padding: 10px;
+    color: grey;
+    cursor: pointer;
+	background-color: rgba(255, 255, 255, 0.64);
+}
+
+.tableviewer .editabletableview-editcell:hover {
+	color: #407ae8;
+}

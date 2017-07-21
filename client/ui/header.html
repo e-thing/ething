@@ -1,0 +1,53 @@
+<nav id="navbar" class="navbar navbar-default navbar-fixed-top">
+  <div class="container">
+	<div class="navbar-header">
+	  <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#main-navbar" aria-expanded="false" aria-controls="navbar">
+		<span class="sr-only">Toggle navigation</span>
+		<span class="icon-bar"></span>
+		<span class="icon-bar"></span>
+		<span class="icon-bar"></span>
+	  </button>
+	  <div class="navbar-extra-btn visible-xs-block"></div>
+	  <a class="navbar-brand hidden-xs">e-Thing</a>
+	  <a class="navbar-title visible-xs-block"></a>
+	</div>
+	<div class="navbar-collapse collapse" id="main-navbar">
+	  <ul class="nav navbar-nav">
+		<li><a href="#!dashboard" data-toggle="collapse" data-target="#main-navbar.in"><span class="glyphicon glyphicon-dashboard" aria-hidden="true"></span> Dashboard</a></li>
+		<li><a href="#!devices" data-toggle="collapse" data-target="#main-navbar.in"><span class="glyphicon glyphicon-phone" aria-hidden="true"></span> Devices</a></li>
+		<!--<li>
+			<a href="#!data" data-toggle="collapse" data-target="#main-navbar.in"><span class="glyphicon glyphicon-search" aria-hidden="true"></span> Data</a>
+		</li>-->
+		<li class="dropdown">
+		  <a href="#!data" class="dropdown-toggle" role="button" aria-haspopup="true" aria-expanded="false"><span class="glyphicon glyphicon-search" aria-hidden="true"></span> Data</a>
+		  <ul class="dropdown-menu" data-role="data-folders">
+		  </ul>
+		</li>
+		<li><a href="#!apps" data-toggle="collapse" data-target="#main-navbar.in"><span class="glyphicon glyphicon-flash" aria-hidden="true"></span> Apps</a></li>
+		
+		<li class="visible-xs-block"><a href="#!settings" data-toggle="collapse" data-target="#main-navbar.in"><span class="glyphicon glyphicon-cog" aria-hidden="true"></span> Settings</a></li>
+		<li class="visible-xs-block"><a href="#!rules" data-toggle="collapse" data-target="#main-navbar.in"><span class="glyphicon glyphicon-link" aria-hidden="true"></span> Rules</a></li>
+		<li class="visible-xs-block"><a href="#!developer" data-toggle="collapse" data-target="#main-navbar.in"><span class="glyphicon glyphicon-console" aria-hidden="true"></span> Developer</a></li>
+		<li class="visible-xs-block"><a href="#" id="nav-api" target="_blank" data-toggle="collapse" data-target="#main-navbar.in"><span class="glyphicon glyphicon-transfer" aria-hidden="true"></span> API</a></li>
+		<li class="visible-xs-block"><a href="https://e-thing.github.io/doc" target="_blank" data-toggle="collapse" data-target="#main-navbar.in"><span class="glyphicon glyphicon-book" aria-hidden="true"></span> Doc</a></li>
+		<li class="visible-xs-block"><a href="#" id="nav-logout" data-toggle="collapse" data-target="#main-navbar.in"><span class="glyphicon glyphicon-log-out" aria-hidden="true"></span> Logout</a></li>
+
+	  </ul>
+	  
+	  <ul class="nav navbar-nav navbar-right">
+		<li class="dropdown hidden-xs">
+		  <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-haspopup="true" aria-expanded="false"><span class="glyphicon glyphicon-menu-down" aria-hidden="true"></span></a>
+		  <ul class="dropdown-menu">
+			<li><a href="#!settings" data-toggle="collapse" data-target="#main-navbar.in"><span class="glyphicon glyphicon-cog" aria-hidden="true"></span> Settings</a></li>
+			<li><a href="#!rules" data-toggle="collapse" data-target="#main-navbar.in"><span class="glyphicon glyphicon-link" aria-hidden="true"></span> Rules</a></li>
+			<li><a href="#!developer" data-toggle="collapse" data-target="#main-navbar.in"><span class="glyphicon glyphicon-console" aria-hidden="true"></span> Developer</a></li>
+			<li><a href="#" id="nav-api" target="_blank" data-toggle="collapse" data-target="#main-navbar.in"><span class="glyphicon glyphicon-transfer" aria-hidden="true"></span> API</a></li>
+			<li><a href="https://e-thing.github.io/doc" target="_blank" data-toggle="collapse" data-target="#main-navbar.in"><span class="glyphicon glyphicon-book" aria-hidden="true"></span> Doc</a></li>
+			<li role="separator" class="divider"></li>
+			<li><a href="#" id="nav-logout" data-toggle="collapse" data-target="#main-navbar.in"><span class="glyphicon glyphicon-log-out" aria-hidden="true"></span> Logout</a></li>
+		  </ul>
+		</li>
+	  </ul>
+	</div>
+  </div>
+</nav>

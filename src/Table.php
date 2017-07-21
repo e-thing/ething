@@ -64,31 +64,9 @@ class Table extends Resource
 	private $isDataDirty = false;
 	
 	
-	public function length() {
-		return $this->_d['length'];
-	}
-	
-	public function maxLength() {
-		return $this->_d['maxLength'];
-	}
-	
-	public function expireAfter() {
-		return $this->_d['expireAfter'];
-	}
-	
-	public function keys() {
-		return $this->_d['keys'];
-	}
-	
-	
-	public function jsonSerialize() {
-		return array_merge(parent::jsonSerialize(),array(
-			'keys' => $this->_d['keys']
-		));
-	}
-	
 	
 	const TIMESTAMP = 0;
+	const TIMESTAMP_MS = 1;
 	public static $dateFormat = \DateTime::RFC3339;
 	// return an object
 	private static function docSerialize($doc) {
@@ -96,14 +74,19 @@ class Table extends Resource
 			$doc['id'] = $doc['_id'];
 			unset($doc['_id']);
 		}
-		if(isset($doc['date']))
-			$doc['date'] = self::$dateFormat===self::TIMESTAMP ? $doc['date']->sec : date(self::$dateFormat, $doc['date']->sec);
+		if(isset($doc['date'])){
+			if(self::$dateFormat === self::TIMESTAMP){
+				$doc['date'] = $doc['date']->toDateTime()->getTimestamp();
+			} else if(self::$dateFormat === self::TIMESTAMP_MS){
+				$doc['date'] = $doc['date']->toDateTime()->getTimestamp() * 1000;
+			} else {
+				$doc['date'] = $doc['date']->toDateTime()->format(self::$dateFormat);
+			}
+		}
 		return (object)$doc;
 	}
 	
-	public static function validate(Ething $ething, $key,array &$attr,User $user,Resource $self = null) {
-		$isConstructor = !isset($self);
-		$value = &$attr[$key];
+	public static function validate($key, &$value, &$context) {
 		$ret = false;
 		switch($key){
 			case 'expireAfter':
@@ -114,22 +97,21 @@ class Table extends Resource
 				if($value===0) $value=null;
 				$ret = is_null($value) || (is_int($value) && $value>0);
 				break;
-			case 'content': // only available on creation
-				if(!$isConstructor)
-					break;
-				if(is_array($value)){
-					$content = $value;
-					static::sanitizeData($content, $keys);
-					$ret = function($r) use ($content,$keys) {
+			case 'content':
+				if(is_array($value) || is_null($value)){
+					
+					$content = is_null($value) ? array() : $value;
+					static::sanitizeData($content, $keys); // throw an exception on error
+					
+					$context['callbacks'][] = function($r) use ($content,$keys) {
 						$r->importRaw($content,$keys);
 					};
 				}
-				else if(is_null($value))
-					$ret = true;
-				unset($attr[$key]); // remove attribute 'content'
+				$ret = true;
+				unset($context['config'][$key]);// remove this key
 				break;
 			default:
-				$ret = parent::validate($ething,$key,$attr,$user,$self);
+				$ret = parent::validate($key,$value,$context);
 				break;
 		}
 		return $ret;
@@ -149,16 +131,16 @@ class Table extends Resource
 	public function clear() {
 		
 		// remove all the data from this table
-		$c = $this->getEthingInstance()->db()->selectCollection($this->user()->dataCollectionName());
+		$c = $this->ething->db()->selectCollection('tabledata');
 		
 		try {
-			$c->remove(array('_t' => $this->id()));
+			$c->deleteMany(array('_t' => $this->id()));
+			
+			$this->setAttr('length', 0);
+			$this->setAttr('keys', array());
+			$this->update();
 		}
 		catch(Exception $e){}
-		
-		$this->_d['keys'] = array();
-		$this->_d['length'] = 0;
-		$this->update();
 		
 	}
 	
@@ -166,15 +148,15 @@ class Table extends Resource
 	public function checkExpiredData() {
 		
 		// remove the expired data in the current table
-		if($this->expireAfter()){
-			$c = $this->getEthingInstance()->db()->selectCollection($this->user()->dataCollectionName());
+		if($this->expireAfter){
+			$c = $this->ething->db()->selectCollection('tabledata');
 			$cursor = $c->find(array(
 				'_t' => $this->id(),
 				'date' => array(
-					'$lt' => (new \MongoDate(time() - $this->expireAfter()))
+					'$lt' => (new \MongoDB\BSON\UTCDateTime((time() - $this->expireAfter)*1000))
 				)
 			), array(
-				'_id' => true
+				'projection' => array('_id' => 1)
 			));
 			
 			$idToBeRemoved = [];
@@ -188,33 +170,35 @@ class Table extends Resource
 	}
 	
 	
-	public function stats() {
+	private function updateMeta() {
 		
 		$keys = [];
 		$length = 0;
 		
-		$c = $this->getEthingInstance()->db()->selectCollection($this->user()->dataCollectionName());
+		$c = $this->ething->db()->selectCollection('tabledata');
 		$cursor = $c->find(array('_t' => $this->id()),array(
-			'_id' => false,
-			'date' => false,
-			'_t' => false
+			'projection' => array(
+				'_id' => 0,
+				'date' => 0,
+				'_t' => 0
+			)
 		));
 		
 		foreach ($cursor as $doc) {
 			foreach ($doc as $k => $v) {
-				if($k[0]!='_'){
-					if(!isset($keys[$k])) $keys[$k]=0;
-					$keys[$k]++;
-				}
+				if(!isset($keys[$k])) $keys[$k]=0;
+				$keys[$k]++;
 			}
-			//$keys = array_merge($keys,array_diff(array_keys($doc),$keys));
 			$length++;
 		}
 		
-		return [
-			'keys' => $keys,
-			'length' => $length
-		];
+		$this->setAttr('length', $length);
+		$this->setAttr('keys', $keys);
+		$this->update();
+	}
+	
+	public function repair() {
+		$this->updateMeta();
 	}
 	
 	// return the number of document removed
@@ -225,19 +209,57 @@ class Table extends Resource
 		if(!is_array($row_ids) && !($row_ids instanceof Traversable))
 			$row_ids = [$row_ids];
 		
-		$c = $this->getEthingInstance()->db()->selectCollection($this->user()->dataCollectionName());
+		$c = $this->ething->db()->selectCollection('tabledata');
 		
-		$keys = $this->_d['keys'];
+		$keys = $this->keys;
 		
 		foreach($row_ids as $row_id){
 			
 			try {
-				$removedDoc = $c->findAndModify(array(
+				$removedDoc = $c->findOneAndDelete(array(
 					'_id' => $row_id,
 					'_t' => $this->id()
-				),null,null,array('remove'=>true));
+				));
 			
 				// update the key count
+				if($removedDoc){
+					foreach($removedDoc as $field => $v){
+						if(isset($keys[$field])){
+							$keys[$field]--;
+							if($keys[$field]<=0)
+								unset($keys[$field]);
+						}
+					}
+					
+					$nb++;
+				}
+			}
+			catch(Exception $e) {} // invalid id or unable to remove the document
+		}
+		
+		if($nb){
+			$this->setAttr('length', $this->length - $nb);
+			$this->setAttr('keys', $keys);
+			$this->update();
+		}
+		
+		return $nb;
+	}
+	
+	public function remove_row($row_id) {
+		
+		$c = $this->ething->db()->selectCollection('tabledata');
+		
+		$keys = $this->keys;
+			
+		try {
+			$removedDoc = $c->findOneAndDelete(array(
+				'_id' => $row_id,
+				'_t' => $this->id()
+			));
+		
+			// update the key count
+			if($removedDoc){
 				foreach($removedDoc as $field => $v){
 					if(isset($keys[$field])){
 						$keys[$field]--;
@@ -246,23 +268,19 @@ class Table extends Resource
 					}
 				}
 				
-				$nb++;
+				$this->setAttr('length', $this->length - 1);
+				$this->setAttr('keys', $keys);
+				$this->update();
+				
+				return $removedDoc;
 			}
-			catch(Exception $e) {} // invalid id or unable to remove the document
 		}
+		catch(Exception $e) {} // invalid id or unable to remove the document
 		
-		if($nb){
-			$this->_d['keys'] = $keys;
-			$this->_d['length']-=$nb;
-			$this->update();
-		}
-		
-		return $nb;
+		return false;
 	}
 	
-	
-	
-	private static function sanitizeData(array &$dataArray, &$keys = null, $invalidFields = self::INVALID_FIELD_RENAME, $skipError = true){
+	public static function sanitizeData(array &$dataArray, &$keys = null, $invalidFields = self::INVALID_FIELD_RENAME, $skipError = true, $setDate = true){
 		
 		if(!is_array($keys))
 			$keys = array();
@@ -275,7 +293,7 @@ class Table extends Resource
 				if(is_object($data))
 					$data = (array)$data;
 				else if(!is_array($data))
-					throw new \Ething\Exception('invalid data');
+					throw new Exception('invalid data');
 				
 				
 				// key/field validation
@@ -283,7 +301,7 @@ class Table extends Resource
 				foreach($data as $k => $v){
 					
 					if(!(is_int($v) || is_float($v) || is_string($v) || is_bool($v) || is_null($v)))
-						throw new \Ething\Exception('The value must either be a string or a number or a boolean or null.');
+						throw new Exception('The value must either be a string or a number or a boolean or null.');
 					
 					if(!preg_match(self::VALIDATE_FIELD,$k)){
 						
@@ -300,7 +318,7 @@ class Table extends Resource
 								break;
 								
 							default:
-								throw new \Ething\Exception('invalid key "'.$k.'", must only contain alphanumeric, underscore or dashes characters. Keys must not be empty');
+								throw new Exception('invalid key "'.$k.'", must only contain alphanumeric, underscore or dashes characters. Keys must not be empty');
 							
 						}
 						
@@ -320,7 +338,7 @@ class Table extends Resource
 								break;
 								
 							default:
-								throw new \Ething\Exception('invalid key "'.$k.'", must not be one of the following values '.implode(',',static::$reservedKeys));
+								throw new Exception('invalid key "'.$k.'", must not be one of the following values '.implode(',',static::$reservedKeys));
 							
 						}
 					}
@@ -328,9 +346,9 @@ class Table extends Resource
 					if($k=='date'){
 						// check the format
 						if($t = strtotime($v))
-							$data[$k] = new \MongoDate($t);
+							$data[$k] = new \MongoDB\BSON\UTCDateTime($t*1000);
 						else
-							throw new \Ething\Exception('Invalid date "'.$v.'"');
+							throw new Exception('Invalid date "'.$v.'"');
 					}
 					
 				}
@@ -349,7 +367,7 @@ class Table extends Resource
 				}
 				
 				// add date if not already set
-				if(!isset($data['date'])) $data['date'] = new \MongoDate(); // add the insertion date for that document
+				if($setDate && !isset($data['date'])) $data['date'] = new \MongoDB\BSON\UTCDateTime(time()*1000); // add the insertion date for that document
 				
 				
 				$length++;
@@ -373,9 +391,8 @@ class Table extends Resource
 	public function insert(array $data, $invalidFields = self::INVALID_FIELD_RENAME) {
 		if(!empty($data)){
 			
-			// add the data into the tableData
-			$keys = $this->_d['keys'];
-			$length = $this->_d['length'];
+			$keys = $this->keys;
+			$length = $this->length;
 			
 			// sanitize the incoming data
 			$dataArray = array($data);
@@ -388,17 +405,16 @@ class Table extends Resource
 			}
 			
 			// insert the data
-			$c = $this->getEthingInstance()->db()->selectCollection($this->user()->dataCollectionName());
-			$c->insert($dataArray[0]);
-			
+			$c = $this->ething->db()->selectCollection('tabledata');
+			$c->insertOne($dataArray[0]);
 			// remove extra row
-			if( $this->maxLength() && $length > $this->maxLength() ){
+			if( $this->maxLength && $length > $this->maxLength ){
+				
 				// remove the oldest document
-				$removedDoc = $c->findAndModify(array(
+				$removedDoc = $c->findOneAndDelete(array(
 					'_t' => $this->id()
-				),null,null,array(
+				),array(
 					'sort' => array('date'=>1),
-					'remove'=>true
 				));
 				
 				$length--;
@@ -413,23 +429,28 @@ class Table extends Resource
 				}
 			}
 			
-			$this->_d['length'] = $length;
-			$this->_d['keys'] = $keys;
-			$this->update();
+			$this->setAttr('length', $length);
+			$this->setAttr('keys', $keys);
+			$this->update(true);
 			
-			
+			$doc = self::docSerialize($dataArray[0]);
 			// generate an event
-			$this->dispatchEvent('TableDataAdded',self::docSerialize($dataArray[0]));
+			$this->dispatchSignal(Event\TableDataAdded::emit($this, $doc));
+			// mqtt publish
+			$this->ething->mqttPublish("resource/table/{$this->id()}/data", $doc, true);
 			
+			return $doc;
 		}
+		
+		return false;
 	}
 	
 	
 	public function import(array $dataArray = array(), $invalidFields = self::INVALID_FIELD_RENAME, $skipError = true){
 		
 		// remove extra row
-		if( $this->maxLength() && count($dataArray) > $this->maxLength() ){
-			$dataArray = array_slice($dataArray, - $this->maxLength());
+		if( $this->maxLength && count($dataArray) > $this->maxLength ){
+			$dataArray = array_slice($dataArray, - $this->maxLength);
 		}
 		
 		
@@ -437,7 +458,7 @@ class Table extends Resource
 		$this->clear();
 		
 		// sanitize the incoming data
-		$this->_d['length'] = static::sanitizeData($dataArray,$this->_d['keys'],$invalidFields,$skipError);
+		$this->setAttr('length', static::sanitizeData($dataArray,$this->keys,$invalidFields,$skipError));
 		
 		if(!empty($dataArray)){
 			// add meta data
@@ -447,8 +468,10 @@ class Table extends Resource
 			}
 			
 			// insert the data
-			$c = $this->getEthingInstance()->db()->selectCollection($this->user()->dataCollectionName());
-			$c->batchInsert($dataArray);
+			$c = $this->ething->db()->selectCollection('tabledata');
+			$c->insertMany($dataArray, array(
+				'ordered' => false
+			));
 		}
 		
 		$this->update();
@@ -462,8 +485,8 @@ class Table extends Resource
 			return true;
 		
 		// remove extra row
-		if( $this->maxLength() && count($dataArray) > $this->maxLength() ){
-			$dataArray = array_slice($dataArray, - $this->maxLength());
+		if( $this->maxLength && count($dataArray) > $this->maxLength ){
+			$dataArray = array_slice($dataArray, - $this->maxLength);
 		}
 		
 		// remove any previous content
@@ -476,47 +499,157 @@ class Table extends Resource
 		}
 		
 		// insert the data
-		$c = $this->getEthingInstance()->db()->selectCollection($this->user()->dataCollectionName());
-		$c->batchInsert($dataArray);
+		$c = $this->ething->db()->selectCollection('tabledata');
+		$c->insertMany($dataArray, array(
+			'ordered' => false
+		));
 		
 		// update the metadata
-		$this->_d['length'] = count($dataArray);
+		$this->setAttr('length', count($dataArray));
+		$keys_ = $this->getAttr('keys');
 		foreach($keys as $k => $c){
-			if(!isset($this->_d['keys'][$k]))
-				$this->_d['keys'][$k] = 0;
-			$this->_d['keys'][$k] += $c;
+			if(!isset($keys_[$k]))
+				$keys_[$k] = 0;
+			$keys_[$k] += $c;
 		}
+		$this->setAttr('keys', $keys_);
 		$this->update();
 		
 		return true;
 	}
 	
 	
-	public function get($id, array $fields = null)
+	public function getRow($id, array $fields = null)
 	{
 		
 		// return only specific fields
 		$_fields = array();
 		if(isset($fields)){
-			$_fields['_id'] = false; // by default, the '_id' field is shown
+			$_fields['_id'] = 0; // by default, the '_id' field is shown
 			foreach($fields as $field){
 				// handle special key '_id' 
 				if($field==='id')
-					$_fields['_id'] = true;
+					$_fields['_id'] = 1;
 				else if(!in_array($field,static::$reservedKeys))
-					$_fields[$field] = true;
+					$_fields[$field] = 1;
 			}
 		}
 		else {
 			// never show the table id
-			$_fields['_t'] = false;
+			$_fields['_t'] = 0;
 		}
 		
 		
-		$c = $this->getEthingInstance()->db()->selectCollection($this->user()->dataCollectionName());
-		$r = $c->findOne(array('_id' => $id,'_t' => $this->id()),$_fields);
+		$c = $this->ething->db()->selectCollection('tabledata');
+		$r = $c->findOne(array('_id' => $id,'_t' => $this->id()),array( 'projection' => $_fields ));
 		
 		return (!is_null($r)) ? self::docSerialize($r) : null;
+	}
+	
+	public function replaceRowById($row_id, array $data, $invalidFields = self::INVALID_FIELD_RENAME) {
+		if(!empty($data)){
+			
+			$keys = $this->keys;
+			
+			// sanitize the incoming data
+			$dataArray = array($data);
+			static::sanitizeData($dataArray,$keys,$invalidFields,false);
+			
+			// add meta data
+			$dataArray[0]['_id'] = $row_id;
+			$dataArray[0]['_t'] = $this->id();
+			
+			// insert the data
+			$c = $this->ething->db()->selectCollection('tabledata');
+			$original = $c->findOneAndReplace(array('_id' => $row_id), $dataArray[0]);
+			
+			if($original){
+				foreach($original as $field => $v){
+					if(isset($keys[$field])){
+						$keys[$field]--;
+						if($keys[$field]<=0)
+							unset($keys[$field]);
+					}
+				}
+				
+				$this->setAttr('keys', $keys);
+				$this->update(true);
+				
+				return self::docSerialize($dataArray[0]);
+			}
+		}
+		
+		return false;
+	}
+	
+	// replace only one row
+	public function replaceRow($query, array $data, $invalidFields = self::INVALID_FIELD_RENAME, $upsert = false) {
+		if(!empty($data)){
+			
+			$queries = array();
+			$queries[] = array('_t' => $this->id());
+			
+			if(is_string($query)){
+				// parse the query string
+				$queries[] = $this->parser()->parse($query);
+			}
+			else if(is_array($query))
+				$queries[] = $query;
+			
+			$c = $this->ething->db()->selectCollection('tabledata');
+			
+			$original = $c->findOne(array(
+				'$and' => $queries
+			));
+			
+			if($original){
+				// the document was found !
+				
+				$keys = $this->keys;
+				
+				// sanitize the incoming data
+				$dataArray = array($data);
+				static::sanitizeData($dataArray,$keys,$invalidFields,false);
+				
+				// add meta data
+				$dataArray[0]['_id'] = $original['_id']; // keep the same id !
+				$dataArray[0]['_t'] = $this->id();
+				
+				//replace it !
+				$c->replaceOne(array('_id' => $original['_id']), $dataArray[0]);
+				
+				foreach($original as $field => $v){
+					if(isset($keys[$field])){
+						$keys[$field]--;
+						if($keys[$field]<=0)
+							unset($keys[$field]);
+					}
+				}
+				
+				$this->setAttr('keys', $keys);
+				$this->update(true);
+				
+				return self::docSerialize($dataArray[0]);
+			} else {
+				// not found !
+				if($upsert){
+					return $this->insert($data, $invalidFields);
+				}
+			}
+		}
+		
+		return false;
+	}
+	
+	public function parser(){
+		if(!isset($this->_parser)){
+			$this->_parser = new TableQueryParser();
+		}
+		return $this->_parser;
+	}
+	
+	public function find($query){
+		return $this->select(0,null,null,null,$query);
 	}
 	
 	public function select($start = 0, $length = null, array $fields = null, $sort = null, $query = null)
@@ -527,90 +660,69 @@ class Table extends Resource
 	// $length >= 0
 	{
 		
-		$c = $this->getEthingInstance()->db()->selectCollection($this->user()->dataCollectionName());
-		$q = array('_t' => $this->id());
+		$c = $this->ething->db()->selectCollection('tabledata');
 		
+		$queries = array();
+		$queries[] = array('_t' => $this->id());
 		
-		// query string ?
 		if(is_string($query)){
-			
 			// parse the query string
-			try{
-				$parseFields = array(
-					'id' => array(
-						'type' => 'string',
-						'name' => '_id'
-					),
-					'date' => array(
-						'type' => 'date'
-					)
-				);
-				$keys = array_keys($this->keys());
-				foreach($keys as $key)
-					$parseFields[$key] = array(
-						'type' => '*'
-					);
-				
-				$parser = new Query\Parser($parseFields);
-				
-				$q = array_merge(
-					$parser->parse($query),
-					$q
-				);
-				
-			}
-			catch(Query\InvalidQueryException $e){
-				throw new \Ething\Exception($e->getMessage(), 400, $e);
-			}
-			
+			$queries[] = $this->parser()->parse($query);
 		}
+		else if(is_array($query))
+			$queries[] = $query;
 		
+		$q = array(
+			'$and' => $queries
+		);
 		
-		$cursor = $c->find($q);
+		$opt = array();
 		
 		// sort
 		if(is_string($sort) && preg_match('/^([+-]?)(.+)$/',$sort,$matches)){
 			$sortField=$matches[2];
 			$sortAsc=($matches[1]!=='-') ? 1 : -1;
-			$cursor->sort(array($sortField=>$sortAsc));
+			$opt['sort'] = array($sortField=>$sortAsc);
 		}
 		else
 			// always sort by date
-			$cursor->sort(array('date'=>1));
+			$opt['sort'] = array('date'=>1);
 		
 		
 		// define the start point and the length of the returning set
 		if($start<0){
-			$start = $this->length() + $start;
+			$start = $this->length + $start;
 			if($start < 0){
 				if(isset($length)) $length+=$start;
 				$start = 0;
 			}
 		}
-		$cursor->skip($start);
+		$opt['skip'] = $start;
 		if(isset($length))
-			$cursor = $cursor->limit($length);
+			$opt['limit'] = $length;
 		
 		
 		// return only specific fields
 		$_fields = array();
 		if(isset($fields)){
-			$_fields['_id'] = false; // by default, the '_id' field is shown
+			$_fields['_id'] = 0; // by default, the '_id' field is shown
 			foreach($fields as $field){
 				// handle special key '_id' 
 				if($field==='id')
-					$_fields['_id'] = true;
+					$_fields['_id'] = 1;
 				else if(!in_array($field,static::$reservedKeys))
-					$_fields[$field] = true;
+					$_fields[$field] = 1;
 			}
 		}
 		else {
 			// never show the table id
-			$_fields['_t'] = false;
+			$_fields['_t'] = 0;
 		}
 		
-		$cursor->fields($_fields); 
+		$opt['projection'] = $_fields;
 		
+		
+		$cursor = $c->find($q, $opt);
 		
 		
 		// iterate
@@ -624,11 +736,53 @@ class Table extends Resource
 	
 	
 	// create a new resource
-	public static function create(Ething $ething, User $user, array $attributes, Resource $createdBy = null) {
-		return parent::createRessource($ething, $user, array_merge(self::$defaultAttr, $attributes) , array('length' => 0,'keys' => []) , $createdBy );
+	public static function create(Ething $ething, array $attributes, Resource $createdBy = null) {
+		return parent::createRessource($ething, array_merge(self::$defaultAttr, $attributes) , array('length' => 0,'keys' => []) , $createdBy );
 	}
 	
+	public function computeStatistics($key, $query = null){
+		
+		$map = new \MongoDB\BSON\Javascript(str_replace('<KEY>',$key,file_get_contents(__DIR__.'/mongodb/statistics/map.js')));
+		$reduce = new \MongoDB\BSON\Javascript(file_get_contents(__DIR__.'/mongodb/statistics/reduce.js'));
+		$finalize = new \MongoDB\BSON\Javascript(file_get_contents(__DIR__.'/mongodb/statistics/finalize.js'));
+		
+		$queries = array();
+		$queries[] = array(
+			'_t' => $this->id(),
+			$key => array('$exists' => true)
+		);
+		
+		if(is_string($query)){
+			// parse the query string
+			$queries[] = $this->parser()->parse($query);
+		}
+		else if(is_array($query))
+			$queries[] = $query;
+		
+		$res = $this->ething->db()->command(array(
+			"mapreduce" => "tabledata",
+			"map" => $map,
+			"reduce" => $reduce,
+			"finalize" => $finalize,
+			"query" => array(
+				'$and' => $queries
+			),
+			"out" => array("inline" => 1)
+		));
 
+		$res = $res->toArray()[0];
+		
+		$ok = !!$res['ok'];
+		if($ok && count($res['results'])){
+			//$time = $res['timeMillis'];
+			return EThing::r_encode($res['results'][0]['value']);
+		}
+
+		return false;
+	}
+	
+	
+	
 }
 
 

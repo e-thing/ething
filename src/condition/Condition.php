@@ -3,31 +3,37 @@
 
 namespace Ething\Condition;
 
+use \Ething\RuleItem;
+use \Ething\InvalidRuleException;
+use \Ething\Event\Signal;
 
-interface ConditionInterface {
-	static public function check(array &$json, $eventName, $resourceTypeName);
-}
-
-abstract class Condition implements \JsonSerializable, ConditionInterface {
+abstract class Condition extends RuleItem {
 	
-	public $type;
 	
-	abstract public function test(\Ething\Event\Event $event);
-	
-	public function description(){
-		return "the ".get_class()." condition matches";
+	final public function evaluate(Signal $signal){
+		if($this->isValid()){
+			
+			// reset error
+			$this->setError(false);
+			
+			try {
+				return boolval($this->call($signal));
+			}
+			catch(InvalidRuleException $e){
+				// this exception is fired when an action is no more valid.
+				$this->setInvalid();
+				$this->setError($e->getMessage());
+			}
+			catch(\Exception $e){
+				$this->setError($e->getMessage());
+			}
+			
+		}
+		
+		return false;
 	}
 	
-	public function __construct(array $json){
-		// set the property's value of this instance
-		foreach($json as $attr => $value)
-			$this->$attr = $value;
-		$this->type = get_class($this);
-	}
-	
-	public function jsonSerialize(){
-		return get_object_vars($this);
-	}
+	abstract protected function call(\Ething\Event\Signal $signal);
 	
 	
 }

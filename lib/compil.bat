@@ -6,11 +6,8 @@ set ROOT_DIR=%~dp0
 cd %ROOT_DIR%
 
 
-call:compil "core.js" "src\core\utils.js" "src\core\deferred.js" "src\core\api.js" "src\core\arbo.js" "src\core\swagger.js"
+call:compil "core.js" "src\utils.js" "src\node.js" "src\event.js" "src\deferred.js" "src\api.js" "src\arbo.js" "src\rules.js"
 
-call:compil "ui.js" "src\ui\utils.js" "src\ui\form.js" "src\ui\modal.js" "src\ui\table.js" "src\ui\browser.js" "src\ui\opendialog.js" "src\ui\savedialog.js" "src\ui\textviewer.js" "src\ui\tableviewer.js" "src\ui\mapviewer.js" "src\ui\imageviewer.js" "src\ui\graph.js" "src\ui\deviceviewer.js" "src\ui\formmodal.js"
-
-call:compil "ui.css" "src\ui\table.css" "src\ui\browser.css" "src\ui\modal.css" "src\ui\form.css" "src\ui\common.css" "src\ui\textviewer.css" "src\ui\tableviewer.css" "src\ui\mapviewer.css" "src\ui\imageviewer.css" "src\ui\graph.css" "src\ui\deviceviewer.css"
 
 
 

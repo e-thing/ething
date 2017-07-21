@@ -2,7 +2,7 @@
 
 namespace Ething\Query;
 
-
+// replace bool by boolean
 
 /*
 
@@ -15,163 +15,165 @@ This class will parse a query string into a MongoDB query object used to filter 
 
 class Parser {
 	
-	private static $operators = null;
-	
 	private $constants = array();
 	private $fields = array();
+	private $operators = array();
 	
-	static private function load(){
+	private $fieldFallback = null;
+	
+	public function __construct(array $fields = array(), array $constants = array()){
 		
-		if(isset(static::$operators))
-			return;
-		
-		
-		static::$operators = array(
+		// set defaults operators
+		$this->addOperator( array(
 			
-			'==' => array(
-				'accept' => '*',
-				'compil' => function($field,$value){
+			new Operator('==', function($field,$value){
 					return array(
-						$field => $value
+						(string)$field => $value->is('date') ? new \MongoDB\BSON\UTCDateTime($value->getDate()->getTimestamp()*1000) : $value->getValue()
 					);
-				}
-			),
-			'!=' => array(
-				'accept' => '*',
-				'compil' => function($field,$value){
+				}),
+			new Operator('!=', function($field,$value){
 					return array(
-						$field => array( '$ne' => $value )
+						(string)$field => array( '$ne' => $value->is('date') ? new \MongoDB\BSON\UTCDateTime($value->getDate()->getTimestamp()*1000) : $value->getValue() )
 					);
-				}
-			),
-			'is' => array(
-				'accept' => '*',
-				'compil' => function($field,$value){
-					switch(strtolower($value)){
+				}),
+			new Operator('exists', function($field){
+					return array(
+						(string)$field => array( '$exists' => true )
+					);
+				}, '*', false),
+			new Operator('is', function($field,$value){
+					switch(strtolower($value->getValue())){
 						case 'string':
 							return array(
-								$field => array( '$type' => 2 )
+								(string)$field => array( '$type' => 2 )
 							);
 						case 'boolean':
 						case 'bool':
 							return array(
-								$field => array( '$type' => 8 )
+								(string)$field => array( '$type' => 8 )
 							);
 						case 'number':
 							return array(
 								'$or' => array(
-									array( $field => array( '$type' => 1 ) ),
-									array( $field => array( '$type' => 16 ) ),
-									array( $field => array( '$type' => 18 ) )
+									array( (string)$field => array( '$type' => 1 ) ),
+									array( (string)$field => array( '$type' => 16 ) ),
+									array( (string)$field => array( '$type' => 18 ) )
 								)
 							);
 						case 'integer':
 							return array(
 								'$or' => array(
-									array( $field => array( '$type' => 16 ) ),
-									array( $field => array( '$type' => 18 ) )
+									array( (string)$field => array( '$type' => 16 ) ),
+									array( (string)$field => array( '$type' => 18 ) )
 								)
 							);
 						case 'float':
 						case 'double':
 							return array(
-								$field => array( '$type' => 1 )
+								(string)$field => array( '$type' => 1 )
+							);
+						case 'null':
+							return array(
+								(string)$field => array( '$type' => 10 )
 							);
 						default:
 							throw new InvalidQueryException("unknown type '{$value}'",$stream);
 					}
-				}
-			),
-			
+				}, '*', 'string'),
 			// number or date
-			'<' => array(
-				'accept' => array('integer','double','date'),
-				'compil' => function($field,$value){
+			new Operator('<', function($field,$value){
 					return array(
-						$field => array( '$lt' => $value )
+						(string)$field => array( '$lt' => $value->is('date') ? new \MongoDB\BSON\UTCDateTime($value->getDate()->getTimestamp()*1000) : $value->getValue() )
 					);
-				}
-			),
-			'>' => array(
-				'accept' => array('integer','double','date'),
-				'compil' => function($field,$value){
+				}, array('integer','double','date')),
+			new Operator('>', function($field,$value){
 					return array(
-						$field => array( '$gt' => $value )
+						(string)$field => array( '$gt' => $value->is('date') ? new \MongoDB\BSON\UTCDateTime($value->getDate()->getTimestamp()*1000) : $value->getValue() )
 					);
-				}
-			),
-			
+				}, array('integer','double','date')),
 			// number only
-			'<=' => array(
-				'accept' => array('integer','double'),
-				'compil' => function($field,$value){
+			new Operator('<=', function($field,$value){
 					return array(
-						$field => array( '$le' => $value )
+						(string)$field => array( '$lte' => $value->getValue() )
 					);
-				}
-			),
-			'>=' => array(
-				'accept' => array('integer','double'),
-				'compil' => function($field,$value){
+				}, array('integer','double')),
+			new Operator('>=', function($field,$value){
 					return array(
-						$field => array( '$ge' => $value )
+						(string)$field => array( '$gte' => $value->getValue() )
 					);
-				}
-			),
-			
+				}, array('integer','double')),
 			// string only
-			'^=' => array(
-				'accept' => array('string'), // start with
-				'compil' => function($field,$value){
+			new Operator('^=', function($field,$value){ // start with
 					return array(
-						$field => array( '$regex' => '^'.$value )
+						(string)$field => array( '$regex' => '^'.$value->getValue() )
 					);
-				}
-			),
-			'$=' => array(
-				'accept' => array('string'), // end with
-				'compil' => function($field,$value){
+				}, array('string')),
+			new Operator('$=', function($field,$value){ // end with
 					return array(
-						$field => array( '$regex' => $value.'$' )
+						(string)$field => array( '$regex' => $value->getValue().'$' )
 					);
-				}
-			),
-			'*=' => array(
-				'accept' => array('string'), // containing
-				'fct' => function($a,$b){
-					return strpos($a,$b)!==false;
-				},
-				'compil' => function($field,$value){
+				}, array('string')),
+			new Operator('*=', function($field,$value){ // containing
 					return array(
-						$field => array( '$regex' => $value )
+						(string)$field => array( '$regex' => $value->getValue() )
 					);
-				}
-			),
-			'~=' => array(
-				'accept' => array('string'), // containing word
-				'compil' => function($field,$value){
+				}, array('string')),
+			new Operator('~=', function($field,$value){ // containing word
 					return array(
-						$field => array( '$regex' => '(^|\s)'.$value.'($|\s)' )
+						(string)$field => array( '$regex' => '(^|\s)'.$value->getValue().'($|\s)' )
 					);
-				}
-			)
+				}, array('string'))
 			
-			
-		);
+		 ));
+		$this->addField($fields);
+		$this->addConstant($constants);
 	}
 	
 	
-	public function __construct(array $fields = array()){
-		static::load();
+	public function addConstant($name, $value = null){
 		
-		$this->fields = $fields;
+		if(is_array($name)){
+			foreach($name as $key => $value)
+				$this->constants[$key] = $value;
+		}
+		else 
+			$this->constants[$name] = $value;
+	}
+	
+	public function getConstant($name){
+		return isset($name) ? ( isset($this->constants[$name]) ? $this->constants[$name] : null ) : array_values($this->constants);
+	}
+	
+	public function addField($field){
+		if(is_array($field)){
+			foreach($field as $value)
+				$this->addField($value);
+		}
+		else if($field instanceof Field)
+			$this->fields[(string)$field] = $field;
+	}
+	
+	public function getField($name){
+		return isset($name) ? ( isset($this->fields[$name]) ? $this->fields[$name] : null ) : array_values($this->fields);
+	}
+	
+	public function addOperator($operator){
+		if(is_array($operator)){
+			foreach($operator as $value)
+				$this->addOperator($value);
+		}
+		else if($operator instanceof Operator)
+			$this->operators[(string)$operator] = $operator;
+	}
+	
+	public function getOperator($syntax){
+		return isset($syntax) ? ( isset($this->operators[$syntax]) ? $this->operators[$syntax] : null ) : array_values($this->operators);
 	}
 	
 	
-	public function addConstant($name, $value){
-		$this->constants[$name] = $value;
+	public function setFieldFallback($fallback){
+		$this->fieldFallback = is_callable($fallback) ? $fallback : null;
 	}
-	
 	
 	/*
 	* Entry point
@@ -187,10 +189,16 @@ class Parser {
 		$stream->skipSpace();
 		if($field = $stream->read('/[a-z0-9\.\-_]+/i')){
 			if(array_key_exists($field, $this->fields)){
-				return $field;
+				return $this->fields[$field];
 			}
-			else
+			else{
+				if($this->fieldFallback){
+					$f = call_user_func($this->fieldFallback, $field);
+					if($f instanceof Field)
+						return $f;
+				}
 				throw new InvalidQueryException("unknown field '{$field}'",$stream);
+			}
 		}
 		else
 			throw new InvalidQueryException('expected a field',$stream);
@@ -200,8 +208,8 @@ class Parser {
 	private function parseOperator(Stream &$stream){
 		$stream->skipSpace();
 		if(($op = $stream->read('/[\=\!\^\>\<\$\*~]+/')) || ($op = $stream->readWord())){
-			if(array_key_exists($op, static::$operators)){
-				return $op;
+			if(array_key_exists($op, $this->operators)){
+				return $this->operators[$op];
 			}
 			else
 				throw new InvalidQueryException("unknown operator '{$op}'",$stream);
@@ -216,22 +224,26 @@ class Parser {
 		// try to get string (double quotes or simple quotes)
 		if ( ($v = $stream->read('/^(?:\"([^\"]*(?:\"\"[^\"]*)*)\")/')) || ($v = $stream->read('/^(?:\'([^\']*(?:\'\'[^\']*)*)\')/')) ){
 			// quoted string
-			return substr($v, 1, -1); // remove the quotes
+			$r = substr($v, 1, -1); // remove the quotes
+			if($v[0] === '"'){
+				$r = \stripcslashes($r);
+			}
+			return new Value($r);
 		}
 		else {
 			$v = $stream->read('/[a-z0-9\.\-_+]+/i');
 			
 			// number ? (integer or float)
 			if(is_numeric($v)){
-				return $v + 0;
+				return new Value($v + 0);
 			}
 			// boolean ?
 			else if( preg_match('/^(true|false)$/i',$v) ){
-				return (bool) preg_match('/true/i',$v);
+				return new Value((bool) preg_match('/true/i',$v));
 			}
 			// maybe a CONSTANT
 			else if(array_key_exists($v, $this->constants)){
-				return $this->constants[$v];
+				return new Value($this->constants[$v]);
 			}
 			else
 				throw new InvalidQueryException("invalid value '{$v}'",$stream);
@@ -244,105 +256,26 @@ class Parser {
 	*/
 	private function parseFOV(Stream &$stream){
 		
+		if($stream->read('/^\s*not($|\s+)/i')){
+			return array( '$nor' => array($this->parseFOV($stream)) );
+		}
+		
 		$field = $this->parseField($stream);
 		$op = $this->parseOperator($stream);
-		$value = $this->parseValue($stream);
+		$value = $op->hasValue() ? $this->parseValue($stream) : new Value();
 		
-		$opDesc = static::$operators[$op];
-		$fieldDesc = $this->fields[$field];
-		
-		$fieldType = $fieldDesc['type'];
-		
-		// rename the field before compilation !
-		if(isset($fieldDesc['name']))
-			$field = $fieldDesc['name'];
-		
-		$constraints = array();
-		
-		if($fieldType == '*'){
-			
-			// special case, the field type is unknown !
-			
-			// check that the operator is compatible with the type of the value
-			if($opDesc['accept'] != '*'){
-				$valueType = gettype($value);
-				if(!in_array($valueType,$opDesc['accept']))
-					throw new InvalidQueryException("the value '{$value}' is not a {$valueType}",$stream);
-				
-				// the value can be anything ...
-				// but add some constraints in order to avoid errors
-				// for instance, the operator $ge will fail on string and fire an error
-				// so check the type of the value before compare the value !
-				
-				$constraints = array();
-				
-				foreach($opDesc['accept'] as $type){
-					switch($type){
-						case 'string':
-							$constraints[] = array( $field => array( '$type' => 2 ) );
-							break;
-						case 'bool':
-							$constraints[] = array( $field => array( '$type' => 8 ) );
-							break;
-						case 'double':
-							$constraints[] = array( $field => array( '$type' => 1 ) );
-							break;
-						case 'integer':
-							$constraints[] = array( $field => array( '$type' => 16 ) );
-							$constraints[] = array( $field => array( '$type' => 18 ) );
-							break;
-						case 'date':
-							$constraints[] = array( $field => array( '$type' => 9 ) );
-							break;
-						default:
-							throw new InvalidQueryException("error",$stream); // internal error
-					}
-				}
-				
-				if(count($constraints)>1){
-					$constraints = array(
-						'$or' => $constraints
-					);
-				}
-			}
-			
-			
-		}
-		else {
-			
-			// the type of the field is known !
-		
-			// the operator must be compatible with the type of the field ?
-			if($opDesc['accept'] != '*' && !in_array($fieldType,$opDesc['accept']))
-				throw new InvalidQueryException("the operator '{$op}' does not accept {$fieldType}",$stream);
-			
-			// is the value also compatible with the type given by the field ?
-			switch($fieldType){
-				case 'string':
-				case 'integer':
-				case 'double':
-				case 'bool':
-					if(gettype($value) != $fieldType) // php type
-						throw new InvalidQueryException("the value '{$value}' is not a {$fieldType}",$stream);
-					break;
-				case 'number':
-					if(!is_int($value) && !is_float($value))
-						throw new InvalidQueryException("the value '{$value}' is not a number",$stream);
-					break;
-				case 'date':
-					$date = \date_create( $value );
-					if($date === false)
-						throw new InvalidQueryException("invalid date '{$value}'",$stream);
-					$value = new \MongoDate($date->getTimestamp());
-					break;
-				default:
-					throw new InvalidQueryException("error",$stream);
-			}
+		if(!$op->accept($field, $value)){
+			throw new InvalidQueryException("the operator '{$this}' is invalid");
 		}
 		
-		$compiled = isset($fieldDesc['compil']) ? $fieldDesc['compil']($op,$value) : $opDesc['compil']($field,$value);
+		try {
+			$compiled = $field->compil($op,$value);
+		}
+		catch(\Exception $e){
+			throw new InvalidQueryException($e->getMessage(),$stream);
+		}
 		
-		return array_merge( $compiled , $constraints );
+		return $compiled;
 	}
 	
 	
