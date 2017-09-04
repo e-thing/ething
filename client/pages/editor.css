@@ -81,6 +81,16 @@
 	position: relative;
 }
 
+#editor #tv-panel > div {
+	background-color: #fff;
+    color: #333;
+    position: absolute;
+    bottom: 5px;
+    top: 5px;
+    left: 5px;
+    right: 5px;
+}
+
 #editor #tv-console {
 	overflow: auto;
 	position: absolute;
@@ -89,8 +99,8 @@
 	width: 100%;
 }
 
-#editor #tv-arguments, #editor #tv-status, #editor #tv-console {
-	padding: 5px;
+#editor #tv-status {
+	    padding: 10px 0;
 }
 
 #editor #tv-panel .placeholder {

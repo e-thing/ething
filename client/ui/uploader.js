@@ -129,7 +129,7 @@
 				
 				$item.append(
 					'<span class="uploader-item-name">'+name+'</span>',
-					$state.html('<span class="glyphicon glyphicon-refresh glyphicon-refresh-animate"></span>')
+					$state.html('<span class="glyphicon glyphicon-refresh glyphicon-animate"></span>')
 				).appendTo($ui.children('.uploader-body'));
 				
 				$item.data('state','uploading');

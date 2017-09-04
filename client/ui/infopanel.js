@@ -94,6 +94,9 @@
 		toggle: function(){
 			this.isShown() ? this.hide(): this.show();
 		},
+		refresh: function(){
+			if(this.resource) this.setResource(this.resource, true);
+		},
 		
 		setResource: function(resource,forceUpdate){
 			var self = this;
@@ -111,6 +114,8 @@
 			if($.isArray(resource)){
 				resource = resource.map(function(r){
 					return r instanceof EThing.Resource ? r : EThing.arbo.findOneById(r);
+				}).filter(function(r){
+					return !!r;
 				});
 			}
 			
@@ -414,6 +419,10 @@
 				Infopanel.setResource(rids);
 			}
 		}
+	});
+	
+	EThing.on('ething.arbo.changed',function(evt){
+		Infopanel.refresh();
 	});
 	
 	return Infopanel;

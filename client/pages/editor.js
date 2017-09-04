@@ -33,11 +33,10 @@
 					var $console = $textViewer.textViewer().$element.find('#tv-console');
 					
 					$status.html('<div class="info">running ...</div>');
+					$console.empty();
 					
 					var args = $textViewer.textViewer().$element.find('#tv-arguments input').val();
 					resource.execute(args).done(function(result){
-						
-						$console.empty();
 						
 						$status.html('<div class="info">Executed in '+(Math.round(result.executionTime*1000)/1000)+' seconds</div>');
 						
@@ -86,27 +85,33 @@
 				$textViewer.on('data-loaded.tv',function(){
 					
 					var tv = $(this).textViewer(),
-						resourceEdited = tv.resource;
+						resourceEdited = tv.resource,
+						isApp = resourceEdited && (resourceEdited instanceof EThing.App),
+						isScriptFile = resourceEdited && (resourceEdited instanceof EThing.File && resourceEdited.isScript());
 					
 					
-					tv.toggleAction('execute',resourceEdited && (resourceEdited instanceof EThing.App || (resourceEdited instanceof EThing.File && resourceEdited.isScript())));
+					tv.toggleAction('execute',isApp || isScriptFile);
 					
-					
-					require(['https://unpkg.com/split.js/split.min'], function(Split){
-						
-						tv.$element.find('.tv-content').append('<div id="tv-panel"><div id="tv-arguments"><input type="text" class="form-control" placeholder="arguments"></div><div id="tv-status"></div><div id="tv-console"></div></div>');
-						
-						tv.$element.find('.tv-content').children().first().attr('id','tv-editor');
-						
-						tv.$element.find('.tv-content').children().addClass('split split-horizontal');
-						
-						Split(['#tv-editor', '#tv-panel'], {
-							sizes: [75, 25],
-							minSize: 200,
-							gutterSize: 2
+					if(isScriptFile){
+						require(['https://unpkg.com/split.js/split.min'], function(Split){
+							
+							tv.$element.find('.tv-content').append('<div id="tv-panel"><div><div id="tv-arguments"><input type="text" class="form-control" placeholder="arguments"></div><div id="tv-status"><div class="info">console</div></div><div id="tv-console"></div></div></div>');
+							
+							tv.$element.find('.tv-content').children().first().attr('id','tv-editor');
+							
+							tv.$element.find('.tv-content').children().addClass('split split-horizontal');
+							
+							Split(['#tv-editor', '#tv-panel'], {
+								sizes: [60, 40],
+								minSize: 200,
+								gutterSize: 4
+							});
+							
 						});
-						
-					});
+					} else {
+						tv.$element.find('#tv-panel').remove();
+					}
+					
 					
 					var resourceEdited = tv.resource;
 					if(resource && resourceEdited && resource.id() == resourceEdited.id())

@@ -233,7 +233,7 @@ class HttpRequest extends Action {
 		));
 		
 		if(!$response->isSuccessful()){
-			throw new \Exception( sprintf("status: %d".PHP_EOL."%s", $response->getStatus(), $errData) );
+			throw new \Exception( sprintf("status: %d", $response->getStatus()) );
 		}
 		
 		if(!is_null($this->output) && $buffer->length()){	

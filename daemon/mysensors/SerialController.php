@@ -12,7 +12,6 @@ use \Ething\Serial;
 
 class SerialController extends Controller {
 	
-	public $stream = null;
 	private $serial = null;
 	
 	public function open(){
@@ -36,7 +35,7 @@ class SerialController extends Controller {
 		
 		parent::open();
 		
-		echo "MySensors: opened {$port} {$baudrate}\n";
+		$this->logger->info("MySensors[serial]: opened {$port} {$baudrate}");
 		
 		return true;
 	}
@@ -45,7 +44,6 @@ class SerialController extends Controller {
 		
 		// check if the serial port is still opened !
 		if($this->isOpened && !$this->serial->isOpen()){
-			echo "MySensors: proc terminated\n";
 			$this->close();
 		}
 		
@@ -61,7 +59,7 @@ class SerialController extends Controller {
 			
 			if($chunk===''){
 				// connection closed
-				echo "MySensors: empty string received... close\n";
+				$this->logger->debug("MySensors[serial]: empty string received... close");
 				$this->close();
 			}
 			
@@ -83,7 +81,7 @@ class SerialController extends Controller {
 						
 					} catch (\Exception $e) {
 						// skip the line
-						$this->log($e);
+						$this->logger->warn("MySensors[serial]: unable to handle the message {$line}");
 						continue;
 					}
 					
@@ -106,7 +104,7 @@ class SerialController extends Controller {
 			$this->serial->close();
 			$this->stream = null;
 			parent::close();
-			echo "MySensors: closed\n";
+			$this->logger->info("MySensors[serial]: closed");
 		}
 		return !$this->isOpened;
 	}

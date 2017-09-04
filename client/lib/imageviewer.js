@@ -797,6 +797,14 @@ ImageViewer.prototype.toggleFullscreen = function(state){
 		insertAtIndex(this.$parent, this.$element, this.indexInParent);
 	}
 	
+	var $viewport = $('meta[name="viewport"]');
+	if(!isFullscreen){
+		this.viewportContent = $viewport.attr('content');
+		$viewport.attr('content', 'width=device-width, initial-scale=1');
+	} else {
+		$viewport.attr('content', this.viewportContent);
+	}
+	
 	this.$element.toggleClass('iv-fullscreen',!isFullscreen);
 	
 	$(document.body).toggleClass('iv-fullscreen',!isFullscreen);

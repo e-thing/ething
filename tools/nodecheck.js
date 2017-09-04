@@ -1,7 +1,7 @@
 
 var ok = true;
 
-var modules = ['vm','fs','url','./../lib/core.js'];
+var modules = ['vm','fs','url','./../js/ething.js'];
 
 function checkModule(moduleName){
 	try {

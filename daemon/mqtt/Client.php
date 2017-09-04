@@ -6,16 +6,18 @@ use \Ething\Device\MQTT;
 use \Ething\MQTT\phpMQTT;
 use \Ething\Exception;
 
-class Client {
+class Client extends \Stream {
 	
 	
 	const AUTOCONNECT_PERIOD = 15; // seconds
 	const KEEPALIVE = 60; // seconds
 	
-	public $stream = null;
+	protected $stream = null;
 	
 	protected $status;
 	protected $mqttClient = null;
+	
+	protected $logger;
 	
 	private $lastAutoconnectLoop = 0;
 	
@@ -30,10 +32,12 @@ class Client {
 		
 		$this->mqttClient = new phpMQTT($this->device->host, $this->device->port, (string)$this->device->id());
 		$this->mqttClient->keepalive = self::KEEPALIVE;
+		
+		$this->logger = $device->ething->logger();
 	}
 	
 	public function processMessage($topic, $message) {
-		echo "MQTT: new message for topic {$topic}\n";
+		$this->logger->debug("MQTT: new message for topic {$topic}");
 		try {
 			$this->device->processMessage($topic, $message);
 		} catch (\Exception $e) {} // skip any error
@@ -49,7 +53,7 @@ class Client {
 		$this->disconnect();
 		$this->mqttClient->broker($this->device->host, $this->device->port, (string)$this->device->id());
 		
-		echo "MQTT: connecting to {$this->device->host}:{$this->device->port}\n";
+		$this->logger->info("MQTT: connecting to {$this->device->host}:{$this->device->port}");
 		
 		$clean = true; // If the clean session is set to true then the client does not have a persistent session and all information are lost when the client disconnects for any reason. When clean session is set to false, a persistent session is created and it will be preserved until the client requests a clean session again. If there is already a session available then it is used and queued messages will be delivered to the client if available.
 		$will = null; // array ( 'topic' => ? , 'content' => ? , 'qos' => ? , 'retain' => ? ) 
@@ -63,10 +67,10 @@ class Client {
 		
 		if($this->mqttClient->connect($clean, $will, $username, $password)){
 			
-			echo "MQTT: connected\n";
+			$this->logger->info("MQTT: connected");
 			
 			if(isset($this->device->topic)){
-				echo "MQTT: subscribing to {$this->device->topic}\n";
+				$this->logger->info("MQTT: subscribing to {$this->device->topic}");
 				
 				$topics = array();
 				$topics[$this->device->topic] = array("qos"=>0, "function"=>array($this, 'processMessage'));
@@ -74,7 +78,7 @@ class Client {
 				
 				$this->stream = $this->mqttClient->getSocket();
 				
-				echo "MQTT: subscribed\n";
+				$this->logger->info("MQTT: subscribed");
 			}
 			
 			$this->device->updateSeenDate();
@@ -88,7 +92,7 @@ class Client {
 	
 	public function disconnect(){
 		if($this->status !== "disconnected"){
-			echo "MQTT: disconnect\n";
+			$this->logger->info("MQTT: disconnect");
 			$this->mqttClient->close();
 			$this->stream = null;
 			$this->status = "disconnected";
@@ -120,7 +124,7 @@ class Client {
 		if($this->status === "connected"){
 			if(!$this->mqttClient->proc()){
 				// disconnected !
-				echo "MQTT: disconnected by the host\n";
+				$this->logger->info("MQTT: disconnected by the host");
 				
 				$this->stream = null;
 				$this->status = "disconnected";
@@ -131,20 +135,20 @@ class Client {
 	
 	}
 	
-	public function publish($topic, $payload){
+	public function publish($topic, $payload, $retain = false){
 		
 		if(!$this->subscribeMode){
 			$this->connect();
 		}
 		
 		if($this->status === "connected"){
-			echo "MQTT: publish to topic {$topic}\n";
+			$this->logger->debug("MQTT: publish to topic {$topic}");
 			
 			if(empty($topic)){
 				throw new Exception("topic is an empty string");
 			}
 			
-			$this->mqttClient->publish($topic,$payload,0);
+			$this->mqttClient->publish($topic, $payload, 0, $retain);
 			
 			if(!$this->subscribeMode){
 				$this->disconnect();
@@ -154,5 +158,14 @@ class Client {
 		}
 		
 		return false;
+	}
+	
+	
+	public function getStream(){
+		return $this->stream;
+	}
+	
+	public function process(){
+		$this->read();
 	}
 }

@@ -34,7 +34,7 @@
 				'bootstrap-toggle-css': '//gitcdn.github.io/bootstrap-toggle/2.2.2/css/bootstrap-toggle.min',
 				'bootstrap-datetimepicker': '//cdnjs.cloudflare.com/ajax/libs/bootstrap-datetimepicker/4.17.42/js/bootstrap-datetimepicker.min',
 				'bootstrap-datetimepicker-css': '//cdnjs.cloudflare.com/ajax/libs/bootstrap-datetimepicker/4.17.42/css/bootstrap-datetimepicker.min',
-				'bootstrap-typeahead': '//cdnjs.cloudflare.com/ajax/libs/bootstrap-3-typeahead/4.0.1/bootstrap3-typeahead',
+				'bootstrap-typeahead': '//cdnjs.cloudflare.com/ajax/libs/bootstrap-3-typeahead/4.0.1/bootstrap3-typeahead.min',
 				
 				'bootstrap-toggle-flat': '//cdnjs.cloudflare.com/ajax/libs/titatoggle/1.2.11/titatoggle-dist-min',
 				
@@ -42,13 +42,14 @@
 				
 				'moment': '//cdnjs.cloudflare.com/ajax/libs/moment.js/2.15.1/moment-with-locales.min',
 				
+				'cronstrue': '//cdn.rawgit.com/bradyholt/cRonstrue/5b4212f2/dist/cronstrue.min',
 				
 				/*'highstock-lib' : '//code.highcharts.com/stock',
 				'highstock' : '//code.highcharts.com/stock/modules/exporting',*/
 				'highstock-lib' : 'highcharts',
 				'highstock' : 'highcharts/modules/exporting',
 				
-				'ething' : '../../lib/core',
+				'ething' : '../../js/ething',
 				
 				'js-beautify': '//cdn.rawgit.com/beautify-web/js-beautify/v1.6.3/js/lib',
 				
@@ -59,7 +60,13 @@
 				
 				'filesaver': '//cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2014-11-29/FileSaver.min',
 				
-				'jquery.gridster': 'jquery.gridster'
+				'jquery.gridster': 'jquery.gridster',
+				
+				'urijs': '//cdnjs.cloudflare.com/ajax/libs/URI.js/1.18.12'
+				/*'uri': '//cdnjs.cloudflare.com/ajax/libs/URI.js/1.18.12/URI.min',
+				'punycode': '//cdnjs.cloudflare.com/ajax/libs/URI.js/1.18.12/punycode.min',
+				'IPv6': '//cdnjs.cloudflare.com/ajax/libs/URI.js/1.18.12/IPv6.min',
+				'SecondLevelDomains': '//cdnjs.cloudflare.com/ajax/libs/URI.js/1.18.12/SecondLevelDomains.min'*/
 				
 			},
 			
@@ -236,6 +243,9 @@
 			window.location.hash = this.buildUrl(d);
 		},
 		
+		/*
+		* Set url without changing the history
+		*/
 		setUrl: function(uri, data, hash){
 			var d = this.parseUrl(uri);
 			
@@ -280,12 +290,85 @@
 		
 		error: false,
 		
-		update: false // true when the page loaded only change by the query string
+		update: false, // true when the page loaded only change by the query string
+		
+		data: {},
+		
+		fillData: function(){
+			this.data = UI.parseUrl(window.location.href).data;
+		},
+		
+		pollingRefreshTimerId: null,
+		pollingRefreshTimerType: null,
+		pollingRefreshInterval: 60000,
+		pollingRefreshLastTime: null,
+		pollingRefreshPaused: false,
+		pollingRefreshProcessing: function(){
+			self.pollingRefreshLastTime = Date.now();
+			EThing.arbo.refresh(); // refresh the arbo
+		},
+		
+		startPollingRefresh: function(nodelay){
+			this.pollingRefreshPaused = false;
+			if(!this.isPollingRefreshEnabled()){
+				var self = this;
+				var delay = self.pollingRefreshInterval;
+				
+				if(this.pollingRefreshLastTime!==null){
+					var diff = Date.now() - this.pollingRefreshLastTime;
+					if(diff > self.pollingRefreshInterval){
+						delay = 1;
+					} else {
+						delay = this.pollingRefreshInterval - diff;
+					}
+				}
+				
+				if(!!nodelay) delay = 1;
+								
+				self.pollingRefreshTimerType = 'timeout';
+				self.pollingRefreshTimerId = setTimeout(function(){
+					
+					self.pollingRefreshProcessing();
+					
+					self.pollingRefreshTimerType = 'interval';
+					self.pollingRefreshTimerId = setInterval( function(){
+						self.pollingRefreshProcessing();
+					}, self.pollingRefreshInterval);
+				}, delay);
+			}
+		},
+		
+		stopPollingRefresh: function(){
+			if(this.isPollingRefreshEnabled()){
+				this.pollingRefreshTimerType === 'timeout' ? clearTimeout(this.pollingRefreshTimerId) : clearInterval(this.pollingRefreshTimerId);
+				this.pollingRefreshTimerId = null;
+				this.pollingRefreshTimerType = null;
+				this.pollingRefreshPaused = false;
+			}
+		},
+		
+		pausePollingRefresh: function(){
+			if(this.isPollingRefreshEnabled()){
+				this.stopPollingRefresh();
+				this.pollingRefreshPaused = true;
+			}
+		},
+		
+		resumePollingRefresh: function(){
+			if(this.pollingRefreshPaused){
+				this.startPollingRefresh();
+			}
+		},
+		
+		isPollingRefreshEnabled: function(){
+			return !!this.pollingRefreshTimerId;
+		}
 		
 	});
 	
 	//console.log('url:');
-	//console.log(UI.parseUrl());
+	
+	UI.fillData();
 	
 	var cnt = 0;
 	
@@ -367,6 +450,8 @@
 		
 		UI.currentPage = null;
 		UI.error = false;
+		
+		UI.startPollingRefresh();
 		
 		UI.trigger('ui-pageChange');
 		
@@ -515,9 +600,12 @@
 		$( document ).ready(function(){
 			
 			//Dom ready
-			ready = true;
 			
-			UI.$element = $('body');
+			UI.$element = $('body').empty();
+			
+			if(UI.data.app === 'android'){
+				UI.$element.addClass('app-android modal-fullscreen');
+			}
 			
 			// event engine
 			['on','off','one','trigger'].forEach(function(fn){
@@ -536,11 +624,7 @@
 					
 					console.log('EThing authenticated');
 					
-					if(!window.UI.refreshIntervalId){
-						window.UI.refreshIntervalId = setInterval( function(){
-							EThing.arbo.refresh(); // refresh the arbo every minute
-						}, 60000);
-					}
+					UI.startPollingRefresh();
 					
 					EThing.arbo.load(function(){
 						
@@ -551,6 +635,8 @@
 					});
 				});
 				
+			}, function(){
+				UI.$element.html('error');
 			});
 			
 		});

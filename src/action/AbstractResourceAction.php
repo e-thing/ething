@@ -47,10 +47,19 @@ abstract class AbstractResourceAction extends Action {
 				if(\Ething\ShortId::validate($id)){
 					$resource = $ething->get($id);
 					if(!$resource)
-						throw new \Exception("the resource with id '{$resourceFilter}' does not exist.");
+						throw new \Exception("the resource with id '{$id}' does not exist.");
 					if(!empty($onlyTypes)){
-						if(in_array($resource->type(), $onlyTypes) || in_array($resource->baseType(), $onlyTypes))
-							throw new \Exception("the resource with id '{$resourceFilter}' must be one of the following types : ".implode(', ',$onlyTypes));
+						
+						$pass = false;
+						foreach($onlyTypes as $type){
+							if($resource->isTypeof($type)){
+								$pass = true;
+								break;
+							}
+						}
+						
+						if(!$pass)
+							throw new \Exception("the resource with id '{$id}' and type {$resource->type()} must be one of the following types : ".implode(', ',$onlyTypes));
 					}
 				} else
 					throw new \Exception("not a valid array of resource's id.");
@@ -97,17 +106,14 @@ abstract class AbstractResourceAction extends Action {
 		return true; 
 	}
 	
-	protected function getResources(Signal $signal, $resource = null){
+	static public function getResourcesStatic(Ething $ething, $resource, Signal $signal = null){
 		$rs = array();
-		
-		if(!isset($resource))
-			$resource = $this->resource;
 		
 		if( is_string($resource) ) {
 			
 			if($resource==='#emitter'){
 				if(isset($signal->resource)){
-					$r = $this->ething()->get($signal->resource);
+					$r = $ething->get($signal->resource);
 					if(!$r)
 						throw new \Exception("unable to find the resource with id '{$signal->resource}'");
 					$rs[] = $r;
@@ -116,20 +122,20 @@ abstract class AbstractResourceAction extends Action {
 				}
 			}
 			else if(\Ething\ShortId::validate($resource)){
-				$r = $this->ething()->get($resource);
+				$r = $ething->get($resource);
 				if(!$r)
 					throw new InvalidRuleException("unable to find the resource with id '{$resource}'");
 				$rs[] = $r;
 			}
 			else {
 				// expression
-				$rs = $this->ething()->find($resource);
+				$rs = $ething->find($resource);
 			}
 		} else if( is_array($resource) ) {
 			
 			$notFound = array();
 			foreach($resource as $id){
-				$r = $this->ething()->get($id);
+				$r = $ething->get($id);
 				if(!$r)
 					$notFound[] = $id;
 				$rs[] = $r;
@@ -139,11 +145,15 @@ abstract class AbstractResourceAction extends Action {
 				if(count($notFound) === count($resource))
 					throw new InvalidRuleException("unable to find the resources with id :".implode(',',$notFound));
 				else
-					$this->setError("unable to find the resources with id :".implode(',',$notFound));
+					throw new \Exception("unable to find the resources with id :".implode(',',$notFound));
 			}
 		}
 		
 		return $rs;
+	}
+	
+	protected function getResources(Signal $signal, $resource = null){
+		return static::getResourcesStatic($this->ething(), isset($resource) ? $resource : $this->resource, $signal);
 	}
 	
 }

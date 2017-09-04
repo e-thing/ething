@@ -131,7 +131,7 @@ class RTSP extends Device
 	
 	
 	public function snapshot(){
-		$cmd = "avconv -rtsp_transport {$this->transport} -i {$this->url} -frames:v 1 -an -f image2 pipe:1";
+		$cmd = "avconv -rtsp_transport {$this->transport} -i {$this->url} -frames:v 1 -an -f image2 pipe:1 2>/dev/null";
 		
 		$output = shell_exec($cmd);
 		
@@ -230,7 +230,7 @@ class RTSP extends Device
 		}
 		else{
 			$e = new Exception(socket_strerror(socket_last_error()));
-			$this->ething->log($e);
+			$this->ething->logger()->error($e);
 			throw $e;
 		}
 			
@@ -241,7 +241,7 @@ class RTSP extends Device
 			// the state changed
 			if(!$online){
 				// this device has been disconnected !
-				$device->dispatchSignal(Event\DeviceUnreachable::emit($device));
+				$this->dispatchSignal(\Ething\Event\DeviceUnreachable::emit($this));
 			}
 			$this->setAttr('_ping', $online);
 		}

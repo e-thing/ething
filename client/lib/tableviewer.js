@@ -1,7 +1,7 @@
 (function (root, factory) {
     if (typeof define === 'function' && define.amd) {
         // AMD. Register as an anonymous module.
-        define(['jquery', 'table', 'ething', 'ui/modal'], factory);
+        define(['jquery', 'table', 'ething', 'ui/modal', 'css!bootstrap-toggle-flat'], factory);
     } else {
         // Browser globals
         root.TableViewer = factory(root.jQuery, root.Table, root.EThing);
@@ -29,7 +29,8 @@
 			view: new EditableTableView({
 				fields:{
 					'__check':{
-						hidden: true
+						hidden: true,
+						editable: false
 					},
 					'date':{
 						formatter: function(d){
@@ -41,7 +42,8 @@
 							}
 							return pad(d.getFullYear(), 4) + '/' + pad(d.getMonth() + 1, 2) + '/' + pad(d.getDate(), 2) + ' ' + pad(d.getHours(), 2) + ':' + pad(d.getMinutes(), 2) + ':' + pad(d.getSeconds(), 2);
 						},
-						class: 'date'
+						class: 'date',
+						editable: false
 					}
 				},
 				selectable:{
@@ -474,7 +476,80 @@
 				icon: 'info-sign',
 				tooltip: 'show statistics'
 				
-			} : null
+			} : null,
+			'plot':{
+				html: function(){
+					
+					var self = this;
+					var columnNames = this.model().keys().filter(function(col){
+						return col!=='date';
+					});
+					
+					if(columnNames.length==0) return false;
+					else if(columnNames.length==1){
+						return $('<button type="button" class="btn btn-default">')
+							.append('<span class="glyphicon glyphicon-stats" aria-hidden="true"></span>')
+							.click(function(){
+								UI.go('plot',{
+									rid: self.model().getTableResource().id()
+								});
+							});
+					} else {
+						
+						var $html = $(
+							'<div class="btn-group btn-group-sm">'+
+							  '<button type="button" class="btn btn-default dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">'+
+								'<span class="glyphicon glyphicon-stats" aria-hidden="true"></span>'+
+							  '</button>'+
+							  '<ul class="dropdown-menu"></ul>'+
+							'</div>'
+						);
+						
+						// do not close the menu on click
+						$html.find('.dropdown-menu').on('click', 'li', function (e) {
+						  e.stopPropagation();
+						});
+						
+						$html.find('.dropdown-menu').on('mouseenter mouseleave ', function (e) {
+						  e.stopPropagation(); // avoid tooltip on the dropdown menu
+						});
+						
+						function updatePlotBtn(){
+							$html.find('input[type="checkbox"]').filter(function(){
+								return $(this).prop('checked');
+							}).length > 0 ? $html.find('button').removeAttr('disabled') : $html.find('button').attr('disabled',"disabled");
+						}
+						
+						columnNames.forEach(function(columnName){
+							var $li = $('<li><div class="checkbox checkbox-slider--b-flat"><label><input type="checkbox" checked><span>'+columnName+'</span></label></div></li>');
+							$li.find('input').prop('name',columnName).click(updatePlotBtn);
+							$html.find('ul').append($li);
+						});
+						
+						// trace btn
+						var $li = $('<li><button type="button" class="btn btn-success btn-block btn-sm">plot</button></li>');
+						$li.find('button').click(function(){
+							var colsToPlot = $html.find('input[type="checkbox"]').filter(function(){
+								return $(this).prop('checked');
+							}).map(function(){
+								return $(this).prop('name');
+							}).toArray();
+							if(colsToPlot.length>0){
+								UI.go('plot',{
+									rid: self.model().getTableResource().id(),
+									fields: colsToPlot.join(',')
+								});
+							}
+						});
+						$html.find('ul').append($li);
+						
+						updatePlotBtn();
+						
+						return $html;
+					}
+				},
+				tooltip: 'plot'
+			}
 		}, options.actions || null);
 		
 		var $actions = this.$element.find('div[name="actions"]');
@@ -494,16 +569,18 @@
 			var $button;
 			
 			if(typeof action.html == 'function'){
-				$button = action.html.call(self);
+				$button = action.html.call(self, action);
 			} else {
 				var $icon = typeof action.icon === 'string' && !/</.test(action.icon) ? $('<span class="glyphicon glyphicon-'+action.icon+'" aria-hidden="true">') : $(action.icon);
 				
 				$button = $('<button type="button" class="btn btn-'+(action.buttonClass || 'default')+'">')
 					.append($icon)
 					.click(function(){
-						action.fn.call(self);
+						action.fn.call(self, action);
 					});
 			}
+			
+			if(!$button) return;
 			
 			$button.attr('data-name',name);
 			
@@ -599,6 +676,9 @@
 			return this._filter;
 		this._filter = (typeof query == 'string') ? query : null;
 	}
+	TableModel.prototype.getTableResource = function(){
+		return this._table;
+	}
 	
 	
 	
@@ -646,118 +726,137 @@
 						},fieldOptions.events[eventName]);
 					}
 				
-				var $edit = $('<span class="glyphicon glyphicon-edit editabletableview-editcell" aria-hidden="true"></span>').click(function(){
-					
-					var $html = $(
-						'<div class="container-fluid tableviewer-edit-cell">'+
-							'<div class="input-group value">'+
-							  '<div class="input-group-btn">'+
-								'<button type="button" data-role="type" class="btn btn-default dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false"><span class="type">String</span> <span class="caret"></span></button>'+
-								'<ul class="dropdown-menu">'+
-								  '<li><a>String</a></li>'+
-								  '<li><a>Number</a></li>'+
-								  '<li><a>Boolean</a></li>'+
-								  '<li><a>Text</a></li>'+
-								'</ul>'+
-							  '</div>'+
-							  '<input type="text" class="form-control" placeholder="value">'+
-							'</div>'+
-						'</div>'
-					);
-					
-					$html.find('.value ul a').click(function(){
-					  var type = $(this).text();
-					  setType(type);
-					});
-					
-					
-					function setType(type){
-						if(['string','number','boolean','text'].indexOf(type)===-1) type = 'string';
+				if(typeof fieldOptions.editable === "undefined" || fieldOptions.editable){
+					var $edit = $('<span class="glyphicon glyphicon-edit editabletableview-editcell" aria-hidden="true"></span>').click(function(){
 						
-						var $input = $html.find('.value').find('input,select,textarea'),
-						  replace;
+						var $html = $(
+							'<div class="container-fluid tableviewer-edit-cell">'+
+								'<div class="input-group value">'+
+								  '<div class="input-group-btn">'+
+									'<button type="button" data-role="type" class="btn btn-default dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false"><span class="type">String</span> <span class="caret"></span></button>'+
+									'<ul class="dropdown-menu">'+
+									  '<li><a>String</a></li>'+
+									  '<li><a>Number</a></li>'+
+									  '<li><a>Boolean</a></li>'+
+									  '<li><a>Text</a></li>'+
+									'</ul>'+
+								  '</div>'+
+								  '<input type="text" class="form-control" placeholder="value">'+
+								'</div>'+
+							'</div>'
+						);
+						
+						$html.find('.value ul a').click(function(){
+						  var type = $(this).text();
+						  setType(type, value);
+						});
+						
+						
+						function setType(type, value){
+							type = type.toLowerCase();
+							if(['string','number','boolean','text'].indexOf(type)===-1) type = 'string';
+							
+							var $input = $html.find('.value').find('input,select,textarea'),
+							  $replace = null,
+							  valueType = typeof value;
 
-						$html.find('.value').find('span.type').text(type);
+							$html.find('.value').find('span.type').text(type.charAt(0).toUpperCase() + type.slice(1));
 
-						switch(type.toLowerCase()){
-							case 'string':
-							  if(!$input.is('input[type="text"]'))
-								replace = '<input type="text">';
-							  break;
-							case 'number':
-							  if(!$input.is('input[type="number"]'))
-								replace = '<input type="number" value="0">';
-							  break;
-							case 'boolean':
-							  if(!$input.is('select'))
-								replace = '<select><option>true</option><option>false</option></select>';
-							  break;
-							case 'text':
-							  if(!$input.is('textarea'))
-								replace = '<textarea>';
-							  break;
+							switch(type){
+								case 'string':
+								  if(!$input.is('input[type="text"]')){
+									$replace = $('<input type="text">');
+									if(['string','number','boolean'].indexOf(valueType)!==-1) $replace.val(value+'');
+								  }
+								  break;
+								case 'number':
+								  if(!$input.is('input[type="number"]')){
+									$replace = $('<input type="number" value="0">');
+									if(['string','number'].indexOf(valueType)!==-1){
+										var v = Number(value);
+										if(!isNaN(v)) $replace.val(v);
+									}
+								  }
+								  break;
+								case 'boolean':
+								  if(!$input.is('select')){
+									$replace = $('<select><option>true</option><option>false</option></select>');
+									if(['string','number','boolean'].indexOf(valueType)!==-1) $replace.val(!!value?'true':'false');
+								  }
+								  break;
+								case 'text':
+								  if(!$input.is('textarea')){
+									$replace = $('<textarea>');
+									if(['string','number','boolean'].indexOf(valueType)!==-1) $replace.val(value+'');
+								  }
+								  break;
+							}
+							
+							
+							if($replace){
+								$replace.addClass('form-control');
+								$input.replaceWith($replace);
+								$input = $replace;
+							}
+						  
+							return $input;
 						}
 						
-						
-						if(replace){
-							var $replace = $(replace).addClass('form-control');
-							$input.replaceWith($replace);
-							$input = $replace;
-						}
-					  
-						return $input;
-					}
-					
-					function setValue(value){
-						var type = typeof value;
-						var $input = setType(type);
-						$input.val(value);
-					}
-					
-					function getValue(){
-						
-						var $input = $html.find('.value').find('input,select,textarea'),
-							value;
-						
-						if($input.is('input[type="number"]')){
-							value = parseFloat($input.val()); // number
-						}
-						else if($input.is('select')){
-							value = /true/i.test($input.val()); // boolean
-						}
-						else {
-							value = $input.val(); // string
+						function setValue(value){
+							var type = typeof value;
+							var $input = setType(type);
+							if(type === 'boolean'){
+								$input.val(value?'true':'false');
+							} else {
+								$input.val(value);
+							}
 						}
 						
-						return value;
-					}
-					
-					$html.modal({
-						title: 'Edit cell',
-						buttons: {
-							'+Apply': function(){
-								item[field] = getValue();
-								self.table().getTableResource().replaceRow(item).done(function(){
-									$html.modal('hide');
-									self.table().reload();
-								});
-								return false;
+						function getValue(){
+							
+							var $input = $html.find('.value').find('input,select,textarea'),
+								value;
+							
+							if($input.is('input[type="number"]')){
+								value = parseFloat($input.val()); // number
+							}
+							else if($input.is('select')){
+								value = /true/i.test($input.val()); // boolean
+							}
+							else {
+								value = $input.val(); // string
+							}
+							
+							return value;
+						}
+						
+						$html.modal({
+							title: 'Edit cell',
+							buttons: {
+								'+Apply': function(){
+									item[field] = getValue();
+									self.table().getTableResource().replaceRow(item).done(function(){
+										$html.modal('hide');
+										self.table().reload();
+									});
+									return false;
+								},
+								'Cancel': null
 							},
-							'Cancel': null
-						},
-						size: 'lg'
+							size: 'lg'
+						});
+						
+						setValue(value);
+						
 					});
 					
-					setValue(value);
-					
-				});
-				
-				$td.hover(function(){
-					$td.append($edit);
-				}, function(){
-					$edit.detach();
-				});
-				
+					$td.hover(function(){
+						$td.append($edit);
+					}, function(){
+						$edit.detach();
+					});
+				}
+			
 				$tr.append($td);
 			}
 		}, this);

@@ -10,59 +10,6 @@
 	};
 	
 	
-	var StreamWidget = function(widget){
-		
-		var options = $.extend(true,{
-			resource: null, // either a device or a file
-			operation: null, // operation id if the resource is a Device
-			parameters: null // optional parameters if the resource is a Device
-		}, defaultOptions, widget.options);
-		
-		var $element = widget.$element;
-		
-		var resource = EThing.arbo.findOneById(options.resource);
-		if(!resource)
-			throw new Error('The resource does not exist anymore');
-		
-		var imageViewerOptions = {
-			header: {
-				enable: true,
-				showOnHover: true
-			}
-		};
-		
-		if(resource instanceof EThing.Device){
-			
-			// load the image through a <img/> tag
-			// this way, a MJPEG stream will work !
-			
-			var image = new Image(),
-				ts = new Date().getTime(), // just to avoid caching
-				url = resource.executeUrl(options.operation, options.parameters);
-			url += url.indexOf('?') !== -1 ? '&' : '?';
-			url += '_ts='+encodeURIComponent(ts);
-			image.src = url;
-			
-			imageViewerOptions.elements = [{
-				name: resource.basename()+':'+options.operation,
-				content: image
-			}];
-		}
-		
-		var $iv = $('<div>').css({
-			'height': '100%',
-			'background-color': '#ffffff',
-			'color': '#4e4e4e'
-		}).imageViewer(imageViewerOptions).appendTo($element);
-		
-		$element.on('destroy', function(){
-			$iv.imageViewer('destroy');
-		});
-		
-	}
-	
-	
-	
 	return {
 		
 		description: 'Display a MJPEG stream.',
@@ -142,10 +89,69 @@
 			}
 		},
 		
-		require: ['imageviewer'],
+		require: ['widget/Widget','imageviewer'],
 		
-		instanciate: function(widget){
-			new StreamWidget(widget);
+		instanciate: function(options, Widget){
+			
+			options = $.extend(true,{
+				resource: null, // either a device or a file
+				operation: null, // operation id if the resource is a Device
+				parameters: null // optional parameters if the resource is a Device
+			}, defaultOptions, options);
+			
+			var resource = EThing.arbo.findOneById(options.resource);
+			if(!resource)
+				throw 'The resource does not exist anymore';
+			
+			var imageViewerOptions = {
+				header: {
+					enable: true,
+					showOnHover: true
+				}
+			};
+			
+			if(resource instanceof EThing.Device){
+				
+				// load the image through a <img/> tag
+				// this way, a MJPEG stream will work !
+				
+				var image = new Image(),
+					ts = new Date().getTime(), // just to avoid caching
+					url = resource.executeUrl(options.operation, options.parameters);
+				url += url.indexOf('?') !== -1 ? '&' : '?';
+				url += '_ts='+encodeURIComponent(ts);
+				image.src = url;
+				
+				imageViewerOptions.elements = [{
+					name: resource.basename()+':'+options.operation,
+					content: image
+				}];
+			}
+			
+			
+			var $iv;
+			
+			var widget = $.extend(Widget(), {
+				
+				draw: function(){
+					
+					$iv = $('<div>').css({
+						'height': '100%',
+						'background-color': '#ffffff',
+						'color': '#4e4e4e'
+					}).imageViewer(imageViewerOptions).appendTo(this.$element);
+				},
+				
+				destroy: function(){
+					$iv.imageViewer('destroy');
+				}
+				
+			});
+			
+			
+			return widget;
+			
+			
 		}
 	};
 	

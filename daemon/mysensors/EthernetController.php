@@ -12,8 +12,9 @@ use \Ething\Device\MySensorsGateway;
 
 class EthernetController extends Controller {
 	
-	public $stream = null;
+	private $lastActivity = 0;
 	
+	const NOACTIVITY_DELAY = 300; // seconds
 	
 	public function open(){
 		
@@ -32,8 +33,10 @@ class EthernetController extends Controller {
 		stream_set_blocking($stream, false);
 		
 		$this->stream = $stream;
-		
+		$this->lastActivity = time();
 		parent::open();
+		
+		$this->logger->info("MySensors[ethernet]: opened at {$address}");
 		
 		return true;
 	}
@@ -48,6 +51,8 @@ class EthernetController extends Controller {
 				return;
 			}
 			$this->buffer .= $chunk;
+			
+			$this->lastActivity = time();
 			
 			if(strlen($chunk) === 0){
 				// connection closed
@@ -68,7 +73,7 @@ class EthernetController extends Controller {
 						$this->processMessage($message);
 					} catch (\Exception $e) {
 						// skip the line
-						$this->log($e);
+						$this->logger->warn("MySensors[ethernet]: unable to handle the message {$line}");
 						continue;
 					}
 					
@@ -78,7 +83,17 @@ class EthernetController extends Controller {
 		}
 	}
 	
+	public function update(){
+		parent::update();
+		
+		if($this->isOpened && time() - $this->lastActivity > self::NOACTIVITY_DELAY){
+			$this->logger->warn("MySensors[ethernet]: no activity detected, heartbeat sent");
+			$this->send(new Message(MySensors::GATEWAY_ADDRESS, MySensors::INTERNAL_CHILD, MySensors::INTERNAL, MySensors::NO_ACK, MySensors::I_HEARTBEAT_REQUEST));
+		}
+	}
+	
 	public function write($str){
+		$this->lastActivity = time();
 		return $this->isOpened ? @fwrite($this->stream, $str) : 0;
 	}
 	

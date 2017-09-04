@@ -45,10 +45,19 @@ abstract class AbstractResourceCondition extends Condition {
 				if(\Ething\ShortId::validate($id)){
 					$resource = $ething->get($id);
 					if(!$resource)
-						throw new \Exception("the resource with id '{$resourceFilter}' does not exist.");
+						throw new \Exception("the resource with id '{$id}' does not exist.");
 					if(!empty($onlyTypes)){
-						if(in_array($resource->type(), $onlyTypes) || in_array($resource->baseType(), $onlyTypes))
-							throw new \Exception("the resource with id '{$resourceFilter}' must be one of the following types : ".implode(', ',$onlyTypes));
+						
+						$pass = false;
+						foreach($onlyTypes as $type){
+							if($resource->isTypeof($type)){
+								$pass = true;
+								break;
+							}
+						}
+						
+						if(!$pass)
+							throw new \Exception("the resource with id '{$id}' and type {$resource->type()} must be one of the following types : ".implode(', ',$onlyTypes));
 					}
 				} else
 					throw new \Exception("not a valid array of resource's id.");

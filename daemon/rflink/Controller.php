@@ -8,7 +8,7 @@ use \Ething\RFLink\RFLink;
 use \Ething\Device\RFLinkGateway;
 use \Ething\Event;
 
-abstract class Controller {
+abstract class Controller extends \Stream {
 	
 	const AUTOCONNECT_PERIOD = 60; // seconds	
 	const RESPONSE_TIMEOUT = 10; // seconds	
@@ -17,10 +17,12 @@ abstract class Controller {
 	
 	public $gatewayLibVersion = false;
 	
-	
+	protected $logger;
 	
 	private $lastAutoconnectLoop = 0;
 	private $preventFailConnectLog = false;
+	
+	private $logMessage = false;
 	
 	protected $isOpened = false;
 	
@@ -33,7 +35,7 @@ abstract class Controller {
 		
 		$this->gateway = $gateway;
 		$this->options = array_replace_recursive($this->options, $options);
-		
+		$this->logger = $this->gateway->ething->logger();
 	}
 	
 	public function ething(){
@@ -50,7 +52,7 @@ abstract class Controller {
 	
 	public function open(){
 		$this->isOpened = true;
-		$this->log('opened');
+		$this->logger->info("RFLink: opened");
 		return true;
 	}
 	
@@ -60,7 +62,7 @@ abstract class Controller {
 	public function close(){
 		$this->isOpened = false;
 		$this->lastAutoconnectLoop = 0;
-		$this->log('closed');
+		$this->logger->info("RFLink: closed");
 		return true;
 	}
 	
@@ -81,15 +83,13 @@ abstract class Controller {
 	public function processMessage($message) {
 		$r = true;
 		
-		//$this->log("message received {$message}");
-		
-		echo "RFLink: message received = {$message}\n";
+		$this->logger->debug("RFLink: message received = {$message}");
 		
 		$gateway = $this->gateway;
 		
-		$gateway->log($message);
+		if($this->logMessage) $gateway->log($message);
 		
-		if($gateway) $gateway->updateSeenDate();
+		$gateway->updateSeenDate();
 		
 		foreach($this->responseListeners as $i => $responseListener){
 			
@@ -119,8 +119,7 @@ abstract class Controller {
 					$this->switchMessageHandler($protocol, $attr);
 					
 				} else {
-					echo "RFLink: unable to handle the message {$message}\n";
-					$gateway->log("unable to handle the message {$message}");
+					$this->logger->warn("RFLink: unable to handle the message {$message}");
 					$r = false;
 				}
 				
@@ -128,8 +127,9 @@ abstract class Controller {
 				$gateway->set('version', $messageInfo['attr']['VER']);
 				$gateway->set('revision', $messageInfo['attr']['REV']);
 				$gateway->set('build', $messageInfo['attr']['BUILD']);
+				$this->logger->info("RFLink: ver:{$messageInfo['attr']['VER']} rev:{$messageInfo['attr']['REV']}  build:{$messageInfo['attr']['BUILD']}");
 			} else {
-				echo "RFLink: unable to handle the message {$message}\n";
+				$this->logger->warn("RFLink: unable to handle the message {$message}");
 			}
 			
 		}
@@ -158,8 +158,7 @@ abstract class Controller {
 					'name' => 'switch-'.$attributes['ID'].'-'.$attributes['SWITCH']
 				))))
 					throw new Exception("fail to create the node (Switch) nodeId={$attributes['ID']} switchId={$attributes['SWITCH']} protocol={$protocol}");
-				echo "RFLink: new node (Switch) nodeId={$attributes['ID']} switchId={$attributes['SWITCH']} protocol={$protocol}\n";
-				$this->log("new node (Switch) nodeId={$attributes['ID']} switchId={$attributes['SWITCH']} protocol={$protocol}");
+				$this->logger->info("RFLink: new node (Switch) nodeId={$attributes['ID']} switchId={$attributes['SWITCH']} protocol={$protocol}");
 			}
 		}
 		
@@ -167,14 +166,9 @@ abstract class Controller {
 			
 			$node->updateSeenDate();
 			
-			$node->setData('CMD', $attributes['CMD']);
 			$node->storeData(array(
 				'CMD' => $attributes['CMD']
 			));
-			
-			$node->dispatchSignal(Event\DeviceDataSet::emit($node, (object)array(
-				'CMD' => $attributes['CMD']
-			)));
 			
 		}
 		
@@ -189,17 +183,17 @@ abstract class Controller {
 		
 		// check for a deconnection
 		if(!$this->isOpened && $this->isOpened != $this->lastState_)
-			$this->log("disconnected");
+			$this->logger->info("RFLink: disconnected");
 		$this->lastState_ = $this->isOpened;
 		
 		// autoconnect
 		if(!$this->isOpened && ($now - $this->lastAutoconnectLoop) > self::AUTOCONNECT_PERIOD ){
 			try{
 				$this->open();
-				$this->log("connected");
+				$this->logger->info("RFLink: connected");
 				$this->preventFailConnectLog = false;
 			} catch(Exception $e){
-				if(!$this->preventFailConnectLog) $this->log("unable to connect : {$e->getMessage()}");
+				if(!$this->preventFailConnectLog) $this->logger->warn("RFLink: unable to connect : {$e->getMessage()}");
 				$this->preventFailConnectLog = true;
 			}
 			$this->lastAutoconnectLoop = $now;
@@ -227,7 +221,7 @@ abstract class Controller {
 	*/
 	public function send($message, $callback = null, $waitResponse = null) {
 		
-		//$this->log("message send");
+		$this->logger->debug("RFLink: message send");
 		
 		if(!$this->isOpened){
 			if(is_callable($callback)){
@@ -268,8 +262,14 @@ abstract class Controller {
 		return $wb;
 	}
 	
-	protected function log($message){
-		$this->ething()->log($message, "gateway '{$this->name()}'");
+	protected $stream = null;
+	
+	public function getStream(){
+		return $this->stream;
+	}
+	
+	public function process(){
+		$this->read();
 	}
 	
 };

@@ -6,7 +6,9 @@
 }(this, function ($, Widget) {
 	
 	function Gauge(opt){
-	
+		
+		opt = opt || {};
+		
 		var parent = Widget(opt);
 		
 		var self = {};

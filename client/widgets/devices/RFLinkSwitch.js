@@ -16,23 +16,35 @@
 				buttons: [{
 					label: 'On',
 					onClick: function(){
-						return sensor.execute('on');
+						return sensor.execute('on').update(update);
 					}
 				},{
 					label: 'Off',
 					onClick: function(){
-						return sensor.execute('off');
+						return sensor.execute('off').update(update);
 					}
-				}]
+				}],
+				title: sensor.basename()
 			});
+			
+			var update = function(){
+				widget.setActiveBtn(sensor.data('CMD', false) ? 0 : 1);
+				widget.setFooter(sensor.modifiedDate().toLocaleString());
+			};
 			
 			return $.extend({}, widget, {
 				
 				draw: function(){
-					this.$element.attr('data-title',sensor.basename());
-					this.$element.attr('data-footer',sensor.modifiedDate().toLocaleString());
-					
 					widget.draw.call(this);
+					
+					sensor.on('updated', update);
+					
+					update();
+				},
+				
+				destroy: function(){
+					sensor.off('updated', update);
+					widget.destroy.call(this);
 				}
 				
 			});

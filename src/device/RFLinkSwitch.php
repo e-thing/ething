@@ -56,6 +56,17 @@ class RFLinkSwitch extends Device
 	
 	public function storeData($attr){
 		if(!empty($attr)){
+			
+			foreach($attr as $key => &$value){
+				
+				if($key==='CMD'){
+					$value = is_string($value) ? preg_match('/^on$/i', $value) : boolval($value);
+				}
+				
+				$this->setData($key, $value);
+				
+			}
+			
 			$storageName = 'data';
 			$storage = $this->ething->findOne(array(
 				'name' => $storageName,
@@ -73,6 +84,13 @@ class RFLinkSwitch extends Device
 			if($storage){
 				$storage->insert($attr);
 			}
+			
+			$this->dispatchSignal(\Ething\Event\DeviceDataSet::emit($this, (object)$attr));
+			
+			foreach($attr as $key => $value){
+				$this->ething->mqttPublish("resource/device/{$this->id()}/data/{$key}", $value, true);
+			}
+			
 		}
 	}
 	
@@ -97,15 +115,53 @@ class RFLinkSwitch extends Device
 		return array(
 			new Operation($this, 'on', null, null, 'turn on', function($op, $stream, $data, $options){
 					$node = $op->device();
-					return $node->gateway()->sendMessage("10;{$node->protocol};{$node->nodeId};{$node->switchId};ON;", $stream, $options); // 10;NewKaku;00c142;1;ON;
+					if($node->gateway()->sendMessage("10;{$node->protocol};{$node->nodeId};{$node->switchId};ON;", $stream, $options)){ // 10;NewKaku;00c142;1;ON;
+						$node->storeData(array(
+							'CMD' => true
+						));
+						return true;
+					}
+					return false;
 				}),
 			new Operation($this, 'off', null, null, 'turn off', function($op, $stream, $data, $options){
 					$node = $op->device();
-					return $node->gateway()->sendMessage("10;{$node->protocol};{$node->nodeId};{$node->switchId};OFF;", $stream, $options); // 10;NewKaku;00c142;1;OFF;
+					if($node->gateway()->sendMessage("10;{$node->protocol};{$node->nodeId};{$node->switchId};OFF;", $stream, $options)){ // 10;NewKaku;00c142;1;OFF;
+						$node->storeData(array(
+							'CMD' => false
+						));
+						return true;
+					}
+					return false;
 				}),
-			new Operation($this, 'getState', null, 'application/json', 'turn off', function($op, $stream, $data, $options){
+			new Operation($this, 'getState', null, 'application/json', 'return current state', function($op, $stream, $data, $options){
 					$stream->out(in_array($op->device()->getData('CMD','OFF'), array('ON','ALLON')));
 					return true;
+				}),
+			new Operation($this, 'setState', Helpers::array_to_object_recursive(array(
+					'type' => 'object',
+					'additionalProperties' => false,
+					'required' => array('CMD'),
+					'properties' => array(
+						'CMD' => array(
+							"enum" => [ "ON", "OFF" ]
+						)
+					)
+				)), null, 'set state', function($op, $stream, $data, $options){
+					$node = $op->device();
+					
+					$value = false;
+					
+					if(isset($data['CMD'])){
+						$value = is_string($data['CMD']) ? preg_match('/^on$/i', $data['CMD']) : boolval($data['CMD']);
+					}
+					
+					if($node->gateway()->sendMessage("10;{$node->protocol};{$node->nodeId};{$node->switchId};".($value ? 'ON': 'OFF').";", $stream, $options)){ // 10;NewKaku;00c142;1;OFF;
+						$node->storeData(array(
+							'CMD' => $value
+						));
+						return true;
+					}
+					return false;
 				})
 		);
 	}

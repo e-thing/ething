@@ -251,6 +251,8 @@ class Rule implements \JsonSerializable {
 				$this->update();
 			}
 			
+			$this->_ething->logger()->debug("rule {$this->id()} '{$this->name}' evaluate condition '{$condition->getType()}' result:{$test}");
+			
 			if(!$test){
 				$pass = false;
 				break;
@@ -269,8 +271,12 @@ class Rule implements \JsonSerializable {
 		// execute the actions
 		foreach($this->actions() as $action){
 			
-			if($signal->isPropagationStopped())
+			if($signal->isPropagationStopped()){
+				$this->_ething->logger()->debug("rule {$this->id()} '{$this->name}' signal propagation stopped");
 				break;
+			}
+			
+			$this->_ething->logger()->debug("rule {$this->id()} '{$this->name}' executing action '{$action->getType()}'");
 			
 			$action->execute($signal);
 			
@@ -283,12 +289,15 @@ class Rule implements \JsonSerializable {
 	
 	protected function run(Signal $signal = null){
 		if(!isset($signal)) $signal = new Signal('manual');
+		
 		$executed = false;
 		$evaluated = $this->evaluate($signal);
 		
 		$lastEval = !empty($this->_d['_lastEval']);
 		$repeat = !empty($this->_d['repeat']);
 		$this->_d['_lastEval'] = $evaluated;
+		
+		$this->_ething->logger()->debug("rule {$this->id()} '{$this->name}' eval:{$evaluated} lastEval:{$lastEval} repeat:{$repeat}");
 		
 		if(!$repeat && $lastEval)
 			$evaluated = false;
@@ -498,14 +507,17 @@ class Rule implements \JsonSerializable {
 					try {
 						$pass = $event->match($signal);
 					} catch (\Exception $e){
-						$this->_ething->log($e);
+						$this->_ething->logger()->error($e);
 					}
 					
-					if($pass)
+					if($pass){
 						$this->run($signal);
+						return true;
+					}
 				}
 			}
 		}
+		return false;
 	}
 	
 	

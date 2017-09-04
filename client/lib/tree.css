@@ -1,0 +1,41 @@
+
+
+.tree .node {
+  cursor: pointer;
+}
+
+.tree .node circle {
+  fill: #fff;
+  stroke: steelblue;
+  stroke-width: 4px;
+}
+
+.tree .node text {
+  font: 10px sans-serif;
+}
+
+.tree .link {
+  fill: none;
+  stroke: #ccc;
+  stroke-width: 1.5px;
+}
+
+.tree .node.node-File circle {
+	stroke: #1abc9c;
+}
+
+.tree .node.node-Table circle {
+	stroke: #3498db;
+}
+
+.tree .node.node-Device circle {
+	stroke: #9b59b6;
+}
+
+.tree .node.node-App circle {
+	stroke: #2ecc71;
+}
+
+.tree .node.node-Folder circle {
+	stroke: #f39c12;
+}

@@ -9,47 +9,6 @@
 	};
 	
 	
-	var VideoWidget = function(widget){
-		
-		var options = $.extend(true,{
-			resource: null, // either a device or a file
-			operation: null, // operation id if the resource is a Device
-			parameters: null // optional parameters if the resource is a Device
-		}, defaultOptions, widget.options);
-		
-		var $element = widget.$element, self = this;
-		
-		var resource = EThing.arbo.findOneById(options.resource);
-		if(!resource)
-			throw new Error('The resource does not exist anymore');
-		
-		var $video = $('<video controls>Your browser does not support the video tag.</video>').css({
-			'max-width': '100%',
-			'max-height': '100%',
-			'display': 'block',
-			'margin': 'auto'
-		});
-		
-		$element.html($video);
-		
-		function setContent(url){
-			
-			$video.prepend(
-				'<source src="'+url+'" type="video/mp4">',
-				'<source src="'+url+'" type="video/ogg">'
-			);
-			
-		}
-		
-		if(resource instanceof EThing.File){
-			setContent(resource.getContentUrl(true));
-		}
-		else if(resource instanceof EThing.Device){
-			setContent(resource.executeUrl(options.operation, options.parameters));
-		}
-		
-	}
-	
 	
 	
 	return {
@@ -134,8 +93,54 @@
 			}
 		},
 		
-		instanciate: function(widget){
-			new VideoWidget(widget);
+		require: ['widget/Widget'],
+		
+		instanciate: function(options, Widget){
+			
+			options = $.extend(true,{
+				resource: null, // either a device or a file
+				operation: null, // operation id if the resource is a Device
+				parameters: null // optional parameters if the resource is a Device
+			}, defaultOptions, options);
+			
+			var resource = EThing.arbo.findOneById(options.resource);
+			if(!resource)
+				throw new Error('The resource does not exist anymore');
+			
+			var url = null;
+			
+			if(resource instanceof EThing.File){
+				url = resource.getContentUrl(true);
+			}
+			else if(resource instanceof EThing.Device){
+				url = resource.executeUrl(options.operation, options.parameters);
+			}
+			
+			var widget = $.extend(Widget(), {
+				
+				draw: function(){
+					
+					var $video = $('<video controls>Your browser does not support the video tag.</video>').css({
+						'max-width': '100%',
+						'max-height': '100%',
+						'display': 'block',
+						'margin': 'auto'
+					}).prepend(
+						'<source src="'+url+'" type="video/mp4">',
+						'<source src="'+url+'" type="video/ogg">'
+					);
+					
+					this.$element.html($video);
+					
+				}
+				
+			});
+			
+			
+			
+			
+			return widget;
+			
 		}
 	};
 	

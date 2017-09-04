@@ -360,7 +360,7 @@ class Http extends Device
 		}
 		else{
 			$e = new Exception(socket_strerror(socket_last_error()));
-			$this->ething->log($e);
+			$this->ething->logger()->error($e);
 			throw $e;
 		}
 		
@@ -370,7 +370,7 @@ class Http extends Device
 			// the state changed
 			if(!$online){
 				// this device has been disconnected !
-				$device->dispatchSignal(Event\DeviceUnreachable::emit($device));
+				$this->dispatchSignal(\Ething\Event\DeviceUnreachable::emit($this));
 			}
 			$this->setAttr('_ping', $online);
 		}

@@ -1,56 +1,125 @@
 
-@media (max-width: 767px) {
-#device > .ui-container .container {
-    padding-right: 5px;
-    padding-left: 5px;
-}
+#device {
+	background-color: #f5f5f5;
 }
 
-#device > .ui-container > div {
+#device .ui-container {
+	display: table;
+    border-collapse: separate;
+    border-spacing: 10px 10px;
+}
+
+#device .d-infopanel {
+	padding: 40px 10px;
+    background-color: #9b59b6;
+    color: white;
+	display: table-cell;
+	vertical-align: top;
+	width: 320px;
+	min-width: 320px;
+	max-width: 320px;
+}
+
+#device .d-infopanel [data-role="title"] {
+    display: block;
+	text-align: center;
 	margin: 40px 0;
 }
 
-#device > .ui-container .info {
-
+#device .d-infopanel [data-role="action"] {
+    text-align: center;
+	display: block;
 }
 
+#device .d-infopanel [data-role="action"] .btn {
+	color: white;
+}
 
-#device > .ui-container .info-title {
+#device .d-infopanel [data-role="action"] .btn:hover {
+	color: white;
+}
+
+#device .d-infopanel [data-role="thumbnail"] {
+    text-align: center;
+	display: block;
+}
+
+#device .d-infopanel [data-role="thumbnail"] svg {
+	width: 128px;
+    height: 128px;
+}
+
+#device .d-infopanel [data-role="detail"] {
+	display: block;
+	margin: 40px 0;
+}
+
+#device .row:before, #device .row:after, #device .container-fluid:before, #device .container-fluid:after {
+    border-collapse: collapse;
+}
+
+#device .d-infopanel [data-role="detail"] .key {
+    text-align: right;
+}
+
+#device .d-infopanel [data-role="detail"] .value {
+    font-weight: bold;
+}
+
+#device .d-infopanel .tooltip > .tooltip-arrow {
+	border-bottom-color: #fff;
+}
+
+#device .d-infopanel .tooltip > .tooltip-inner {
+	background-color: rgba(0, 0, 0, 0);
+    border: 1px solid white;
+}
+
+#device .d-contentpanel {
+	display: table-cell;
+	width: 100%;
+	vertical-align: top;
+	max-width: 1px;
+}
+
+#device .d-contentpanel > .d-contentpanel-item {
+    background-color: white;
+	width: 100%;
+	margin-bottom: 10px;
 	position: relative;
 }
-#device > .ui-container .info-title button {
-	position: absolute;
-    bottom: 0;
-    right: 0;
-}
-#device > .ui-container .info-title small {
-	font-size: medium;
+
+#device .d-contentpanel > .d-contentpanel-item:last-child {
+	margin-bottom: 0px;
 }
 
-#device > .ui-container .info.hasWidget .widget {
-    float: left;
-	width: 140px;
-	margin: 10px;
+#device .d-contentpanel > .d-contentpanel-item  .d-contentpanel-item-title {
+    padding: 10px;
+	font-size: 18px;
 }
 
-#device > .ui-container .info.hasWidget .info-meta {
-	margin-left: 150px;
+#device .d-contentpanel > .d-contentpanel-item .d-contentpanel-item-content {
+	width: 100%;
+    overflow: auto;
+	padding: 10px;
 }
 
-#device > .ui-container .info-meta-item > svg {
-    vertical-align: middle;
+#device .d-contentpanel > .d-contentpanel-item-browser .d-contentpanel-item-content, #device .d-contentpanel > .d-contentpanel-item-plot .d-contentpanel-item-content {
+	padding: 0px;
 }
 
-#device > .ui-container .info-description {
-	
+#device .d-contentpanel > .d-contentpanel-item-browser .d-contentpanel-item-content {
+	padding-left: 2px;
 }
 
 
-#device > .ui-container .api {
+/* API */
 
+#device .d-contentpanel-item-api .d-contentpanel-item-content {
+	padding: 0 10px 10px 10px;
 }
 
-#device > .ui-container .operation {
+#device .d-contentpanel-item-api .operation {
 	margin: 0 0 20px 0;
 	background-color: #ffffff;
     /*border: 1px solid #eaeaea;*/
@@ -58,7 +127,7 @@
 
 
 
-#device > .ui-container .operation-header {
+#device .d-contentpanel-item-api .operation-header {
 	cursor: pointer;
 	padding: 10px;
     font-weight: bold;
@@ -68,7 +137,7 @@
     border: 1px solid #f1f1f1;
 }
 
-#device > .ui-container .operation .operation-header:after {
+#device .d-contentpanel-item-api .operation .operation-header:after {
 	position: relative;
     top: 1px;
     display: inline-block;
@@ -81,61 +150,61 @@
 	margin-left: 10px;
 }
 
-#device > .ui-container .operation:not(.opened) .operation-header:after {
+#device .d-contentpanel-item-api .operation:not(.opened) .operation-header:after {
 	content: "\e114";
 }
 
-#device > .ui-container .operation.opened .operation-header:after {
+#device .d-contentpanel-item-api .operation.opened .operation-header:after {
 	content: "\e113";
 }
 
-#device > .ui-container .operation-body {
+#device .d-contentpanel-item-api .operation-body {
 	padding: 5px;
 	/*border-top: 1px solid;*/
     /*border-color: inherit;*/
 }
 
-#device > .ui-container .operation-body > * {
+#device .d-contentpanel-item-api .operation-body > * {
 	margin: 20px 0;
 }
 
-#device > .ui-container .operation-body-description {
+#device .d-contentpanel-item-api .operation-body-description {
 	
 }
 
-#device > .ui-container .operation-body-parameters {
+#device .d-contentpanel-item-api .operation-body-parameters {
 	
 }
 
-#device > .ui-container .operation-body-toolbar {
+#device .d-contentpanel-item-api .operation-body-toolbar {
 	
 }
 
-#device > .ui-container .operation-body-toolbar-execute {
+#device .d-contentpanel-item-api .operation-body-toolbar-execute {
 	
 }
 
-#device > .ui-container .operation-body-toolbar-hide {
+#device .d-contentpanel-item-api .operation-body-toolbar-hide {
 	
 }
 
-#device > .ui-container .operation-body-result {
+#device .d-contentpanel-item-api .operation-body-result {
 	
 }
 
-#device > .ui-container .operation-body-result.error, .operation-body-result.error pre {
+#device .d-contentpanel-item-api .operation-body-result.error, .operation-body-result.error pre {
 	color: #ca2f2f;
 }
 
-#device > .ui-container .operation-body-result-view {
+#device .d-contentpanel-item-api .operation-body-result-view {
 	max-width: 100%;
 }
 
-#device > .ui-container .operation-body-result-view code {
+#device .d-contentpanel-item-api .operation-body-result-view code {
 	background-color: inherit;
 }
 
-#device > .ui-container .operation-body-result-details {
+#device .d-contentpanel-item-api .operation-body-result-details {
 	max-width: 100%;
 	background-color: #f5f5f5;
     border: 1px solid #ccc;
@@ -145,7 +214,143 @@
 	color: #4a4a4a;
 }
 
-#device > .ui-container .typeahead.dropdown-menu {
+#device .typeahead.dropdown-menu {
     max-height: 200px;
     overflow-y: auto;
+}
+
+#device ul.dropdown-menu {
+    height: auto;
+    max-height: 200px !important;
+    overflow-x: hidden;
+}
+
+
+/* Sensors */
+
+#device .d-contentpanel-item-sensors .d-contentpanel-item-content {
+	padding: 0 10px 10px 10px;
+}
+
+#device .d-contentpanel-item-sensors .d-contentpanel-item-content > div {
+	background-color: #f5f5f5;
+	padding: 2px;
+}
+
+#device .db-widget-wrapper {
+    display: inline-block;
+    height: 152px;
+    width: 152px;
+	position: relative;
+	margin: 2px;
+	background-color: white;
+	vertical-align:top;
+}
+
+#device .db-widget {
+	position: absolute;
+	height: 100%;
+	width: 100%;
+	top: 0;
+    left: 0;
+	overflow: hidden;
+}
+
+#device .db-widget[data-title]:before {
+	content: attr(data-title);
+	display: block;
+    position: absolute;
+    top: 0px;
+    left: 0px;
+    text-align: center;
+    width: 100%;
+    color: rgb(179, 179, 179);
+    font-size: smaller;
+	white-space: nowrap;
+    padding: 5px 0 0 0;
+}
+
+#device .db-widget[data-footer]:after {
+	content: attr(data-footer);
+	position: absolute;
+    bottom: 0px;
+    left: 0px;
+    text-align: center;
+    width: 100%;
+    font-size: smaller;
+	white-space: nowrap;
+    color: rgb(179, 179, 179);
+}
+
+
+
+#device .d-contentpanel-item-parent-item {
+	display: inline-block;
+	padding: 0 5px;
+	color: #a5a5a5;
+}
+
+#device .d-contentpanel-item-parent-item:not(:first-child):before {
+    content: "\e080";
+	position: relative;
+    top: 1px;
+    display: inline-block;
+    font-family: 'Glyphicons Halflings';
+    font-style: normal;
+    font-weight: 400;
+    line-height: 1;
+    -webkit-font-smoothing: antialiased;
+	margin-right: 10px;
+    color: #b7b7b7;
+}
+
+#device .d-contentpanel-item-parent-item:first-child {
+    padding-left: 0px;
+}
+
+#device .d-contentpanel-item-parent-item:last-child {
+    color: #9b59b6;
+}
+
+#device .d-contentpanel-item-parent-item:not(:last-child) {
+    cursor: pointer;
+}
+
+#device .d-contentpanel > .d-contentpanel-item-tree .d-contentpanel-item-content {
+    /*max-height: 400px;*/
+}
+
+
+
+/* Data */
+
+#device .d-contentpanel > .d-contentpanel-item-data .row > div {
+	padding-left: 0px;
+	padding-right: 0px;
+}
+
+#device .d-contentpanel > .d-contentpanel-item-data .row > div:first-child {
+	color: #9b59b6;
+}
+
+@media (max-width: 768px) {
+
+#device .ui-container {
+	display: block;
+	padding: 10px;
+}
+
+#device .d-infopanel {
+	display: block;
+	margin-bottom: 20px;
+	width: 100%;
+	min-width: initial;
+	max-width: initial;
+}
+
+#device .d-contentpanel {
+	display: block;
+	max-width: none;
+}
+
 }

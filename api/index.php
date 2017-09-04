@@ -313,6 +313,7 @@ $app = new \Slim\Slim(array(
 
 require_once $rootDir.'/src/Ething.php';
 $ething = new \Ething\Ething();
+$ething->setName('api');
 
 $debug = $ething->config('debug');
 
@@ -729,6 +730,14 @@ $app->get('/resources/:id', $auth->permissions('resource:read resource:write fil
  *               "description":"id of the resource. Devices or Apps using the api key authentication may use the word 'me' to replace their id.",
  *               "required":true,
  *               "type":"string"
+ *            },
+ *            {  
+ *               "name":"children",
+ *               "in":"query",
+ *               "description":"Set to true to remove all the children too",
+ *               "required":false,
+ *               "type":"boolean",
+ *               "default":false
  *            }
  *         ],
  *         "responses":{
@@ -742,7 +751,8 @@ $app->get('/resources/:id', $auth->permissions('resource:read resource:write fil
 $app->delete('/resources/:id', $auth->permissions('resource:admin'),
     function ($id) use ($app,$auth) {
 		$r = Utils\getResource($auth, $id);
-		$r->remove();
+		$removeChildren = Utils\getParameter('children',Utils\CHK_LOGIC, true, false);
+		$r->remove($removeChildren);
     }
 );
 
@@ -1555,7 +1565,6 @@ $app->get('/tables/:id',  $auth->permissions('table:read resource:read'),
 		$query = Utils\getParameter('Q',Utils\CHK_STRING,true,null);
 		\Ething\Table::$dateFormat = Utils\getParameter('DATEFMT',Utils\CHK_DATEFORMAT,true,\DateTime::RFC3339);
 		
-		//var_dump(\Ething\Table::$dateFormat); exit;
 		$selection = $r->select($start,$length,$fields,$sort,$query);
 		
 		if($format==Utils\FMT_JSON || $format==Utils\FMT_JSON_PRETTY){
@@ -2225,7 +2234,7 @@ An application consists of a single HTML page. Use the Javascript SDK to easily 
   <head>
 
     <!-- CORE -->
-    <script src=\"__API_URL__/../lib/core.js\"></script>
+    <script src=\"__API_URL__/../js/ething.js\"></script>
 
   </head>
 
@@ -3431,7 +3440,7 @@ $app->error(function (\Exception $e) use ($app,$debug,$ething,$auth) {
 	// send the error message as JSON
 	$app->contentType('application/json');
 	
-	$ething->log($e, 'HTTP API');
+	$ething->logger()->error($e);
 	
 	$message = utf8_encode($e->getMessage());
 	

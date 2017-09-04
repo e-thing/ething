@@ -11,9 +11,11 @@ if(!(php_sapi_name() === 'cli' || \Session\isAuthenticated())){
 	exit(1);
 }
 
+
+
 $ething = new \Ething\Ething();
 
+$ething->daemon->restart();
 
-$ething->deamon('stop',$stream);
 
 

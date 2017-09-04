@@ -156,7 +156,7 @@ abstract class Resource implements \JsonSerializable, ResourceInterface
 	}
 	
 	protected function setDirtyAttr($name) {
-		if($name[0] != '_' && !in_array($name, $this->dirtyFields))
+		if(!in_array($name, $this->dirtyFields))
 			$this->dirtyFields[] = $name;
 	}
 	
@@ -320,8 +320,6 @@ abstract class Resource implements \JsonSerializable, ResourceInterface
 			$fn($this,$context);
 		}
 		
-		
-		
 		return true;
 	}
 	
@@ -348,11 +346,23 @@ abstract class Resource implements \JsonSerializable, ResourceInterface
 	}
 	
 	
-	public function remove() {
+	public function remove($removeChildren = false) {
+		
+		$id = $this->id();
+		
 		$c = $this->ething->db()->selectCollection("resources");
-		$c->deleteOne(array('_id' => $this->id()));
+		$c->deleteOne(array('_id' => $id));
 		$this->_d = null;
 		$this->ething->dispatchSignal(Event\ResourceDeleted::emit($this));
+		
+		if($removeChildren===true){
+			$children = $this->ething->find(array(
+				'createdBy.id' => $id
+			));
+			foreach($children as $child){
+				$child->remove();
+			}
+		}
 	}
 	
 	protected function update($force = false) {
@@ -360,8 +370,9 @@ abstract class Resource implements \JsonSerializable, ResourceInterface
 			$this->setAttr('modifiedDate', new \MongoDB\BSON\UTCDateTime()); // update the modification time
 			$c = $this->ething->db()->selectCollection("resources");
 			$c->replaceOne(array('_id' => $this->id()), $this->_d);
-			$this->ething->dispatchSignal(Event\ResourceMetaUpdated::emit($this, $this->dirtyFields));
-			//$this->ething->log(implode(',',$this->dirtyFields));
+			$this->ething->dispatchSignal(Event\ResourceMetaUpdated::emit($this, array_filter($this->dirtyFields,function($f){
+				return $f[0]!=='_';
+			})));
 			$this->dirtyFields = array();
 		}
 	}
@@ -425,8 +436,6 @@ abstract class Resource implements \JsonSerializable, ResourceInterface
 			$c->insertOne($instance->_d);
 		}
 		catch(\Exception $e) {
-			//echo "message d'erreur : ".$e->getMessage()."\n";
-			//echo "code de l'erreur : ".$e->getCode()."\n";
 			// code 11000 on duplicate error
 			throw new Exception('internal error');
 		}

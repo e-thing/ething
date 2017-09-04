@@ -17,7 +17,8 @@
 					return sensor.execute(value?'on':'off').always(function(){
 						sensor.update();
 					});
-				}
+				},
+				title: sensor.basename()
 			});
 			
 			var update = function(){
@@ -28,13 +29,12 @@
 				}
 				
 				widget.val(!!value);
+				widget.setFooter(sensor.modifiedDate().toLocaleString());
 			};
 			
 			return $.extend({}, widget, {
 				
 				draw: function(){
-					this.$element.attr('data-title',sensor.basename());
-					this.$element.attr('data-footer',sensor.modifiedDate().toLocaleString());
 					
 					widget.draw.call(this);
 					

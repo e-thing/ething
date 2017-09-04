@@ -1,9 +1,49 @@
 (function (root, factory) {
     if (typeof define === 'function' && define.amd) {
         // AMD. Register as an anonymous module.
-        define(['js/ui', 'text!./apps.html', 'jquery', 'ething', 'ui/infopanel', 'browser','css!./apps','jquery-mobile-events', 'form', 'ui/modal'], factory);
+        define(['js/ui', 'text!./apps.html', 'jquery', 'ething', 'ui/infopanel', 'urijs/URI', 'browser','css!./apps','jquery-mobile-events', 'form', 'ui/modal'], factory);
     }
-}(this, function (UI, template, $, EThing, Infopanel) {
+}(this, function (UI, template, $, EThing, Infopanel, URI) {
+	
+	
+	var urlParser = function(url){
+		var uri = URI(url);
+		
+		// clean
+		uri.search("");
+		uri.fragment("");
+		
+		var app = {
+			url: url,
+			icon: null
+		};
+		
+		if(uri.filename()==='index.html'){
+			app.index = uri.toString();
+			uri.filename('meta.json');
+			app.meta = uri.toString();
+			uri.segment(-1, "");
+			app.dir = uri.toString();
+		} else if(uri.filename()==='meta.json'){
+			app.meta = uri.toString();
+			uri.filename('index.html');
+			app.index = uri.toString();
+			uri.segment(-1, "");
+			app.dir = uri.toString();
+		} else if(uri.suffix()===""){ // directory given http://example.org/path
+			app.dir = uri.toString();
+			uri.segment('index.html');
+			app.index = uri.toString();
+			uri.filename('meta.json');
+			app.meta = uri.toString();
+		} else {
+			console.error('invalid url '+url);
+			return false;
+		}
+		
+		return app;
+	};
+	
 	
 	
 	
@@ -125,10 +165,10 @@
 			'</div>');
 			var $repository = $('<div class="subpart subpart-primary" name="repository">'+
 			  '<h4>Install from an URL</h4>'+
-			  '<p>Enter below the URL of the application JSON file you want to install.</p>'+
+			  '<p>Enter below the URL of the application you want to install.</p>'+
 			  '<p>'+
 				'<div class="input-group">'+
-				  '<input type="text" class="form-control" placeholder="example.org/install.json">'+
+				  '<input type="text" class="form-control" placeholder="example.org/index.html">'+
 				  '<span class="input-group-btn">'+
 					'<button class="btn btn-primary" type="button">Install</button>'+
 				  '</span>'+
@@ -149,6 +189,7 @@
 				}
 				else {
 					//set error
+					console.error(message);
 					var $err = $sp.find('.alert');
 					if(!$err.length)
 						$err = $('<div class="alert alert-danger" role="alert">').appendTo($sp);
@@ -195,20 +236,35 @@
 			
 			$repository.find('button').click(function(){
 				
-				var jsonUrl = $('input',$repository).val().trim();
+				var url = $('input',$repository).val().trim();
 				
-				if(!/^([a-z]+:)?\/\//.test(jsonUrl)) jsonUrl = '//'+jsonUrl;
+				var url_re = new RegExp('^((.+:)?\\/\\/)?'+ // protocol
+					'((([a-z\\d]([a-z\\d-]*[a-z\\d])*)\\.)+[a-z]{2,}|'+ // domain name
+					'((\\d{1,3}\\.){3}\\d{1,3})|'+ // OR ip (v4) address
+					'localhost)'+ // or localhost
+					'(\\:\\d+)?(\\/[-a-z\\d%_.~+]*)*'+ // port and path
+					'(\\?[;&a-z\\d%_.~+=-]*)?'+ // query string
+					'(\\#[-a-z\\d_]*)?$','i'); // fragment locator
 				
-				if(!url_re.test(jsonUrl)){
+				if(!/^([a-z]+:)?\/\//.test(url)) url = '//'+url;
+				
+				if(!url_re.test(url)){
 					setError('Invalid URL.',$repository);
 					return;
 				}
 				
-				$.getJSON(jsonUrl).done(function(json){
+				var app = urlParser(url);
+				
+				if(app === false){
+					setError('URL must point to meta.json, index.html or a directory',$repository);
+					return;
+				}
+				
+				function installFromMeta(json){
 					
 					var data = $.extend(true,{
 						"name" : null,
-						"script": null,
+						"index": null,
 						"scope": null,
 						"icon": null,
 						"description": null,
@@ -225,26 +281,37 @@
 					
 					if(data.summary && data.summary.length>500) data.summary = data.summary.substr(0,500).replace(/[!?., ]+[^!?., ]*$/,'...');
 					
-					// build the absolute url
-					if(data.icon) data.icon = rel2abs(data.icon,jsonUrl);
-					data.script = rel2abs(data.script || 'index.html',jsonUrl);
+					if(data.icon) {
+						var uri = new URI(data.icon);
+						if(uri.is("relative")===true){
+							uri = uri.absoluteTo(app.meta);
+						}
+						app.icon = uri.toString();
+					}
+					if(data.index) {
+						var uri = new URI(data.index);
+						if(uri.is("relative")===true){
+							uri = uri.absoluteTo(app.meta);
+						}
+						app.index = uri.toString();
+					}
 					
 					// retrieve all the external resources
 					var dfrs = [];
 					
-					if(data.icon){
+					if(app.icon){
 						var dfrIcon = $.Deferred();
 						EThing.request({
-							url: data.icon,
+							url: app.icon,
 							dataType: 'blob'
 						}).done(function(d){
-							imageSquareResizeBlob(d, 128, function(blob){
+							UI.imageSquareResizeBlob(d, 128, function(blob){
 								data.iconData = blob;
 								dfrIcon.resolve();
 							});
 						}).fail(function(){
 							// icon not found !
-							console.error('not found '+data.icon);
+							console.error('not found '+app.icon);
 							dfrIcon.resolve(); // resolve anyway
 						});
 						dfrs.push(dfrIcon);
@@ -252,12 +319,12 @@
 					
 					dfrs.push(
 						EThing.request({
-							url: data.script,
+							url: app.index,
 							dataType: 'text'
 						}).done(function(d){
 							data.scriptData = d;
 						}).fail(function(){
-							console.error('not found '+data.script);
+							setError('not found '+app.index,$repository);
 						})
 					);
 					
@@ -269,8 +336,8 @@
 							$html = $(
 								'<div class="authorize-app">'+
 								  '<h1 class="title">'+
-									'<img>'+
-									'<span class="title">'+data.name+'</span>'+
+									'<img> '+
+									'<span class="title">'+data.name+'</span> '+
 									'<span class="version small">'+(data.version || '')+'</span>'+
 								  '</h1>'+
 								  '<h4>Permissions</h4>'+
@@ -292,7 +359,7 @@
 							data.scope.split(' ').forEach(function(scope){
 								if(!scope) return;
 								
-								var description = scopes.hasOwnProperty(scope) ? scopes[scope] : scope,
+								var description = UI.scopes.hasOwnProperty(scope) ? UI.scopes[scope] : scope,
 									warning = warning_permissions.indexOf(scope) !== -1;
 								
 								$permissions.append(
@@ -313,7 +380,7 @@
 							var $error = $html.find('.alert');
 							
 							$html.modal({
-								title: 'Install application "'+data.name+'" ?',
+								title: 'Install the application "'+data.name+'" ?',
 								buttons: {
 									'+Install': function(){
 										// install it !
@@ -334,13 +401,18 @@
 							
 						});
 						
-					}).fail(function(){
-						setError('error.',$repository);
 					});
 					
+				};
+				
+				$.getJSON(app.meta).done(installFromMeta).fail(function(){
 					
-				}).fail(function(){
-					setError('not found.',$repository);
+					// the meta file was not found !
+					console.warn('meta file not found '+app.meta);
+					
+					// install it any way with the default values !
+					installFromMeta({});
+					
 				});
 				
 			});

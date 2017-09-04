@@ -1,10 +1,9 @@
 (function (root, factory) {
     if (typeof define === 'function' && define.amd) {
         // AMD. Register as an anonymous module.
-        define(['js/ui', 'jquery', 'ething', 'marked', 'form', 'highlight', 'css!./device', 'css!font-awesome'], factory);
+        define(['js/ui', 'jquery', 'ething', 'marked', 'widgetcollection', 'form', 'highlight', 'css!./device', 'browser'], factory);
     }
-}(this, function (UI, $, EThing, marked) {
-	
+}(this, function (UI, $, EThing, marked, WidgetCollection) {
 	
 	
 	/* mysensors stuff */
@@ -177,7 +176,6 @@
 		'ST_SOUND'  : 4,
 		'ST_IMAGE'  : 5
 	};
-	
 	
 	/* helpers */
 	
@@ -443,307 +441,204 @@
 	
 	
 	
-	
-	
-	
-	var DeviceViewer = function(element, options){
-		var self = this,
-			descriptionMaxHeight = 150;
+	var Infopanel = function($element, device){
 		
-	
-		if(options instanceof EThing.Device)
-			options = {
-				device: options
-			};
+		$element.addClass('d-infopanel');
 		
-		this.device = options.device;
-		this.$element = $(element);
-		this.options = options;
-		
-		
-		// view 
-		this.$element.empty().html(
-			'<div class="info">'+
-				'<div class="page-header">'+
-				  '<h1 class="info-title"></h1>'+
-				'</div>'+
-				'<div>'+
-					'<div class="widget"></div>'+
-					'<div class="info-meta"></div>'+
-					'<div style="clear: both;"></div>'+
-				'</div>'+
-				'<div class="info-description"></div>'+
-			'</div>'+
-			'<div class="api">'+
-				'<h4>API</h4>'+
-				'<div class="content">loading...</div>'+
-			'</div>'+
-			'<div class="data">'+
-				'<h4>DATA</h4>'+
-				'<div class="content">loading...</div>'+
-			'</div>'+
-			'<div class="resources">'+
-				'<h4>RESOURCES</h4>'+
-				'<div class="content"></div>'+
-			'</div>'+
-			'<div class="apikey">'+
-				'<h4>API KEY</h4>'+
-				'<p><a href="#!developer">Click here</a> to get the API KEY for this device</p>'+
-			'</div>'+
-			'</div>'
+		$element.html(
+			'<div data-role="thumbnail"></div>'+
+			'<h1 data-role="title" class="ellipsis"></h1>'+
+			'<div data-role="action"><div class="btn-group" role="group" aria-label="..."></div></div>'+
+			'<div data-role="detail"></div>'
 		);
 		
-		this.$element.find('.resources, .data, .apikey').hide();
-		
-		var $editBtn = $('<button type="button" class="btn btn-link btn-xs"><span class="glyphicon glyphicon-cog" aria-hidden="true"></span><span class="hidden-xs"> edit</span></button>').click(function(){
-			UI.go('resource',{
-				rid: self.device.id()
-			});
-		});
+		// icon
+		$element.find('[data-role="thumbnail"]').html($.Browser.generateSvgResourceIcon(device));
 		
 		// title
-		this.$element.find('.info-title').html(this.device.name()+' <small>[id:'+this.device.id()+']</small>').append($editBtn);
+		$element.find('[data-role="title"]').text(device.basename());
 		
-		// meta
-		var $meta = this.$element.find('.info-meta');
-		
-		// battery
-		var batIcon;
-		var batteryValue = this.device.battery();
-		if(batteryValue === null) batIcon = 'plug';
-		else if(batteryValue < 12.5) batIcon = 'battery-empty';
-		else if(batteryValue < 37.5) batIcon = 'battery-quarter';
-		else if(batteryValue < 62.5) batIcon = 'battery-half';
-		else if(batteryValue < 87.5) batIcon = 'battery-three-quarters';
-		else batIcon = 'battery-full';
-		$('<div class="info-meta-item">').addClass('ellipsis').html('<i class="fa fa-'+batIcon+'" aria-hidden="true"></i> '+(typeof batteryValue == 'number' ? batteryValue+"%" : 'no battery')).appendTo($meta);
-		
-		// last time the device communicate
-		var lastSeenDateValue = this.device.lastSeenDate();
-		$('<div class="info-meta-item">').addClass('ellipsis').html('<span class="glyphicon glyphicon-time" aria-hidden="true"></span> '+(lastSeenDateValue ? UI.dateToString(lastSeenDateValue) : 'never')).appendTo($meta);
-		
-		// location
-		var location = this.device.location();
-		var parts = [];
-		if(location){
-			if( typeof location.latitude != 'undefined' && typeof location.longitude != 'undefined')
-				parts.push( location.latitude+"N "+location.longitude+"E" );
-			if( typeof location.place != 'undefined' ) parts.push(location.place);
-			if( typeof location.floor != 'undefined' ) parts.push('floor:'+location.floor);
-			if( typeof location.room != 'undefined' ) parts.push(location.room);
-		}
-		var locationStr = parts.length ? parts.join(',') : 'somewhere on earth';
-		$('<div class="info-meta-item">').addClass('ellipsis').html('<span class="glyphicon glyphicon-map-marker" aria-hidden="true"></span> '+locationStr).appendTo($meta);
-		
-		
-		// description
-		markdown( this.$element.find('.info-description').text(this.device.description()));
-		
-		
-		var toggleDescription = function(){
-			
-			var $description = self.$element.find('.info-description'),
-				foldState = $description.data('fold');
-			
-			if(typeof foldState == 'undefined'){
-				// init
-				
-				$description.data('fold', foldState = ($description.height() > descriptionMaxHeight));
-				
-				if(foldState){
-					var $more = $('<button type="button" class="btn btn-link">More ...</button>').click(toggleDescription);
-					$description.after($more);
+		// actions
+		var $action = $element.find('[data-role="action"] > .btn-group');
+		UI.actions.forEach(function(action){
+				if(action.filter(device)){
+					var $a = $('<button type="button" class="btn btn-link" aria-label="'+action.name+'">'+
+								'<span class="glyphicon glyphicon-'+action.icon+'" aria-hidden="true"></span>'+
+							'</button>');
+					
+					$a.click(function(){
+						action.fn(device);
+					});
+					
+					if(!UI.isTouchDevice)
+						$a.tooltip({
+							container: $action,
+							trigger:'hover',
+							placement: 'bottom',
+							title: action.name
+						});
+
+					$a.appendTo($action);
 				}
-				
+			});
+		
+		// print the properties
+		var props = UI.getResourceFormattedValues(device,{
+			"createdBy":{
+				formatter: function(createdBy){
+					if(!createdBy)
+						return 'Me';
+					else {
+						var createdByRess = EThing.arbo.findOneById(createdBy.id);
+						if(createdByRess instanceof EThing.Device)
+							return '<a href="#!device?rid='+createdByRess.id()+'" style="color: white;">'+createdByRess.basename()+'</a>';
+						else if(createdByRess instanceof EThing.Resource)
+							return createdByRess.basename();
+					}
+				}
 			}
-			
-			var maxHeight =  $description.css('max-height');
-			
-			if(maxHeight === 'none' || !maxHeight){
-				// fold
-				$description.css({
-					'max-height': descriptionMaxHeight+'px',
-					'overflow': 'hidden'
-				});
-				
-				$description.next('button').text('more ...');
+		}, function(){
+			return ["name","type","id","createdBy","createdDate","modifiedDate","lastSeenDate","size","mime","length","maxLength","expireAfter","battery","location","url","version","revision","build","isMetric","libVersion","transport","nodeId","sensorId","sensorType","sketchName","sketchVersion","smartSleep","topic","public","inclusion"].indexOf(this.name) >= 0;
+		});
+		var $detail = $element.find('[data-role="detail"]');
+		for(var i in props){
+			if(props[i]!==null){
+				$('<div class="row">').append(
+					'<div class="col-xs-5 ellipsis key">'+i+'</div>',
+					$('<div class="col-xs-7 ellipsis value">').append(props[i])
+				).appendTo($detail);
 			}
-			else {
-				// expand
-				$description.css({
-					'max-height': '',
-					'overflow': ''
-				});
-				$description.next('button').text('fold description');
+		}
+		
+		return {};
+	}
+	
+	
+	var Contentpanel = function($element){
+		
+		$element.addClass('d-contentpanel');
+		
+		$element.html('');
+		
+		return {
+			
+			items: [],
+			
+			addItem: function(item){
+				
+				this.items.push(item);
+				
+				item.draw();
+				
+				$element.append(item.$element);
+				
 			}
 			
 		};
+	}
+	
+	var ContentpanelItem = function(){
 		
+		var $element = $('<div>').addClass('d-contentpanel-item');
 		
-		// widget
-		if(this.device instanceof EThing.Device.MySensorsSensor){
+		$element.html(
+			'<div class="d-contentpanel-item-content"></div>'
+		);
+		
+		return {
+			$element: $element,
 			
-			var sensorType = this.device.sensorType();
+			setTitle: function(title){
+				var $title = $element.find('.d-contentpanel-item-title');
+				if(!$title.length)
+					$title = $('<div class="d-contentpanel-item-title"></div>').prependTo($element);
+				$title.text(title);
+			},
 			
-			require(['deviceWidget/'+sensorType.replace(/^S_/, '').toLowerCase()], function(WidgetClass){
-				
-				self.$element.find('.info').addClass('hasWidget');
-				
-				var $widget = self.$element.find('.info > div > .widget');
-				$widget.data('widget', new WidgetClass($widget[0], self.device));
-				
-				
-			}, function(){
-				// default
-			});
+			setContent: function(){
+				return $element.find('.d-contentpanel-item-content').html(Array.prototype.slice.call(arguments));
+			},
 			
-		}
-		
-		
-		
-		/*
-		* API
-		*/
-		
-		this.device.getApi().done(function(api){
+			draw: function(){ /* to be implemented */ }
 			
-			var device = this,
-				operations = api,
-				$api = self.$element.find('.api'),
-				$apiContent = self.$element.find('.api>.content').empty();
+		};
+	}
+	
+	
+	var DescriptionContentpanelItem = function(device){
+		
+		var contentpanelItem = ContentpanelItem();
+		
+		contentpanelItem.$element.addClass('d-contentpanel-item-description');
+		
+		return $.extend({}, contentpanelItem, {
 			
-			operations.forEach(function(operation){
+			draw: function(){
 				
-				var name = operation.name,
-					description = operation.description || '',
-					schema = operation.schema;
+				this.setTitle('Description');
 				
+				markdown(this.setContent(device.description()));
 				
-				var $operation = $(
-					'<div class="operation" id="'+name+'">'+
-						'<div class="operation-header"></div>'+
-						'<div class="operation-body">'+
-							'<div class="operation-body-description"></div>'+
-						'</div>'+
-					'</div>'
-				);
+			}
+			
+		});
+		
+	}
+	
+	var DataContentpanelItem = function(device){
+		
+		var contentpanelItem = ContentpanelItem();
+		
+		contentpanelItem.$element.addClass('d-contentpanel-item-data');
+		
+		return $.extend({}, contentpanelItem, {
+			
+			draw: function(){
 				
-				$operation.data('operation', operation);
+				this.setTitle('Data');
 				
-				$operation.find('.operation-header').text(name);
+				var data = device.data(), $rows = [];
 				
-				// description
-				markdown( $operation.find('.operation-body-description').text(description));
-				
-				
-				var form = schema ? new $.Form.fromJsonSchema( schema ) : null;
-				
-				//console.log(form);
-				
-				if(name === 'sendMessage' && form && /^Device\\MySensors/.test(device.type())){
-					// override default item, more convenient than dealing with number
+				for(var k in data){
 					
-					var typeOpt = $.extend({}, form.getLayoutItemByName('type'), {
-						item: new $.Form.Select({
-							items: MySensors_messageTypes
-						})
-					});
-					form.replaceItemWith('type', typeOpt);
-					
-					var subtypeOpt = $.extend({}, form.getLayoutItemByName('subtype'), {
-						item: new $.Form.Select({
-							items: []
-						}),
-						dependencies: {
-							'type': function(layoutItem){
-								
-								var type = this.getLayoutItemByName('type').item.value();
-								
-								switch(parseInt(type)){
-									case 0:
-										layoutItem.item.setOptions(MySensors_sensorTypes);
-										break;
-									case 1:
-									case 2:
-										layoutItem.item.setOptions(MySensors_valueTypes);
-										break;
-									case 3:
-										layoutItem.item.setOptions(MySensors_internalTypes);
-										break;
-									case 4:
-										layoutItem.item.setOptions(MySensors_streamTypes);
-										break;
-								}
-								
-							}
-						}
-					});
-					form.replaceItemWith('subtype', subtypeOpt);
+					$rows.push( $('<div class="row">').append(
+						'<div class="col-sm-4">'+k+'</div>',
+						'<div class="col-sm-8">'+data[k]+'</div>'
+					) );
 					
 				}
 				
-				$operation.find('.operation-body').append(
-					createView( 
-						form,
-						new OperationView(device, operation)
-					)
-				);
+				this.setContent($('<div class="container-fluid">').html($rows));
 				
-				
-				$operation.find('.operation-body').hide();
-				
-				var toggle = function(state){
-					state = typeof state == 'boolean' ? state : undefined;
-					$operation.toggleClass('opened', state).find('.operation-body').slideToggle(state);
-				};
-				
-				$operation.data('toggleFn', toggle);
-				
-				$operation.find('.operation-header').click(toggle);
-				
-				$apiContent.append($operation);
-				
-			}, this);
-			
-			/*if(operations.length == 1){
-				// auto expand the first one
-				$api.children('.operation').first().data('toggleFn')();
-			}*/
-			
-			if($apiContent.children().length==0){
-				$api.hide();
 			}
 			
-		}).fail(function(){
-			self.$element.find('.api').hide();
 		});
 		
-		// only HTTP device has an api key
-		if(this.device instanceof EThing.Device.Http)
-			self.$element.find('.apikey').show();
+	}
+	
+	var PlotContentpanelItem = function(device){
 		
-		EThing.arbo.load(function(){
+		var contentpanelItem = ContentpanelItem();
+		
+		contentpanelItem.$element.addClass('d-contentpanel-item-plot');
+		
+		return $.extend({}, contentpanelItem, {
 			
-			var assocResources = EThing.arbo.find(function(r){
-				return r.createdBy() && r.createdBy().id === self.device.id();
-			});
-			
-			
-			/*
-			* DATA
-			*/
-			
-			var tables = assocResources.filter(function(r){
-				return r instanceof EThing.Table;
-			});
-			if(tables.length >= 1){
+			draw: function(){
 				
-				var $data = self.$element.find('.data').show();
+				this.setTitle('Plot');
 				
+				var $view = $('<div>loading...</div>');
+				
+				this.setContent($view);
 				
 				require(['plot'], function(){
 					
-					$data.find('.content').empty().plot({
+					var tables = EThing.arbo.find(function(r){
+						return r instanceof EThing.Table && r.createdBy() && r.createdBy().id === device.id();
+					});
+					
+					$view.empty().plot({
 						sources: tables.map(function(table){
 							return function(){
 								return table.select({
@@ -757,25 +652,211 @@
 						},1);
 					});
 				});
+				
 			}
 			
+		});
+		
+	}
+	
+	
+	var ApiContentpanelItem = function(device){
+		
+		var contentpanelItem = ContentpanelItem();
+		
+		contentpanelItem.$element.addClass('d-contentpanel-item-api');
+		
+		return $.extend({}, contentpanelItem, {
 			
+			draw: function(){
+				
+				this.setTitle('Api');
+				
+				var $view = $('<div>loading...</div>');
+				
+				this.setContent($view);
+				
+				var self = this;
+				
+				device.getApi().done(function(api){
+					
+					var operations = api,
+						$apiContent = $view.empty();
+					
+					operations.forEach(function(operation){
+						
+						var name = operation.name,
+							description = operation.description || '',
+							schema = operation.schema;
+						
+						
+						var $operation = $(
+							'<div class="operation" id="'+name+'">'+
+								'<div class="operation-header"></div>'+
+								'<div class="operation-body">'+
+									'<div class="operation-body-description"></div>'+
+								'</div>'+
+							'</div>'
+						);
+						
+						$operation.data('operation', operation);
+						
+						$operation.find('.operation-header').text(name);
+						
+						// description
+						markdown( $operation.find('.operation-body-description').text(description));
+						
+						
+						var form = schema ? new $.Form.fromJsonSchema( schema ) : null;
+						
+						// special MySensors
+						if(name === 'sendMessage' && form && /^Device\\MySensors/.test(device.type())){
+							// override default item, more convenient than dealing with number
+							
+							var typeOpt = $.extend({}, form.getLayoutItemByName('type'), {
+								item: new $.Form.Select({
+									items: MySensors_messageTypes
+								})
+							});
+							form.replaceItemWith('type', typeOpt);
+							
+							var subtypeOpt = $.extend({}, form.getLayoutItemByName('subtype'), {
+								item: new $.Form.Select({
+									items: []
+								}),
+								dependencies: {
+									'type': function(layoutItem){
+										
+										var type = this.getLayoutItemByName('type').item.value();
+										
+										switch(parseInt(type)){
+											case 0:
+												layoutItem.item.setOptions(MySensors_sensorTypes);
+												break;
+											case 1:
+											case 2:
+												layoutItem.item.setOptions(MySensors_valueTypes);
+												break;
+											case 3:
+												layoutItem.item.setOptions(MySensors_internalTypes);
+												break;
+											case 4:
+												layoutItem.item.setOptions(MySensors_streamTypes);
+												break;
+										}
+										
+									}
+								}
+							});
+							form.replaceItemWith('subtype', subtypeOpt);
+							
+						}
+						
+						$operation.find('.operation-body').append(
+							createView( 
+								form,
+								new OperationView(device, operation)
+							)
+						);
+						
+						
+						$operation.find('.operation-body').hide();
+						
+						var toggle = function(state){
+							state = typeof state == 'boolean' ? state : undefined;
+							$operation.toggleClass('opened', state).find('.operation-body').slideToggle(state);
+						};
+						
+						$operation.data('toggleFn', toggle);
+						
+						$operation.find('.operation-header').click(toggle);
+						
+						$apiContent.append($operation);
+						
+					}, this);
+					
+				}).fail(function(){
+					$view.text('error');
+				});
+				
+			}
 			
+		});
+		
+	}
+	
+	
+	var SensorsContentpanelItem = function(device){
+		
+		var contentpanelItem = ContentpanelItem();
+		
+		contentpanelItem.$element.addClass('d-contentpanel-item-sensors');
+		
+		return $.extend({}, contentpanelItem, {
 			
-			/*
-			* RESOURCE
-			*/
+			draw: function(){
+				
+				this.setTitle('Sensors');
+				
+				var $view = $('<div>');
+				
+				this.setContent($view);
+				
+				var sensors = EThing.arbo.find(function(r){
+					return r instanceof EThing.Device && r.createdBy() && r.createdBy().id === device.id();
+				});
+				
+				var self = this;
+				
+				sensors.forEach(function(sensor){
+					
+					WidgetCollection.instanciateDeviceWidget(sensor).done(function(widget, name){
+						self.widget = widget;
+						widget.$element.addClass('db-widget-type-'+name.replace('/','-'));
+						$view.append($('<div class="db-widget-wrapper">').html(widget.$element));
+						widget.draw();
+					}).fail(function(err){
+						console.error(err);
+					});
+					
+				}, this);
+				
+			}
 			
-			if(assocResources.length>0){
+		});
+		
+	}
+	
+	
+	var BrowserContentpanelItem = function(device){
+		
+		var contentpanelItem = ContentpanelItem();
+		
+		contentpanelItem.$element.addClass('d-contentpanel-item-browser');
+		
+		return $.extend({}, contentpanelItem, {
+			
+			draw: function(){
+				
+				this.setTitle('Resources');
+				
+				var $view = $('<div>loading...</div>');
+				
+				this.setContent($view);
 				
 				require(['browser'], function(){
-					self.$element.find('.resources').show().find('.content').browser({
+					
+					var children = EThing.arbo.find(function(r){
+						return r.createdBy() && r.createdBy().id === device.id();
+					});
+					
+					$view.empty().browser({
 						model: {
-							root: assocResources
+							root: children
 						},
 						view:{
 							header:{
-								enable: true
+								enable: false
 							}
 						},
 						openable: {
@@ -786,29 +867,341 @@
 						}
 					});
 				});
+				
 			}
 			
 		});
 		
+	}
+	
+	var ParentContentpanelItem = function(device){
 		
+		var contentpanelItem = ContentpanelItem();
+		
+		contentpanelItem.$element.addClass('d-contentpanel-item-parent');
+		
+		return $.extend({}, contentpanelItem, {
+			
+			draw: function(){
+				
+				var parents = [device];
+				var c = device;
+				while(c && c.createdBy()){
+					var p = EThing.arbo.findOneById(c.createdBy().id);
+					if(p) parents.push(p);
+					c = p;
+				}
+				
+				parents.reverse();
+				
+				var $view = parents.map(function(p, index){
+					var $v = $('<div class="d-contentpanel-item-parent-item">'+p.basename()+'</div>');
+					if(index<parents.length-1)
+						$v.click(function(){
+							UI.go('device',{rid: p.id()});
+						});
+					return $v;
+				});
+				
+				this.setContent($view);
+				
+			}
+			
+		});
 		
 	}
 	
-	return function(data){
+	var TreeContentpanelItem = function(device){
 		
-		var $template = UI.Container.set('<div>loading ...</div>').addClass('container');
+		var contentpanelItem = ContentpanelItem();
 		
-		var device = EThing.arbo.findOneById(data.rid);
+		contentpanelItem.$element.addClass('d-contentpanel-item-tree');
 		
-		if(device){
+		return $.extend({}, contentpanelItem, {
 			
-			new DeviceViewer($template, {
-				device: device
-			});
+			draw: function(){
+				
+				this.setTitle('Tree');
+				
+				var $view = $('<div>loading...</div>');
+				
+				this.setContent($view);
+				
+				require(['tree'], function(Tree){
+					
+					Tree($view.empty(), {
+						root: device,
+						height: 500
+					});
+					
+				});
+				
+			}
 			
-		} else {
-			UI.show404();
+		});
+		
+	}
+	
+	var ApikeyContentpanelItem = function(device){
+		
+		var contentpanelItem = ContentpanelItem();
+		
+		contentpanelItem.$element.addClass('d-contentpanel-item-apikey');
+		
+		return $.extend({}, contentpanelItem, {
+			
+			draw: function(){
+				
+				this.setTitle('API Key');
+				
+				this.setContent('<a href="#!developer">Click here</a> to get the API KEY for this device');
+				
+				
+				
+			}
+			
+		});
+		
+	}
+	
+	var InclusionContentpanelItem = function(device){
+		
+		var contentpanelItem = ContentpanelItem();
+		
+		contentpanelItem.$element.addClass('d-contentpanel-item-inclusion');
+		
+		return $.extend({}, contentpanelItem, {
+			
+			draw: function(){
+				
+				this.setTitle('Inclusion');
+				
+				var $inclusionButton = $('<button class="btn btn-default"></button>');
+				
+				function updateInclusionState(){
+					var isInclusionEnabled = !!device.inclusion();
+					$inclusionButton.text(isInclusionEnabled ? 'Stop inclusion' : 'Start inclusion');
+				}
+				
+				updateInclusionState();
+				
+				$inclusionButton.click(function(){
+					var isInclusionEnabled = !!device.inclusion();
+					device.set({
+						'inclusion': !isInclusionEnabled
+					}).always(updateInclusionState);
+				});
+				
+				this.setContent('<p>When inclusion mode is enabled, new devices will be added automatically to the network.</p>',$inclusionButton);
+				
+				
+			}
+			
+		});
+		
+	}
+	
+	var views = [{
+		filter: function(r){
+			return (r instanceof EThing.Device.MySensorsGateway) || (r instanceof EThing.Device.RFLinkGateway);
+		},
+		items: [{
+			class: DescriptionContentpanelItem,
+			filter: function(r){
+				return r.description().length;
+			}
+		}, {
+			class: InclusionContentpanelItem,
+			filter: function(r){
+				return r instanceof EThing.Device.RFLinkGateway;
+			}
+		}, {
+			class: DataContentpanelItem,
+			filter: function(r){
+				return !$.isEmptyObject(r.data());
+			}
+		}, {
+			class: TreeContentpanelItem,
+			filter: function(d){
+				return EThing.arbo.find(function(r){
+					return r.createdBy() && r.createdBy().id === d.id();
+				}).length;
+			}
+		}, ApiContentpanelItem]
+	},{
+		filter: function(r){
+			return r instanceof EThing.Device.MySensorsNode;
+		},
+		items: [ParentContentpanelItem, {
+			class: DescriptionContentpanelItem,
+			filter: function(r){
+				return r.description().length;
+			}
+		}, {
+			class: DataContentpanelItem,
+			filter: function(r){
+				return !$.isEmptyObject(r.data());
+			}
+		}, {
+			class: SensorsContentpanelItem,
+			filter: function(d){
+				return EThing.arbo.find(function(r){
+					return r.createdBy() && r.createdBy().id === d.id();
+				}).length;
+			}
+		}, {
+			class: BrowserContentpanelItem,
+			filter: function(d){
+				return EThing.arbo.find(function(r){
+					return r.createdBy() && r.createdBy().id === d.id();
+				}).length;
+			}
+		}, ApiContentpanelItem]
+	},{
+		filter: function(r){
+			return r instanceof EThing.Device.MySensorsSensor;
+		},
+		items: [ParentContentpanelItem, {
+			class: DescriptionContentpanelItem,
+			filter: function(r){
+				return r.description().length;
+			}
+		}, {
+			class: DataContentpanelItem,
+			filter: function(r){
+				return !$.isEmptyObject(r.data());
+			}
+		}, {
+			class: PlotContentpanelItem,
+			filter: function(d){
+				return EThing.arbo.find(function(r){
+					return r instanceof EThing.Table && r.createdBy() && r.createdBy().id === d.id();
+				}).length;
+			}
+		}, {
+			class: BrowserContentpanelItem,
+			filter: function(d){
+				return EThing.arbo.find(function(r){
+					return r.createdBy() && r.createdBy().id === d.id();
+				}).length;
+			}
+		}, ApiContentpanelItem]
+	},{
+		filter: function(r){
+			return r instanceof EThing.Device.Http;
+		},items: [{
+			class: ParentContentpanelItem,
+			filter: function(r){
+				return r.createdBy();
+			}
+		}, {
+			class: DescriptionContentpanelItem,
+			filter: function(r){
+				return r.description().length;
+			}
+		}, {
+			class: DataContentpanelItem,
+			filter: function(r){
+				return !$.isEmptyObject(r.data());
+			}
+		}, {
+			class: BrowserContentpanelItem,
+			filter: function(d){
+				return EThing.arbo.find(function(r){
+					return r.createdBy() && r.createdBy().id === d.id();
+				}).length;
+			}
+		}, {
+			class: ApiContentpanelItem,
+			filter: function(r){
+				return r.operations().length;
+			}
+		}, ApikeyContentpanelItem]
+	},{ // default
+		items: [{
+			class: ParentContentpanelItem,
+			filter: function(r){
+				return r.createdBy();
+			}
+		}, {
+			class: DescriptionContentpanelItem,
+			filter: function(r){
+				return r.description().length;
+			}
+		}, {
+			class: DataContentpanelItem,
+			filter: function(r){
+				return !$.isEmptyObject(r.data());
+			}
+		}, {
+			class: BrowserContentpanelItem,
+			filter: function(d){
+				return EThing.arbo.find(function(r){
+					return r.createdBy() && r.createdBy().id === d.id();
+				}).length;
+			}
+		}, {
+			class: ApiContentpanelItem,
+			filter: function(r){
+				return r.operations().length;
+			}
+		}]
+	}];
+	
+	return {
+		
+		buildView: function(data){
+			
+			var $element = UI.Container.set('<div>');
+			
+			var device = EThing.arbo.findOneById(data.rid);
+		
+			if(device){
+				
+				var infopanel = Infopanel($('<div>').appendTo($element), device);
+				
+				var contentpanel = Contentpanel($('<div>').appendTo($element));
+				
+				
+				for(var i in views){
+					var view = views[i];
+					
+					if(typeof view.filter == 'function')
+						if(!view.filter.call(view, device)) continue;
+					
+					view.items.forEach(function(item){
+						
+						var viewClass;
+						
+						if($.isPlainObject(item)){
+							viewClass = item.class;
+							if(typeof item.filter == 'function')
+								if(!item.filter.call(item, device)) return;
+						} else {
+							viewClass = item;
+						}
+						
+						contentpanel.addItem(viewClass(device));
+						
+					});
+					
+					break;
+					
+				};
+				
+				
+			} else {
+				UI.show404();
+			}
+			
+			
+		},
+		
+		deleteView: function(){
+			
 		}
-		
 	};
+	
+	
+	
 }));

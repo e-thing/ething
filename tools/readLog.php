@@ -11,13 +11,19 @@ if(!(php_sapi_name() === 'cli' || \Session\isAuthenticated())){
 	exit(1);
 }
 
-$ething = new \Ething\Ething();
-		
+$maxLine = 0;
 
-$log = $ething->config('log');
 
-if(is_string($log)){
-	header('Content-Type: text/csv');
-	readfile($log);
+if(php_sapi_name() !== 'cli'){
+	if(isset($_GET['line'])) $maxLine = intval($_GET['line']);
 }
+
+
+
+$ething = new \Ething\Ething();
+
+header('Content-Type:text/plain');
+echo implode("\n", $ething->logger()->read($maxLine));
+
+
 

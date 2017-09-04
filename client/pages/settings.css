@@ -83,13 +83,21 @@
 		margin-bottom: 10px;
 	}
 	
-	#settings #log table td:not(.message), #log table th:not(.message) {
+	#settings #log table td.level, #log table th.level {
 		display: none;
 	}
+}
+
+#settings #status table {
+    border-spacing: 0 2px;
+    border-collapse: separate;
 }
 
 #settings #status table td {
 	border-top-width: 0px;
 }
 
+#settings #status table td {
+	vertical-align: middle;
+}
 

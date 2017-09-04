@@ -60,7 +60,7 @@ class File extends Resource
 	}
 	
 	
-	public function remove() {
+	public function remove($removeChildren = false) {
 		
 		// remove the file from GridFS
 		$this->ething->fs->removeFile($this->getAttr('_data'));
@@ -69,7 +69,7 @@ class File extends Resource
 		$this->ething->fs->removeFile($this->getAttr('_thumb'));
 		
 		// remove the resource
-		parent::remove();
+		parent::remove($removeChildren);
 		
 	}
 	

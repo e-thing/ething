@@ -46,7 +46,6 @@
 		
 		var name = UI.getResourceProperty(device,'name'),
 			lastSeenDate = UI.getResourceProperty(device,'lastSeenDate'),
-			location = UI.getResourceProperty(device,'location'),
 			battery = UI.getResourceProperty(device,'battery'),
 			share = UI.getResourceProperty(device,'public');
 		
@@ -55,28 +54,22 @@
 		var $icon = $('<div>').html($.Browser.generateSvgResourceIcon(device,true)).addClass('col-icon');
 		
 		// name
-		var $name = $('<h4 class="col-name">').addClass('ellipsis').html(name.formattedValue);
+		var $name = $('<div class="col-name">').html(name.formattedValue);
 		
-		if(share.value){
-			$name.append('<i class="fa fa-users col-share" aria-hidden="true"></i>');
-		}
+		var $share = share.value ? $('<div class="tag col-share">').html('<i class="fa fa-users col-share" aria-hidden="true"></i>') : null;
 		
 		// battery
-		var batIcon;
+		var batIcon, batText = battery.value === null ? '' : '<span>'+Math.round(battery.value)+'%</span>';
 		if(battery.value === null) batIcon = 'plug';
 		else if(battery.value < 12.5) batIcon = 'battery-empty';
 		else if(battery.value < 37.5) batIcon = 'battery-quarter';
 		else if(battery.value < 62.5) batIcon = 'battery-half';
 		else if(battery.value < 87.5) batIcon = 'battery-three-quarters';
 		else batIcon = 'battery-full';
-		var $battery = $('<div class="col-battery">').addClass('ellipsis').html('<i class="fa fa-'+batIcon+'" aria-hidden="true"></i> '+battery.formattedValue);
+		var $battery = battery.value === null ? null : $('<div class="tag col-battery">').html('<i class="fa fa-'+batIcon+'" aria-hidden="true"></i>'+batText);
 		
 		// last time the device communicate
-		var $time = $('<div class="col-date">').addClass('ellipsis').html('<span class="glyphicon glyphicon-time" aria-hidden="true"></span> '+lastSeenDate.formattedValue);
-		
-		// location
-		var $loc = location.formattedValue ? $('<div class="col-loc">').addClass('ellipsis').html('<span class="glyphicon glyphicon-map-marker" aria-hidden="true"></span> '+location.formattedValue) : null;
-		
+		var $time = $('<div class="tag col-date">').html('<span class="glyphicon glyphicon-time" aria-hidden="true"></span><span>'+lastSeenDate.formattedValue+'</span>');		
 		
 		// info
 		var $info = $('<span class="glyphicon glyphicon-option-horizontal" aria-hidden="true"></span>').addClass('col-info').click(function(e){
@@ -91,14 +84,13 @@
 		$item.append(
 			$('<div class="desc">').append(
 				$icon,
-				$('<div class="meta">').append(
-					$info,
+				$('<div class="meta ellipsis">').append(
 					$name,
-					$battery,
+					$share,
 					$time,
-					$loc
+					$battery
 				),
-				'<div style="clear: both;"></div>'
+				$info
 			),
 			$children
 		);

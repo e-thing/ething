@@ -66,10 +66,12 @@ class MySensorsSensor extends Device
 		return $this->sensorType;
 	}
 	
-	
 	public function storeData($datatype, $value){
 		if(is_int($datatype)) $datatype = MySensors::valueTypeStr($datatype);
 		if(isset($value) && is_string($datatype)){
+			
+			$this->setData($datatype, $value);
+			
 			$storageName = $datatype;
 			$storage = $this->ething->findOne(array(
 				'name' => $storageName,
@@ -89,6 +91,13 @@ class MySensorsSensor extends Device
 					$datatype => $value
 				));
 			}
+			
+			$this->dispatchSignal(\Ething\Event\DeviceDataSet::emit($this, (object)array(
+				$datatype => $value
+			)));
+			
+			// mqtt publish
+			$this->ething->mqttPublish("resource/device/{$this->id()}/data/{$datatype}", $value, true);
 		}
 	}
 	
@@ -129,7 +138,7 @@ class MySensorsSensor extends Device
 	
 	public function sendValue($datatype, $value, $stream = null){
 		if($this->sendMessage(MySensors::SET, MySensors::NO_ACK, $datatype, $value, $stream)){
-			$this->setData(MySensors::valueTypeStr($datatype), $value);
+			$this->storeData($datatype, $value);
 			return true;
 		}
 		return false;

@@ -7,7 +7,9 @@
 	
 	
 	function Number(opt){
-	
+		
+		opt = opt || {};
+		
 		var parent = Widget(opt);
 		
 		var self = {};
@@ -25,14 +27,19 @@
 			
 			draw: function(){
 				
-				var color = 'white';
-				var bgc = this.$element.css('background-color');
+				parent.draw.call(this);
 				
-				var rgb = /^rgb/.test(bgc) ? bgc.match(/^rgba?\((\d+),\s*(\d+),\s*(\d+)/) : [0,0,0,0];
-				if(rgb){
-					var luma = 0.2126 * parseInt(rgb[1]) + 0.7152 * parseInt(rgb[2]) + 0.0722 * parseInt(rgb[3]); // per ITU-R BT.709
-					if (luma < 40) {
-						color = '#a0a0a0';
+				var color = opt.color;
+				if(!color){
+					var color = 'white';
+					var bgc = this.$element.css('background-color');
+					
+					var rgb = /^rgb/.test(bgc) ? bgc.match(/^rgba?\((\d+),\s*(\d+),\s*(\d+)/) : [0,0,0,0];
+					if(rgb){
+						var luma = 0.2126 * parseInt(rgb[1]) + 0.7152 * parseInt(rgb[2]) + 0.0722 * parseInt(rgb[3]); // per ITU-R BT.709
+						if (luma < 40) {
+							color = '#a0a0a0';
+						}
 					}
 				}
 				

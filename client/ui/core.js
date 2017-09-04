@@ -166,6 +166,13 @@
 		
 		{
 			name: "type",
+			formatter: function(type){
+				return type.replace(/^Device\\/,'');
+			}
+		},
+		
+		{
+			name: "id"
 		},
 		
 		{
@@ -321,7 +328,7 @@
 					items:[
 						{
 							name: 'type',
-							item: new $.Form.Select(['basic','digest'])
+							item: new $.Form.Select(['basic','digest','query'])
 						},{
 							name: 'user',
 							item: new $.Form.Text({
@@ -1325,6 +1332,13 @@
 			}
 		},{
 			filter: function(r){
+				return r instanceof EThing.File && r.extension() === 'plot';
+			},
+			url: function(r){
+				return 'plot?rid='+r.id();
+			}
+		},{
+			filter: function(r){
 				return r instanceof EThing.Device;
 			},
 			url: function(r){
@@ -1409,7 +1423,7 @@
 			name: 'download',
 			icon: 'download',
 			filter: function(r){
-				return r instanceof EThing.Resource && typeof r.getContentUrl === 'function';
+				return r instanceof EThing.Resource && typeof r.getContentUrl === 'function' && !(r instanceof EThing.App);
 			},
 			fn: function(r){
 				
@@ -1557,7 +1571,9 @@
 		getResourceProperties: getResourceProperties,
 		getResourceProperty: getResourceProperty,
 		getResourceFormattedValues: getResourceFormattedValues,
-		getResourceForm: getResourceForm
+		getResourceForm: getResourceForm,
+		scopes: scopes,
+		imageSquareResizeBlob: imageSquareResizeBlob
 	});
 	
 	

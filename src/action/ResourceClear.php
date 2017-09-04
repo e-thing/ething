@@ -18,7 +18,7 @@ class ResourceClear extends AbstractResourceAction {
 			switch($key){
 				
 				case 'resource':
-					static::validateResourceAttr($value, array('File','Table'));
+					static::validateResourceAttr($context['ething'], $value, array('File','Table'));
 					break;
 					
 				default:

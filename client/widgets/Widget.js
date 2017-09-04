@@ -39,6 +39,10 @@
 			
 			draw: function(){
 				// to be implemented
+				
+				if(opt.title) this.$element.attr('data-title',opt.title);
+				if(opt.footer) this.$element.attr('data-footer',opt.footer);
+				
 				return self;
 			},
 			
@@ -50,6 +54,16 @@
 			resize: function(){
 				// to be implemented
 				return self;
+			},
+			
+			setTitle: function(f){
+				if(f) this.$element.attr('data-title',f);
+				else this.$element.removeAttr('data-title');
+			},
+			
+			setFooter: function(f){
+				if(f) this.$element.attr('data-footer',f);
+				else this.$element.removeAttr('data-footer');
 			}
 			
 		});

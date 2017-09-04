@@ -134,7 +134,7 @@ if (!fs.existsSync(scriptFile)) {
 var script = fs.readFileSync(scriptFile).toString('utf8');
 
 
-var EThing = require("./../../lib/core.js").EThing;
+var EThing = require("./../../js/ething.js").EThing;
 
 
 
@@ -170,10 +170,14 @@ EThing.initialize({
 	});
 	
 	try {
-		var result = vm.runInNewContext(script, globals, {
-			timeout : timeout,
+		
+		var options = {
 			displayErrors  : true
-		});
+		};
+		
+		if(timeout>0) options.timeout = timeout;
+		
+		var result = vm.runInNewContext(script, globals, options);
 		
 		if(typeof result != 'undefined' && result !== null){
 			resultOutput.write(JSON.stringify(result, null, ' '));

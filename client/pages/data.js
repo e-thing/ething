@@ -365,7 +365,49 @@
 				});
 				
 			});
-		
+			
+			$element.find('#btn-create-plot').click(function(){
+				UI.go('plot');
+			});
+			
+			$element.find('#btn-create-script').click(function(){
+				
+				$.FormModal({
+					item: new $.Form.FormLayout({
+						items: [{
+							name: 'name',
+							item: new $.Form.Text({
+								focus: true,
+								placeholder: '*.js',
+								validators: [$.Form.validator.NotEmpty],
+								format: {
+									'out' : function(v){
+										if(!/\.js/i.test(v)) v = v+'.js';
+										return v;
+									}
+								}
+							})
+						}]
+					}),
+					title: '<span class="glyphicon glyphicon-file" aria-hidden="true"></span> Create a new Script',
+					validLabel: '+Create'
+				},function(props){
+					
+					var dir = $browser.browser('model').currentFolder();
+					
+					if(dir instanceof EThing.Folder && dir.name().length && props.name){
+						props.name = dir.name()+'/'+props.name;
+					}
+					
+					props.content = btoa("console.log('Hello, here are my resources :');\n\n// list my resources\nEThing.list().done(function(resources){\n  resources.forEach(function(resource){\n    console.log(resource.name());\n  })\n});");
+					
+					EThing.File.create(props).done(function(r){
+						// the creation was successful
+						UI.go('editor', { rid: r.id() });
+					});
+					
+				});
+			});
 		},
 		
 		updateView: function(data){

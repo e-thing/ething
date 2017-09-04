@@ -1,17 +1,15 @@
 (function (root, factory) {
     if (typeof define === 'function' && define.amd) {
         // AMD. Register as an anonymous module.
-        define(['js/ui', 'text!./rules.html', 'jquery', 'ething', 'js/ui', 'css!./rules',
+        define(['js/ui', 'text!./rules.html', 'jquery', 'ething', 'cronstrue', 'js/ui', 'css!./rules',
 			'formmodal',
-			'form',
-			'ui/modal',
 			'resourceselect',
 			'http',
 			'devicerequest',
 			'table',
 			'css!bootstrap-toggle-flat'], factory);
     }
-}(this, function (UI, template, $, EThing) {
+}(this, function (UI, template, $, EThing, cronstrue) {
 	
 	function escape(unsafe) {
 		return unsafe
@@ -208,7 +206,7 @@
 				str += ' by ' + ResourceSelection.toString(options.resource,'device');
 			return str;
 		},
-		description: 'This event describe a custom event. A custom event is identified by a unique name and may be fired by another rule which is very usefull for nesting multiple rules.', // an optional description
+		description: 'This event describe a custom event. A custom event is identified by a unique name and may be fired by user request or by another rule which is very usefull for nesting multiple rules.', // an optional description
 		form: function(){ // editable or not ? if yes, must be a function returning a Form
 			return new $.Form.FormLayout({
 				items: [{
@@ -226,7 +224,8 @@
 							return r instanceof EThing.Device;
 						},
 						prefix: 'on'
-					})
+					}),
+					class: 'item-expert'
 				}],
 				disabledValue: undefined
 			});
@@ -239,7 +238,12 @@
 		name: 'at fixed times, dates, or intervals',
 		category: 'general',
 		toString: function(options){
-			return "time match the cron expression <code>"+options.cron+"</code>";
+			try {
+				return cronstrue.toString(options.cron);
+			} catch(e){
+				console.warn(e);
+				return "time match the cron expression <code>"+options.cron+"</code>";
+			}
 		},
 		description: 'Emit an event at fixed times, dates, or intervals.',
 		form: function(){
@@ -262,7 +266,7 @@
 					description: 'Select on which device this event must be bind to.',
 					item: ResourceSelection.form({
 						'filter' : function(r){
-							return (r instanceof EThing.Device.Http) || (r instanceof EThing.Device.RTSP);
+							return (r instanceof EThing.Device.Http) || (r instanceof EThing.Device.RTSP) || (r instanceof EThing.Device.Denon);
 						},
 						prefix: 'on',
 						resourcesName: 'devices'
@@ -443,10 +447,10 @@
 	
 	{
 		type: 'DeviceDataSet',
-		name: 'Device data set',
+		name: 'Device data emitted',
 		category: 'device',
 		toString: function(options){
-			return ResourceSelection.toString(options.resource, 'device') + ' has send data';
+			return ResourceSelection.toString(options.resource, 'device') + ' send data';
 		},
 		description: 'Is fired each time a device send data.',
 		form: function(){
@@ -456,7 +460,7 @@
 					description: 'Select on which device this event must be bind to.',
 					item: ResourceSelection.form({
 						'filter' : function(r){
-							return r instanceof EThing.Device;
+							return r instanceof EThing.Device.RFLinkSwitch || r instanceof EThing.Device.MySensorsSensor;
 						},
 						prefix: 'on',
 						resourcesName: 'devices'
@@ -504,7 +508,12 @@
 		type: 'Cron',
 		name: 'time match a cron expression', 
 		toString: function(options){
-			return "time match the cron expression <code>"+options.cron+"</code>";
+			try {
+				return cronstrue.toString(options.cron);
+			} catch(e){
+				console.warn(e);
+				return "time match the cron expression <code>"+options.cron+"</code>";
+			}
 		},
 		description: null,
 		form: function(){
@@ -533,9 +542,24 @@
 					})
 				},{
 					name: 'content',
+					description: "You may use the following identifiers:<br><b>%%</b> : prints a literal % character<br><b>%D</b> : prints date using the format 'Y-m-d H:i:s'<br><b>%R</b> : prints the resource's name that emits the signal<br><b>%I</b> : prints the resource's id that emits the signal<br><b>%d</b> : prints the data attached to the signal (JSON)<br><b>%r</b> : prints the rule's name<br><b>%s</b> : prints the signal's name<br>",
 					item: new $.Form.Textarea({
 						validators: [$.Form.validator.NotEmpty]
 					})
+				}, {
+					name: 'attachments',
+					description: 'Select files or tables to attach to this notification',
+					item: ResourceSelection.form({
+						'filter' : function(r){
+							return r instanceof EThing.Table || r instanceof EThing.File;
+						},
+						all : false,
+						selection : true,
+						expression: true,
+						emitter: false,
+						resourcesName: 'files or tables'
+					}),
+					checkable: true
 				}
 			]});
 		}
@@ -798,13 +822,22 @@
 		description: null,
 		form: function(){
 			
-			return new $.Form.FormLayout({
+			var f = new $.Form.FormLayout({
 				items: [{
 					name: 'request',
 					label: false,
-					item: new $.Form.DeviceRequest()
-				},
-				{
+					item: new $.Form.DeviceRequest({
+						onApiCall: function(device, operation, api){
+							console.log(api.response);
+							f.setVisible('output', !!api.response);
+							// only json accepted for table output
+							f.getLayoutItemByName('output').item.setEnable('table', /json/.test(api.response));
+						},
+						onchange: function(device, operation){
+							if(f) f.setVisible('output', false);
+						}
+					})
+				},{
 					name: 'output',
 					description: 'Save the result of this request in a file or a table.',
 					item: new $.Form.SelectPanels({
@@ -816,14 +849,26 @@
 							item: new $.Form.FormLayout({
 								items:[{
 									name: 'name',
+									description: "You may use the following identifiers:<br><b>%%</b> : prints a literal % character<br><b>%D</b> : prints date using the format 'Y-m-d H:i:s'<br><b>%R</b> : prints the resource's name that emits the signal<br><b>%I</b> : prints the resource's id that emits the signal<br><b>%c</b> : prints an incremental integer<br><b>%r</b> : prints the rule's name<br><b>%s</b> : prints the signal's name<br>",
 									item: new $.Form.Text({
 										validators: [$.Form.validator.NotEmpty]
 									})
+								},{
+									name: 'expireAfter',
+									label: 'expire after',
+									description: 'The file will be automatically removed after the specified amount of time.',
+									item: new $.Form.Duration({
+										minute: false,
+										hour: true,
+										day: true,
+										value: 86400
+									}),
+									checkable: true
 								}]
 							})
 						},{
 							name: 'table',
-							label: 'append the response in a table',
+							label: 'append the response in a table <i style="font-size: smaller;">(only json)</i>',
 							item: new $.Form.FormLayout({
 								items:[{
 									name: 'name',
@@ -834,7 +879,8 @@
 							})
 						}]
 					}),
-					checkable: true
+					checkable: true,
+					class: 'item-expert'
 				}],
 				format: {
 					'out': function(value){
@@ -850,6 +896,8 @@
 					}
 				}
 			});
+			
+			return f;
 		}
 	},
 	
@@ -1157,6 +1205,7 @@
 				});
 			});
 			
+			var $advbtn;
 			
 			$.FormModal({
 				item: new $.Form.SelectPanels({
@@ -1180,6 +1229,19 @@
 			},callback);
 			
 		};
+		
+		var updateItemBtns = function($parent){
+			var $items = $parent.children('.item');
+			
+			if($items.length<2){
+				$items.find('.toolbar button[data-role="up"], .toolbar button[data-role="down"]').hide();
+			} else {
+				$items.find('.toolbar button[data-role="up"], .toolbar button[data-role="down"]').removeAttr('disabled').show();
+				$items.first().find('.toolbar button[data-role="up"]').attr('disabled','disabled');
+				$items.last().find('.toolbar button[data-role="down"]').attr('disabled','disabled');
+			}
+		}
+		
 		var addItem = function(type, item, $updateItem){
 			
 			if(!item || $.isEmptyObject(item)) return;
@@ -1194,8 +1256,10 @@
 						'<div class="error"></div>'+
 					'</td>'+
 					'<td>'+
-						'<div class="toolbar btn-group">'+
+						'<div class="toolbar btn-group btn-group-sm">'+
 							'<button type="button" class="btn btn-default" data-role="edit"><span class="glyphicon glyphicon-cog" aria-hidden="true"></span></button>'+
+							'<button type="button" class="btn btn-default" data-role="up"><span class="glyphicon glyphicon-arrow-up" aria-hidden="true"></span></button>'+
+							'<button type="button" class="btn btn-default" data-role="down"><span class="glyphicon glyphicon-arrow-down" aria-hidden="true"></span></button>'+
 							'<button type="button" class="btn btn-default" data-role="remove"><span class="glyphicon glyphicon-trash" aria-hidden="true"></span></button>'+
 						'</div>'+
 					'</td>'+
@@ -1221,8 +1285,24 @@
 				});
 			});
 			$item.find('.toolbar button[data-role="remove"]').click(function(){
+				var $p = $item.parent();
 				$item.remove();
 				$html.find('.subpart.'+type+' .empty-notification').toggle($list.children('.item').length>0);
+				updateItemBtns($p);
+			});
+			$item.find('.toolbar button[data-role="up"]').click(function(){
+				var $prev = $item.prev();
+				if($prev.length){
+					$item.insertBefore($prev);
+					updateItemBtns($item.parent());
+				}
+			});
+			$item.find('.toolbar button[data-role="down"]').click(function(){
+				var $next = $item.next();
+				if($next.length){
+					$item.insertAfter($next);
+					updateItemBtns($item.parent());
+				}
 			});
 			
 			if($updateItem){
@@ -1234,6 +1314,7 @@
 				
 				$html.find('.subpart.'+type+' .empty-notification').toggle($list.children('.item').length>0);
 			}
+			updateItemBtns($item.parent());
 		};
 		
 		
@@ -1348,239 +1429,52 @@
 		options =options || {};
 		
 		
-		var cronOptions = {
-			'minute': (function(){
-				var options = {
-					'every minute': "*",
-					'every 5 minutes': "*/5",
-					'every 15 minutes': "*/15",
-					'every 30 minutes': "30"
-				};
-				for(var i=0;i<60;i++)
-					options[i+' minute'] = String(i);
-				return options;
-			})(),
-			'hour': {
-				'every hour': "*",
-				'every 2 hours': "*/2",
-				'every 4 hours': "*/4",
-				'every 6 hours': "*/6",
-				'at 0 = 12AM (midnight)': "0",
-				"at 1 = 1AM" : '1',
-				"at 2 = 2AM" : '2',
-				"at 3 = 3AM" : '3',
-				"at 4 = 4AM" : '4',
-				"at 5 = 5AM" : '5',
-				"at 6 = 6AM" : '6',
-				"at 7 = 7AM" : '7',
-				"at 8 = 8AM" : '8',
-				"at 9 = 9AM" : '9',
-				"at 10 = 10AM" : '10',
-				"at 11 = 11AM" : '11',
-				'at 12 = 12PM (noon)': "12",
-				"at 13 = 1PM" : '13',
-				"at 14 = 2PM" : '14',
-				"at 15 = 3PM" : '15',
-				"at 16 = 4PM" : '16',
-				"at 17 = 5PM" : '17',
-				"at 18 = 6PM" : '18',
-				"at 19 = 7PM" : '19',
-				"at 20 = 8PM" : '20',
-				"at 21 = 9PM" : '21',
-				"at 22 = 10PM" : '22',
-				"at 23 = 23PM" : '23' 
-			},
-			'day': {
-				'every day': "*",
-				'every 2 days': "*/2",
-				'every 4 days': "*/4",
-				'every week': "*/7",
-				'every 2 weeks': "*/14",
-				'day 1': "1",
-				'day 2': "2",
-				'day 3': "3",
-				'day 4': "4",
-				'day 5': "5",
-				'day 6': "6",
-				'day 7': "7",
-				'day 8': "8",
-				'day 9': "9",
-				'day 10': "10",
-				'day 11': "11",
-				'day 12': "12",
-				'day 13': "13",
-				'day 14': "14",
-				'day 15': "15",
-				'day 16': "16",
-				'day 17': "17",
-				'day 18': "18",
-				'day 19': "19",
-				'day 20': "20",
-				'day 21': "21",
-				'day 22': "22",
-				'day 23': "23",
-				'day 24': "24",
-				'day 25': "25",
-				'day 27': "27",
-				'day 28': "28",
-				'day 29': "29",
-				'day 30': "30",
-				'day 31': "31"
-			},
-			'month': {
-				'every month': '*',
-				'in January': "1",
-				'in February': "2",
-				'in March': "3",
-				'in April': "4",
-				'in May': "5",
-				'in June': "6",
-				'in July': "7",
-				'in August': "8",
-				'in September': "9",
-				'in October': "10",
-				'in November': "11",
-				'in December' : '12'
-			},
-			'weekday': {
-				'every weekday': '*',
-				'Monday': "0",
-				'Tuesday': "1",
-				'Wednesday': "2",
-				'Thursday': "3",
-				'Friday': "4",
-				'Saturday': "5",
-				'Sunday': "6"
-			},
-			'year': (function(){
-				var options = {
-					'every year': '*'
-				};
-				var currentYear = new Date().getFullYear();
-				for(var i=0;i<10;i++)
-					options[String(currentYear+i)] = String(currentYear+i);
-				return options;
-			})()
-		};
-		
 		$.Form.Wrapper.call(this, {
 			item : new $.Form.FormLayout({
 				items: [
 				{
-					name: 'minute',
-					item: new $.Form.Select({
-						items: cronOptions.minute,
-						value: '0'
-					})
-				},{
-					name: 'hour',
-					item: new $.Form.Select({
-						items: cronOptions.hour,
-						value: '*'
-					})
-				},{
-					name: 'day',
-					item: new $.Form.Select({
-						items: cronOptions.day,
-						value: '*'
-					})
-				},{
-					name: 'month',
-					item: new $.Form.Select({
-						items: cronOptions.month,
-						value: '*'
-					})
-				},{
-					name: 'weekday',
-					item: new $.Form.Select({
-						items: cronOptions.weekday,
-						value: '*'
-					})
-				},{
-					name: 'year',
-					item: new $.Form.Select({
-						items: cronOptions.year,
-						value: '*'
-					})
-				},{
 					label: false,
-					name: 'expr',
-					item: new $.Form.FieldsEnabler({
-						label: 'advanced cron expression',
-						item: new $.Form.Text({
-							validators: [$.Form.validator.NotEmpty],
-							placeholder: 'min hour day month weekday [year]'
-						}),
-						state: false,
-						onattach: function(){
-							var pform = this.parent();
-							this.cb.change(function(){
-								var advanced = this.value();
-								pform.setVisible( 'minute', !advanced );
-								pform.setVisible( 'hour', !advanced );
-								pform.setVisible( 'day', !advanced );
-								pform.setVisible( 'month', !advanced );
-								pform.setVisible( 'weekday', !advanced );
-								pform.setVisible( 'year', !advanced );
-							}).change();
+					name: 'expression',
+					item: new $.Form.Text({
+						prefix: 'cron',
+						validators: [$.Form.validator.NotEmpty, function(v){
+							if(typeof v != 'string' || v.split(/\s+/).length != 5)
+								throw 'not a valid cron expression !';
+						}],
+						placeholder: 'Cron expression : min hour day month weekday',
+						comboboxValues: {
+							'<span style="color:grey;">ex:</span> at 11 AM daily': '0 11 * * *',
+							'<span style="color:grey;">ex:</span> every minutes' : '* * * * *',
+							'<span style="color:grey;">ex:</span> twice a day' : '0 5,17 * * *',
+							'<span style="color:grey;">ex:</span> every Sunday at 5 PM' : '0 17 * * sun',
+							'<span style="color:grey;">ex:</span> every 10 minutes' : '*/10 * * * *'
 						}
 					})
+				},{
+					name: 'info',
+					label: false,
+					item: new $.Form.Label(),
+					dependencies: {
+						'expression': function(layoutItem, dependentLayoutItem){
+							var cronvalue = dependentLayoutItem.item.value();
+							var crontstr = null;
+							try {
+								if(cronvalue) crontstr = cronstrue.toString(cronvalue);
+							} catch(e){}
+							layoutItem.item.value(crontstr||'');
+							return  true;
+						}
+					}
 				}],
 				format: {
 					'in': function(value){
-						value = value ? value.cron : '* * * * * *';
-						value = value.split(/ +/);
-						
-						// fill with '*'
-						for(var i=value.length; i<6; i++)
-							value.push('*');
-						
-						// is a simple expression ?
-						var values = function(obj){
-							var arr = [];
-							for(var i in obj) arr.push(obj[i]);
-							return arr;
-						};
-						if( 
-							values(cronOptions.minute).indexOf(value[0]) !== -1 &&
-							values(cronOptions.hour).indexOf(value[1]) !== -1 &&
-							values(cronOptions.day).indexOf(value[2]) !== -1 &&
-							values(cronOptions.month).indexOf(value[3]) !== -1 &&
-							values(cronOptions.weekday).indexOf(value[4]) !== -1 &&
-							values(cronOptions.year).indexOf(value[5]) !== -1
-						){
-							return {
-								minute: value[0],
-								hour: value[1],
-								day: value[2],
-								month: value[3],
-								weekday: value[4],
-								year: value[5]
-							};
-						}
-						
-						// complex expression
 						return {
-							expr: value.join(' ')
+							expression: value.cron
 						};
 					},
 					'out': function(value){
-						
-						if(value.expr)
-							return {
-								cron: value.expr
-							};
-						
-						var o = $.extend({
-							minute: '*',
-							hour: '*',
-							day: '*',
-							month: '*',
-							weekday: '*',
-							year: '*'
-						},value);
 						return {
-							cron: o.minute+" "+o.hour+" "+o.day+" "+o.month+" "+o.weekday+" "+o.year
+							cron: value.expression
 						};
 					}
 				}
@@ -1776,6 +1670,7 @@
 							$cntr.append(
 								'<div class="rule-details">'+
 								  '<strong>name</strong> : '+rule.name()+'<br>'+
+								  '<strong>repeat</strong> : '+rule.repeat().toString()+'<br>'+
 								  '<strong>priority</strong> : '+rule.priority()+'<br>'+
 								  '<strong>invalid</strong> : '+rule.isInvalid().toString()+'<br>'+
 								  '<strong>created date</strong> : '+UI.dateToString(rule.createdDate())+'<br>'+
@@ -1915,6 +1810,19 @@
 				});
 			});
 			
+			
+		});
+		
+		$template.find('#rule-emit-btn').click(function(){
+			
+			var signal = $('#rule-emit-input').val().trim();
+			
+			if(signal.length){
+				var $self = $(this).prepend('<span class="glyphicon glyphicon-refresh glyphicon-animate"></span> ');
+				EThing.Rule.trigger(signal, function(){
+					$self.find('.glyphicon-refresh').remove();
+				});
+			}
 			
 		});
 	

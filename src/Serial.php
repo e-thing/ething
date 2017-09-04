@@ -27,13 +27,13 @@ class Serial {
 		
 		$descriptorspec = array(
 		   0 => array("pipe", "r"),  // // stdin
-		   1 => array("pipe", "w"),  // stdout
-		   2 => array("pipe", "w") // stderr
+		   1 => array("pipe", "w")/*,  // stdout
+		   2 => array("pipe", "w")*/ // stderr
 		);
 		
 		$prog = __DIR__.'/'.self::PROG_DIR.'/'.self::PROG;
 		if(!file_exists($prog)){
-			echo "proc not found {$prog}\n";
+			//echo "proc not found {$prog}\n";
 			return false;
 		}
 		
@@ -42,16 +42,16 @@ class Serial {
 		if (is_resource($this->process)) {
 			
 			stream_set_blocking($this->pipes[1], false);
-			stream_set_blocking($this->pipes[2], false);
+			//stream_set_blocking($this->pipes[2], false);
 			
 			$this->pid = proc_get_status($this->process)['pid'];
 			
-			echo "proc open pid={$this->pid} port={$this->port} baudrate={$this->baudrate}\n";
+			//echo "proc open pid={$this->pid} port={$this->port} baudrate={$this->baudrate}\n";
 			
 			return true;
 			
 		} else {
-			echo "proc unable opening\n";
+			//echo "proc unable opening\n";
 			$this->process = null;
 			return false;
 		}
@@ -61,8 +61,7 @@ class Serial {
 	public function isOpen() {
 		if(isset($this->process)){
 			$status = proc_get_status($this->process);
-			$running = $status['running'] && !$status['stopped'] && !$status['signaled'];
-			return $running;
+			return $status['running'];
 		}
 		return false;
 	}
@@ -90,12 +89,14 @@ class Serial {
 	
 	public function close(){
 		if(isset($this->process)){
-			echo "closing proc\n";
+			//echo "closing proc\n";
 			fclose($this->pipes[0]);
 			fclose($this->pipes[1]);
-			fclose($this->pipes[2]);
+			//fclose($this->pipes[2]);
 			proc_terminate($this->process, SIGTERM);
-			echo "proc closed\n";
+			$exitcode = proc_close($this->process);
+			$this->process = null;
+			//echo "proc closed\n";
 		}
 	}
 	

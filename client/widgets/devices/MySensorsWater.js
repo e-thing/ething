@@ -13,7 +13,8 @@
 		instanciate: function(sensor, options, Number){
 			
 			var widget = Number({
-				unit : 'L'
+				unit : 'L',
+				title: sensor.basename()
 			});
 			
 			var update = function(){
@@ -28,13 +29,12 @@
 				
 				widget.val(vol);
 				widget.setUnit(unit);
+				widget.setFooter(sensor.modifiedDate().toLocaleString());
 			};
 			
 			return $.extend({}, widget, {
 				
 				draw: function(){
-					this.$element.attr('data-title',sensor.basename());
-					this.$element.attr('data-footer',sensor.modifiedDate().toLocaleString());
 					
 					widget.draw.call(this);
 					

@@ -10,10 +10,11 @@
 		
 		require: ['widget/Label', 'css!font-awesome'],
 		
-		instanciate: function(sensor, options, Number){
+		instanciate: function(sensor, options, Label){
 			
-			var widget = Number({
-				fontSize: 52
+			var widget = Label({
+				fontSize: 52,
+				title: sensor.basename()
 			});
 			
 			var update = function(){
@@ -21,13 +22,12 @@
 				if(typeof locked !== 'boolean') locked = null;
 				var icl = 'fa-'+(locked===null?'question':(locked?'lock':'unlock'));
 				widget.val('<i class="fa '+icl+'" aria-hidden="true"></i>');
+				widget.setFooter(sensor.modifiedDate().toLocaleString());
 			};
 			
 			return $.extend({}, widget, {
 				
 				draw: function(){
-					this.$element.attr('data-title',sensor.basename());
-					this.$element.attr('data-footer',sensor.modifiedDate().toLocaleString());
 					
 					widget.draw.call(this);
 					

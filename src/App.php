@@ -146,14 +146,14 @@ class App extends Resource
 		
 	}
 	
-	public function remove() {
+	public function remove($removeChildren = false) {
 		
 		// remove all the data from this resource
 		$this->ething->fs->removeFile($this->getAttr('_icon'));
 		$this->ething->fs->removeFile($this->getAttr('_content'));
 		
 		// remove the resource
-		parent::remove();
+		parent::remove($removeChildren);
 		
 	}
 	
@@ -163,10 +163,11 @@ class App extends Resource
 		$this->ething->fs->removeFile($this->getAttr('_icon'));
 		$this->removeAttr('_icon');
 		
-		if(!empty($iconData))
+		if(!empty($iconData)){
 			$this->setAttr('_icon', $this->ething->fs->storeFile('App/'.$this->id().'/icon', $iconData, array(
 				'parent' => $this->id()
 			)));
+		}
 		$this->setAttr('size', $this->computeSize());
 		$this->update();
 		return true;

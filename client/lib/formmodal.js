@@ -32,12 +32,14 @@
 			size: null,
 			validLabel: '+Apply',
 			cancelLabel: 'Cancel',
-			loaded: null
+			cancellable: true,
+			loaded: null,
+			customize: null
 		},opt);
 		
 		var modalOptions = $.extend(true,{
 			buttons: {}
-		},extract(options,['title','size']));
+		},extract(options,['title','size','customize']));
 		
 		
 		// add buttons
@@ -78,18 +80,47 @@
 			}
 			
 		};
-		modalOptions.buttons[ extract(options,'cancelLabel') ] = null;
-		
+		if(options.cancellable) {
+			modalOptions.buttons[ extract(options,'cancelLabel') ] = null;
+		} else {
+			modalOptions.closeButton = false;
+		}
 		
 		var modalDfr = $.Deferred();
 		var formDfr = $.Deferred();
+		
+		// add show/hide advanced settings
+		var userCustomize = modalOptions.customize;
+		var $advbtn = $('<button type="button" class="btn btn-link pull-right" data-name="btn-adv-setting">Advanced settings</button>');
+		modalOptions.customize = function($modal){
+			$advbtn.click(function(){
+				$advbtn.text( $modal.find('.modal-dialog').toggleClass('form-expert').hasClass('form-expert') ? 'Hide advanced settings' : 'Advanced settings' );
+			}).hide();
+			$modal.find('.modal-footer').prepend($advbtn);
+			
+			if(typeof userCustomize == 'function') userCustomize.apply(this, arguments);
+		}
+		var updateAdvBtnVisibility = function(){
+			if(f) $advbtn.toggle(!!f.$view.find('*:visible > .item-expert').length);
+		};
+		var f = null;
+		formDfr.done(function(form){
+			f = form;
+			updateAdvBtnVisibility();
+			form.change(function(){
+				setTimeout(updateAdvBtnVisibility, 1);
+			});
+		});
+		modalDfr.done(function(){
+			updateAdvBtnVisibility();
+		});
 		
 		modalOptions.shown = function(){
 			modalDfr.resolve();
 		};
 		
 		var $form = $('<div>').form(options.item, options.value, function(){
-			formDfr.resolve();
+			formDfr.resolve(this);
 		});
 		
 		var $error = $('<div class="alert alert-danger" role="alert">').hide();

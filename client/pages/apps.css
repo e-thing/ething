@@ -1,6 +1,6 @@
 
 #apps .explorer .item {
-	cursor: default;
+	cursor: pointer;
 }
 
 #apps .explorer .item:not(.selected) {
@@ -95,3 +95,28 @@
 }
 
 }
+
+#apps .authorize-app .title {
+	margin-bottom: 40px;
+}
+
+#apps .authorize-app .title > img {
+	width: 64px;
+    height: 64px;
+}
+
+#apps .authorize-app .title > span {
+	vertical-align: bottom;
+}
+
+#apps .permission > span.glyphicon-alert {
+	margin-right: 10px;
+    color: #f0ad4e;
+}
+
+#apps .permission > .permission-description {
+	display: inline-block;
+    font-weight: bold;
+    color: #337ab7;
+}
+

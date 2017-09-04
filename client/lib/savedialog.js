@@ -43,9 +43,10 @@
 				preset: null, // a resource instance
 				size: null, // size of the modal dialog
 				canCreate: true, // if the user is able to create a new resource
-				createPreset: undefined // create preset data as { name: "", type: 'File'|'Table'|'App'}
+				createPreset: undefined, // create preset data as { name: "", type: 'File'|'Table'|'App'}
+				createTypes : ['File','Table','App']  // save for Device is meaningless
 			},opt),
-			localOptions = extract(options,['filter','title','done','preset','size','canCreate','createPreset']);
+			localOptions = extract(options,['filter','title','done','preset','size','canCreate','createPreset','createTypes']);
 		
 		
 		var success = function(resource){
@@ -101,7 +102,7 @@
 					item: new $.Form.FormLayout({
 						items: [{
 							name: 'type',
-							item: new $.Form.Select(['File','Table','App']) // save for Device is meaningless
+							item: new $.Form.Select(localOptions.createTypes)
 						},{
 							name: 'name',
 							item: new $.Form.Text({
@@ -150,7 +151,7 @@
 					deferred.reject(null); // the user close the dialog, gives null as the parameter
 			});
 		
-		return deferred.promise();
+		return deferred.promise().done(localOptions.done);
 		
 	}
 	

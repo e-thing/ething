@@ -68,6 +68,13 @@
 		},
 		credits: {
 			enabled: false
+		},
+		plotOptions: {
+			column: {
+				dataGrouping: {
+					approximation: "average"
+				}
+			}
 		}
 	};
 	
@@ -85,7 +92,7 @@
 			sources: [], // source of data ... array of EThing.Table|function|Deferred|array|object|HighChart serie object
 			data : null, // EThing.Table|function|array :the data to plot, if a function is given, the function must return the data.
 			chart: null, // highcharts options
-			explode: true // each serie in a single pane
+			explode: false // each serie in a single pane
 		}, options);
 		
 		
@@ -119,6 +126,19 @@
 				self.refresh();
 			}
 		});
+		
+		if($.isPlainObject(this.options.menu)){
+			Object.keys(this.options.menu).forEach(function(k){
+				if(typeof self.options.menu[k] === 'function'){
+					exportingMenuItems.splice(0,0,{
+						text: k,
+						onclick: function(){
+							self.options.menu[k].call(self, this);
+						}
+					});
+				}
+			});
+		}
 		
 		var chartOptions = $.extend(true, {
 			exporting:{
@@ -171,35 +191,69 @@
 			
 			var defaultYaxis = $.isPlainObject(chartOptions.yAxis) ? chartOptions.yAxis : {};
 			
-			// each serie on a different pane
-			if(chartOptions.series.length>1 && self.options.explode){
+			
+			// panes resolution
+			if(chartOptions.series.length>1){
+				
+				// build pane index
+				if(self.options.explode){ // this override the pane value defined in source
+					chartOptions.series.forEach(function(serie, index){
+						serie.yAxis = index;
+					});
+				} else {
+					// read the pane value in source
+					var paneNumber = 0;
+					chartOptions.series.forEach(function(serie, index){
+						
+						var pane = serie.pane || 0;
+						
+						if(typeof pane === 'function'){
+							pane = pane.call(serie, paneNumber);
+						}
+						
+						if(typeof pane === 'number' && pane>paneNumber){
+							paneNumber = pane;
+						}
+						
+						serie.yAxis = pane;
+						
+					});
+					
+				}
+				
+				var nPanes = 0;
+				chartOptions.series.forEach(function(serie, index){
+					if(serie.yAxis > nPanes) nPanes = serie.yAxis;
+				});
+				nPanes++;
+				
+				// build panes
 				var marge = 5; // vertical space between 2 panes (in %)
 				
 				var yAxis = [];
 				
-				var seriesLength = chartOptions.series.length;
-				var paneHeight = (100-(seriesLength-1)*marge)/seriesLength; // in %
+				var paneHeight = (100-(nPanes-1)*marge)/nPanes; // in %
 				
-				chartOptions.series.forEach(function(serie, index){
+				for(var i=0; i<nPanes; i++){
+					
+					var defaultYaxis = {};
+					if($.isPlainObject(chartOptions.yAxis))
+						defaultYaxis = chartOptions.yAxis;
+					else if(Array.isArray(chartOptions.yAxis) && i<chartOptions.yAxis.length)
+						defaultYaxis = chartOptions.yAxis[i];
 					
 					var yOpt = $.extend({}, defaultYaxisOptions, defaultYaxis);
 					
-					yOpt.title = yOpt.title || {};
-					yOpt.title.text = serie.name;
-					
 					yOpt.height = paneHeight+'%';
-					yOpt.top = (index*(paneHeight+marge))+'%';
+					yOpt.top = (i*(paneHeight+marge))+'%';
 					yOpt.offset = 0;
-					
-					serie.yAxis = index;
 					
 					yAxis.push(yOpt);
 					
-				});
+				}
 				
 				chartOptions.yAxis = yAxis;
-			} else {
-				chartOptions.yAxis = $.extend({}, defaultYaxisOptions, defaultYaxis)
+				
 			}
 			
 			
@@ -311,20 +365,48 @@
 		
 		if(typeof source === 'function'){
 			return this.getSeriesFromSource(source.apply(this));
-		} else if(source instanceof EThing.Table){
-			return this.getSeriesFromSource(source.select({
-				datefmt: 'TIMESTAMP_MS'
-			}).then(function(data){
-				return data;
-			}) );
-		} else {
+		}
+		
+		if(Array.isArray(source) || source instanceof EThing.Table) {
+			source = {
+				data: source
+			};
+		}
+		
+		if(typeof source.data === 'function'){
+			return this.getSeriesFromSource($.extend({},source,{
+				data: source.data.apply(this)
+			}));
+		}/* else if(source.data instanceof EThing.Table){
+			return this.getSeriesFromSource($.extend({},source,{
+				data: source.data.select({
+					datefmt: 'TIMESTAMP_MS'
+				}).then(function(data){
+					return data;
+				})
+			}));
+		} */else {
 			
 			var dfr = $.Deferred(),
 			self = this;
 			
-			$.when(source).done(function(data){
+			$.when(source.data).done(function(data){
 				try {
-					var series = [].concat(DataReader.parse(data));
+					var series = [].concat(DataReader.parse(data)).map(function(serie, index){
+						var serieOptions = null;
+						
+						if($.isPlainObject(source.serie)){
+							serieOptions = source.serie;
+						} else if(typeof source.serie === 'function'){
+							serieOptions = source.serie.call(source, index, serie);
+						}
+						
+						$.extend(serie, serieOptions || {});
+						
+						if(typeof source.pane !== 'undefined') serie.pane = source.pane;
+						
+						return serie;
+					});
 					dfr.resolveWith(self, [series]);
 				} catch(err){
 					dfr.rejectWith(self, [err]);

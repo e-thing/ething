@@ -63,14 +63,14 @@ svg[class*="icon-"] > path, svg[class*="icon-"] > g {
 	fill: #FFFFFF;
 }
 
-svg.icon-invert > circle {
+svg.icon-invert > circle, .explorer .tableview .item.selected svg > circle {
 	fill: #FFFFFF;
 }
 
-svg.icon-invert > text {
+svg.icon-invert > text, .explorer .tableview .item.selected svg > text {
 	fill: inherit;
 }
-svg.icon-invert > path, svg.icon-invert > g {
+svg.icon-invert > path, svg.icon-invert > g, .explorer .tableview .item.selected svg > path, .explorer .tableview .item.selected svg > g {
 	stroke: inherit;
 	fill: inherit;
 }
@@ -157,7 +157,7 @@ svg.icon-invert > path, svg.icon-invert > g {
     color: #fff;
 }
 
-.explorer .tableview .item.selected .col-icon svg > text {
+/*.explorer .tableview .item.selected .col-icon svg > text {
 	fill: inherit;
 }
 .explorer .tableview .item.selected .col-icon svg > path {
@@ -166,7 +166,7 @@ svg.icon-invert > path, svg.icon-invert > g {
 .explorer .tableview .item.selected .col-icon svg > circle,
 .explorer .tableview .item.selected .col-icon svg > rect {
 	fill: #FFFFFF;
-}
+}*/
 
 
 

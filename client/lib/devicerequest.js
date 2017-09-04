@@ -75,25 +75,40 @@
 								
 								if(api.schema && id_ === id){
 									
-									var layoutitem = self.addItem({
-										name: 'parameters',
-										item: Form.fromJsonSchema(api.schema)
-									});
-									
-									var preset = self.parent()._preset;
-									if(preset && preset.operation === operation){
-										layoutitem.item.value(preset.parameters);
+									if(!(api.schema.type=='object' && $.isEmptyObject(api.schema.properties) && !api.schema.additionalProperties)){
+										var schemaForm = Form.fromJsonSchema(api.schema)
+										if(schemaForm){
+											var layoutitem = self.addItem({
+												name: 'parameters',
+												item: schemaForm,
+												emptyMessage: 'no parameters'
+											});
+											
+											var preset = self.parent()._preset;
+											if(preset && preset.operation === operation){
+												layoutitem.item.value(preset.parameters);
+											}
+										}
 									}
+									
+									if(typeof options.onApiCall === 'function')
+										options.onApiCall.call(self, device, operation, api);
 								}
 								
 							});
 							
 						}
 						
+						if(typeof options.onchange === 'function')
+							options.onchange.call(self, device, operation);
+						
 					}
 					
 					operationForm.change(update);
 					deviceForm.change(update).change();
+					
+					if(typeof options.onload === 'function')
+						options.onload.apply(this, arguments);
 					
 				}
 			}),

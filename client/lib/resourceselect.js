@@ -188,7 +188,7 @@
 			
 		}
 		
-		EThing.on('ething.resource.removed ething.file.created ething.table.created ething.device.created ething.app.created',function(){
+		EThing.on('ething.arbo.changed',function(){
 			self.update();
 		});
 		

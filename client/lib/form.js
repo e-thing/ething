@@ -503,13 +503,20 @@
 	
 	
 	Form.Label = function(content){
-		this.content = content;
+		this.content = content || '';
 		Form.Item.call(this);
 	};
 	inherits(Form.Label,Form.Item);
 	
 	Form.Label.prototype.createView = function(){
 		return $('<div class="f-label">').html(this.content);
+	}
+	
+	Form.Label.prototype.setValue = function(value){
+		if(!Form.Item.prototype.setValue.call(this,value)) return false;
+		this.content = value;
+		this.$view.html(this.content);
+		return true;
 	}
 	
 	
@@ -938,6 +945,19 @@
 	*/
 	Form.ArrayLayout = function(opt){
 		
+		this.validators = [function(value){
+			if(!Array.isArray(value)) throw 'not an array';
+			
+			if(typeof this.options.minItems == 'number'){
+				if(value.length < this.options.minItems)
+					throw 'The number of items must be greater than or equal to '+this.options.minItems;
+			}
+			if(typeof this.options.maxItems == 'number'){
+				if(value.length > this.options.maxItems)
+					throw 'The number of items must be lower than or equal to '+this.options.maxItems;
+			}
+		}];
+		
 		Form.Layout.call(this, $.extend(true,{
 			items:[],
 			editable: false,
@@ -985,7 +1005,6 @@
 	
 	// return an array of values.
 	Form.ArrayLayout.prototype.getValue = function(){
-		if(this.error) return undefined;
 		var arrayOfValues = [];
 		for(var i=0; i<this.layoutItems.length; i++){
 			var val = this.layoutItems[i].item.value();
@@ -1053,7 +1072,8 @@
 				$('<div class="f-arraylayout-edit-tb btn-group btn-group-sm">').append(
 					$type || $dropdown ? $('<div class="btn-group">').append($type,$dropdown) : null,
 					$add
-				)
+				),' ',
+				$('<div class="alert alert-danger" role="alert" style="display: inline-block;">').hide()
 			);
 			
 		}
@@ -1109,6 +1129,12 @@
 			this.layoutItems.forEach(function(layoutItem){
 				layoutItem.$wrapper.children('.f-array-item-edit').find('button.f-array-item-remove-btn').toggle(this.layoutItems.length > this.options.minItems);
 			}, this);
+			
+			if(this.layoutItems.length<this.options.minItems){
+				this.$view.children('.alert').text('minimum items number is '+this.options.minItems).show();
+			} else {
+				this.$view.children('.alert').hide();
+			}
 		}
 		
 		
@@ -1256,6 +1282,10 @@
 				$wrapper.attr('data-name', layoutItem.name);
 			}
 			
+			if(layoutItem.class){
+				$wrapper.addClass(layoutItem.class);
+			}
+			
 			if(layoutItem.checkable){
 				
 				$checkbox = $('<div class="checkbox checkbox-slider--c"><label><input type="checkbox"><span></span></label></div>');
@@ -1346,7 +1376,8 @@
 			})
 		},
 		removable: false, // if set AND this item is editable, this field can be removed
-		dependencies: null // { field : function(currentlayoutItem, dependentLayoutItem){ this => current FormLayout } }
+		dependencies: null, // { field : function(currentlayoutItem, dependentLayoutItem){ this => current FormLayout } }
+		class: null // some class to be added to the item
 	}
 	
 	Form.FormLayout.prototype.addItem = function(item, index){
@@ -1888,6 +1919,10 @@
 		return layoutItem ? layoutItem.item.getErrors() : [];
 	};
 	
+	Form.SelectPanels.prototype.setEnable = function(name, enable){
+		this.select.setEnable(name, enable);
+	};
+	
 	
 	Form.SelectPanels.format = {
 		Merge: {
@@ -2079,6 +2114,18 @@
 	Form.Text.prototype.setComboboxValues = function(items){
 		
 		if($.fn.typeahead){
+			
+			if($.isPlainObject(items)){
+				var ni = [];
+				Object.keys(items).forEach(function(k){
+					ni.push({
+						'name': items[k],
+						'label': k
+					});
+				});
+				items = ni;
+			}
+			
 			this.$input.typeahead('destroy');
 			this.$input.typeahead({
 				source: items,
@@ -2138,6 +2185,7 @@
 			maximum: null,
 			exclusiveMinimum: false,
 			exclusiveMaximum: false,
+			step: 1,
 			value: 0
 		},options));
 		
@@ -2155,6 +2203,8 @@
 			this.$input.attr('min',this.options.minimum);
 		if(typeof this.options.maximum == 'number')
 			this.$input.attr('max',this.options.maximum);
+		if(typeof this.options.step == 'number')
+			this.$input.attr('step',this.options.step);
 		if(typeof this.options.placeholder == 'string')
 			this.$input.attr('placeholder', this.options.placeholder);
 		if(this.options.focus)
@@ -2470,8 +2520,23 @@
 		
 		return this.options.multiple ? vv : vv[0];
 	}
-	
-	
+	Form.Select.prototype.setEnable = function(value, enable){
+		var pos = this._getPos(value);
+		if(pos !== null){
+			var $opt = this.$input.find('option[value="'+this._index[pos]+'"]');
+			!!enable ? $opt.removeAttr('disabled') : $opt.attr('disabled','disabled');
+			
+			if($.fn.selectpicker){
+				this.$input.selectpicker('refresh');
+			}
+			
+			if(isEqual(value, this.value_))
+				this.setValue(null,true);
+			else
+				this.$input.change();
+		}
+		return this;
+	}
 	
 	
 	
@@ -3231,7 +3296,7 @@
 	
 	var schemaToItem = function(schema, options){
 		
-		var item;
+		var item = null;
 		
 		options = options || {};
 		

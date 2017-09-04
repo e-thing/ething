@@ -9,188 +9,6 @@
 	};
 	
 	
-	var Button = function(widget){
-		
-		var self = this;
-		
-		var options = $.extend(true,{
-			mode: 'device', // device, script or event
-			color: '#307bbb',
-			// device
-			resource: null, // either a device or a file
-			operation: null, // operation id if the resource is a Device
-			parameters: null, // optional parameters if the resource is a Device
-			// script
-			script: '',
-			// event,
-			event: null
-		}, defaultOptions, widget.options);
-		
-		var $element = widget.$element;
-		
-		this.mode = options.mode;
-		this.fn = null;
-		
-		if(this.mode === 'device'){
-			
-			var resource = EThing.arbo.findOneById(options.resource);
-			if(!resource)
-				throw new Error('The resource does not exist anymore');
-			if(!(resource instanceof EThing.Device))
-				throw new Error('The resource is not a device');
-			
-			this.fn = function(){
-				return resource.execute(options.operation, options.parameters);
-			};
-			
-		} else if(this.mode === 'script'){
-			
-			var script = options.script;
-			if(!(typeof script === 'string' && script.trim().length))
-				throw new Error('Invalid script value');
-			
-			this.fn = function(){
-				eval(script);
-			};
-			
-		} else if(this.mode === 'event'){
-			
-			var event = options.event;
-			if(!(typeof event === 'string' && event.trim().length))
-				throw new Error('Invalid event value');
-			
-			this.fn = function(){
-				return EThing.Rule.trigger(event);
-			};
-			
-		} else {
-			throw new Error('Invalid mode !');
-		}
-		
-		
-		/*var $error = $('<span class="glyphicon glyphicon-exclamation-sign" aria-hidden="true" ></span>').css({
-			'color': '#d9534f',
-			'position': 'absolute',
-			'right': '10px',
-			'top': '10px'
-		}).appendTo($element).tooltip({
-			title: function(){
-				return $(this).data('error') || 'unknown error';
-			},
-			placement: 'bottom',
-			html: true,
-			template: '<div class="tooltip" role="tooltip"><div class="tooltip-arrow" style="border-bottom-color: #D9534F;"></div><div class="tooltip-inner" style="background-color: #D9534F;"></div></div>'
-		}).hide();
-		
-		function setError(e){
-			$error.data('error',e && e.message ? e.message : e);
-			if(e===false)
-				$error.hide().tooltip('hide');
-			else
-				$error.show();
-		}*/
-		
-		var $button = $('<div><div><a>'+options.title+'</a></div></div>');
-		
-		$button.css({
-			'width': '70%',
-			'margin': '0 auto',
-			'max-width': '200px'
-		});
-		
-		$button.children().css({
-			'width': '100%',
-			'height': 0,
-			'padding-bottom': '100%',
-			'border-radius': '50%',
-			'border': '6px solid #f5f5f5',
-			'overflow': 'hidden',
-			'box-shadow': '0 0 3px gray',
-			'box-sizing': 'content-box',
-			'position': 'relative',
-			'left': '-3px',
-			'background-color': options.color,
-			'color': '#fafafa'
-		});
-		
-		$button.find('a').css({
-			'display': 'block',
-			'float': 'left',
-			'width': '100%',
-			'padding-top': '50%',
-			'padding-bottom': '50%',
-			'line-height': '1em',
-			'margin-top': '-0.5em',
-			'text-align': 'center',
-			'color': 'inherit',
-			'font-size': '1.2em',
-			'text-decoration': 'none',
-			'cursor': 'pointer'
-		});
-		
-		
-		
-		//var $button = $('<button type="button" class="btn btn-primary btn-lg">'+options.title+'</button>');
-		
-		$button.click(function(){
-			// remove any previous error
-			//$error.hide().tooltip('hide');
-			
-			$button.find('a').html("loading...");
-			
-			$button.attr('disabled','disabled')
-			var dfr = self.fn.call(self);
-			$.when(dfr)
-				.done(function(){
-					$button.children().css({
-						'border-color': '#78c735',
-						'background-color': '#d7f7bc',
-						'color': '#3c763d'
-					});
-					$button.find('a').html('success');
-				})
-				.fail(function(e){
-					console.log(e);
-					$button.children().css({
-						'border-color': '#d9534f',
-						'background-color': '#f2dede',
-						'color': '#a94442'
-					});
-					$button.find('a').html('error');
-					widget.setWarning(e);
-					//$error.data('error',e && e.message ? e.message : e).show();
-				})
-				.always(function(){
-					$button.removeAttr('disabled')
-					
-					// restore color
-					setTimeout(function(){
-						$button.children().css({
-							'border-color': '#f5f5f5',
-							'background-color': '#307bbb',
-							'color': '#fafafa'
-						});
-						$button.find('a').text(options.title);
-					},2000);
-				});
-		});
-		
-		var $wrapper = $('<div>').append($button).appendTo($element);
-		
-		$element.css({
-			'display': 'table'
-		});
-		$wrapper.css({
-			'display': 'table-cell',
-			'vertical-align': 'middle',
-			'text-align': 'center'
-		});
-		
-	}
-	
-	
-	
-	
 	return {
 		description: "Execute a request by clicking a button.",
 		
@@ -262,7 +80,6 @@
 								},
 								'mode': function(layoutItem){
 									var r = EThing.arbo.findOneById(this.getLayoutItemByName('resource').item.value());
-									layoutItem.item.setOptions( r instanceof EThing.Device ? r.operations() : []);
 									return (r instanceof EThing.Device) && this.getLayoutItemByName('mode').item.value() === 'device';
 								}
 							}
@@ -389,8 +206,74 @@
 			}
 		},
 		
-		instanciate: function(widget){
-			new Button(widget);
+		require: ['widget/Buttons'],
+		
+		instanciate: function(options, Buttons){
+			
+			options = $.extend(true,{
+				mode: 'device', // device, script or event
+				color: '#307bbb',
+				// device
+				resource: null, // either a device or a file
+				operation: null, // operation id if the resource is a Device
+				parameters: null, // optional parameters if the resource is a Device
+				// script
+				script: '',
+				// event,
+				event: null
+			}, defaultOptions, options);
+			
+			var mode = options.mode;
+			var fn = null;
+			var title = null;
+			
+			if(mode === 'device'){
+				
+				var resource = EThing.arbo.findOneById(options.resource);
+				if(!resource)
+					throw new Error('The resource does not exist anymore');
+				if(!(resource instanceof EThing.Device))
+					throw new Error('The resource is not a device');
+				
+				title = resource.basename();
+				fn = function(){
+					return resource.execute(options.operation, options.parameters);
+				};
+				
+			} else if(mode === 'script'){
+				
+				var script = options.script;
+				if(!(typeof script === 'string' && script.trim().length))
+					throw new Error('Invalid script value');
+				
+				fn = function(){
+					eval(script);
+				};
+				
+			} else if(mode === 'event'){
+				
+				var event = options.event;
+				if(!(typeof event === 'string' && event.trim().length))
+					throw new Error('Invalid event value');
+				
+				fn = function(){
+					return EThing.Rule.trigger(event);
+				};
+				
+			} else {
+				throw new Error('Invalid mode !');
+			}
+			
+			var button = Buttons({
+				buttons : [{
+					label: options.title,
+					onClick: fn,
+					bgColor: options.color
+				}],
+				title: title
+			});
+			
+			return button;
 		}
 	};
 	

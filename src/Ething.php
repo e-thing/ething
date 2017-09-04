@@ -16,19 +16,32 @@
 		
 		private $mongoDB = null;
 		
+		private $logger = null;
+		
 		public $config;
+		public $daemon;
 		
 		public $fs;
+		
+		private $name = 'ething';
 		
 		public function __construct($configFilename = null)
 		{
 			$this->config = new Config($configFilename);
 			if(!$this->config->load()){
-				$this->logErr("unable to read or empty config file '{$configFilename}'", $this->config);
+				throw new Exception("unable to read or empty config file '{$configFilename}'");
 			}
+			$this->daemon = new Daemon($this);
 			$this->fs = new DbFs($this);
 		}
 		
+		public function setName($name){
+			$this->name = $name;
+		}
+		
+		public function getName(){
+			return $this->name;
+		}
 		
 		public function resetDbClient(){
 			$this->mongoDB = null;
@@ -78,6 +91,11 @@
 		{
 			$config = $this->config;
 			return call_user_func_array(array($config, 'attr'), func_get_args());
+		}
+		
+		public function daemon($command, Stream &$stream = null, $options = array())
+		{
+			return $this->daemon->exec($command, $stream, $options);
 		}
 		
 		
@@ -149,14 +167,28 @@
 		}
 		
 		
-		public function freeSpace() {
-			$stat = $this->stats();
-			return $stat['quota_size'] ? ($stat['quota_size'] - $stat['used']) : INF;
-		}
-		
 		public function stats(){
-			$data_stats = $this->db()->command(array('collStats' => 'tabledata'))->toArray();
 			
+			// table
+			$tbinfo = array(
+				'count' => 0,
+				'size' => 0
+			);
+
+			foreach( $this->db()->listCollections() as $collInfo){
+				$name = $collInfo->getName();
+				
+				if(preg_match('/^tb\./', $name)){
+					
+					$i = $this->db()->command(array('collStats' => $name))->toArray()[0];
+					
+					$tbinfo['count'] += $i['count'];
+					$tbinfo['size'] += $i['size'];
+				}
+				
+			}
+			
+			// other
 			$c = $this->db()->selectCollection("resources");
 			$results = $c->aggregate(
 				array(
@@ -179,8 +211,7 @@
 			$resource_size = !empty($results["result"]) ? $results[0]["size"] : 0;
 			
 			return array(
-				'quota_size' => $this->config('quota'),
-				'used' => ($resource_size + ( empty($data_stats) ? 0 : $data_stats[0]['size']))
+				'used' => ($resource_size + $tbinfo['size'])
 			);
 		}
 		
@@ -235,6 +266,8 @@
 		
 		function dispatchSignal( Event\Signal $signal, $delaySignal = null){
 			
+			$this->logger()->debug("signal {$signal->getName()} dispatched");
+			
 			if(!isset($delaySignal)) $delaySignal = $this->delaySignalsEnabled;
 			if($delaySignal){
 				
@@ -244,10 +277,12 @@
 				}
 				
 				try {
-					$this->deamon('signal.dispatch '.\base64_encode(\serialize($signal))."\n");
+					$this->daemon('signal.dispatch '.\base64_encode(\serialize($signal)), $stream, array(
+						'interactive' => false
+					));
 				} catch(\Exception $e){
-					$this->log($e);
-				} // do not fire an exception if the deamon process is not started
+					$this->logger()->error($e);
+				} // do not fire an exception if the daemon process is not started
 				return;
 			}
 			
@@ -325,41 +360,20 @@
 		LOG
 		*/
 		
-		public function log($message, $caller = null, $criticity = null){
-			$log = $this->config('log');
-			
-			if(!empty($log) && is_string($log)){
-				
-				$parts = array(
-					'date' => date("Y-m-d H:i:s"),
-					'caller' => is_string($caller) ? $caller : (is_object($caller) ? get_class($caller) : 'unk'),
-					'type' => 'info',
-					'message' => (string) $message
-				);
-				
-				if($message instanceof \Exception){
-					$parts['type'] = 'error';
-					if(!isset($caller))
-						$parts['caller'] = basename($message->getFile());
-					//$parts['message'] = "Exception: {$message->getMessage()} [file:{$message->getFile()} line:{$message->getLine()} code:{$message->getCode()}]";
-					$parts['message'] = (string)$message;
+		public function logger(){
+			if(!isset($this->logger)){
+				$logConf = $this->config('log');
+				if(is_array($logConf)){
+					if(is_string($logConf['file'])){
+						$this->logger = new RollingFileLogger($this, $this->name, $logConf['file'], $logConf['level']);
+					} else {
+						$this->logger = new DbLogger($this, $this->name, $logConf['level']);
+					}
+				} else {
+					$this->logger = new NullLogger($this, $this->name);
 				}
-				
-				if(isset($criticity))
-					$parts['type'] = $criticity;
-				
-				$content = implode(';',$parts);
-				if($content[strlen($content)-1] !== "\n") $content.="\n";
-				@file_put_contents($log, utf8_encode($content), FILE_APPEND);
 			}
-		}
-		
-		public function logErr($message, $caller = null){
-			return $this->log($message, $caller, 'error');
-		}
-		
-		public function logSuccess($message, $caller = null){
-			return $this->log($message, $caller, 'success');
+			return $this->logger;
 		}
 		
 		
@@ -370,195 +384,34 @@
 		
 		
 		
-		public function notify($subject,$message = null){
-			
-			$smtpSettings = $this->config('notification.smtp');
-			$mailList = $this->config('notification.emails');
-			
-			if(empty($smtpSettings)){
-				throw new Exception("Mail feature not enable");
-			}
-			
-			if(!isset($smtpSettings['host']) || !isset($smtpSettings['port']) || !isset($smtpSettings['user']) || !isset($smtpSettings['password']) ){
-				throw new Exception("invalid notification.smtp config");
-			}
-			
-			if(empty($mailList)){
-				return true;
-			}
-			
-			if(!isset($subject))
-				$subject = 'notification';
-			
-			if(empty($message))
-				$message = '';
-			
-			//Create a new PHPMailer instance
-			$mail = new \PHPMailer;
-			//Tell PHPMailer to use SMTP
-			$mail->isSMTP();
-			//Enable SMTP debugging
-			// 0 = off (for production use)
-			// 1 = client messages
-			// 2 = client and server messages
-			$mail->SMTPDebug = 0;
-			//Ask for HTML-friendly debug output
-			//$mail->Debugoutput = 'html';
-			//Set the hostname of the mail server
-			$mail->Host = $smtpSettings['host'];
-			// use
-			// $mail->Host = gethostbyname('smtp.gmail.com');
-			// if your network does not support SMTP over IPv6
-			//Set the SMTP port number - 587 for authenticated TLS, a.k.a. RFC4409 SMTP submission
-			$mail->Port = $smtpSettings['port'];
-			//Set the encryption system to use - ssl (deprecated) or tls
-			$mail->SMTPSecure = 'tls';
-			//Whether to use SMTP authentication
-			$mail->SMTPAuth = true;
-			//Username to use for SMTP authentication - use full email address for gmail
-			$mail->Username = $smtpSettings['user'];
-			//Password to use for SMTP authentication
-			$mail->Password = $smtpSettings['password'];
-			//Set who the message is to be sent from
-			$mail->setFrom($smtpSettings['user'], 'eThing');
-			//Set an alternative reply-to address
-			//$mail->addReplyTo('replyto@example.com', 'First Last');
-			//Set who the message is to be sent to
-			foreach($mailList as $email)
-				$mail->addAddress($email);
-			//Set the subject line
-			$mail->Subject = '[eThing] '.$subject;
-			//set the text body
-			$mail->isHTML(true); // accept html
-			$mail->Body = $message;
-			//send the message, check for errors
-			if (!$mail->send()) {
-				throw new Exception("Mailer Error: " . $mail->ErrorInfo);
-			}
-			
-			return true;
+		public function notify($subject,$message = null,$attachments = array()){
+			$mail = new Mail($this);
+			return $mail->send($subject,$message,$attachments);
 		}
 		
 		
-		
-		/*
-		DEAMON
-		*/
-		
-		public function deamon($command, Stream &$stream = null, $options = array()){
-			
-			if(!isset($stream))
-				$stream = new StreamBuffer();
-			
-			$stream->contentType('text/plain');
-			
-			$deamonSettings = $this->config('deamon');
-			
-			if(!empty($deamonSettings) && isset($deamonSettings['host']) && isset($deamonSettings['port'])){
-				
-				$options = array_merge(array(
-					'timeout' => isset($deamonSettings['timeout']) ? $deamonSettings['timeout'] : 10
-				), $options);
-				
-				$address = "tcp://".$deamonSettings['host'].":".$deamonSettings['port'];
-				
-				$fp = @stream_socket_client($address, $errno, $errstr, 5);
-				if (!$fp) {
-					$this->log("unable to communicate with the deamon process {$address} ({$errno} - {$errstr})");
-					$stream->errCode(2);
-					$stream->out("unable to communicate with the deamon process {$address} ({$errno} - {$errstr})", Stream::STDERR);
-				} else {
-					stream_set_timeout ($fp, $options['timeout']);
-					
-					// wait for the initialization done
-					while(strlen($c = fread($fp,1))) {
-						if($c === '>') break;
-					}
-					
-					if(strlen($c)){
-						
-						@fwrite($fp, "{$command}\n");
-						
-						$out = '';
-						$nl = false;
-						while(strlen($c = fread($fp,1))) {
-							if($c === '>' && $nl) break;
-							$nl = $c === "\n";
-							$out.=$c;
-						}
-						
-						if(strlen($c)){
-							$res = json_decode($out);
-							if(json_last_error() === JSON_ERROR_NONE){
-								if($res->ok){
-									$stream->errCode(0);
-									if(isset($res->result)) $stream->out($res->result);
-								} else {
-									$stream->errCode(1);
-									$stream->out($res->error, Stream::STDERR);
-								}
-							}
-							else {
-								$stream->errCode(1);
-								$stream->out('bad response', Stream::STDERR);
-							}
-							
-						} else {
-							$stream->errCode(1);
-							$stream->out('timeout', Stream::STDERR);
-						}
-						
-					
-					} else {
-						$stream->errCode(1);
-						$stream->out('timeout', Stream::STDERR);
-					}
-					
-					$stream->close();
-					
-					@fclose($fp);
-					
-				}
-			
-			} else {
-				$this->log("bad deamon config");
-				$stream->errCode(3);
-				$stream->out("bad deamon config", Stream::STDERR);
-			}
-			
-			return $stream->errCode() === 0;
-		}
 		
 		
 		/*
 		MQTT
 		*/
+		
 		public function mqttPublish($topic, $payload, $retain = false){
 			
-			$mqttSettings = $this->config('mqtt');
-			
-			if(!empty($mqttSettings) && isset($mqttSettings['host']) && isset($mqttSettings['port']) && isset($mqttSettings['clientId'])){
-				$client = new MQTT\phpMQTT($mqttSettings['host'], $mqttSettings['port'], $mqttSettings['clientId']);
-				
-				$user = isset($mqttSettings['user']) ? $mqttSettings['user'] : null;
-				$pwd = isset($mqttSettings['password']) ? $mqttSettings['password'] : null;
-				
-				if(!empty($mqttSettings['rootTopic'])) {
-					$topic = $mqttSettings['rootTopic'].$topic;
-				}
-				
-				if($client->connect(true, NULL, $user, $pwd)){
-					
-					if(!is_string($payload)){
-						$payload = \json_encode($payload);
-					}
-					
-					$client->publish($topic, $payload, 0, $retain);
-					$client->close();
-					return true;
-				}
+			if(!is_string($payload)){
+				$payload = \json_encode($payload);
 			}
-			return false;
+					
+			try {
+				$this->daemon('mqtt.publish "'.\addslashes($topic).'" "'.\base64_encode($payload).'" '.($retain?'1':'0'), $stream, array(
+					'interactive' => false
+				));
+			} catch(\Exception $e){
+				$this->logger()->error($e);
+				return false;
+			} // do not fire an exception if the daemon process is not started
+			
+			return true;
 		}
 		
 		

@@ -14,7 +14,7 @@ class Request {
 	public $body = '';
 	private $headers = array();
 	
-	public static $validAuthModes = array('basic', 'digest'); 
+	public static $validAuthModes = array('basic', 'digest', 'query'); 
 	public static $validMethodes = array('get','post','put','patch','head','options','delete'); 
 	
 	public function __construct( $url, $method = 'GET', array $headers = array(), $body = '' ){

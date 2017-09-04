@@ -139,7 +139,7 @@
 						name = createdByResource.basename()+' - '+name;
 				}
 				
-				sources.push( function(){
+				sources.push( {data:function(){
 					return resource.select({
 						fields: ['date', source.key],
 						datefmt: 'TIMESTAMP_MS',
@@ -157,7 +157,7 @@
 							type: source.chartType || 'line'
 						};
 					});
-				});
+				}});
 				
 			}, this);
 			

@@ -24,110 +24,6 @@
 		return data;
 	};
 	
-	var Label = function(widget){
-		
-		var self = this;
-		
-		var options = $.extend(true,{
-			unit: null
-		}, widget.options);
-		
-		var $element = this.$element = widget.$element;
-		
-		$element.on('resize', function(){
-			self.resize();
-		});
-		
-		$element.css({
-			'position': 'relative',
-			'font-size': '14px',
-			'text-align': 'center',
-			'color': '#6B6B6B',
-			'height': '100%',
-			'padding': '10px 0 0 0',
-			'color': 'rgb(179, 179, 179)'
-		});
-		
-		var resource = EThing.arbo.findOneById(options.resource);
-		if(!resource){
-			widget.setError('The resource does not exist anymore');
-		}
-		
-		var title = resource.basename(), serieName;
-		
-		if(resource instanceof EThing.Table){
-			
-			title += ' - '+options.key;
-			
-			this.src = function(){
-				return resource.select({
-					fields: ['date',options.key],
-					length: 1,
-					start: -1
-				}).then(function(data){
-					return data.length ? {
-						date: new Date(data[0]['date']),
-						value: data[0][options.key]
-					} : null;
-				});
-			};
-		} else if(resource instanceof EThing.Device){
-			
-			title += ' - '+options.operation;
-			
-			this.src = function(){
-				return resource.execute(options.operation, options.parameters).then(function(data){
-					return parseData(data);
-				});
-			}
-		}
-		
-		var unit = (options.unit || '').trim();
-		
-		$element.empty().append('<div class="title">'+title+'</div>', '<div class="content"><span class="value">-</span><span class="unit">'+unit+'</span></div>', '<div class="update">-</div>');
-		
-		$element.find('.content').css({
-			'font-size': '32px',
-			'width': '100%',
-			'white-space': 'nowrap',
-			'text-overflow': 'ellipsis',
-			'overflow': 'hidden',
-			'color': '#307bbb'
-		});
-		
-		$element.find('.unit').css({
-			'color': '#9C9C9C',
-			'font-size': '24px'
-		});
-		
-		this.src().done(function(d){
-			
-			if(!d){
-				widget.setError('invalid data');
-				return;
-			}
-			
-			$element.find('.value').text(d.value);
-			
-			$element.find('.update').text(d.date.toLocaleString());
-		
-		}).fail(function(){
-			widget.setError('invalid data');
-		});
-		
-	}
-	
-	Label.prototype.resize = function(){
-		
-		var availableHeight = this.$element.height() - this.$element.find('.title').height() - this.$element.find('.update').height();
-		var height = this.$element.find('.content').height();
-		var verticalMargin = availableHeight - height;
-		this.$element.find('.content').css({
-			'margin-top': (verticalMargin/2)+'px',
-			'margin-bottom': (verticalMargin/2)+'px'
-		});
-		
-	};
 	
 	
 	return {
@@ -219,8 +115,89 @@
 			}
 		},
 		
-		instanciate: function(widget){
-			new Label(widget);
+		require: ['widget/Label'],
+		
+		instanciate: function(options, Label){
+			
+			
+			var resource = EThing.arbo.findOneById(options.resource);
+			if(!resource){
+				throw 'The resource does not exist anymore';
+			}
+			
+			var title = resource.basename(), src = null;
+			
+			if(resource instanceof EThing.Table){
+				
+				title += ' - '+options.key;
+				
+				src = function(){
+					return resource.select({
+						fields: ['date',options.key],
+						length: 1,
+						start: -1
+					}).then(function(data){
+						return data.length ? {
+							date: new Date(data[0]['date']),
+							value: data[0][options.key]
+						} : null;
+					});
+				};
+			} else if(resource instanceof EThing.Device){
+				
+				title += ' - '+options.operation;
+				
+				src = function(){
+					return resource.execute(options.operation, options.parameters).then(function(data){
+						return parseData(data);
+					});
+				}
+			}
+			
+			var unit = (options.unit || '').trim();
+			
+			
+			
+			var update = function(){
+		
+				$.when(src()).done(function(d){
+				
+					if(!d){
+						return;
+					}
+					
+					var str = d.value;
+					if(unit) str += ' '+unit;
+					widget.val(str);
+					widget.setFooter(d.date ? d.date.toLocaleString() : '');
+				
+				});
+			};
+			
+			
+			var label = Label({
+				color : options.color,
+				title : title
+			});
+			
+			var widget = $.extend({}, label, {
+				
+				draw: function(){
+					label.draw.call(this);
+					resource.on('updated', update);
+					update();
+				},
+				
+				destroy: function(){
+					label.destroy.call(this);
+					resource.off('updated', update);
+				}
+				
+			});
+			
+			
+			
+			return widget;
 		}
 	};
 	

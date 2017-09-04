@@ -7,7 +7,9 @@
 	
 	
 	function Switch(opt){
-	
+		
+		opt = opt || {};
+		
 		var parent = Widget(opt);
 		
 		var self = {};
@@ -60,6 +62,8 @@
 		return $.extend(self, parent, {
 			
 			draw: function(){
+				
+				parent.draw.call(this);
 				
 				var $switch = $('<a href="#" class="switch"></a>').css({
 					'width': '80%',

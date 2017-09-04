@@ -9,53 +9,6 @@
 	};
 	
 	
-	var ImageWidget = function(widget){
-		
-		var options = $.extend(true,{
-			resource: null, // either a device or a file
-			operation: null, // operation id if the resource is a Device
-			parameters: null // optional parameters if the resource is a Device
-		}, defaultOptions, widget.options);
-		
-		
-		var $element = widget.$element;
-		
-		var resource = EThing.arbo.findOneById(options.resource);
-		if(!resource)
-			throw new Error('The resource does not exist anymore');
-		
-		var imageViewerOptions = {
-			header: {
-				enable: true,
-				showOnHover: true
-			}
-		};
-		
-		if(resource instanceof EThing.File){
-			imageViewerOptions.elements = [resource];
-		}
-		else if(resource instanceof EThing.Device){
-			
-			imageViewerOptions.elements = [{
-				name: resource.basename()+':'+options.operation,
-				content: function(){
-					return resource.execute(options.operation, options.parameters, true);
-				}
-			}];
-		}
-		
-		var $iv = $('<div>').css({
-			'height': '100%',
-			'background-color': '#ffffff',
-			'color': '#4e4e4e'
-		}).imageViewer(imageViewerOptions).appendTo($element);
-		
-		
-		$element.on('destroy', function(){
-			$iv.imageViewer('destroy');
-		})
-	}
-	
 	
 	
 	return {

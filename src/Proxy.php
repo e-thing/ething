@@ -219,12 +219,17 @@ class Proxy {
 			switch($auth_mode){
 				case 'digest':
 					curl_setopt($ch, CURLOPT_HTTPAUTH, CURLAUTH_DIGEST);
+					curl_setopt($ch, CURLOPT_USERPWD, $user.':'.$password);
+					break;
+				case 'query':
+					$url->insertParam('user', $user);
+					$url->insertParam('password', $password);
 					break;
 				default: // basic to default
 					curl_setopt($ch, CURLOPT_HTTPAUTH, CURLAUTH_BASIC);
+					curl_setopt($ch, CURLOPT_USERPWD, $user.':'.$password);
 					break;
 			}
-			curl_setopt($ch, CURLOPT_USERPWD, $user.':'.$password);
 		}
 		
 		if(!empty($curl_options))

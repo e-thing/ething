@@ -6,6 +6,7 @@
 }(this, function (UI, template) {
 	
 	return function(){
+		UI.stopPollingRefresh();
 		UI.Container.set(template);
 	};
 	

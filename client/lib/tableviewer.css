@@ -46,7 +46,7 @@
 }
 
 
-.tableviewer [data-name="col-select"] li {
+.tableviewer [data-name="col-select"] li, .tableviewer [data-name="plot"] li {
 	padding: 0 5px;
 }
 

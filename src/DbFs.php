@@ -27,6 +27,7 @@ class DbFs
 			fwrite($stream, $contents);
 			$id = (string)$bucket->getFileIdForStream($stream);
 			fclose($stream);
+			
 			return $id;
 		}
 		

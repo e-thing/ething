@@ -4,7 +4,7 @@
   <head>
 
     <!-- CORE -->
-    <script src="__API_URL__/../lib/core.js"></script>
+    <script src="__API_URL__/../js/ething.js"></script>
 
 
   </head>

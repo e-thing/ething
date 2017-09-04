@@ -53,7 +53,7 @@ class Table extends Resource
 	
 	const FIELD_VALID_CHAR = FIELD_VALID_CHAR;
 	const VALIDATE_FIELD = VALIDATE_FIELD;
-	private static $reservedKeys = array('_t','_id');
+	private static $reservedKeys = array('_id');
 	
 	const INVALID_FIELD_NONE = 0;
 	const INVALID_FIELD_RENAME = 1;
@@ -117,24 +117,31 @@ class Table extends Resource
 		return $ret;
 	}
 	
+	public function getCollectionName(){
+		return 'tb.'.$this->id();
+	}
 	
-	public function remove() {
+	public function getCollection(){
+		return $this->ething->db()->selectCollection($this->getCollectionName());
+	}
+	
+	public function remove($removeChildren = false) {
 		
 		// remove all the data from this table
 		$this->clear();
 		
 		// remove the resource
-		parent::remove();
+		parent::remove($removeChildren);
 		
 	}
 	
 	public function clear() {
 		
 		// remove all the data from this table
-		$c = $this->ething->db()->selectCollection('tabledata');
+		$c = $this->getCollection();
 		
 		try {
-			$c->deleteMany(array('_t' => $this->id()));
+			$this->getCollection()->drop();
 			
 			$this->setAttr('length', 0);
 			$this->setAttr('keys', array());
@@ -149,9 +156,8 @@ class Table extends Resource
 		
 		// remove the expired data in the current table
 		if($this->expireAfter){
-			$c = $this->ething->db()->selectCollection('tabledata');
+			$c = $this->getCollection();
 			$cursor = $c->find(array(
-				'_t' => $this->id(),
 				'date' => array(
 					'$lt' => (new \MongoDB\BSON\UTCDateTime((time() - $this->expireAfter)*1000))
 				)
@@ -175,12 +181,11 @@ class Table extends Resource
 		$keys = [];
 		$length = 0;
 		
-		$c = $this->ething->db()->selectCollection('tabledata');
-		$cursor = $c->find(array('_t' => $this->id()),array(
+		$c = $this->getCollection();
+		$cursor = $c->find(array(),array(
 			'projection' => array(
 				'_id' => 0,
-				'date' => 0,
-				'_t' => 0
+				'date' => 0
 			)
 		));
 		
@@ -209,7 +214,7 @@ class Table extends Resource
 		if(!is_array($row_ids) && !($row_ids instanceof Traversable))
 			$row_ids = [$row_ids];
 		
-		$c = $this->ething->db()->selectCollection('tabledata');
+		$c = $this->getCollection();
 		
 		$keys = $this->keys;
 		
@@ -217,8 +222,7 @@ class Table extends Resource
 			
 			try {
 				$removedDoc = $c->findOneAndDelete(array(
-					'_id' => $row_id,
-					'_t' => $this->id()
+					'_id' => $row_id
 				));
 			
 				// update the key count
@@ -248,14 +252,13 @@ class Table extends Resource
 	
 	public function remove_row($row_id) {
 		
-		$c = $this->ething->db()->selectCollection('tabledata');
+		$c = $this->getCollection();
 		
 		$keys = $this->keys;
 			
 		try {
 			$removedDoc = $c->findOneAndDelete(array(
-				'_id' => $row_id,
-				'_t' => $this->id()
+				'_id' => $row_id
 			));
 		
 			// update the key count
@@ -401,19 +404,16 @@ class Table extends Resource
 			// add meta data
 			foreach($dataArray as &$data){
 				$data['_id'] = ShortId::generate();
-				$data['_t'] = $this->id();
 			}
 			
 			// insert the data
-			$c = $this->ething->db()->selectCollection('tabledata');
+			$c = $this->getCollection();
 			$c->insertOne($dataArray[0]);
 			// remove extra row
 			if( $this->maxLength && $length > $this->maxLength ){
 				
 				// remove the oldest document
-				$removedDoc = $c->findOneAndDelete(array(
-					'_t' => $this->id()
-				),array(
+				$removedDoc = $c->findOneAndDelete(array(), array(
 					'sort' => array('date'=>1),
 				));
 				
@@ -464,11 +464,10 @@ class Table extends Resource
 			// add meta data
 			foreach($dataArray as &$data){
 				$data['_id'] = ShortId::generate();
-				$data['_t'] = $this->id();
 			}
 			
 			// insert the data
-			$c = $this->ething->db()->selectCollection('tabledata');
+			$c = $this->getCollection();
 			$c->insertMany($dataArray, array(
 				'ordered' => false
 			));
@@ -495,11 +494,10 @@ class Table extends Resource
 		// add meta data
 		foreach($dataArray as &$data){
 			$data['_id'] = ShortId::generate();
-			$data['_t'] = $this->id();
 		}
 		
 		// insert the data
-		$c = $this->ething->db()->selectCollection('tabledata');
+		$c = $this->getCollection();
 		$c->insertMany($dataArray, array(
 			'ordered' => false
 		));
@@ -534,14 +532,10 @@ class Table extends Resource
 					$_fields[$field] = 1;
 			}
 		}
-		else {
-			// never show the table id
-			$_fields['_t'] = 0;
-		}
 		
 		
-		$c = $this->ething->db()->selectCollection('tabledata');
-		$r = $c->findOne(array('_id' => $id,'_t' => $this->id()),array( 'projection' => $_fields ));
+		$c = $this->getCollection();
+		$r = $c->findOne(array('_id' => $id),array( 'projection' => $_fields ));
 		
 		return (!is_null($r)) ? self::docSerialize($r) : null;
 	}
@@ -557,10 +551,9 @@ class Table extends Resource
 			
 			// add meta data
 			$dataArray[0]['_id'] = $row_id;
-			$dataArray[0]['_t'] = $this->id();
 			
 			// insert the data
-			$c = $this->ething->db()->selectCollection('tabledata');
+			$c = $this->getCollection();
 			$original = $c->findOneAndReplace(array('_id' => $row_id), $dataArray[0]);
 			
 			if($original){
@@ -586,21 +579,18 @@ class Table extends Resource
 	public function replaceRow($query, array $data, $invalidFields = self::INVALID_FIELD_RENAME, $upsert = false) {
 		if(!empty($data)){
 			
-			$queries = array();
-			$queries[] = array('_t' => $this->id());
-			
 			if(is_string($query)){
 				// parse the query string
-				$queries[] = $this->parser()->parse($query);
+				$q = $this->parser()->parse($query);
 			}
 			else if(is_array($query))
-				$queries[] = $query;
+				$q = $query;
+			else
+				$q = array();
 			
-			$c = $this->ething->db()->selectCollection('tabledata');
+			$c = $this->getCollection();
 			
-			$original = $c->findOne(array(
-				'$and' => $queries
-			));
+			$original = $c->findOne($q);
 			
 			if($original){
 				// the document was found !
@@ -613,7 +603,6 @@ class Table extends Resource
 				
 				// add meta data
 				$dataArray[0]['_id'] = $original['_id']; // keep the same id !
-				$dataArray[0]['_t'] = $this->id();
 				
 				//replace it !
 				$c->replaceOne(array('_id' => $original['_id']), $dataArray[0]);
@@ -660,21 +649,16 @@ class Table extends Resource
 	// $length >= 0
 	{
 		
-		$c = $this->ething->db()->selectCollection('tabledata');
-		
-		$queries = array();
-		$queries[] = array('_t' => $this->id());
+		$c = $this->getCollection();
 		
 		if(is_string($query)){
 			// parse the query string
-			$queries[] = $this->parser()->parse($query);
+			$q = $this->parser()->parse($query);
 		}
 		else if(is_array($query))
-			$queries[] = $query;
-		
-		$q = array(
-			'$and' => $queries
-		);
+			$q = $query;
+		else
+			$q = array();
 		
 		$opt = array();
 		
@@ -714,10 +698,6 @@ class Table extends Resource
 					$_fields[$field] = 1;
 			}
 		}
-		else {
-			// never show the table id
-			$_fields['_t'] = 0;
-		}
 		
 		$opt['projection'] = $_fields;
 		
@@ -748,7 +728,6 @@ class Table extends Resource
 		
 		$queries = array();
 		$queries[] = array(
-			'_t' => $this->id(),
 			$key => array('$exists' => true)
 		);
 		
@@ -760,7 +739,7 @@ class Table extends Resource
 			$queries[] = $query;
 		
 		$res = $this->ething->db()->command(array(
-			"mapreduce" => "tabledata",
+			"mapreduce" => $this->getCollectionName(),
 			"map" => $map,
 			"reduce" => $reduce,
 			"finalize" => $finalize,

@@ -231,13 +231,13 @@ class MySensorsNode extends Device
 		return parent::createDevice($ething, array_merge(self::$defaultAttr, $attributes), array(), $createdBy);
 	}
 	
-	public function remove() {
+	public function remove($removeChildren = false) {
 		
 		// remove all the sensors attached to it !
 		$this->removeAllSensors();
 		
 		// remove the resource
-		parent::remove();
+		parent::remove($removeChildren);
 		
 	}
 	
@@ -247,7 +247,7 @@ class MySensorsNode extends Device
 	}
 	
 	public function updateFirmware($firmware, $stream = null, $options = array()){
-		return $this->ething->deamon('device.mysensors.updateFirmware '.$this->id().' '.\base64_encode($firmware)."\n", $stream, $options);
+		return $this->ething->daemon('device.mysensors.updateFirmware '.$this->id().' '.\base64_encode($firmware)."\n", $stream, $options);
 	}
 }
 

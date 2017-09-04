@@ -16,7 +16,7 @@ function check_ething_version(){
 }
 
 function check_web_server(){
-	return $_SERVER['SERVER_SOFTWARE'];
+	return isset($_SERVER['SERVER_SOFTWARE']) ? $_SERVER['SERVER_SOFTWARE'] : 'unknown';
 }
 
 function check_php_version(){
@@ -104,13 +104,13 @@ function check_mongodb_cli(){
 		return $results;
 }
 
-function check_deamon_running(){
+function check_daemon_running(){
 	
 	try {
 		
 		$ething = new \Ething\Ething();
 		
-		if(!$ething->deamon('info', $stream))
+		if(!$ething->daemon('info', $stream))
 			throw new Exception();
 		
 		if(preg_match('/uptime=([0-9]+)/',$stream->data(),$matches)){
@@ -123,7 +123,7 @@ function check_deamon_running(){
 			return sprintf("running for %d day(s) %d hour(s) %d minute(s) and %d seconde(s)", $days, $H, $i, $s);
 		}
 	} catch(\Exception $e) {
-		throw new Exception("the deamon is not running");
+		throw new Exception("the daemon is not running");
 	}
 	
 	return true;
@@ -243,8 +243,8 @@ $tests = array(
 		'fct' => 'check_http_request'
 	),
 	array(
-		'name' => 'Deamon',
-		'fct' => 'check_deamon_running'
+		'name' => 'Daemon',
+		'fct' => 'check_daemon_running'
 	),
 	array(
 		'name' => 'Config',

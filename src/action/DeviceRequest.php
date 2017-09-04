@@ -6,6 +6,7 @@ namespace Ething\Action;
 
 use \Ething\Device\Device;
 use \Ething\StreamBuffer;
+use \Ething\Helpers;
 
 class DeviceRequest extends Action {
 	
@@ -65,7 +66,8 @@ class DeviceRequest extends Action {
 					if(is_array($value) && is_string($value['type'])){
 						
 						$o = array(
-							'type' => $value['type']
+							'type' => $value['type'],
+							'expireAfter' => null
 						);
 						
 						switch($value['type']){
@@ -76,6 +78,13 @@ class DeviceRequest extends Action {
 									throw new \Exception("field '{$key}.name' must be a non empty string.");
 								
 								$o['name'] = $value['name'];
+								
+								if(isset($value['expireAfter'])){
+									if(!(is_int($value['expireAfter']) && $value['expireAfter']>=0))
+										throw new \Exception("field '{$key}.expireAfter' must be a positive integer.");
+									$o['expireAfter'] = $value['expireAfter'];
+								}
+								
 								
 								break;
 							
@@ -125,7 +134,7 @@ class DeviceRequest extends Action {
 		));
 		
 		if(!$res){
-			throw new \Exception($errData);
+			throw new \Exception($buffer->errData());
 		}
 		
 		if(!is_null($this->output) && $buffer->length()){
@@ -134,8 +143,50 @@ class DeviceRequest extends Action {
 				
 				case 'file':
 					
-					//create a new file
-					if($file = $this->ething()->create('File', array( 'name' => $this->output['name'] ), $device)){
+					$self = $this;
+					$filename = Helpers::percent_replace($this->output['name'], function($tag) use ($signal, $self) {
+						switch($tag){
+							case '%%':
+								return '%';
+							case '%D':
+								return date("Y-m-d H:i:s", $signal->getTimestamp());
+							case '%R':
+								if(isset($signal->resource)){
+									if($r = $self->ething()->get($signal->resource))
+										return $r->name();
+								}
+								break;
+							case '%I':
+								if(isset($signal->resource)){
+									return $r->resource;
+								}
+								break;
+							case '%r':
+								return $self->rule()->name;
+								break;
+							case '%s':
+								return $signal->getName();
+								break;
+							case '%c':
+								return (string)($self->rule()->executedCount);
+								break;
+						}
+					});
+					
+					// does this file already exist !
+					$file = $this->ething()->findOne(array(
+						'type' => 'File',
+						'name' => $filename,
+						'createdBy.id' => $device->id()
+					));
+					if(!$file){
+						// no, create it !
+						$opt = array( 'name' => $filename );
+						if(!empty($this->output['expireAfter']))
+							$opt['expireAfter'] = $this->output['expireAfter'];
+						$file = $this->ething()->create('File', $opt, $device);
+					}
+					if($file){
 						$file->write( $buffer->data() ); // put the content in it !
 					}
 					

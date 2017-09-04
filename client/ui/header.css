@@ -1,5 +1,9 @@
-body {
+body:not(.app-android) {
 	margin-top: 51px !important;
+}
+
+body.app-android #navbar{
+	display: none !important;
 }
 
 #navbar {

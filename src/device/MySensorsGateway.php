@@ -177,31 +177,31 @@ abstract class MySensorsGateway extends Device
 	
 	
 	public function restart(){
-		$this->ething->deamon('device.mysensors.start '.$this->id()."\n");
+		$this->ething->daemon('device.mysensors.start '.$this->id()."\n");
 	}
 	
-	public function remove() {
+	public function remove($removeChildren = false) {
 		
-		$this->ething->deamon('device.mysensors.end '.$this->id()."\n");
+		$this->ething->daemon('device.mysensors.end '.$this->id()."\n");
 		
 		// remove all the nodes attached to it !
 		$this->removeAllNodes();
 		
 		// remove the resource
-		parent::remove();
+		parent::remove($removeChildren);
 		
 	}
 	
 	
 	
 	public function sendMessage(Message $message, $stream = null, $options = array()){
-		return $this->ething->deamon('device.mysensors.send '.$this->id().' '.\base64_encode($message->stringify())."\n", $stream, $options);
+		return $this->ething->daemon('device.mysensors.send '.$this->id().' '.\base64_encode($message->stringify())."\n", $stream, $options);
 	}
 	
 	// send a message and wait for the response.
 	// note: not all request has a response !
 	public function sendMessageWaitResponse(Message $message, $stream = null, $options = array()){
-		return $this->ething->deamon('device.mysensors.sendWaitResponse '.$this->id().' '.\base64_encode($message->stringify())."\n", $stream, $options);
+		return $this->ething->daemon('device.mysensors.sendWaitResponse '.$this->id().' '.\base64_encode($message->stringify())."\n", $stream, $options);
 	}
 	
 	
@@ -209,6 +209,8 @@ abstract class MySensorsGateway extends Device
 	
 	// log a message in a table, usefull for debugging
 	public function log(Message $message, $out = false){
+		
+		if($message->messageType === MySensors::STREAM) return;
 		
 		$logTable = $this->ething->findOne(array(
 			'name' => 'log.db',

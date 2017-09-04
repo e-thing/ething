@@ -67,7 +67,8 @@
 			buttons: {},
 			removeOnClose: !hasParent, // destroy element on close
 			size: null,
-			shown: null // executed once this modal dialog is shown
+			shown: null, // executed once this modal dialog is shown
+			closeButton: true
 		},BsModal.DEFAULTS, {
 			backdrop: 'static'
 		}, $element.data(), options);
@@ -81,7 +82,7 @@
 					  '<div class="modal-dialog'+(this.options.size ? ' modal-'+this.options.size : '')+'">'+
 						'<div class="modal-content">'+
 							'<div class="modal-header">'+
-								'<button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>'+
+								(this.options.closeButton ? '<button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>' : '')+
 								'<h4 class="modal-title"></h4>'+
 							'</div>'+
 							'<div class="modal-body"></div>'+
@@ -212,6 +213,9 @@
 			
 			epilog();
 		});
+		
+		if(typeof this.options.customize === 'function')
+			this.options.customize.call(this, $element);
 		
 		if(this.options.show)
 			this.show();

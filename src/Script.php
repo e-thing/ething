@@ -34,6 +34,7 @@ class Script
 		$cmd .= ' --apiUrl "'.\addslashes($ething->config('path')).'"';
 		$cmd .= ' --user ething';
 		$cmd .= ' --password "'.\addslashes($ething->config('auth.password')).'"';
+		$cmd .= ' -t '.$ething->config('script.timeout');
 		
 		if(is_array($globals) && !empty($globals)){
 			$cmd .= ' --globals "'.\addslashes(\json_encode($globals)).'"';

@@ -187,7 +187,7 @@
 			})
 		},{
 			name: 'proxy',
-			description: 'Configure a proxy server if your e-Thing server does not have a direct connection.',
+			description: 'Configure a proxy server if your e-Thing server does not have a direct connection to Internet.',
 			item: new $.Form.FormLayout({
 				items: [{
 					name: 'host',
@@ -235,27 +235,10 @@
 			checkable: true
 		},{
 			name: 'cors',
+			label: 'Cross-origin resource sharing',
 			description: 'Make the e-Thing API public or not. If disabled, the API will only be available from web page of the same domain/origin. If you want another website to access your data, enabled it.',
 			item: new $.Form.Checkbox({
 				label: 'enable'
-			})
-		},{
-			name: 'quota',
-			description: 'The amount of space allowed for the e-Thing application. 0 means unlimited.',
-			item: new $.Form.Number({
-				minimum: 0,
-				suffix: 'Mo',
-				validators: [
-					$.Form.validator.Integer
-				],
-				format: {
-					'out': function(value){
-						return value * 1000000;
-					},
-					'in': function(value){
-						return value/1000000;
-					}
-				}
 			})
 		},{
 			name: 'mqtt',
@@ -320,16 +303,68 @@
 					}
 				}
 			})
+		},{
+			name: 'log',
+			description: 'Enable log for debugging purpose.',
+			checkable: true,
+			item: new $.Form.FormLayout({
+				items:[{
+					name: 'file',
+					label: 'storage',
+					item: new $.Form.Select({
+						items: {
+							'file' : true,
+							'database' : false
+						},
+						format:{
+							'in': function(v){
+								return !!v;
+							}
+						}
+					})
+				},{
+					name: 'level',
+					item: new $.Form.Select({
+						items: {
+							'TRACE' : 0,
+							'DEBUG' : 1,
+							'INFO' : 2,
+							'WARN' : 3,
+							'ERROR' : 4,
+							'FATAL' : 5
+						},
+						value: 2
+					})
+				}]
+			})
+		},{
+			name: 'script',
+			description: 'Scripts are executed server side.',
+			item: new $.Form.FormLayout({
+				items:[{
+					name: 'timeout',
+					description : 'Timeout in milliseconds. 0 means no timeout.',
+					item: new $.Form.Number({
+						minimum: 0,
+						step: 1000
+					})
+				}]
+			})
 		}]
 	});
 	
 	return function(data){
 		
+		UI.stopPollingRefresh();
 		
 		var $template = UI.Container.set(template);
 		
 			
 		var $loading = $('<span>').text('loading...').prependTo('#settings-tab');
+		
+		$('#settings-tab button.daemon-restart').click(function() {
+			$.get('../tools/daemonRestart.php');
+		}).hide();
 		
 		EThing.settings.get().done(function(settings){
 			
@@ -359,6 +394,8 @@
 						$preferencesForm.one('changed.form', function(){
 							$('#settings-tab > .error').hide();
 						});
+					}).always(function(){
+						$('#settings-tab button.daemon-restart').show();
 					});
 					
 				});
@@ -374,10 +411,10 @@
 		});
 		
 		$('#log-filter').change(function(){
-			var selectedTypes = $(this).val();
+			var selectedLevels = $(this).val();
 			$('#log tbody tr').each(function(){
 				var $tr = $(this);
-				$tr.toggle(selectedTypes.indexOf($tr.children('.type').text())!==-1);
+				$tr.toggle(selectedLevels.indexOf($tr.children('.level').text())!==-1);
 			});
 		});
 		
@@ -397,56 +434,40 @@
 		
 		
 		$('#log-reload').click(loadLog);
-		$('#log-clear').click(function(){
-			if(confirm('Clear the log ?')){
-				$.get('../tools/clearLog.php').always(loadLog)
-			}
-		});
 		
 		function loadLog(){
 			// load the log
 			
 			var $loading = $('<tr>').html('<td>loading...</td>').prependTo($('#log tbody').empty());
 			
-			$.get('../tools/readLog.php?ts='+Math.floor(Date.now() / 1000), function(data){
+			$.get('../tools/readLog.php?line=100&ts='+Math.floor(Date.now() / 1000), function(data){
 				
-				require(['csv'],function(CSV){
-					
-					$loading.remove();
-					
-					var rows = CSV.parse(data,';').reverse(),
-						$body = $('#log tbody');
-					
-					rows.forEach(function(row){
-						if(row.length >= 4){
-							
-							var date = Date.parse(row[0].replace(/ /,'T')), // make it ISO 8601 or it will fail in Firefox
-								origin = row[1],
-								type = row[2].toLowerCase(),
-								message = row[3],
+				var $body = $('#log tbody').empty();
+				
+				data.split("\n").reverse().forEach(function(line){
+					var d = line.split(' ');
+					if(d.length>=6){
+						var date = d[0]+' '+d[1],
+							name = d[2],
+							level = d[3],
+							message = d.slice(5).join(' '),
+							cl;
+						
+						switch(level){
+							case 'ERROR':
+							case 'FATAL':
+								cl = 'danger';
+								break;
+							case 'WARN':
+								cl = 'warning';
+								break;
+							default:
 								cl = '';
-							
-							switch(type){
-								case 'error':
-									cl = 'danger';
-									break;
-								case 'warning':
-									cl = 'warning';
-									break;
-								case 'success':
-									cl = 'success';
-									break;
-								default:
-									cl = '';
-									break;
-							}
-							
-							if(!isNaN(date)){
-								$('<tr class="'+cl+'"><td class="date">'+row[0]+'</td><td class="type">'+type+'</td><td class="origin">'+origin+'</td><td class="message">'+message+'</td></tr>').appendTo($body);
-							}
-							
+								break;
 						}
-					});
+						
+						$('<tr class="'+cl+'"><td class="date">'+date+'</td><td class="level">'+level+'</td><td class="message">'+message+'</td></tr>').appendTo($body);
+					}
 					
 				});
 				
@@ -468,9 +489,14 @@
 				var $body = $('#status tbody');
 				
 				data.forEach(function(item){
-					
-					$('<tr><td class="name">'+item.name+'</td><td class="message '+(item.ok ? 'success' : 'danger')+'">'+item.message+'</td></tr>').appendTo($body);
-					
+					var $l = $('<tr><td class="name">'+item.name+'</td><td class="message '+(item.ok ? 'success' : 'danger')+'">'+item.message+'</td></tr>').appendTo($body);
+					if(/daemon/i.test(item.name) && item.ok){
+						$l.find('.message').append(' ',$('<button class="btn btn-link"><span class="glyphicon glyphicon-refresh" aria-hidden="true"></span> restart</button>').click(function(){
+							$.get('../tools/daemonRestart.php', function(){
+								location.reload();
+							});
+						}))
+					}
 				});
 				
 			});

@@ -12,7 +12,7 @@ namespace Ething;
  */
 
 define('ETHING_CONFIG_FILE', __DIR__.'/../config.json');
-define('ETHING_LOG_FILE', __DIR__.'/../ething.log');
+define('ETHING_LOG_FILE', __DIR__.'/../log/ething.log');
 	
 class Config implements \JsonSerializable
 {
@@ -33,7 +33,6 @@ class Config implements \JsonSerializable
 		'proxy.port' => self::READWRITE,
 		'proxy.user' => self::READWRITE,
 		'proxy.password' => self::WRITE,
-		'quota' => self::READWRITE,
 		'auth.localonly' => self::READWRITE,
 		'auth.password' => self::WRITE,
 		'notification' => self::READWRITE,
@@ -45,12 +44,15 @@ class Config implements \JsonSerializable
 		'notification.smtp.password' => self::WRITE,
 		'cors' => self::READWRITE,
 		'log' => self::READWRITE,
+		'log.file' => self::READWRITE,
+		'log.level' => self::READWRITE,
 		'mqtt.host' => self::READWRITE,
 		'mqtt.port' => self::READWRITE,
 		'mqtt.user' => self::READWRITE,
 		'mqtt.password' => self::WRITE,
 		'mqtt.clientId' => self::READWRITE,
-		'mqtt.rootTopic' => self::READWRITE
+		'mqtt.rootTopic' => self::READWRITE,
+		'script.timeout' => self::READWRITE
 	);
 	
 	// default configuration
@@ -65,7 +67,7 @@ class Config implements \JsonSerializable
 			'port' => 27017,
 			'user' => null,
 			'password' => null,
-			'database' => "ething_"
+			'database' => "ething"
 		),
 		
 		// (set to false to disable this feature)
@@ -92,8 +94,6 @@ class Config implements \JsonSerializable
 		*/
 		'proxy' => false,
 		
-		'quota' => 100000000,
-		
 		'auth' => array(
 			'password' => 'admin',
 			'localonly' => false
@@ -105,8 +105,11 @@ class Config implements \JsonSerializable
 		// debug information is given in the error messages send through HTTP requests
 		'debug' => true,
 		
-		// log file. Set to false to disable logging.
-		'log' => ETHING_LOG_FILE,
+		// logging. Set to false to disable logging.
+		'log' => array(
+			'file' => ETHING_LOG_FILE, // if not given, log will be written in the database
+			'level' => Logger::INFO
+		),
 		
 		'session' => array(
 			'expiration' => 86400, // in seconds, the time after which a session is expired
@@ -114,13 +117,25 @@ class Config implements \JsonSerializable
 			'secret' => 'taupesecretstring' // must not be shared
 		),
 		
-		'deamon' => array(
+		'daemon' => array(
 			'host' => '127.0.0.1',
 			'port' => 24934,
 			'timeout' => 10 // in seconds
 		),
 		
-		'mqtt' => false
+		/*
+		"mqtt": {
+			"host": "127.0.0.1",
+			"port": 1883,
+			"clientId": "ething",
+			"rootTopic": "ething/"
+		}
+		*/
+		'mqtt' => false,
+		
+		'script' => array(
+			'timeout' => 300000 // in millisecondes
+		)
 		
 	);
 	
@@ -163,7 +178,7 @@ class Config implements \JsonSerializable
 	}
 	
 	public function save(){
-		file_put_contents ($this->filename, json_encode($this->_d, JSON_PRETTY_PRINT|JSON_UNESCAPED_SLASHES));
+		@file_put_contents ($this->filename, json_encode($this->_d, JSON_PRETTY_PRINT|JSON_UNESCAPED_SLASHES));
 	}
 	
 	// get/set attribute
@@ -232,13 +247,14 @@ class Config implements \JsonSerializable
 								throw new Exception('auth.password must be a string (min. length = 4 cahracters)');
 							$value = md5($value);
 							break;
-						case 'quota':
+						case 'script.timeout':
 							if(!(is_int($value) && $value >= 0))
-								throw new Exception('quota must be an integer > 0');
+								throw new Exception('script.timeout must be an integer >= 0');
 							break;
 						case 'proxy':
 						case 'notification':
 						case 'notification.smtp':
+						case 'log':
 							if(!is_null($value) && $value!==false)
 								throw new Exception("$name is invalid");
 							break;
@@ -270,9 +286,14 @@ class Config implements \JsonSerializable
 								throw new Exception("$name must be a valid port number");
 							break;
 						
-						case 'log':
-							if(!($value === false || $value === null || (is_string($value) && !empty($value))))
-								throw new Exception('log must be a filename or set to false');
+						case 'log.file':
+							if(!is_bool($value))
+								throw new Exception("$name must be a boolean");
+							$value = $value ? ETHING_LOG_FILE : false;
+							break;
+						case 'log.level':
+							if(!(is_int($value) && $value >= Logger::TRACE && $value <= Logger::FATAL))
+								throw new Exception("$name must be a valid log level number");
 							break;
 						
 						default:

@@ -164,7 +164,7 @@ class MQTT extends Device
 			return true;
 		}*/
 		
-		return $this->ething->deamon('device.mqtt.send '.$this->id().' "'.\addslashes($topic).'" '.\base64_encode($payload)."\n", $stream, $options);
+		return $this->ething->daemon('device.mqtt.send '.$this->id().' "'.\addslashes($topic).'" '.\base64_encode($payload)."\n", $stream, $options);
 	}
 	
 	public function processMessage($topic, $message) {
@@ -253,16 +253,16 @@ class MQTT extends Device
 	}
 	
 	
-	public function remove() {
-		$this->ething->deamon('device.mqtt.end '.$this->id()."\n");
+	public function remove($removeChildren = false) {
+		$this->ething->daemon('device.mqtt.end '.$this->id()."\n");
 		
 		// remove the resource
-		parent::remove();
+		parent::remove($removeChildren);
 		
 	}
 	
 	public function restart(){
-		$this->ething->deamon('device.mqtt.start '.$this->id()."\n");
+		$this->ething->daemon('device.mqtt.start '.$this->id()."\n");
 	}
 	
 }

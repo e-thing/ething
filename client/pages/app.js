@@ -15,7 +15,7 @@
 			return;
 		}
 		
-		UI.Container.set(template);
+		UI.Container.set(template).addClass('ui-container-absolute');
 		
 		//Header.setMobileTitle('app');
 		

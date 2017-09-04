@@ -35,23 +35,6 @@
 		})
 	};
 	
-	var updateDataFolders = function(){
-		var $ulFolders = $html.find('[data-role="data-folders"]').empty();
-		EThing.arbo.find(function(r){
-			return r instanceof EThing.Folder && !r.isRoot;
-		}).forEach(function(f){
-			$ulFolders.append('<li class="selection-disabled"><a href="#!data?path='+encodeURIComponent(f.id())+'" data-toggle="collapse" data-target="#main-navbar.in"><span class="glyphicon glyphicon-folder-close" aria-hidden="true"></span> '+f.name()+'</a></li>');
-		});
-		
-		var enable = !!$ulFolders.children().length;
-		$ulFolders.parent().toggleClass('dropdown-hover',enable);
-		if(enable)
-			$ulFolders.prepend('<li class="dropdown-header">Folders</li>');
-		
-	}
-	
-	EThing.on('ething.arbo.loaded ething.file.created ething.table.created ething.device.created ething.app.created ething.resource.removed', updateDataFolders);
-	
 	update();
 	
 	UI.on('ui-pageChange', update);

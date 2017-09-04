@@ -38,7 +38,7 @@ body:not(.ui-rp-mobile-shown) #ui-infopanel .content {
 
 #ui-infopanel .content {
 	position: fixed;
-	top: 50px;
+	top: 51px;
 	bottom: 0px;
 	right: 0px;
 	width: 350px;
@@ -46,6 +46,10 @@ body:not(.ui-rp-mobile-shown) #ui-infopanel .content {
 	overflow-y: auto;
 	background-color: inherit;
 	transition: transform .3s;
+}
+
+body.app-android #ui-infopanel .content {
+	top: 0px; /* remove the header */
 }
 
 #ui-infopanel .bg {
@@ -76,6 +80,9 @@ body:not(.ui-rp-mobile-shown) #ui-infopanel .content {
 	overflow-y: auto;
 }
 
+body.app-android #ui-infopanel {
+	top: 0px; /* remove the header */
+}
 
 body.ui-rp:not(.ui-rp-desktop-hidden) > .ui-container {
 	right: 350px !important;
@@ -246,3 +253,12 @@ body.ui-rp-desktop-hidden #ui-infopanel {
 }
 
 
+#ui-infopanel .tooltip > .tooltip-arrow {
+	border-bottom-color: #333;
+}
+
+#ui-infopanel .tooltip > .tooltip-inner {
+	background-color: rgba(0, 0, 0, 0);
+    border: 1px solid #333;
+	color: #333;
+}

@@ -9,10 +9,22 @@
 					Create custom rules to execute tasks when an event occurs and only under certains conditions.
 				</p>
 				
-				<p class="text-center">
-					<button class="btn btn-default" id="rule-add-btn">
+				<p>
+					
+					<div class="form-inline">
+					  <button class="btn btn-default" id="rule-add-btn">
 						<span class="glyphicon glyphicon-plus" aria-hidden="true"></span> Rule
-					</button>
+					  </button>
+					  <div class="form-group">
+						<div class="input-group">
+						  <input type="text" class="form-control" placeholder="Send custom event..." id="rule-emit-input">
+						  <span class="input-group-btn">
+							<button class="btn btn-default" type="button" id="rule-emit-btn">Emit</button>
+						  </span>
+						</div>
+					  </div>
+					</div>
+					
 				</p>
 			</div>
 			

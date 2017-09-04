@@ -160,29 +160,29 @@ abstract class RFLinkGateway extends Device
 	
 	
 	public function restart(){
-		$this->ething->deamon('device.rflink.start '.$this->id()."\n");
+		$this->ething->daemon('device.rflink.start '.$this->id()."\n");
 	}
 	
-	public function remove() {
+	public function remove($removeChildren = false) {
 		
-		$this->ething->deamon('device.rflink.end '.$this->id()."\n");
+		$this->ething->daemon('device.rflink.end '.$this->id()."\n");
 		
 		// remove all the nodes attached to it !
 		$this->removeAllNodes();
 		
 		// remove the resource
-		parent::remove();
+		parent::remove($removeChildren);
 		
 	}
 	
 	public function sendMessage($message, $stream = null, $options = array()){
-		return $this->ething->deamon('device.rflink.send '.$this->id().' '.\base64_encode($message)."\n", $stream, $options);
+		return $this->ething->daemon('device.rflink.send '.$this->id().' '.\base64_encode($message)."\n", $stream, $options);
 	}
 	
 	// send a message and wait for the response.
 	// note: not all request has a response !
 	public function sendMessageWaitResponse($message, $stream = null, $options = array()){
-		return $this->ething->deamon('device.rflink.sendWaitResponse '.$this->id().' '.\base64_encode($message)."\n", $stream, $options);
+		return $this->ething->daemon('device.rflink.sendWaitResponse '.$this->id().' '.\base64_encode($message)."\n", $stream, $options);
 	}
 	
 	abstract public function instanciateController();

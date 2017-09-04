@@ -61,7 +61,7 @@ class Log extends Action {
 			}
 		});
 		
-		$this->ething()->log($message, 'Action::Log');
+		$this->ething()->logger()->force($message);
 	}
 	
 }

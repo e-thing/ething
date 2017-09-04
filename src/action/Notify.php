@@ -12,7 +12,7 @@ class Notify extends Action {
 	static public function validate(array &$attributes, array $context){
 		
 		$attributes = array_merge(
-			array( 'subject' => "Notification from e-Thing", 'content' => 'no content' ),
+			array( 'subject' => "Notification from e-Thing", 'content' => 'no content', 'attachments' => null ),
 			$attributes
 		);
 		
@@ -29,6 +29,10 @@ class Notify extends Action {
 					if(empty($attributes[$key]))
 						throw new \Exception("field '{$key}' must be set.");
 					
+					break;
+					
+				case 'attachments':
+					AbstractResourceAction::validateResourceAttr($context['ething'], $attributes[$key], array('File','Table'));
 					break;
 				
 				default:
@@ -75,7 +79,32 @@ class Notify extends Action {
 			}
 		});
 		
-		$this->ething()->notify($this->subject,$content);
+		$attachments = array();
+		try {
+			$rs = AbstractResourceAction::getResourcesStatic($this->ething(), $this->attachments);
+		} catch(\Exception $e){
+			$this->setError($e->getMessage());
+		}
+		if(!empty($rs)){
+			foreach( $rs as $r){
+				
+				if($r instanceof \Ething\File){
+					$attachments[] = array(
+						'name' => \basename($r->name()),
+						'content' => $r->read(),
+						'type' => $r->mime
+					);
+				} else if($r instanceof \Ething\Table){
+					$attachments[] = array(
+						'name' => \preg_replace('/\\.[^.\\s]$/', '', \basename($r->name())).'.json',
+						'content' => \json_encode($r->select(), JSON_PRETTY_PRINT|JSON_UNESCAPED_SLASHES),
+						'type' => 'application/json'
+					);
+				}
+			}
+		}
+		
+		$this->ething()->notify($this->subject,$content,$attachments);
 	}
 	
 }

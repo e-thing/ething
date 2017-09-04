@@ -47,45 +47,58 @@
 }
 
 #devices .explorer .deviceview .item > div.desc > .col-icon {
-	float: left;
-	position: relative;
-	width: 112px;
-	height: 112px;
 	background-color: #9b59b6;
 }
 
 #devices .explorer .deviceview .item > div.desc > .col-icon svg, .explorer .deviceview .item > div.desc > .col-icon img{
-	width: 100%;
-	height: 100%;
+	width: 52px;
+	height: 52px;
+	display: block;
 }
 
+#devices .explorer .deviceview .item > div.desc > * {
+	display: table-cell;
+	vertical-align: middle;
+}
 
 
 
 #devices .explorer .deviceview .item > div.desc > .meta {
-	margin-left: 112px;
+	margin-left: 52px;
 	padding: 5px;
+	line-height: 41px;
+	vertical-align: middle;
+    width: 100%;
+	max-width: 1px;
 }
 
+#devices .explorer .deviceview .item > div.desc > .meta > * {
+	vertical-align: middle;
+	display: inline-block;
+}
+
+#devices .explorer .deviceview .item .tag {
+    margin-left: 10px;
+    color: #c3c3c3;
+}
+
+#devices .explorer .deviceview .item .tag > span.glyphicon, #devices .explorer .deviceview .item .tag > i.fa {
+	margin-right: 5px;
+}
+
+
+#devices .explorer .deviceview .col-name {
+    font-size: 18px;
+}
 
 #devices .explorer .deviceview .col-info {
-    float: right;
-    margin: 10px;
+    padding: 0 10px;
 }
 
-#devices .explorer .deviceview .col-share {
-	margin-left: 5px;
-	font-size: smaller;
-	color: grey;
-}
-
-#devices .explorer .deviceview .col-battery svg {
-    vertical-align: middle;
-}
 
 @media (min-width: 768px) {
 #devices .explorer .col-info {
-	display: none;
+	display: none !important;
 }
 }
 
@@ -122,7 +135,6 @@
 
 
 
-
 /* tree view */
 
 #devices .explorer .deviceview .item {
@@ -146,12 +158,12 @@
 #devices .explorer .children > .item::after {
     border-top: 2px solid #9b59b6;
     height: 20px;
-    top: 56px;
+    top: 26px;
     width: 10px
 }
 
 #devices .explorer .children > .item:last-child::before {
-    height: 66px
+    height: 38px
 }
 
 

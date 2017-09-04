@@ -11,7 +11,7 @@ use \Ething\Device\MySensorsNode;
 use \Ething\Device\MySensorsSensor;
 use \Ething\Event;
 
-abstract class Controller {
+abstract class Controller extends \Stream {
 	
 	const ACK_TIMEOUT = 5; // seconds (maybe float number)
 	const AUTOCONNECT_PERIOD = 15; // seconds
@@ -45,7 +45,11 @@ abstract class Controller {
 	private $lastAutoconnectLoop = 0;
 	private $preventFailConnectLog = false;
 	
+	private $logMessage = false;
+	
 	protected $isOpened = false;
+	
+	protected $logger;
 	
 	public $options = array(
 		'isMetric' => true, // Metric or Imperial
@@ -58,6 +62,8 @@ abstract class Controller {
 		$this->options = array_replace_recursive($this->options, $options);
 		
 		$this->options['isMetric'] = $gateway->isMetric();
+		
+		$this->logger = $this->gateway->ething->logger();
 	}
 	
 	public function ething(){
@@ -74,7 +80,6 @@ abstract class Controller {
 	
 	public function open(){
 		$this->isOpened = true;
-		$this->log('opened');
 		return true;
 	}
 	
@@ -84,7 +89,7 @@ abstract class Controller {
 	public function close(){
 		$this->isOpened = false;
 		$this->lastAutoconnectLoop = 0;
-		$this->log('closed');
+		$this->logger->info("MySensors: closed");
 		return true;
 	}
 	
@@ -95,7 +100,7 @@ abstract class Controller {
 			'name' => $gateway->name().'/node-'.$nodeId
 		))))
 			throw new Exception("fail to create the node nodeId={$nodeId}");
-		$this->log("new node nodeId={$nodeId}");
+		$this->logger->info("MySensors: new node nodeId={$nodeId}");
 		return $node;
 	}
 	
@@ -108,14 +113,14 @@ abstract class Controller {
 		)))){
 			throw new Exception("fail to create the sensor nodeId={$node->nodeId()} sensorId={$sensorId} sensorType={$sensorType}");
 		}
-		$this->log("new sensor nodeId={$node->nodeId()} sensorId={$sensorId} sensorType={$sensorType}");
+		$this->logger->info("MySensors: new sensor nodeId={$node->nodeId()} sensorId={$sensorId} sensorType={$sensorType}");
 		return $sensor;
 	}
 	
 	public function processMessage(Message $message) {
 		$r = true;
 		
-		//$this->log("message received {$message}");
+		$this->logger->debug("MySensors: message received {$message}");
 		
 		$gateway = $this->gateway;
 		$nodeId = $message->nodeId;
@@ -123,7 +128,7 @@ abstract class Controller {
 		$node = null;
 		$sensor = null;
 		
-		$gateway->log($message);
+		if($this->logMessage) $gateway->log($message);
 		
 		// automatically create unknown node and sensor
 		if($nodeId > 0 && $nodeId != MySensors::BROADCAST_ADDRESS){
@@ -171,21 +176,12 @@ abstract class Controller {
 						
 						if($sensor){
 							
-							//$this->log("set value nodeId={$nodeId} sensorId={$sensorId} valueType={$message->subType} value={$message->payload}");
+							$this->logger->debug("MySensors: set value nodeId={$nodeId} sensorId={$sensorId} valueType={$message->subType} value={$message->payload}");
 							if(($datatype = MySensors::valueTypeStr($message->subType)) !== null){
 								$value = $message->getValue();
-								$sensor->setData($datatype, $value);
 								$sensor->storeData($datatype, $value);
-								
-								// generate an event
-								$sensor->dispatchSignal(Event\DeviceDataSet::emit($sensor, (object)array(
-									$datatype => $value
-								)));
-								// mqtt publish
-								$this->ething()->mqttPublish("resource/device/{$sensor->id()}/data/{$datatype}", $value, true);
-								
 							} else {
-								$this->log("unknown value subtype {$message->subType}");
+								$this->logger->warn("MySensors: unknown value subtype {$message->subType}");
 							}
 						}
 						
@@ -203,7 +199,7 @@ abstract class Controller {
 									// no value stored ! No response
 								}
 							} else {
-								$this->log("unknown value subtype {$message->subType}");
+								$this->logger->warn("MySensors: unknown value subtype {$message->subType}");
 							}
 						}
 						
@@ -215,13 +211,13 @@ abstract class Controller {
 							
 							case MySensors::I_GATEWAY_READY :
 								$this->gatewayReady = true;
-								$this->log("gateway ready");
+								$this->logger->info("info: gateway ready");
 								break;
 							
 							case MySensors::I_VERSION :
 								$this->gatewayLibVersion = $message->payload;
 								$gateway->set('libVersion', $message->payload);
-								$this->log("gateway version = {$this->gatewayLibVersion}");
+								$this->logger->info("MySensors: gateway version = {$this->gatewayLibVersion}");
 								break;
 							
 							case MySensors::I_TIME :
@@ -295,11 +291,11 @@ abstract class Controller {
 								
 								break;
 							case MySensors::I_LOG_MESSAGE :
-								$this->log("nodeId={$message->nodeId} sensorId={$message->childSensorId} {$message->payload}");
+								$this->logger->info("MySensors: nodeId={$message->nodeId} sensorId={$message->childSensorId} {$message->payload}");
 								break;
 							
 							default:
-								$this->log("message not processed {$message->messageType} {$message->subType} nodeId={$message->nodeId} sensorId={$message->childSensorId} {$message->payload}");
+								$this->logger->warn("MySensors: message not processed {$message->messageType} {$message->subType} nodeId={$message->nodeId} sensorId={$message->childSensorId} {$message->payload}");
 								break;
 								
 						}
@@ -325,7 +321,7 @@ abstract class Controller {
 									list($type, $version, $nbBlocks, $crc) = $parts;
 									$bootloaderVersion = count($parts)>4 ? $parts[4] : 0;
 									
-									$this->log(sprintf("FW CONFIG : nodeId=%d type=%04X version=%04X blocks=%d crc=%04X BLVersion=%04X", $nodeId, $type, $version, $nbBlocks, $crc, $bootloaderVersion));
+									$this->logger->info(sprintf("MySensors: FW CONFIG : nodeId=%d type=%04X version=%04X blocks=%d crc=%04X BLVersion=%04X", $nodeId, $type, $version, $nbBlocks, $crc, $bootloaderVersion));
 									
 									if($node){
 										$node->set('firmware', array(
@@ -347,9 +343,9 @@ abstract class Controller {
 										$ok = $firmwareInfo['type'] === $type && $firmwareInfo['version'] === $version && $firmwareInfo['blocks'] === $blocks && $firmwareInfo['crc'] === $crc;
 										
 										if($ok){
-											$this->log(sprintf("FW updated successfully : nodeId=%d type=%04X version=%04X blocks=%d crc=%04X", $nodeId, $type, $version, $nbBlocks, $crc));
+											$this->logger->info(sprintf("MySensors: FW updated successfully : nodeId=%d type=%04X version=%04X blocks=%d crc=%04X", $nodeId, $type, $version, $nbBlocks, $crc));
 										} else {
-											$this->log(sprintf("FW update ERROR : nodeId=%d", $nodeId));
+											$this->logger->warn(sprintf("MySensors: FW update ERROR : nodeId=%d", $nodeId));
 										}
 										
 										if(is_callable($firmwareInfo['callback'])){
@@ -386,7 +382,7 @@ abstract class Controller {
 									
 									list($type, $version, $iBlock) = unpack("n3", $message->payload);
 									
-									$this->log(sprintf("FW GET : nodeId=%d type=%04X version=%04X block=%d", $nodeId, $type, $version, $iBlock));
+									$this->logger->warn(sprintf("MySensors: FW GET : nodeId=%d type=%04X version=%04X block=%d", $nodeId, $type, $version, $iBlock));
 									
 									if(isset($this->pendingFirmware[$nodeId])){
 										$chunk = substr($this->pendingFirmware[$nodeId]['firmware'], $iBlock*static::FIRMWARE_BLOCK_SIZE, static::FIRMWARE_BLOCK_SIZE);
@@ -402,7 +398,7 @@ abstract class Controller {
 										$this->send($response);
 										
 									} else {
-										$this->log("FW GET : no firmware found");
+										$this->logger->warn("MySensors: FW GET : no firmware found");
 									}
 								}
 								
@@ -439,7 +435,7 @@ abstract class Controller {
 												'type' => $message->subType
 											);
 										} else {
-											$this->log("STREAM: first packet must start with index=1, got {$index}");
+											$this->logger->warn("MySensors: STREAM: first packet must start with index=1, got {$index}");
 											break;
 										}
 									}
@@ -470,26 +466,24 @@ abstract class Controller {
 													unset($this->pendingStreams[$nodeId]);
 													
 													
-													$this->log("STREAM: end of stream, packetCount={$stream['packetCount']}, size(B)={$size}, time(s)={$timeElapsed}");
+													$this->logger->warn("MySensors: STREAM: end of stream, packetCount={$stream['packetCount']}, size(B)={$size}, time(s)={$timeElapsed}");
 												}
 												
 											} else {
 												unset($this->pendingStreams[$nodeId]); // remove on first error
-												$this->log("STREAM: index mismatch");
+												$this->logger->warn("MySensors: STREAM: index mismatch");
 											}
 										} else {
-											$this->log("STREAM: type mismatch");
+											$this->logger->warn("MySensors: STREAM: type mismatch");
 										}
-									}/* else {
-										$this->log("STREAM: no stream found");
-									}*/
+									}
 									
 								}
 								
 								break;
 							
 							default:
-								$this->log("message not processed {$message->messageType} {$message->subType} nodeId={$message->nodeId} sensorId={$message->childSensorId} {$message->payload}");
+								$this->logger->warn("MySensors: message not processed {$message->messageType} {$message->subType} nodeId={$message->nodeId} sensorId={$message->childSensorId} {$message->payload}");
 								break;
 							
 						}
@@ -502,7 +496,7 @@ abstract class Controller {
 				}
 			
 			} catch(\Exception $e){
-				$this->log($e);
+				$this->logger->error($e);
 				$r = false;
 			}
 			
@@ -627,17 +621,17 @@ abstract class Controller {
 		
 		// check for a deconnection
 		if(!$this->isOpened && $this->isOpened != $this->lastState_)
-			$this->log("disconnected");
+			$this->logger->info("MySensors: disconnected");
 		$this->lastState_ = $this->isOpened;
 		
 		// autoconnect
 		if(!$this->isOpened && ($now - $this->lastAutoconnectLoop) > self::AUTOCONNECT_PERIOD ){
 			try{
 				$this->open();
-				$this->log("connected");
+				$this->logger->info("MySensors: connected");
 				$this->preventFailConnectLog = false;
 			} catch(Exception $e){
-				if(!$this->preventFailConnectLog) $this->log("unable to connect : {$e->getMessage()}");
+				if(!$this->preventFailConnectLog) $this->logger->warn("MySensors: unable to connect : {$e->getMessage()}");
 				$this->preventFailConnectLog = true;
 			}
 			$this->lastAutoconnectLoop = $now;
@@ -661,15 +655,15 @@ abstract class Controller {
 			$smartSleep = null;
 		}
 		
-		
-		
-		$this->gateway->log($message, true);
+		if($this->logMessage) $this->gateway->log($message, true);
 		
 		if($smartSleep===null){
 			$smartSleep = false;
-			$destinationNode = $this->gateway->getNode($message->nodeId);
-			if($destinationNode){
-				$smartSleep = $destinationNode->smartSleep;
+			if($message->nodeId!==MySensors::GATEWAY_ADDRESS && $message->nodeId!==MySensors::BROADCAST_ADDRESS){
+				$destinationNode = $this->gateway->getNode($message->nodeId);
+				if($destinationNode){
+					$smartSleep = $destinationNode->smartSleep;
+				}
 			}
 		}
 		
@@ -769,7 +763,7 @@ abstract class Controller {
 			};
 		}
 		
-		//$this->log("message send nodeId={$message->nodeId} sensorId={$message->childSensorId} messageType={$message->messageType} smartSleep=".($smartSleep?'1':'0'));
+		$this->logger->debug("MySensors: message send nodeId={$message->nodeId} sensorId={$message->childSensorId} messageType={$message->messageType} smartSleep=".($smartSleep?'1':'0'));
 		
 		$ts = microtime(true);
 		
@@ -854,10 +848,16 @@ abstract class Controller {
 		
 	}
 	
+	protected $stream = null;
 	
-	protected function log($message){
-		$this->ething()->log($message, "gateway '{$this->name()}'");
+	public function getStream(){
+		return $this->stream;
 	}
+	
+	public function process(){
+		$this->read();
+	}
+	
 	
 };
 

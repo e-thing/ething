@@ -3,6 +3,10 @@
 	top: 51px;
 }
 
+body.app-android .ui-container {
+	top: 0px; /* remove the header */
+}
+
 
 .ui-container.ui-container-absolute {
 	overflow: auto;
@@ -13,22 +17,6 @@
 	margin: 0px;
 }
 
-
-/* Desktop */
-@media (min-width: 768px) {
-
-/* absolute layout */
-
-.ui-container.ui-container-absolute-desktop {
-	overflow: auto;
-	position: absolute;
-	bottom: 0px;
-	left: 0px;
-	right: 0px;
-	margin: 0px;
-}
-
-}
 
 
 #loader {
