@@ -9,7 +9,7 @@
 ### END INIT INFO
 
 ETHING_DIR="/var/www/html/ething"
-SCRIPT="/usr/bin/php -f ${ETHING_DIR}/deamon/ethingd.php --"
+SCRIPT="/usr/bin/php -f ${ETHING_DIR}/daemon/ethingd.php --"
 RUNAS=root
 NAME=ethingd
 
