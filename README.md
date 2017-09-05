@@ -92,8 +92,8 @@ a value greater than a threshold or if it has low battery.
 
 - Install Mosquitto (optional)
 
-Only if you want enable MQTT.
-
+ Only if you want enable MQTT.
+ 
  ```bash
  sudo apt-get install mosquitto
  ```
@@ -149,7 +149,7 @@ Only if you want enable MQTT.
  
 ## Configuration
 
-The configuration file **config.php** is located in the root directory.
+The configuration file **config.json** is located in the root directory. An example is given in `default-config.json`.
 
 * set your mongodb server address here with the correct port number. Default to the local database.
  ```json
