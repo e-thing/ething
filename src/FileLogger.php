@@ -53,6 +53,8 @@ class FileLogger extends Logger {
 					return false;
 				}
 			}
+			@touch($file);
+			@chmod($file, 0777);
 		}
 		
 		$mode = $this->append ? 'a' : 'w';

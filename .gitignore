@@ -1,4 +1,4 @@
 /vendor
 /config.json
 /composer.lock
-/log/*
+/log

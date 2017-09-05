@@ -26,6 +26,7 @@
 	function FormModal(opt,doneCallback){
 		
 		var options = $.extend(true,{
+			header: null,
 			title: null,
 			item: null,
 			value: undefined,
@@ -122,9 +123,9 @@
 		var $form = $('<div>').form(options.item, options.value, function(){
 			formDfr.resolve(this);
 		});
-		
+		var $header = typeof options.header === 'string' ? $('<p class="m-header">').html(options.header) : null;
 		var $error = $('<div class="alert alert-danger" role="alert">').hide();
-		var $modal = $('<div>').append($form,$error).modal(modalOptions);
+		var $modal = $('<div>').append($header,$form,$error).modal(modalOptions);
 		
 		var $validBtn = $modal.modal('buttons').first();
 		

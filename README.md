@@ -16,9 +16,9 @@ This project can easily be installed on a Raspberry Pi or any computer.
 #### Access your data anywhere
 
 A web client is also provided to browse, view and edit your data, to manage and communicate with your devices.
-Use the online editor to write your own application using the [Javascript API](http://e-thing.github.io/doc/js).
+Use the online editor to write your own script or application using the [Javascript API](http://e-thing.github.io/doc/js).
 
-![ething_screenshot](https://cloud.githubusercontent.com/assets/17341216/17768812/20bf8e22-6536-11e6-8bdf-dfadbc171fb1.jpg)
+
 
 #### APIs
 
@@ -30,18 +30,19 @@ Many APIs are provided to communicate with the e-Thing server :
 
 Use these APIs to create your own device !
 
-#### Connect your devices
 
-- client mode :
-A device can access to the data from the e-Thing server :
- - write access : e.g. a device sending the temperature at regular intervals. Devices can store data in a table or in a file, such as text or binary data (image for instance).
- - read access : e.g. a device reading the temperature from a distant thermometer and turn on a fan when the value is above a threshold.
+#### Hardware
 
-- server mode :
-A device can also be accessed from the web client, e.g. switch on/off a led.
-The device act like a server listening to incoming HTTP requests.
-To activate this mode, you must provide the URL of the device and a [Swagger specification](http://swagger.io).
-The Swagger specification describes the available requests that your device accepts. 
+Compatible devices:
+
+- any HTTP device
+- IP camera with RTSP support
+- [MySensors](//www.mysensors.org)
+- [RFLink](//rflink.nl)
+- custom MQTT
+- Denon/Marantz audio receiver (tested on Marantz M-CR611)
+
+
 
 #### Notification
 
@@ -91,8 +92,21 @@ a value greater than a threshold or if it has low battery.
 
 - Install Mosquitto (optional)
 
+Only if you want enable MQTT.
+
  ```bash
  sudo apt-get install mosquitto
+ ```
+ 
+ Add the following to the configuration file
+ 
+ ```json
+ {
+     "mqtt": {
+         "host": "localhost",
+         "port": 1883
+     }
+ }
  ```
 
 - Install NodeJS
@@ -137,11 +151,69 @@ a value greater than a threshold or if it has low battery.
 
 The configuration file **config.php** is located in the root directory.
 
-* set your mongodb server address here with the correct port number.
+* set your mongodb server address here with the correct port number. Default to the local database.
+ ```json
+ {
+     "db": {
+        "host": "localhost",
+        "port": 27017,
+        "user": null,
+        "password": null,
+        "database": "ething"
+    }
+ }
+ ```
+* set the URL-path of the EThing root url. For instance, if EThing is accessible through http://192.168.1.117/path, the value is "/path". Default to "/ething".
+ ```json
+ {
+     "path": "/ething"
+ }
+ ```
 * [optional] change the default password.
+ ```json
+ {
+     "auth": {
+        "password": "admin",
+        "localonly": false
+    }
+ }
+ ```
 * [optional] configure a SMTP server if you want some notification to be sent.
+ ```json
+ {
+     "notification": {
+        "emails": [
+            "example@gmail.com"
+        ],
+        "smtp": {
+            "host": "smtp.gmail.com",
+            "port": 587,
+            "user": "example@gmail.com",
+            "password": "password"
+        }
+    }
+ }
+ ```
 * [optional] set proxy settings if needed.
-
+ ```json
+ {
+     "proxy": {
+        "host": "proxy-host",
+        "port": 8080,
+        "user": null,
+        "password": null
+    }
+ }
+ ```
+* [optional] enable MQTT.
+ ```json
+ {
+     "mqtt": {
+        "host": "localhost",
+        "port": 1883
+    }
+ }
+ ```
 
 ## Installation check
 

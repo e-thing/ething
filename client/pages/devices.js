@@ -201,6 +201,13 @@
 					UI.getResourceForm('Device\\Http', null, ['url','auth','specification'])
 				).then(function(globFormEntries, httpFormEntries){
 					
+					httpFormEntries.forEach(function(entry){
+						if(entry.name === 'specification'){
+							entry.description += " The specification describes the available requests that your device accepts.";
+						}
+					});
+					
+					
 					return new $.Form.TabsLayout({
 						format: $.Form.TabsLayout.Format.Merge,
 						items: [{
@@ -229,6 +236,7 @@
 				});
 				
 				$.FormModal({
+					header: 'A HTTP device is a device that use the HTTP protocol. An API KEY will be automatically generated for this device to access your data. Enable the server feature to interact with your device.',
 					item: form,
 					title: '<span class="glyphicon glyphicon-phone" aria-hidden="true"></span> Create a new Http Device',
 					validLabel: '+Add',
@@ -282,7 +290,13 @@
 			
 			$element.find('#btn-create-MQTT').click(function(){
 				var form = UI.getResourceForm('Device\\MQTT', null, ['name','location','description','host','port','topic']).then(function(formEntries){
-				
+					
+					formEntries.forEach(function(entry){
+						if(entry.name === 'topic'){
+							entry.description += " Received messages will appended in a table. Only messages in JSON format are supported.";
+						}
+					});
+					
 					return new $.Form.FormLayout({
 						items: formEntries
 					});
@@ -309,6 +323,7 @@
 				});
 				
 				$.FormModal({
+					header: 'See <a href="//rflink.nl" target="_blank">RFLink website</a>',
 					item: form,
 					title: '<span class="glyphicon glyphicon-phone" aria-hidden="true"></span> Add a new Serial RFLink gateway client',
 					validLabel: '+Add',
@@ -350,6 +365,7 @@
 				});
 				
 				$.FormModal({
+					header: 'See <a href="//www.mysensors.org" target="_blank">MySensors website</a>',
 					item: form,
 					title: '<span class="glyphicon glyphicon-phone" aria-hidden="true"></span> Create a new MySensors Gateway',
 					validLabel: '+Add',
@@ -392,6 +408,7 @@
 				});
 				
 				$.FormModal({
+					header: 'MySensors Nodes are created automatically. Use this form only if you want to add it manually.',
 					item: form,
 					title: '<span class="glyphicon glyphicon-phone" aria-hidden="true"></span> Create a new MySensors Node',
 					validLabel: '+Add',
@@ -427,6 +444,7 @@
 				});
 				
 				$.FormModal({
+					header: 'MySensors Nodes are created automatically. Use this form only if you want to add it manually.',
 					item: form,
 					title: '<span class="glyphicon glyphicon-phone" aria-hidden="true"></span> Create a new MySensors Sensor',
 					validLabel: '+Add',

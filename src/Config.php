@@ -103,7 +103,7 @@ class Config implements \JsonSerializable
 		'cors' => true,
 		
 		// debug information is given in the error messages send through HTTP requests
-		'debug' => true,
+		'debug' => false,
 		
 		// logging. Set to false to disable logging.
 		'log' => array(
@@ -123,15 +123,12 @@ class Config implements \JsonSerializable
 			'timeout' => 10 // in seconds
 		),
 		
-		/*
-		"mqtt": {
-			"host": "127.0.0.1",
-			"port": 1883,
-			"clientId": "ething",
-			"rootTopic": "ething/"
-		}
-		*/
-		'mqtt' => false,
+		"mqtt" => array(
+			//"host" => "localhost", // disabled by default
+			"port" => 1883,
+			"clientId" => "ething",
+			"rootTopic" => "ething/"
+		),
 		
 		'script' => array(
 			'timeout' => 300000 // in millisecondes
