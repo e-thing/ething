@@ -6,18 +6,19 @@
         "password": null,
         "database": "ething"
     },
-    "notification": false,
+    "notification": {
+        "emails": [],
+        "smtp": false
+    },
     "proxy": false,
-    "quota": 100000000,
     "auth": {
         "password": "admin",
         "localonly": false
     },
     "cors": true,
-    "debug": true,
-    "session": {
-        "expiration": 864000,
-        "cookie_name": "ething_session",
-        "secret": "taupesecretstring"
+    "debug": false,
+    "mqtt": false,
+    "script": {
+        "timeout": 300000
     }
 }
