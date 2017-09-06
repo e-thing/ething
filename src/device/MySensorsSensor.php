@@ -96,8 +96,6 @@ class MySensorsSensor extends Device
 				$datatype => $value
 			)));
 			
-			// mqtt publish
-			$this->ething->mqttPublish("resource/device/{$this->id()}/data/{$datatype}", $value, true);
 		}
 	}
 	

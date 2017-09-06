@@ -355,7 +355,7 @@
 	
 	return function(data){
 		
-		UI.stopPollingRefresh();
+		UI.stopRefresh();
 		
 		var $template = UI.Container.set(template);
 		

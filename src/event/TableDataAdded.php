@@ -7,7 +7,6 @@ class TableDataAdded extends AbstractResourceEvent {
 	static public function emit(\Ething\Table $resource, \stdClass $data){
 		return new Signal('TableDataAdded', array(
 			'resource' => $resource->id(),
-			'resourceName' => $resource->name(),
 			'data' => $data
 		));
 	}

@@ -87,10 +87,6 @@ class RFLinkSwitch extends Device
 			
 			$this->dispatchSignal(\Ething\Event\DeviceDataSet::emit($this, (object)$attr));
 			
-			foreach($attr as $key => $value){
-				$this->ething->mqttPublish("resource/device/{$this->id()}/data/{$key}", $value, true);
-			}
-			
 		}
 	}
 	

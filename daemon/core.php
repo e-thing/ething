@@ -141,6 +141,15 @@ function checkExpiredDataTask(){
 	
 }
 
+if(!$server->start()){
+	Log::fatal("unable to start the server at port {$server->getPort()}");
+}
+
+
+Timer::delay(1, function(){
+	SignalManager::dispatch(\Ething\Event\DaemonRestarted::emit());
+});
+
 Timer::setInterval(60, function(){
 	SignalManager::dispatch(\Ething\Event\Timer::emit());
 });
@@ -156,7 +165,4 @@ Timer::setInterval(600, function(){
 }, 100);
 
 
-if(!$server->start()){
-	Log::fatal("unable to start the server at port {$server->getPort()}");
-}
 

@@ -63,7 +63,7 @@ abstract class Logger {
 			$renderedMessage = $message;
 		} else if($message instanceof \Exception) {
 			//$renderedMessage = (string) $message;
-			$renderedMessage = $message->getMessage(); // do not print the stack
+			$renderedMessage = $message->getMessage()." [file:".$message->getFile()." line:".$message->getLine()."]"; // do not print the stack
 		} else {
 			$renderedMessage = print_r($message, true);
 		}

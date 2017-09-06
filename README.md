@@ -98,6 +98,24 @@ a value greater than a threshold or if it has low battery.
  sudo apt-get install mosquitto
  ```
  
+ on Raspberry Pi with WebSocket enabled : https://mosquitto.org/2013/01/mosquitto-debian-repository/
+ 
+ ```bash
+ # import the repository package signing key
+ wget http://repo.mosquitto.org/debian/mosquitto-repo.gpg.key
+ sudo apt-key add mosquitto-repo.gpg.key
+ 
+ # Then make the repository available to apt:
+ cd /etc/apt/sources.list.d/
+ # Then one of the following, depending on which version of debian you are using:
+ sudo wget http://repo.mosquitto.org/debian/mosquitto-jessie.list
+ sudo wget http://repo.mosquitto.org/debian/mosquitto-wheezy.list
+ 
+ # install mosquitto
+ apt-get update
+ apt-get install mosquitto
+ ```
+ 
  Add the following to the configuration file
  
  ```json

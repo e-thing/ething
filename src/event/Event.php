@@ -32,7 +32,9 @@ abstract class Event extends RuleItem {
 		return false;
 	}
 	
-	abstract protected function call(Signal $signal);
+	protected function call(Signal $signal) {
+		return true;
+	}
 	
 	
 }

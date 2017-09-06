@@ -99,6 +99,7 @@ try {
 	$mqttListener = new MqttListener($ething);
 } catch(\Exception $e) {
 	$mqttListener = null;
+	Log::warn($e);
 }
 
 $cli->add('mqtt.publish', function($args, $client) use ($mqttListener){
@@ -121,6 +122,8 @@ $cli->add('mqtt.publish', function($args, $client) use ($mqttListener){
 });
 
 if($mqttListener){
+	
+	Log::info("mqtt enabled");
 	
 	PoolStream::add($mqttListener);
 
@@ -146,6 +149,20 @@ if($mqttListener){
 		}
 		
 		
+	});
+	
+	
+	SignalManager::attachHandler(function($signal) use ($ething, $mqttListener) {
+		
+		$mqttListener->publish("signal/{$signal->getName()}", $signal, false);
+		
+		if($signal->getName() === "TableDataAdded"){
+			$mqttListener->publish("resource/table/{$signal->resource}/data", $signal->data, true);
+		} else if($signal->getName() === "DeviceDataSet"){
+			foreach($signal->data as $key => $value){
+				$mqttListener->publish("resource/device/{$signal->resource}/data/{$key}", $value, true);
+			}
+		}
 	});
 }
 

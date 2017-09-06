@@ -170,6 +170,10 @@ class MqttListener extends Stream {
 			
 			Log::debug("MQTT(server): publish to topic {$topic}");
 			
+			if(!is_string($payload)){
+				$payload = \json_encode($payload);
+			}
+			
 			$this->mqttClient->publish($topic,$payload,0,$retain);
 			
 			return true;

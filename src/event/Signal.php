@@ -3,7 +3,7 @@
 namespace Ething\Event;
 
 
-class Signal {
+class Signal implements \JsonSerializable {
 	
 	private $_ts;
 	private $_d; // data
@@ -25,6 +25,11 @@ class Signal {
 	public function getTimestamp()
 	{
 		return $this->_ts;
+	}
+	
+	public function getAttributes()
+	{
+		return $this->_d;
 	}
 	
 	public function __get($name)
@@ -54,6 +59,14 @@ class Signal {
 	
 	public function debugStr() {
 		return "Signal: {$this->getName()} data: ".json_encode($this->_d);
+	}
+	
+	public function jsonSerialize(){
+		return array(
+			'name' => $this->_name,
+			'ts' => $this->_ts,
+			'data' => empty($this->_d) ? null : $this->_d
+		);
 	}
 	
 }

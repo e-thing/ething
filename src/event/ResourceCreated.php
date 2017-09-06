@@ -7,7 +7,9 @@ class ResourceCreated extends AbstractResourceEvent {
 	
 	static public function emit(\Ething\Resource $resource){
 		return new Signal('ResourceCreated', array(
-			'resource' => $resource->id()
+			'resource' => $resource->id(),
+			'rName' => $resource->name(),
+			'rType' => $resource->type()
 		));
 	}
 	

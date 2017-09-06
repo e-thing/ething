@@ -62,11 +62,9 @@
 				
 				'jquery.gridster': 'jquery.gridster',
 				
+				'mqttws': '//cdnjs.cloudflare.com/ajax/libs/paho-mqtt/1.0.1/mqttws31.min',
+				
 				'urijs': '//cdnjs.cloudflare.com/ajax/libs/URI.js/1.18.12'
-				/*'uri': '//cdnjs.cloudflare.com/ajax/libs/URI.js/1.18.12/URI.min',
-				'punycode': '//cdnjs.cloudflare.com/ajax/libs/URI.js/1.18.12/punycode.min',
-				'IPv6': '//cdnjs.cloudflare.com/ajax/libs/URI.js/1.18.12/IPv6.min',
-				'SecondLevelDomains': '//cdnjs.cloudflare.com/ajax/libs/URI.js/1.18.12/SecondLevelDomains.min'*/
 				
 			},
 			
@@ -123,9 +121,9 @@
 		
 		
         // AMD. Register as an anonymous module.
-        root.UI = define(['ething', 'jquery','ui/core'], factory);
+        root.UI = define(['ething', 'jquery','ui/core','ui/refreshstrategy'], factory);
     }
-}(this, function (EThing, $, UI) {
+}(this, function (EThing, $, UI, RefreshStrategy) {
 	
 	if(window.UI) return window.UI;
 	
@@ -298,70 +296,16 @@
 			this.data = UI.parseUrl(window.location.href).data;
 		},
 		
-		pollingRefreshTimerId: null,
-		pollingRefreshTimerType: null,
-		pollingRefreshInterval: 60000,
-		pollingRefreshLastTime: null,
-		pollingRefreshPaused: false,
-		pollingRefreshProcessing: function(){
-			self.pollingRefreshLastTime = Date.now();
-			EThing.arbo.refresh(); // refresh the arbo
+		
+		/* refreshing */
+		
+		
+		startRefresh: function(){
+			RefreshStrategy.start();
 		},
 		
-		startPollingRefresh: function(nodelay){
-			this.pollingRefreshPaused = false;
-			if(!this.isPollingRefreshEnabled()){
-				var self = this;
-				var delay = self.pollingRefreshInterval;
-				
-				if(this.pollingRefreshLastTime!==null){
-					var diff = Date.now() - this.pollingRefreshLastTime;
-					if(diff > self.pollingRefreshInterval){
-						delay = 1;
-					} else {
-						delay = this.pollingRefreshInterval - diff;
-					}
-				}
-				
-				if(!!nodelay) delay = 1;
-								
-				self.pollingRefreshTimerType = 'timeout';
-				self.pollingRefreshTimerId = setTimeout(function(){
-					
-					self.pollingRefreshProcessing();
-					
-					self.pollingRefreshTimerType = 'interval';
-					self.pollingRefreshTimerId = setInterval( function(){
-						self.pollingRefreshProcessing();
-					}, self.pollingRefreshInterval);
-				}, delay);
-			}
-		},
-		
-		stopPollingRefresh: function(){
-			if(this.isPollingRefreshEnabled()){
-				this.pollingRefreshTimerType === 'timeout' ? clearTimeout(this.pollingRefreshTimerId) : clearInterval(this.pollingRefreshTimerId);
-				this.pollingRefreshTimerId = null;
-				this.pollingRefreshTimerType = null;
-				this.pollingRefreshPaused = false;
-			}
-		},
-		
-		pausePollingRefresh: function(){
-			if(this.isPollingRefreshEnabled()){
-				this.stopPollingRefresh();
-				this.pollingRefreshPaused = true;
-			}
-		},
-		
-		resumePollingRefresh: function(){
-			if(this.pollingRefreshPaused){
-				this.startPollingRefresh();
-			}
-		},
-		
-		isPollingRefreshEnabled: function(){
-			return !!this.pollingRefreshTimerId;
+		stopRefresh: function(){
+			RefreshStrategy.stop();
 		}
 		
 	});
@@ -451,7 +395,7 @@
 		UI.currentPage = null;
 		UI.error = false;
 		
-		UI.startPollingRefresh();
+		UI.startRefresh();
 		
 		UI.trigger('ui-pageChange');
 		
@@ -624,7 +568,7 @@
 					
 					console.log('EThing authenticated');
 					
-					UI.startPollingRefresh();
+					UI.startRefresh();
 					
 					EThing.arbo.load(function(){
 						

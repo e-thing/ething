@@ -507,6 +507,11 @@
 			return;
 		}
 		
+		if(typeof resource === 'string'){
+			resource = findOneById(resource);
+			if(!resource) return;
+		}
+		
 		if(resource.isRoot === true) return; // do not remove the root directory !
 		
 		var removed = [];
@@ -641,7 +646,12 @@
 	
 	global.EThing.arbo = {
 		load: load,
-		refresh: refresh,
+		lastRefreshTs: 0,
+		refresh: function(){
+			this.lastRefreshTs = Date.now();
+			return refresh.apply(this, Array.prototype.slice.call(arguments));
+		},
+		remove: remove,
 		update: update,
 		findOneById: findOneById,
 		list: list,

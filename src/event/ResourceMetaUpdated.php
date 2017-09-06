@@ -12,7 +12,8 @@ class ResourceMetaUpdated extends AbstractResourceEvent {
 	static public function emit(\Ething\Resource $resource, array $attributes){
 		return new Signal('ResourceMetaUpdated', array(
 			'resource' => $resource->id(), // the updated resource
-			'resourceName' => $resource->name(),
+			'rName' => $resource->name(),
+			'rType' => $resource->type(),
 			'attributes' => $attributes // list of names of the attributes that has been updated
 		));
 	}
