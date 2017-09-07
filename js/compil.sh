@@ -27,17 +27,17 @@ function compiljs {
 	done
 	
 	# minify
-	#if [ -s ${out} ] ; then
-	#	echo "minifying ${out} ..."
-	#	
-	#	curl -s \
-	#	  -d compilation_level=SIMPLE_OPTIMIZATIONS \
-	#	  -d output_format=text \
-	#	  -d output_info=compiled_code \
-	#	 --data-urlencode "js_code@${out}" \
-	#	 http://closure-compiler.appspot.com/compile \
-	#	  > ${out%%.*}.min.js
-	#fi
+	if [ -s ${out} ] ; then
+		echo "minifying ${out} ..."
+		
+		curl -s \
+		  -d compilation_level=SIMPLE_OPTIMIZATIONS \
+		  -d output_format=text \
+		  -d output_info=compiled_code \
+		 --data-urlencode "js_code@${out}" \
+		 http://closure-compiler.appspot.com/compile \
+		  > ${out%%.*}.min.js
+	fi
    
 }
 
@@ -63,15 +63,15 @@ function compilcss {
 		shift
 	done
    
-   # minify
-	#if [ -s ${out} ] ; then
-	#	echo "minifying ${out} ..."
-	#	
-	#	curl -s \
-	#	 --data-urlencode "input@${out}" \
-	#	 http://cssminifier.com/raw \
-	#	  > ${out%%.*}.min.css
-	#fi
+    # minify
+	if [ -s ${out} ] ; then
+		echo "minifying ${out} ..."
+		
+		curl -s \
+			--data-urlencode "input@${out}" \
+			http://cssminifier.com/raw \
+			> ${out%%.*}.min.css
+	fi
 	
 }
 

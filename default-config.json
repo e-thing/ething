@@ -15,9 +15,11 @@
         "password": "admin",
         "localonly": false
     },
-    "cors": true,
     "debug": false,
-    "mqtt": false,
+    "mqtt": {
+		"port": 1883,
+        "host": "localhost"
+	},
     "script": {
         "timeout": 300000
     }

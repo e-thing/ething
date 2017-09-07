@@ -1,13 +1,12 @@
 (function (root, factory) {
     if (typeof define === 'function' && define.amd) {
         // AMD. Register as an anonymous module.
-        define(['ething', 'mqttws'], factory);
+        define(['ething', 'json!config.js'], factory);
     } else {
         // Browser globals
         factory(root.EThing,root.jQuery);
     }
-}(this, function (EThing) {
-
+}(this, function (EThing, config) {
 
 	var PollingRefreshStrategy = {
 		/* polling strategy */
@@ -22,7 +21,7 @@
 			EThing.arbo.refresh(); // refresh the arbo
 		},
 		
-		start: function(nodelay){
+		start: function(){
 			this.paused = false;
 			if(!this.isEnabled()){
 				var self = this;
@@ -36,8 +35,6 @@
 						delay = this.interval - diff;
 					}
 				}
-				
-				if(!!nodelay) delay = 1;
 								
 				self.timerType = 'timeout';
 				self.timerId = setTimeout(function(){
@@ -84,57 +81,127 @@
 	var WsRefreshStrategy = {
 		
 		wsClient: null,
-			
+		connecting: false,
+		
+		state: 'disconnected',
+		
+		cache: {},
+		
+		cacheDelay: 1000,
+		refreshDelay: 5000,
+		inactivityDelay: 60000,
+		
+		mqttTopics: ["ething/signal/ResourceMetaUpdated","ething/signal/ResourceCreated","ething/signal/ResourceDeleted"],
+		
+		initialized: false,
+		
 		openWS: function(callback){
 			var self = this;
 			
 			if(!this.wsClient){
 				// Create a client instance
-				this.wsClient = new Paho.MQTT.Client(window.location.hostname, Number(1884), "web.js."+Math.round(Math.random()*100000));
+				try {
+					this.wsClient = new Paho.MQTT.Client(config.mqtt.host || window.location.hostname, Number(config.mqtt.port || 1884), "web.js."+Math.round(Math.random()*100000));
+				} catch(e){
+					console.error(e);
+					this.fail();
+					return;
+				}
 				
 				// set callback handlers
-				this.wsClient.onConnectionLost = this.onConnectionLostWS;
-				this.wsClient.onMessageArrived = this.processWS;
+				this.wsClient.onConnectionLost = function(responseObject){
+					self.onConnectionLostWS(responseObject);
+				};
+				this.wsClient.onMessageArrived = function(message){
+					try {
+						self.processWS(message);
+					} catch(e) {
+						console.error(e);
+					}
+				};
 			}
 			
-			if(this.wsClient.isConnected()) return; // already connected !
+			if(this.wsClient.isConnected() || this.connecting) return; // already connected !
 			
 			// connect the client
 			try{
-				this.wsClient.connect({
+				this.connecting = true;
+				console.log("[WS] connecting ...");
+				
+				var wsConnectConf = {
 					onSuccess: function(){
 						// Once a connection has been made, make a subscription and send a message.
 						console.log("[WS] connected");
-						self.wsClient.subscribe("ething/signal/#", {
-							onSuccess: function(){
-								
-								if(!EThing.arbo.lastRefreshTs || (Date.now() - EThing.arbo.lastRefreshTs > 5000))
-									EThing.arbo.refresh();
-							},
-							onFailure: function(){
-								self.closeWS();
-								if(typeof self.onFailure === 'function') self.onFailure();
-							}
+						
+						// subscribing ...
+						var dfrs = [];
+						self.mqttTopics.forEach(function(topic){
+							
+							var dfr = EThing.utils.Deferred();
+							dfrs.push(dfr);
+							
+							self.wsClient.subscribe(topic, {
+								onSuccess: function(){
+									console.log("[WS] subscribed to "+topic);
+									dfr.resolve();
+								},
+								onFailure: function(responseObject){
+									console.log("[WS] subscribe failure for topic " + topic + " : " + responseObject.errorMessage);
+									dfr.reject(responseObject.errorMessage);
+								}
+							});
+							
 						});
 						
-						if(typeof callback === 'function')
-							callback(true);
+						EThing.utils.Deferred.when.apply(EThing.utils.Deferred, dfrs).always(function(){
+							self.connecting = false;
+						}).done(function(){
+							
+							console.log("[WS] connected and subscribed");
+							
+							if(!EThing.arbo.lastRefreshTs || (Date.now() - EThing.arbo.lastRefreshTs > self.refreshDelay))
+								EThing.arbo.refresh();
+							
+							if(typeof callback === 'function')
+								callback(true);
+						}).fail(function(err){
+							self.closeWS();
+							self.fail();
+							
+							if(typeof callback === 'function')
+								callback(false);
+						});
+						
 					},
 					onFailure: function(responseObject){
+						self.connecting = false;
+						
 						// Once a connection has been made, make a subscription and send a message.
 						console.log("[WS] connection failure " + responseObject.errorMessage);
 						
 						if(typeof callback === 'function')
 							callback(false);
 						
-						if(typeof self.onFailure === 'function') self.onFailure();
+						self.fail();
 					}
-				});
-			} catch(e){}
+				};
+				
+				if(typeof config.mqtt.password != 'undefined'){
+					wsConnectConf.userName = config.mqtt.user;
+					wsConnectConf.password = config.mqtt.password;
+				}
+				
+				this.wsClient.connect(wsConnectConf);
+				
+			} catch(e){
+				console.error(e);
+				self.fail();
+			}
 			
 		},
 		
 		processWS: function(message){
+			var self = this;
 			console.log("[WS] Message arrived: topic=" + message.destinationName);
 			
 			var signal = JSON.parse(message.payloadString);
@@ -145,16 +212,24 @@
 					var resource = EThing.arbo.findOneById(resourceId);
 					var date = new Date(signal.ts*1000);
 					if(!resource || date > resource.modifiedDate()){
-						console.log("[WS] updating resource " + resourceId);
-						EThing.get(resourceId);
+						if(self.cache[resourceId]) clearTimeout(self.cache[resourceId]);
+						self.cache[resourceId] = setTimeout(function(){
+							delete self.cache[resourceId];
+							console.log("[WS] updating resource " + resourceId);
+							EThing.get(resourceId);
+						},this.cacheDelay);
 					}
 					break;
 				case 'ResourceCreated':
 					var resourceId = signal.data.resource;
 					var resource = EThing.arbo.findOneById(resourceId);
 					if(!resource){
-						console.log("[WS] updating resource " + resourceId);
-						EThing.get(resourceId);
+						if(self.cache[resourceId]) clearTimeout(self.cache[resourceId]);
+						self.cache[resourceId] = setTimeout(function(){
+							delete self.cache[resourceId];
+							console.log("[WS] updating resource " + resourceId);
+							EThing.get(resourceId);
+						},this.cacheDelay);
 					}
 					break;
 				case 'ResourceDeleted':
@@ -167,33 +242,64 @@
 		
 		onConnectionLostWS: function (responseObject) {
 			if (responseObject.errorCode !== 0) {
+				this.connecting = false;
 				console.log("[WS] onConnectionLost:" + responseObject.errorMessage);
 				console.log("[WS] auto reconnect ...");
-				WsRefreshStrategy.openWS();
+				this.openWS();
 			}
 		},
 		
 		closeWS: function(){
+			this.connecting = false;
 			if(this.wsClient && this.wsClient.isConnected()){
 				this.wsClient.disconnect();
 				console.log("[WS] disconnect");
 			}
 		},
 		
+		started: false,
 		
 		start: function(){
+			var self = this;
+			
+			if(this.started) return; // already started
+			
+			this.started = true;
+			
 			if(this.closeTimeoutId) clearTimeout(this.closeTimeoutId);
 			
-			this.openWS();
+			if(this.initialized===true){
+				this.openWS();
+			} else {
+				// load the settings first !
+				if(this.initialized!=="..."){
+					
+					console.log("[WS] initializing...");
+					this.initialized = '...';
+					
+					require(['mqttws'], function(){
+						console.log("[WS] lib Paho.MQTT.Client loaded");
+						
+						if(self.started)
+							self.openWS();
+					}, function(){
+						console.log("[WS] fail initialization, unable to fetch Paho.MQTT.Client lib");
+						self.fail();
+					});
+					
+				}
+				
+			}
 		},
 		
 		stop: function(){
 			var self = this;
+			this.started = false;
 			// close the socket only after a period of inactivity !
 			this.closeTimeoutId = setTimeout(function(){
 				delete self.closeTimeoutId;
 				self.closeWS();
-			}, 60000);
+			}, this.inactivityDelay);
 		},
 		
 		isCompatible: function(){
@@ -211,7 +317,16 @@
 			return true;
 		},
 		
-		onFailure: null
+		onFailure: null,
+		
+		fail: function(){
+			console.log("[WS] fail");
+			this.started = false;
+			this.closeWS();
+			if(this.closeTimeoutId) clearTimeout(this.closeTimeoutId);
+			
+			if(typeof this.onFailure === 'function') this.onFailure();
+		}
 		
 	};
 
@@ -222,6 +337,13 @@
 	var RefreshStrategy = {
 		strategy: null,
 		state: 'stopped',
+		
+		isStarted: function(){
+			return this.state === 'started';
+		},
+		isStopped: function(){
+			return this.state === 'stopped';
+		},
 		
 		start: function(){
 			console.log("[UI] RefreshStrategy => start");
@@ -237,14 +359,14 @@
 		
 		setStrategy: function(strategy){
 			this.strategy = strategy;
-			if(this.state === 'started'){
+			if(this.isStarted()){
 				if(this.strategy) this.strategy.start();
 			}
 		}
 	};
 
 
-	if(WsRefreshStrategy.isCompatible()){
+	if(config.mqtt && WsRefreshStrategy.isCompatible()){
 		console.log("[UI] RefreshStrategy => ws/mqtt");
 		RefreshStrategy.strategy = WsRefreshStrategy;
 		WsRefreshStrategy.onFailure = function(){
@@ -255,6 +377,38 @@
 	} else {
 		console.log("[UI] RefreshStrategy => polling");
 		RefreshStrategy.startegy = PollingRefreshStrategy;
+	}
+	
+	
+	/* stop the refresh when the tab is not visible ! */
+	
+	// Set the name of the hidden property and the change event for visibility
+	var hidden, visibilityChange; 
+	if (typeof document.hidden !== "undefined") { // Opera 12.10 and Firefox 18 and later support 
+	  hidden = "hidden";
+	  visibilityChange = "visibilitychange";
+	} else if (typeof document.msHidden !== "undefined") {
+	  hidden = "msHidden";
+	  visibilityChange = "msvisibilitychange";
+	} else if (typeof document.webkitHidden !== "undefined") {
+	  hidden = "webkitHidden";
+	  visibilityChange = "webkitvisibilitychange";
+	}
+	
+	function handleVisibilityChange() {
+	  if (document[hidden]) {
+		RefreshStrategy.stop();
+	  } else {
+		RefreshStrategy.start();
+	  }
+	}
+
+	// Warn if the browser doesn't support addEventListener or the Page Visibility API
+	if (!(typeof document.addEventListener === "undefined" || typeof document[hidden] === "undefined")) {
+		
+	  // Handle page visibility change
+	  document.addEventListener(visibilityChange, handleVisibilityChange, false);
+
 	}
 
 

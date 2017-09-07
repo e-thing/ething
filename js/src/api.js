@@ -93,7 +93,8 @@
 			contentType: null, // When sending data to the server, use this content type , default to 'application/x-www-form-urlencoded; charset=UTF-8'
 			headers: null,
 			dataType: null, // The type of data that you're expecting back from the server (json -> {object}, text -> {string} , arraybuffer, blob -> (not available on nodejs), buffer (nodejs only) )
-			converter: null // a user defined function to convert the receive data into something else ...
+			converter: null, // a user defined function to convert the receive data into something else ...
+			synchronous: false
 		},options);
 		
 		
@@ -121,7 +122,7 @@
 		}
 		
 		
-		xhr.open(options.method, url, true);
+		xhr.open(options.method, url, !options.synchronous);
 		
 		
 		// user headers
@@ -203,16 +204,38 @@
 						data = xhr.response;
 						break;
 					case 'blob':
-						data = EThing.utils.Deferred();
 						
-						var fileReader = new FileReader();
-						fileReader.onload = function() {
-							data.resolve( String.fromCharCode.apply(null, new Uint8Array(this.result)) );
-						};
-						fileReader.readAsArrayBuffer(xhr.response);
+						if(options.synchronous){
+							
+							if(!FileReaderSync){
+								throw new Error("FileReaderSync not supported.");
+							}
+							
+							var fileReader = new FileReaderSync();
+							data = String.fromCharCode.apply(null, new Uint8Array(fileReader.readAsArrayBuffer(xhr.response)));
+						} else {
+							data = EThing.utils.Deferred();
+							
+							if(!FileReader){
+								throw new Error("FileReaderSync not supported.");
+							}
+							
+							var fileReader = new FileReader();
+							fileReader.onload = function() {
+								data.resolve( String.fromCharCode.apply(null, new Uint8Array(this.result)) );
+							};
+							fileReader.readAsArrayBuffer(xhr.response);
+						}
+						
 						break;
 					case 'arraybuffer':
-						data = String.fromCharCode.apply(null, new Uint8Array(this.result));
+						data = String.fromCharCode.apply(null, new Uint8Array(xhr.response));
+						break;
+					case 'buffer':
+						data = xhr.response.toString("utf8");
+						break;
+					default:
+						throw new Error(xhr.responseType+" response type not supported.");
 						break;
 				}
 				
@@ -418,12 +441,22 @@
 	EThing.request = function(opt,callback){
 		var d = ajax(opt);
 		
-		if(typeof callback == 'function')
+		if(typeof callback == 'function') {
 			d.always(function(){
 				callback.apply(this,Array.prototype.slice.call(arguments));
 			});
+		}
 		
-		return d;
+		// if sync return the result instead of the deferred object !
+		if(opt.synchronous){
+			var result = null;
+			d.always(function(r){
+				result = r;
+			});
+			return result;
+		} else {
+			return d;
+		}
 	}
 	
 	
@@ -2314,7 +2347,7 @@
 			a = a.id();
 		}
 		else if(!isResourceId(a)) {
-			throw "First argument must be a Resource object or a Resource id !";
+			throw "First argument must be a Resource object or a Resource id : "+a;
 			return;
 		}
 		
@@ -2350,7 +2383,7 @@
 			a = a.id();
 		}
 		else if(!isResourceId(a)) {
-			throw "First argument must be a Resource object or a Resource id !";
+			throw "First argument must be a Resource object or a Resource id : "+a;
 			return;
 		}
 		
@@ -2382,7 +2415,7 @@
 			a = a.id();
 		}
 		else if(!isResourceId(a)) {
-			throw "First argument must be a Resource object or a Resource id !";
+			throw "First argument must be a Resource object or a Resource id : "+a;
 			return;
 		}
 		

@@ -90,15 +90,11 @@ a value greater than a threshold or if it has low battery.
  sudo pip install --upgrade pyserial
  ```
 
-- Install Mosquitto (optional)
+- Install MQTT server (optional but recommended)
 
- Only if you want enable MQTT.
- 
- ```bash
- sudo apt-get install mosquitto
- ```
- 
- on Raspberry Pi with WebSocket enabled : https://mosquitto.org/2013/01/mosquitto-debian-repository/
+ Installing a MQTT server with websockets support is recommended. MQTT websockets are used by the web client interface for dynamic updates.
+
+ On Raspberry Pi, there is mosquitto with WebSocket enabled : https://mosquitto.org/2013/01/mosquitto-debian-repository/
  
  ```bash
  # import the repository package signing key
@@ -116,18 +112,40 @@ a value greater than a threshold or if it has low battery.
  apt-get install mosquitto
  ```
  
+ Enabling websockets :
+ in /etc/mosquitto/conf.d/websocket.conf add the following lines:
+ 
+ ```
+ listener 1883
+ listener 1884
+ protocol websockets
+ ```
+ 
+ Then restart Mosquitto :
+ 
+ ```bash
+ sudo service mosquitto restart
+ ```
+ 
  Add the following to the configuration file
  
  ```json
  {
      "mqtt": {
          "host": "localhost",
-         "port": 1883
+         "port": 1883,
+         "user": null,
+         "password": null
      }
  }
  ```
 
+If you set a password or set a hostname other than "localhost" or set a different port number, do not forget to update the `client/config.json` file too.
+
+
 - Install NodeJS
+
+Necessary for executing JavaScript scripts server side.
 
  ```bash
  curl -sL https://deb.nodesource.com/setup_8.x | sudo -E bash -
@@ -170,6 +188,7 @@ a value greater than a threshold or if it has low battery.
 The configuration file **config.json** is located in the root directory. An example is given in `default-config.json`.
 
 * set your mongodb server address here with the correct port number. Default to the local database.
+
  ```json
  {
      "db": {
@@ -178,25 +197,28 @@ The configuration file **config.json** is located in the root directory. An exam
         "user": null,
         "password": null,
         "database": "ething"
-    }
+     }
  }
  ```
 * set the URL-path of the EThing root url. For instance, if EThing is accessible through http://192.168.1.117/path, the value is "/path". Default to "/ething".
+
  ```json
  {
      "path": "/ething"
  }
  ```
 * [optional] change the default password.
+
  ```json
  {
      "auth": {
         "password": "admin",
         "localonly": false
-    }
+     }
  }
  ```
 * [optional] configure a SMTP server if you want some notification to be sent.
+
  ```json
  {
      "notification": {
@@ -209,10 +231,11 @@ The configuration file **config.json** is located in the root directory. An exam
             "user": "example@gmail.com",
             "password": "password"
         }
-    }
+     }
  }
  ```
 * [optional] set proxy settings if needed.
+
  ```json
  {
      "proxy": {
@@ -220,16 +243,17 @@ The configuration file **config.json** is located in the root directory. An exam
         "port": 8080,
         "user": null,
         "password": null
-    }
+     }
  }
  ```
 * [optional] enable MQTT.
+
  ```json
  {
      "mqtt": {
         "host": "localhost",
         "port": 1883
-    }
+     }
  }
  ```
 

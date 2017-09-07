@@ -23,6 +23,7 @@ class Config implements \JsonSerializable
 	
 	static private $publicAccessPolicy = array(
 		'path' => self::READWRITE,
+		'debug' => self::READWRITE,
 		'db.host' => self::READWRITE,
 		'db.port' => self::READWRITE,
 		'db.user' => self::READWRITE,
@@ -42,7 +43,6 @@ class Config implements \JsonSerializable
 		'notification.smtp.port' => self::READWRITE,
 		'notification.smtp.user' => self::READWRITE,
 		'notification.smtp.password' => self::WRITE,
-		'cors' => self::READWRITE,
 		'log' => self::READWRITE,
 		'log.file' => self::READWRITE,
 		'log.level' => self::READWRITE,
@@ -98,9 +98,6 @@ class Config implements \JsonSerializable
 			'password' => 'admin',
 			'localonly' => false
 		),
-		
-		// enable Cross-origin resource sharing (CORS)
-		'cors' => true,
 		
 		// debug information is given in the error messages send through HTTP requests
 		'debug' => false,
@@ -234,8 +231,8 @@ class Config implements \JsonSerializable
 							}
 							if(!$ok) throw new Exception('emails must be an array of email');
 							break;
+						case 'debug':
 						case 'auth.localonly':
-						case 'cors':
 							if(!is_bool($value))
 								throw new Exception("$name must be a boolean");
 							break;
@@ -258,6 +255,7 @@ class Config implements \JsonSerializable
 						case 'db.host':
 						case 'db.user':
 						case 'db.password':
+						case 'db.database':
 						case 'proxy.host':
 						case 'proxy.user':
 						case 'proxy.password':
@@ -272,6 +270,7 @@ class Config implements \JsonSerializable
 								throw new Exception("$name must be a non empty string");
 							break;
 						case 'mqtt.rootTopic':
+						case 'path':
 							if(!is_string($value))
 								throw new Exception("$name must be a string");
 							break;

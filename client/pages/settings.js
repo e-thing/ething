@@ -234,9 +234,8 @@
 			}),
 			checkable: true
 		},{
-			name: 'cors',
-			label: 'Cross-origin resource sharing',
-			description: 'Make the e-Thing API public or not. If disabled, the API will only be available from web page of the same domain/origin. If you want another website to access your data, enabled it.',
+			name: 'debug',
+			description: 'Enable debugging mode.',
 			item: new $.Form.Checkbox({
 				label: 'enable'
 			})

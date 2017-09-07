@@ -51,6 +51,8 @@
 				
 				'ething' : '../../js/ething',
 				
+				'config' : '../config',
+				
 				'js-beautify': '//cdn.rawgit.com/beautify-web/js-beautify/v1.6.3/js/lib',
 				
 				'marked': '//cdnjs.cloudflare.com/ajax/libs/marked/0.3.6/marked.min',
@@ -62,7 +64,7 @@
 				
 				'jquery.gridster': 'jquery.gridster',
 				
-				'mqttws': '//cdnjs.cloudflare.com/ajax/libs/paho-mqtt/1.0.1/mqttws31.min',
+				'mqttws': '//cdnjs.cloudflare.com/ajax/libs/paho-mqtt/1.0.1/mqttws31',
 				
 				'urijs': '//cdnjs.cloudflare.com/ajax/libs/URI.js/1.18.12'
 				

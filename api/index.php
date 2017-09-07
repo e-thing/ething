@@ -388,7 +388,7 @@ $app->get('/swagger.json',
  *   }
  */
 $app->get('/auth',
-    function () use ($app,$auth) {
+    function () use ($app,$auth,$ething) {
 		
 		$data = array(
 			'type' => $auth->mode()
@@ -404,6 +404,9 @@ $app->get('/auth',
 		if(!is_null($auth->scope()))
 			$data['scope'] = $auth->scope();
 		
+		if($auth->mode() === 'session'){
+			$data['debug'] = $ething->config('debug');
+		}
 		
 		$app->contentType('application/json');
 		echo json_encode($data,JSON_PRETTY_PRINT|JSON_UNESCAPED_SLASHES);
@@ -430,7 +433,7 @@ $app->get('/auth',
  *      }
  *   }
  */
-$app->get('/settings',
+$app->get('/settings', $auth->permissions('settings:read'),
     function () use ($app,$ething) {
 		$app->contentType('application/json');
 		echo json_encode($ething->config,JSON_PRETTY_PRINT|JSON_UNESCAPED_SLASHES);
@@ -472,7 +475,7 @@ $app->get('/settings',
  *      }
  *   }
  */
-$app->patch('/settings',
+$app->patch('/settings', $auth->permissions('settings:write'),
     function () use ($app,$ething) {
 		$ething->config->attr(Utils\getJSON($app));
 		$ething->config->save();
@@ -3440,7 +3443,7 @@ $app->error(function (\Exception $e) use ($app,$debug,$ething,$auth) {
 	// send the error message as JSON
 	$app->contentType('application/json');
 	
-	$ething->logger()->error($e);
+	if($debug) $ething->logger()->error($e);
 	
 	$message = utf8_encode($e->getMessage());
 	
@@ -3494,16 +3497,16 @@ $app->add($auth);
 
 
 /*
-* CORS middleware
+* CORS middleware (necessary for apps running in the web client)
 */
-if($ething->config('cors')){
-	require_once __DIR__.'/cors.php';
-	$app->add(new CorsMiddleware());
-	
-	\Ething\Proxy::$response_transform = function($proxy){
-		$proxy->response->addHeader('Access-Control-Allow-Origin','*');
-	};
-}
+
+require_once __DIR__.'/cors.php';
+$app->add(new CorsMiddleware());
+
+\Ething\Proxy::$response_transform = function($proxy){
+	$proxy->response->addHeader('Access-Control-Allow-Origin','*');
+};
+
 
 
 
