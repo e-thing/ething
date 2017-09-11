@@ -7,7 +7,13 @@
 		
 		<title>eThing</title>
 		
-		<script data-main="ui" src="lib/require.js"></script>
+		<script>
+			var require = {
+				baseUrl: "src/lib"
+			};
+		</script>
+		
+		<script data-main="../main" src="src/lib/require.js"></script>
 		
 		
 	</head>

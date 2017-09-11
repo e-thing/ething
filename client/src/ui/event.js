@@ -1,7 +1,11 @@
-(function (global) {
+(function (root, factory) {
+    if (typeof define === 'function' && define.amd) {
+        // AMD. Register as an anonymous module.
+        define([], factory);
+    }
+}(this, function () {
 	
-	
-	var EThing = global.EThing || {};
+	var UI = window.UI = window.UI || {};
 	
 	
 	
@@ -18,11 +22,11 @@
 	Event object
 	*/
 	
-	EThing.Event = function( src, props ) {
+	var Event = function( src, props ) {
 
 		// Allow instantiation without the 'new' keyword
-		if ( !( this instanceof EThing.Event ) ) {
-			return new EThing.Event( src, props );
+		if ( !( this instanceof Event ) ) {
+			return new Event( src, props );
 		}
 
 		// Event type
@@ -30,7 +34,9 @@
 
 		// Put explicitly provided properties onto the event object
 		if ( props ) {
-			EThing.utils.extend( this, props );
+			for(var i in props){
+				this[i] = props[i];
+			}
 		}
 
 		// Create a timestamp if incoming event doesn't have one
@@ -38,8 +44,8 @@
 		
 	};
 
-	EThing.Event.prototype = {
-		constructor: EThing.Event,
+	Event.prototype = {
+		constructor: Event,
 		isDefaultPrevented: returnFalse,
 		isPropagationStopped: returnFalse,
 		isImmediatePropagationStopped: returnFalse,
@@ -55,7 +61,6 @@
 			this.stopPropagation();
 		}
 	};
-	
 	
 	
 	function EventEngine(obj){
@@ -106,7 +111,7 @@
 		
 		obj.trigger = function(event, extraParameters){
 			if(typeof event === 'string')
-				event = EThing.Event(event);
+				event = Event(event);
 			
 			var type = event.type,
 				h = event_map[type] || [];
@@ -126,74 +131,9 @@
 		
 	}
 	
-	/**
-	 * register an handler to an event.
-	 * @name on
-	 * @memberof EThing
-	 * @param {string} event event type string. Multiple space separated events can be given.
-	 * @param {function(EThing.Event)} handler the function to be called when the event has been triggered.
-	 */
-	
-	/**
-	 * Remove an event handler.
-	 * @name off
-	 * @memberof EThing
-	 * @param {string} event event type string. Multiple space separated events can be given.
-	 * @param {function(EThing.Event)} [handler] A handler function previously attached for the event(s)
-	 */
-	
-	/**
-	 * register an handler to an event. The handler will be only executed once.
-	 * @name one
-	 * @memberof EThing
-	 * @param {string} event event type string. Multiple space separated events can be given.
-	 * @param {function(EThing.Event)} handler the function to be called when the event has been triggered.
-	 */
-	
-	/**
-	 * Execute all handlers attached for the given event type.
-	 * @name trigger
-	 * @memberof EThing
-	 * @param {string|EThing.Event} event An event object instance or an event type string.
-	 * @param {object} [extraParameters] Additional parameters to pass along to the event handler.
-	 */
+	EventEngine(UI);
 	
 	
-	/**
-	 * @memberof EThing
-	 * @event "ething.resource.removed"
-	 */
-	 
-	/**
-	 * @memberof EThing
-	 * @event "ething.file.created"
-	 */
-	 
-	/**
-	 * @memberof EThing
-	 * @event "ething.table.created"
-	 */
-	 
-	/**
-	 * @memberof EThing
-	 * @event "ething.device.created"
-	 */
-	 
-	/**
-	 * @memberof EThing
-	 * @event "ething.app.created"
-	 */
-	/**
-	 * authenticated event.
-	 *
-	 * @memberof EThing
-	 * @event "ething.authenticated"
-	 */
+	return UI;
 	
-	EventEngine(EThing);
-	
-	
-	EThing.EventEngine = EventEngine;
-	
-	
-})(this);
+}));

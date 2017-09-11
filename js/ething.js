@@ -1,4 +1,3 @@
-/* @file: src/utils.js */
 (function (global) {
 	
 	var EThing = global.EThing || {
@@ -396,7 +395,7 @@
 	
 	
 })(this);
-/* @file: src/node.js */
+
 (function (global) {
 
 
@@ -918,7 +917,7 @@ if(typeof module !== 'undefined' && module.exports){
 	
 	
 })(this);
-/* @file: src/event.js */
+
 (function (global) {
 	
 	
@@ -1121,7 +1120,7 @@ if(typeof module !== 'undefined' && module.exports){
 	
 	
 })(this);
-/* @file: src/deferred.js */
+
 (function(global) {
 
 	function foreach(arr, handler) {
@@ -1417,7 +1416,7 @@ if(typeof module !== 'undefined' && module.exports){
 	global.EThing.utils.Deferred = D;
 	
 	
-})(this);/* @file: src/api.js */
+})(this);
 /**
  * EThing - javascript API of the EThing project
  * @version v0.1.0
@@ -5328,7 +5327,7 @@ if(typeof module !== 'undefined' && module.exports){
 	global.EThing = EThing;
 	
 })(this);
-/* @file: src/arbo.js */
+
 
 /**
  * This library helps to organise your resources in a tree structure.
@@ -6012,7 +6011,7 @@ if(typeof module !== 'undefined' && module.exports){
 	global.EThing = EThing;
 	
 })(this);
-/* @file: src/rules.js */
+
 (function (global) {
 	
 	

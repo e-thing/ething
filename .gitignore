@@ -2,3 +2,4 @@
 /config.json
 /composer.lock
 /log
+/node_modules
