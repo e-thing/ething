@@ -1,6 +1,6 @@
 (function (factory) {
 	// AMD.
-	define(['jquery','ething','form','ui/resourceselect'], factory);
+	define(['jquery','ething','form','ui/datasource'], factory);
 }(function ($, EThing, Form) {
 	
 	var parseData = function(data){
@@ -33,81 +33,18 @@
 		factory: function(container, preset){
 			var form = new $.Form(container,new $.Form.FormLayout({
 				items:[{
-					name: 'resource',
-					item: new $.Form.ResourceSelect({
-						filter: function(r){
-							return r instanceof EThing.Table || r instanceof EThing.Device;
+					name: 'source',
+					item: new $.Form.DataSource({
+						tableColumn: true,
+						deviceRequest: {
+							acceptedMimeType: ['application/json', 'text/*']
 						},
-						validators: [$.Form.validator.NotEmpty]
+						resourceData: true
 					})
-				},{
-					name: 'key',
-					item: new $.Form.Text({
-						validators: [$.Form.validator.NotEmpty],
-					}),
-					dependencies: {
-						'resource': function(layoutItem){
-							var r = EThing.arbo.findOneById(this.getLayoutItemByName('resource').item.value());
-							layoutItem.item.setComboboxValues( r instanceof EThing.Table ? r.keys() : []);
-							return r instanceof EThing.Table;
-						}
-					}
-				},{
-					name: 'operation',
-					item: new $.Form.Select(),
-					dependencies: {
-						'resource': function(layoutItem){
-							var r = EThing.arbo.findOneById(this.getLayoutItemByName('resource').item.value());
-							layoutItem.item.setOptions( r instanceof EThing.Device ? r.operations() : []);
-							return r instanceof EThing.Device;
-						}
-					}
 				},{
 					name: 'unit',
 					item: new $.Form.Text()
-				}],
-				onload: function(){
-					
-					var self = this;
-					var resourceForm = this.getLayoutItemByName('resource').item;
-					var operationForm = this.getLayoutItemByName('operation').item;
-					var id = 0;
-					
-					function update(){
-						
-						var resource = EThing.arbo.findOneById(resourceForm.value());
-						var operation = operationForm.value();
-						var id_ = ++id;
-						
-						self.removeItem('parameters');
-						
-						if(resource instanceof EThing.Device && operation){
-							
-							// get the json schema specification for this operation
-							resource.getApi(operation).done(function(api){
-								
-								if(api.schema && id_ === id){
-									
-									var layoutitem = self.addItem({
-										name: 'parameters',
-										item: Form.fromJsonSchema(api.schema)
-									},3);
-									
-									if(preset && preset.operation === operation){
-										layoutitem.item.value(preset.parameters);
-									}
-								}
-								
-							});
-							
-						}
-						
-					}
-					
-					operationForm.change(update);
-					resourceForm.change(update).change();
-					
-				}
+				}]
 			}), preset);
 			
 			return function(){
@@ -120,37 +57,58 @@
 		instanciate: function(options, Label){
 			
 			
-			var resource = EThing.arbo.findOneById(options.resource);
+			var resource = EThing.arbo.findOneById(options.source.resource || options.source.device);
 			if(!resource){
 				throw 'The resource does not exist anymore';
 			}
 			
 			var title = resource.basename(), src = null;
+			var dataType = (options.source.type || '');
 			
-			if(resource instanceof EThing.Table){
+			if(dataType === 'table.column'){
 				
-				title += ' - '+options.key;
+				var key = options.source.column;
+				
+				title += ' - '+key;
 				
 				src = function(){
 					return resource.select({
-						fields: ['date',options.key],
+						fields: ['date',key],
 						length: 1,
 						start: -1
 					}).then(function(data){
 						return data.length ? {
 							date: new Date(data[0]['date']),
-							value: data[0][options.key]
+							value: data[0][key]
 						} : null;
 					});
 				};
-			} else if(resource instanceof EThing.Device){
+			} else if(dataType === 'device.request'){
 				
-				title += ' - '+options.operation;
+				var operation = options.source.operation;
+				var parameters = options.source.parameters || null;
+				
+				title += ' - '+operation;
 				
 				src = function(){
-					return resource.execute(options.operation, options.parameters).then(function(data){
+					return resource.execute(operation, parameters).then(function(data){
 						return parseData(data);
 					});
+				}
+			} else if(dataType === 'resource.data'){
+				
+				var key = options.source.data;
+				
+				title += ' - '+key;
+				
+				src = function(){
+					return {
+						value: resource.data(key)
+					};
+				}
+			} else {
+				src = function(){
+					return false;
 				}
 			}
 			

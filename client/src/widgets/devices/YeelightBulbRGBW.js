@@ -279,8 +279,9 @@
 						self.sendValueToSensor();
 					});
 					
+					this.resourceUpdateFn = $.proxy(this.refreshFromSensorState, this);
 					
-					sensor.on('updated', this.refreshFromSensorState);
+					sensor.on('updated', this.resourceUpdateFn);
 					
 					setTimeout(function(){
 						self.refreshFromSensorState();
@@ -397,7 +398,7 @@
 				},
 				
 				destroy: function(){
-					sensor.off('updated', this.refreshFromSensorState);
+					sensor.off('updated', this.resourceUpdateFn);
 					widget.destroy.call(this);
 				}
 				

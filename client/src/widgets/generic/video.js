@@ -24,67 +24,18 @@
 			
 			var form = new $.Form(container,new $.Form.FormLayout({
 				items:[{
-					name: 'resource',
-					label: 'source',
-					item: new $.Form.ResourceSelect({
-						filter: function(r){
-							return ((r instanceof EThing.File) && (/ogg|mp4/i.test(r.extension()) || !!(videoElement.canPlayType && videoElement.canPlayType(r.mime()).replace(/no/, '')))) || r instanceof EThing.Device;
+					name: 'source',
+					item: new $.Form.DataSource({
+						fileContent: {
+							filter: function(r){
+								return /ogg|mp4/i.test(r.extension()) || !!(videoElement.canPlayType && videoElement.canPlayType(r.mime()).replace(/no/, ''));
+							}
 						},
-						validators: [$.Form.validator.NotEmpty]
+						deviceRequest: {
+							acceptedMimeType: 'video/*'
+						}
 					})
-				},{
-					name: 'operation',
-					item: new $.Form.Select(),
-					dependencies: {
-						'resource': function(layoutItem){
-							var r = EThing.arbo.findOneById(this.getLayoutItemByName('resource').item.value());
-							layoutItem.item.setOptions( r instanceof EThing.Device ? r.operations() : []);
-							return r instanceof EThing.Device;
-						}
-					}
-				}],
-				onload: function(){
-					
-					var self = this;
-					var resourceForm = this.getLayoutItemByName('resource').item;
-					var operationForm = this.getLayoutItemByName('operation').item;
-					var id = 0;
-					
-					function update(){
-						
-						var resource = EThing.arbo.findOneById(resourceForm.value());
-						var operation = operationForm.value();
-						var id_ = ++id;
-						
-						self.removeItem('parameters');
-						
-						if(resource instanceof EThing.Device && operation){
-							
-							// get the json schema specification for this operation
-							resource.getApi(operation).done(function(api){
-								
-								if(api.schema && id_ === id){
-									
-									var layoutitem = self.addItem({
-										name: 'parameters',
-										item: Form.fromJsonSchema(api.schema)
-									});
-									
-									if(preset && preset.operation === operation){
-										layoutitem.item.value(preset.parameters);
-									}
-								}
-								
-							});
-							
-						}
-						
-					}
-					
-					operationForm.change(update);
-					resourceForm.change(update).change();
-					
-				}
+				}]
 			}), preset);
 			
 			
@@ -97,23 +48,25 @@
 		
 		instanciate: function(options, Widget){
 			
-			options = $.extend(true,{
-				resource: null, // either a device or a file
-				operation: null, // operation id if the resource is a Device
-				parameters: null // optional parameters if the resource is a Device
-			}, defaultOptions, options);
+			options = $.extend(true,{}, defaultOptions, options);
 			
-			var resource = EThing.arbo.findOneById(options.resource);
+			var resource = EThing.arbo.findOneById(options.source.resource || options.source.device);
 			if(!resource)
 				throw new Error('The resource does not exist anymore');
 			
 			var url = null;
 			
-			if(resource instanceof EThing.File){
+			var dataType = (options.source.type || '');
+			
+			if(dataType === 'file.content'){
 				url = resource.getContentUrl(true);
 			}
-			else if(resource instanceof EThing.Device){
-				url = resource.executeUrl(options.operation, options.parameters);
+			else if(dataType === 'device.request'){
+				
+				var operation = options.source.operation;
+				var parameters = options.source.parameters || null;
+				
+				url = resource.executeUrl(operation, parameters);
 			}
 			
 			var widget = $.extend(Widget(), {
@@ -130,7 +83,15 @@
 						'<source src="'+url+'" type="video/ogg">'
 					);
 					
-					this.$element.html($video);
+					this.$element.html($video).attr('style','display: -webkit-box;display: -moz-box;display: -ms-flexbox;display: -webkit-flex;display: flex;').css({
+						'display': 'flex',
+						'-webkit-flex-direction': 'column',
+						'-moz-flex-direction': 'column',
+						'-ms-flex-direction': 'column',
+						'-o-flex-direction': 'column',
+						'flex-direction': 'column',
+						'justify-content': 'center'
+					});
 					
 				}
 				

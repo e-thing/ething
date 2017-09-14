@@ -81,7 +81,7 @@
 				var event = events[i];
 				if(event.length){
 					if(typeof handler == 'function'){
-						for(var j=0; i<event_map[event].length; i++){
+						for(var j=0; j<event_map[event].length; j++){
 							if(event_map[event][j]===handler){
 								event_map[event].splice(j, 1);
 								j--;

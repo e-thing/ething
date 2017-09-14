@@ -15,8 +15,6 @@
 				}
 			},
 			paths: {
-				//"js": "..",
-				//"ui": "../ui",
 				"pages": "../pages",
 				"widget": "../widgets",
 				"deviceWidget": "../widgets/devices",
@@ -33,7 +31,7 @@
 				"bootstrap": '//maxcdn.bootstrapcdn.com/bootstrap/3.3.5/js/bootstrap.min',
 				"bootstrap-css": '//maxcdn.bootstrapcdn.com/bootstrap/3.3.5/css/bootstrap.min',
 				
-				'bootstrap-select': '//cdnjs.cloudflare.com/ajax/libs/bootstrap-select/1.10.0/js/bootstrap-select.min',
+				'bootstrap-select': '//cdnjs.cloudflare.com/ajax/libs/bootstrap-select/1.10.0/js/bootstrap-select',
 				'bootstrap-select-css': '//cdnjs.cloudflare.com/ajax/libs/bootstrap-select/1.10.0/css/bootstrap-select.min',
 				'bootstrap-toggle': '//gitcdn.github.io/bootstrap-toggle/2.2.2/js/bootstrap-toggle.min',
 				'bootstrap-toggle-css': '//gitcdn.github.io/bootstrap-toggle/2.2.2/css/bootstrap-toggle.min',

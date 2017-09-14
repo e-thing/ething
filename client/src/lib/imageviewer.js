@@ -536,6 +536,7 @@ ImageViewer.prototype.setItems = function(items, index){
 		element.state = 'pending';
 		
 		function setError(e){
+			console.error(e);
 			$item.removeClass('iv-vertical-align').html('<div class="error">error: '+(e && e.message ? e.message : (typeof e === 'string' ? e : 'unknown'))+'</div>');
 			element.state = 'error';
 			

@@ -791,6 +791,8 @@
 		
 		var errors = this.getErrors();
 		
+		console.log(errors);
+		
 		if(errors.length){
 			dfr.rejectWith(this, [errors]);
 		}
@@ -887,6 +889,12 @@
 	
 	Form.Input.prototype.getErrors = function(){
 		return this.value_ instanceof Error ? [this.value_] : [];
+	}
+	
+	Form.Input.prototype.setError = function(e){
+		if(e) this.value_ = e;
+		if(this.updateView()!==false)
+			this.change();
 	}
 	
 	Form.Input.prototype.update = function(forceTriggerChange){ // update the model value from the view, must be called by the view, each time the view changed !
@@ -2301,7 +2309,7 @@
 		this._index.push(index);
 		
 		var $select = this.$input, first = !this.options.multiple && $select.find('option').length==0;
-		var html = '<option '+(first?'selected':'')+' value="'+index+'">'+key+'</option>';
+		var html = '<option '+(first?'selected':'')+' value="'+index+'" data-content=\''+key+'\'>'+key+'</option>';
 		if(category){
 			// find out if the category already exist
 			var $cat = $select.find('optgroup[label="'+category+'"]');
@@ -2362,7 +2370,12 @@
 		this.$input.find('option,optgroup').remove();
 		for(var i=0; i<vals.length; i++){
 			
-			var html = '<option value="'+index[i]+'">'+keys[i]+'</option>',
+			var dataContent = "";
+			
+			if(/<[^>]+>/.test(keys[i]))
+				dataContent = 'data-content=\''+keys[i]+'\'';
+			
+			var html = '<option value="'+index[i]+'" '+dataContent+'>'+keys[i]+'</option>',
 				category = categories[i];
 			
 			if(category){
@@ -2444,7 +2457,6 @@
 		var $view = $('<div class="f-select">'), self = this;
 		
 		this.$input = $('<select class="form-control">');
-		this.$error_fb_ctrl = $('<span class="glyphicon glyphicon-remove form-control-feedback">');
 		this.$error = $('<div class="alert alert-danger" role="alert">');
 		
 		if(this.options.multiple)
@@ -2458,7 +2470,6 @@
 		
 		$view.append(
 			this.$input,
-			this.$error_fb_ctrl.hide(),
 			this.$error.hide()
 		);
 		
@@ -2497,8 +2508,6 @@
 		
 		this.hasError() ? this.$error.html(this.getErrors()[0].message).show() : this.$error.hide();
 		this.$view.toggleClass('has-error',this.hasError());
-		this.$view.toggleClass('has-feedback',this.hasError());
-		this.$error_fb_ctrl.toggle(this.hasError());
 	}
 	
 	Form.Select.prototype.getViewValue = function(){

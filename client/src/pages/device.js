@@ -806,12 +806,9 @@
 					return r instanceof EThing.Device && r.createdBy() && r.createdBy().id === device.id();
 				});
 				
-				var self = this;
-				
 				sensors.forEach(function(sensor){
 					
 					WidgetCollection.instanciateDeviceWidget(sensor).done(function(widget, name){
-						self.widget = widget;
 						widget.$element.addClass('db-widget-type-'+name.replace('/','-'));
 						$view.append($('<div class="db-widget-wrapper">').html(widget.$element));
 						widget.draw();
@@ -820,6 +817,34 @@
 					});
 					
 				}, this);
+				
+			}
+			
+		});
+		
+	}
+	
+	var WidgetContentpanelItem = function(device){
+		
+		var contentpanelItem = ContentpanelItem();
+		
+		contentpanelItem.$element.addClass('d-contentpanel-item-widget');
+		
+		return $.extend({}, contentpanelItem, {
+			
+			draw: function(){
+				
+				var $view = $('<div>');
+				
+				this.setContent($view);
+				
+				WidgetCollection.instanciateDeviceWidget(device).done(function(widget, name){
+					widget.$element.addClass('db-widget-type-'+name.replace('/','-'));
+					$view.append($('<div class="db-widget-wrapper">').html(widget.$element));
+					widget.draw();
+				}).fail(function(err){
+					console.error(err);
+				});
 				
 			}
 			
@@ -1129,7 +1154,7 @@
 			filter: function(r){
 				return r.description().length;
 			}
-		}, {
+		}, WidgetContentpanelItem, {
 			class: DataContentpanelItem,
 			filter: function(r){
 				return !$.isEmptyObject(r.data());

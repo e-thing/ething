@@ -828,7 +828,6 @@
 					label: false,
 					item: new $.Form.DeviceRequest({
 						onApiCall: function(device, operation, api){
-							console.log(api.response);
 							f.setVisible('output', !!api.response);
 							// only json accepted for table output
 							f.getLayoutItemByName('output').item.setEnable('table', /json/.test(api.response));

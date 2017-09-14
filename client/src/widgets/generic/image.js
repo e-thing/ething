@@ -1,6 +1,6 @@
 (function (factory) {
 	// AMD.
-	define(['jquery','ething','form','ui/resourceselect'], factory);
+	define(['jquery','ething','form','ui/datasource'], factory);
 }(function ($, EThing, Form) {
 
 	
@@ -22,67 +22,18 @@
 			
 			var form = new $.Form(container,new $.Form.FormLayout({
 				items:[{
-					name: 'resource',
-					label: 'source',
-					item: new $.Form.ResourceSelect({
-						filter: function(r){
-							return ((r instanceof EThing.File) && (/image/i.test(r.mime()) || /jpg|jpeg|png|gif|bmp|tif/i.test(r.extension()))) || r instanceof EThing.Device;
+					name: 'source',
+					item: new $.Form.DataSource({
+						fileContent: {
+							filter: function(r){
+								return /image/i.test(r.mime()) || /jpg|jpeg|png|gif|bmp|tif/i.test(r.extension());
+							}
 						},
-						validators: [$.Form.validator.NotEmpty]
+						deviceRequest: {
+							acceptedMimeType: 'image/*'
+						}
 					})
-				},{
-					name: 'operation',
-					item: new $.Form.Select(),
-					dependencies: {
-						'resource': function(layoutItem){
-							var r = EThing.arbo.findOneById(this.getLayoutItemByName('resource').item.value());
-							layoutItem.item.setOptions( r instanceof EThing.Device ? r.operations() : []);
-							return r instanceof EThing.Device;
-						}
-					}
-				}],
-				onload: function(){
-					
-					var self = this;
-					var resourceForm = this.getLayoutItemByName('resource').item;
-					var operationForm = this.getLayoutItemByName('operation').item;
-					var id = 0;
-					
-					function update(){
-						
-						var resource = EThing.arbo.findOneById(resourceForm.value());
-						var operation = operationForm.value();
-						var id_ = ++id;
-						
-						self.removeItem('parameters');
-						
-						if(resource instanceof EThing.Device && operation){
-							
-							// get the json schema specification for this operation
-							resource.getApi(operation).done(function(api){
-								
-								if(api.schema && id_ === id){
-									
-									var layoutitem = self.addItem({
-										name: 'parameters',
-										item: Form.fromJsonSchema(api.schema)
-									}, 3);
-									
-									if(preset && preset.operation === operation){
-										layoutitem.item.value(preset.parameters);
-									}
-								}
-								
-							});
-							
-						}
-						
-					}
-					
-					operationForm.change(update);
-					resourceForm.change(update).change();
-					
-				}
+				}]
 			}), preset);
 			
 			return function(){
@@ -94,13 +45,9 @@
 		
 		instanciate: function(options, Widget){
 			
-			options = $.extend(true,{
-				resource: null, // either a device or a file
-				operation: null, // operation id if the resource is a Device
-				parameters: null // optional parameters if the resource is a Device
-			}, defaultOptions, options);
+			options = $.extend(true,{}, defaultOptions, options);
 			
-			var resource = EThing.arbo.findOneById(options.resource);
+			var resource = EThing.arbo.findOneById(options.source.resource || options.source.device);
 			if(!resource)
 				throw 'The resource does not exist anymore';
 			
@@ -111,15 +58,20 @@
 				}
 			};
 			
-			if(resource instanceof EThing.File){
+			var dataType = (options.source.type || '');
+			
+			if(dataType === 'file.content'){
 				imageViewerOptions.elements = [resource];
 			}
-			else if(resource instanceof EThing.Device){
+			else if(dataType === 'device.request'){
+				
+				var operation = options.source.operation;
+				var parameters = options.source.parameters || null;
 				
 				imageViewerOptions.elements = [{
-					name: resource.basename()+':'+options.operation,
+					name: resource.basename()+':'+operation,
 					content: function(){
-						return resource.execute(options.operation, options.parameters, true);
+						return resource.execute(operation, parameters, true);
 					}
 				}];
 			}

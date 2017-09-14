@@ -283,6 +283,10 @@
 }
 
 
+#device .d-contentpanel-item-widget .db-widget-wrapper {
+	width: 100%;
+}
+
 
 #device .d-contentpanel-item-parent-item {
 	display: inline-block;

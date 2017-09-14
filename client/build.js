@@ -17,6 +17,7 @@
 			'ui/tablefieldselect',
 			'ui/devicerequest',
 			'ui/deviceoperationselect',
+			'ui/datasource',
 			'ui',
 			'ui/container',
 			'ui/droppable',
