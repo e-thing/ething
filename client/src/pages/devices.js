@@ -314,6 +314,25 @@
 				});
 			});
 			
+			$element.find('#btn-create-YeelightBulbRGBW').click(function(){
+				var form = UI.getResourceForm('Device\\YeelightBulbRGBW', null, ['name','location','description','host']).then(function(formEntries){
+					return new $.Form.FormLayout({
+						items: formEntries
+					});
+				});
+				
+				$.FormModal({
+					item: form,
+					title: '<span class="glyphicon glyphicon-phone" aria-hidden="true"></span> Add a new Yeelight LED bulb (color) device',
+					validLabel: '+Add',
+					loaded: function($form){
+						$form.form('findItem', 'name').focus();
+					}
+				},function(props){
+					return EThing.Device.YeelightBulbRGBW.create(props);
+				});
+			});
+			
 			$element.find('#btn-create-RFLinkSerialGateway').click(function(){
 				var form = UI.getResourceForm('Device\\RFLinkSerialGateway', null, ['name','location','description','port','baudrate']).then(function(formEntries){
 				

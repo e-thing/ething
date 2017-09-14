@@ -329,8 +329,8 @@ abstract class Resource implements \JsonSerializable, ResourceInterface
 		return isset($this->data->$name) ? $this->data->$name : $default;
 	}
 	
-	public function setData($name, $value){
-		return $this->set('data',array(
+	public function setData($name, $value = null){
+		return $this->set('data',is_array($name) ? $name : array(
 			$name => $value
 		));
 	}
@@ -352,8 +352,10 @@ abstract class Resource implements \JsonSerializable, ResourceInterface
 		
 		$c = $this->ething->db()->selectCollection("resources");
 		$c->deleteOne(array('_id' => $id));
-		$this->_d = null;
+		
 		$this->ething->dispatchSignal(Event\ResourceDeleted::emit($this));
+		
+		$this->_d = null;
 		
 		if($removeChildren===true){
 			$children = $this->ething->find(array(
@@ -463,5 +465,21 @@ abstract class Resource implements \JsonSerializable, ResourceInterface
 		) ) );
 	}
 	
-
+	public function refresh($keepDirtyFields = false){
+		$c = $this->ething->db()->selectCollection("resources");
+		$doc = (array)$c->findOne(array('_id' => $this->id()));
+		$doc['data'] = (object) $doc['data'];
+		
+		if($keepDirtyFields){
+			foreach($this->dirtyFields as $field){
+				unset($doc[$field]);
+			}
+			$this->_d = array_merge($this->_d, $doc);
+		} else {
+			$this->dirtyFields = array();
+			$this->_d = $doc;
+		}
+		
+	}
+	
 }

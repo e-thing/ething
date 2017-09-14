@@ -55,9 +55,6 @@ class MySensorsEthernetGateway extends MySensorsGateway
 					)))>0)
 						throw new Exception('a gateway with the same address already exists');
 				};
-				$context['callbacks']['restart'] = function($r) {
-					$r->restart();
-				};
 				$ret = true;
 				break;
 			default:

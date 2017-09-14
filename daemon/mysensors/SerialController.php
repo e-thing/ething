@@ -13,6 +13,7 @@ use \Ething\Serial;
 class SerialController extends Controller {
 	
 	private $serial = null;
+	private $buffer = "";
 	
 	public function open(){
 		
@@ -32,6 +33,7 @@ class SerialController extends Controller {
 			throw new Exception("unable to connect to the gateway {$port}, baudrate={$baudrate}");
 		
 		$this->stream = $this->serial->pipes[1];
+		$this->buffer = '';
 		
 		parent::open();
 		

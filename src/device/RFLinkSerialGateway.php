@@ -75,18 +75,12 @@ class RFLinkSerialGateway extends RFLinkGateway
 					)))>0)
 						throw new Exception('a device using the same port already exists');
 				};
-				$context['callbacks']['restart'] = function($r) {
-					$r->restart();
-				};
 				$ret = true;
 				break;
 			case 'baudrate':
 				if(!in_array($value, static::$validBauds, true))
 					throw new Exception('invalid baudrate'.$value);
 				$ret = true;
-				$context['callbacks']['restart'] = function($r) {
-					$r->restart();
-				};
 				break;
 			default:
 				$ret = parent::validate($key,$value,$context);

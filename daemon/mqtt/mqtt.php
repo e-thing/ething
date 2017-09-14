@@ -4,62 +4,108 @@
 require_once "Client.php";
 
 
+class MQTT {
 
-function mqttGetController($id){
-	return PoolStream::findOne(function($stream) use($id) {
-		return ($stream instanceof \Ething\MQTT\Client) && $stream->device->id() === $id;
-	});
+
+	static public function getController($id){
+		return \PoolStream::findOne(function($stream) use($id) {
+			return ($stream instanceof \Ething\MQTT\Client) && $stream->device->id() === $id;
+		});
+	}
+	
+	// $id may also be a resource
+	static public function startController($id) {
+		global $ething;
+		
+		if(is_string($id)){
+			$device = $ething->get($id);
+			if(!($device instanceof \Ething\Device\MQTT))
+				throw new \Exception("the device {$id} does not exist or has the wrong type");
+		} else {
+			$device = $id;
+		}
+		
+		// remove any previous stream from this device
+		static::stopController($device->id());
+		
+		\Log::info("starting MQTT controller '".$device->name()."' id=".$device->id()." type=".$device->type());
+		$controller = new \Ething\MQTT\Client($device);
+		\PoolStream::add($controller);
+		
+	}
+	
+	static public function stopController($id) {
+		
+		if($controller = static::getController($id)){
+			$device = $controller->device;
+			\Log::info("stopping MQTT controller '".$device->name()."' id=".$device->id()." type=".$device->type());
+			$controller->close();
+			\PoolStream::remove($controller);
+		}
+		
+	}
+	
+	static public function init() {
+		global $ething;
+		
+		$devices = $ething->find(array(
+			'type' => 'Device\\MQTT'
+		));
+
+		foreach($devices as $device){
+			static::startController($device);
+		}
+		
+		// auto start/stop controller on device create/remove
+		\SignalManager::attachHandler(function($signal) use ($ething) {
+			
+			if($signal->getName() === 'ResourceMetaUpdated'){
+				if(strpos($signal->rType, 'MQTT') !== false){
+					if(!empty(array_intersect(['port', 'host', 'topic', 'auth'], $signal->attributes)))
+						\MQTT::startController($signal->resource);
+					else {
+						if($controller = \MQTT::getController($signal->resource))
+							$controller->device->refresh();
+					}
+				}
+			} else if($signal->getName() === 'ResourceCreated'){
+				if(strpos($signal->rType, 'MQTT') !== false) \MQTT::startController($signal->resource);
+			} else if($signal->getName() === 'ResourceDeleted'){
+				if(strpos($signal->rType, 'MQTT') !== false) \MQTT::stopController($signal->resource);
+			}
+			
+		});
+		
+	}
+
 }
 
-
-// init MQTT clients
-
-$mqttdevices = $ething->find(array(
-	'type' => 'Device\\MQTT'
-));
-foreach($mqttdevices as $mqttdevice){
-	
-	Log::info("starting mqtt client '".$mqttdevice->name()."' [id=".$mqttdevice->id()."]");
-	PoolStream::add(new \Ething\MQTT\Client($mqttdevice));
-	
-}
-unset($mqttdevices);
+// init
+\MQTT::init();
 
 
 
 
-$cli->add('device.mqtt.start', function($args, $client) use($ething) {
+
+$cli->add('device.mqtt.start', function($args, $client) {
 	// start to listen to a stream to a MQTT server
 	if(count($args) != 1)
 		throw new Exception('invalid arguments');
 	else {
-		$deviceId = $args[0];
-		$mqttdevice = $ething->get($deviceId);
-		if(!($mqttdevice instanceof \Ething\Device\MQTT))
-			throw new Exception("the device {$deviceId} does not exist or has the wrong type (not MQTT)");
-		// remove any previous stream from this device
-		if($mqttClient = mqttGetController($deviceId)){
-			$mqttClient->close();
-			PoolStream::remove($mqttClient);
-		}
-		if(PoolStream::add(new \Ething\MQTT\Client($mqttdevice)))
-			Log::info("starting mqtt client '".$mqttdevice->name()."' [id=".$mqttdevice->id()."]");
+		\MQTT::startController($args[0]);
 		$client->success();
 	}
 });
 
-$cli->add('device.mqtt.send', function($args, $client) use($ething){
+$cli->add('device.mqtt.send', function($args, $client) {
 	if(count($args) != 3)
 		throw new Exception('invalid arguments');
 	else {
 		$deviceId = $args[0];
 		$topic = $args[1];
 		$payload = \base64_decode($args[2]); // the payload may be binary data or contains space 
-		$mqttdevice = $ething->get($deviceId);
-		if(!($mqttdevice instanceof \Ething\Device\MQTT))
-			throw new Exception("the device {$deviceId} does not exist or has the wrong type (not MQTT)");
 		
-		if($mqttClient = mqttGetController($deviceId)){
+		if($mqttClient = \MQTT::getController($deviceId)){
 			if($mqttClient->publish($topic, $payload)) {
 				$client->success();
 			} else {
@@ -76,15 +122,8 @@ $cli->add('device.mqtt.end', function($args, $client) use($ething){
 	if(count($args) != 1)
 		throw new Exception('invalid arguments');
 	else {
+		\MQTT::stopController($args[0]);
 		$client->success();
-		$deviceId = $args[0];
-		$mqttdevice = $ething->get($deviceId);
-		if(!($mqttdevice instanceof \Ething\Device\MQTT))
-			throw new Exception("the device {$deviceId} does not exist or has the wrong type (not MQTT)");
-		if($mqttClient = mqttGetController($deviceId)){
-			$mqttClient->close();
-			PoolStream::remove($mqttClient);
-		}
 	}
 });
 

@@ -13,6 +13,7 @@ use \Ething\Device\MySensorsGateway;
 class EthernetController extends Controller {
 	
 	private $lastActivity = 0;
+	private $buffer = "";
 	
 	const NOACTIVITY_DELAY = 300; // seconds
 	
@@ -27,13 +28,14 @@ class EthernetController extends Controller {
 		$address = $gateway->get('address');
 		$stream = @stream_socket_client("tcp://".$address, $errno, $errstr, 10);
 		if($stream === false)
-			throw new Exception("unable to connect to the gateway {$address} : {$errstr}");
+			throw new Exception("MySensors[ethernet]: unable to connect to the gateway {$address} : {$errstr}");
 		
 		// make this stream non blocking !
 		stream_set_blocking($stream, false);
 		
 		$this->stream = $stream;
 		$this->lastActivity = time();
+		$this->buffer = '';
 		parent::open();
 		
 		$this->logger->info("MySensors[ethernet]: opened at {$address}");
@@ -93,12 +95,16 @@ class EthernetController extends Controller {
 	}
 	
 	public function write($str){
-		$this->lastActivity = time();
-		return $this->isOpened ? @fwrite($this->stream, $str) : 0;
+		if($this->isOpened){
+			$this->lastActivity = time();
+			return @fwrite($this->stream, $str);
+		}
+		return 0;
 	}
 	
 	public function close(){
-		if( $this->isOpened && @fclose($this->stream) ){
+		if( $this->isOpened ){
+			@fclose($this->stream);
 			$this->stream = null;
 			parent::close();
 		}

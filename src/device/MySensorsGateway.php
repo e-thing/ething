@@ -175,14 +175,7 @@ abstract class MySensorsGateway extends Device
 		), $meta), $createdBy);
 	}
 	
-	
-	public function restart(){
-		$this->ething->daemon('device.mysensors.start '.$this->id()."\n");
-	}
-	
 	public function remove($removeChildren = false) {
-		
-		$this->ething->daemon('device.mysensors.end '.$this->id()."\n");
 		
 		// remove all the nodes attached to it !
 		$this->removeAllNodes();

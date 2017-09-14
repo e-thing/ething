@@ -13,7 +13,10 @@
 		"type": "Device\\RFLinkSwitch",
 		"widget": "RFLinkSwitch"
 	},
-	
+	{
+		"type": "Device\\YeelightBulbRGBW",
+		"widget": "YeelightBulbRGBW"
+	},
 	{
 		"type": "Device\\MySensorsSensor",
 		"sensorType": "S_TEMP",

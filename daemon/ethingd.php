@@ -26,7 +26,7 @@ include 'core.php';
 include 'mysensors/mysensors.php';
 include 'rflink/rflink.php';
 include 'mqtt/mqtt.php';
-
+include 'yeelight/yeelight.php';
 
 while($run){
 	

@@ -231,32 +231,19 @@ abstract class Controller extends \Stream {
 		}
 		
 		
-		if($waitResponse){
-			$self = $this;
-			$userCallback = $callback;
-			
-			$callback = function($error, $messageSent) use($userCallback, $waitResponse, $self) {
-				if($error){
-					// an error occurs, the message could not have been sent
-					if(is_callable($userCallback)) call_user_func($userCallback, $error, $messageSent, null);
-				} else {
-					// wait for a response
-					$self->responseListeners[] = array(
-						'callback' => function($error, $messageReceived) use($userCallback, $messageSent) {
-							if(is_callable($userCallback)) call_user_func($userCallback, $error, $messageSent, $messageReceived);
-						},
-						'ts' => microtime(true),
-						'messageSent' => $messageSent
-					);
-				}
-			};
-		}
-		
-		
 		$wb =  $this->write($message);
 		
-		if(is_callable($callback)){
-			call_user_func($callback, false, $message);
+		if($waitResponse){
+			// wait for a response
+			$this->responseListeners[] = array(
+				'callback' => function($error, $messageReceived) use($callback, $message) {
+					if(is_callable($callback)) call_user_func($callback, $error, $message, $messageReceived);
+				},
+				'ts' => microtime(true),
+				'messageSent' => $message
+			);
+		} else {
+			if(is_callable($callback)) call_user_func($callback, false, $message);
 		}
 		
 		return $wb;

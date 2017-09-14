@@ -62,7 +62,7 @@ class Client extends \Stream {
 		
 		if(isset($this->device->auth)){
 			$username = $this->device->auth['user'];
-			$username = $this->device->auth['password'];
+			$password = $this->device->auth['password'];
 		}
 		
 		if($this->mqttClient->connect($clean, $will, $username, $password)){

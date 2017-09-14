@@ -57,15 +57,14 @@ class RFLinkSwitch extends Device
 	public function storeData($attr){
 		if(!empty($attr)){
 			
+			// format
 			foreach($attr as $key => &$value){
-				
 				if($key==='CMD'){
 					$value = is_string($value) ? preg_match('/^on$/i', $value) : boolval($value);
 				}
-				
-				$this->setData($key, $value);
-				
 			}
+			
+			$this->setData($attr);
 			
 			$storageName = 'data';
 			$storage = $this->ething->findOne(array(

@@ -283,6 +283,8 @@
 					require(['mqttws'], function(){
 						console.log("[WS] lib Paho.MQTT.Client loaded");
 						
+						this.initialized = true;
+						
 						if(self.started)
 							self.openWS();
 					}, function(){
@@ -399,11 +401,13 @@
 	}
 	
 	function handleVisibilityChange() {
-	  if (document[hidden]) {
-		RefreshStrategy.stop();
-	  } else {
-		RefreshStrategy.start();
-	  }
+		if(RefreshStrategy.isStarted()){
+		  if (document[hidden]) {
+			RefreshStrategy.stop();
+		  } else {
+			RefreshStrategy.start();
+		  }
+		}
 	}
 
 	// Warn if the browser doesn't support addEventListener or the Page Visibility API

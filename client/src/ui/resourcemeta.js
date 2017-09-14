@@ -959,7 +959,7 @@
 		},
 		{
 			name: "host",
-			onlyForType: ['Device\\Denon'],
+			onlyForType: ['Device\\Denon', 'Device\\Yeelight.*'],
 			editable:function(){
 				return new $.Form.Text({
 					validators: [$.Form.validator.NotEmpty],

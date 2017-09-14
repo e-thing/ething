@@ -104,11 +104,7 @@ abstract class RFLinkGateway extends Device
 		switch($key){
 			
 			case 'inclusion':
-				if($ret = is_bool($value)){
-					$context['callbacks']['restart'] = function($r) {
-						$r->restart();
-					};
-				}
+				$ret = is_bool($value);
 				break;
 			
 			case 'version':
@@ -158,14 +154,7 @@ abstract class RFLinkGateway extends Device
 		return parent::createDevice($ething, array_merge(self::$defaultAttr, $attributes), $meta, $createdBy);
 	}
 	
-	
-	public function restart(){
-		$this->ething->daemon('device.rflink.start '.$this->id()."\n");
-	}
-	
 	public function remove($removeChildren = false) {
-		
-		$this->ething->daemon('device.rflink.end '.$this->id()."\n");
 		
 		// remove all the nodes attached to it !
 		$this->removeAllNodes();

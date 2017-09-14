@@ -72,17 +72,11 @@ class MQTT extends Device
 			case 'host':
 				if(is_string($value) && !empty($value)){
 					$ret = true;
-					$context['callbacks']['restart'] = function($r) {
-						$r->restart();
-					};
 				}
 				break;
 			case 'port':
 				if(is_int($value) && $value>=0 && $value<= 65535){
 					$ret = true;
-					$context['callbacks']['restart'] = function($r) {
-						$r->restart();
-					};
 				}
 				break;
 			case 'topic': // optional
@@ -91,10 +85,6 @@ class MQTT extends Device
 					if( strpos($value, '#') !== false || strpos($value, '+') ){
 						throw new Exception('no wildcards allowed');
 					}
-					
-					$context['callbacks']['restart'] = function($r) {
-						$r->restart();
-					};
 					
 					$ret = true;
 				} else if(is_null($value))
@@ -252,18 +242,6 @@ class MQTT extends Device
 		return new \Ething\MQTT\Client($this);
 	}
 	
-	
-	public function remove($removeChildren = false) {
-		$this->ething->daemon('device.mqtt.end '.$this->id()."\n");
-		
-		// remove the resource
-		parent::remove($removeChildren);
-		
-	}
-	
-	public function restart(){
-		$this->ething->daemon('device.mqtt.start '.$this->id()."\n");
-	}
 	
 }
 
