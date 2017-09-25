@@ -342,6 +342,7 @@
 	var RefreshStrategy = {
 		strategy: null,
 		state: 'stopped',
+		enabled: true,
 		
 		isStarted: function(){
 			return this.state === 'started';
@@ -351,21 +352,45 @@
 		},
 		
 		start: function(){
-			console.log("[UI] RefreshStrategy => start");
-			this.state = 'started';
-			if(this.strategy) this.strategy.start();
+			if(this.enabled && this.isStopped()){
+				console.log("[UI] RefreshStrategy => start");
+				this.state = 'started';
+				if(this.strategy) this.strategy.start();
+			}
 		},
 		
 		stop: function(){
-			console.log("[UI] RefreshStrategy => stop");
-			this.state = 'stopped';
-			if(this.strategy) this.strategy.stop();
+			if(this.enabled && this.isStarted()){
+				console.log("[UI] RefreshStrategy => stop");
+				this.state = 'stopped';
+				if(this.strategy) this.strategy.stop();
+			}
+		},
+		
+		disable: function(){
+			if(!this.isEnabled()){
+				console.log("[UI] RefreshStrategy => disable");
+				this.stop();
+				this.enabled = false;
+			}
+		},
+		
+		enable: function(){
+			if(!this.isEnabled()){
+				console.log("[UI] RefreshStrategy => enable");
+				this.enabled = true;
+				this.start();
+			}
+		},
+		
+		isEnabled: function(){
+			return this.enabled;
 		},
 		
 		setStrategy: function(strategy){
 			this.strategy = strategy;
 			if(this.isStarted()){
-				if(this.strategy) this.strategy.start();
+				this.start();
 			}
 		}
 	};
@@ -401,13 +426,11 @@
 	}
 	
 	function handleVisibilityChange() {
-		if(RefreshStrategy.isStarted()){
-		  if (document[hidden]) {
-			RefreshStrategy.stop();
-		  } else {
-			RefreshStrategy.start();
-		  }
-		}
+	  if (document[hidden]) {
+		RefreshStrategy.stop();
+	  } else {
+		RefreshStrategy.start();
+	  }
 	}
 
 	// Warn if the browser doesn't support addEventListener or the Page Visibility API
@@ -424,6 +447,12 @@
 	};
 	UI.stopRefresh = function(){
 		RefreshStrategy.stop();
+	};
+	UI.enableRefresh = function(){
+		RefreshStrategy.enable();
+	};
+	UI.disableRefresh = function(){
+		RefreshStrategy.disable();
 	};
 	
 

@@ -157,7 +157,7 @@ abstract class Controller extends \Stream {
 					'protocol' => $protocol,
 					'name' => 'switch-'.$attributes['ID'].'-'.$attributes['SWITCH']
 				))))
-					throw new Exception("fail to create the node (Switch) nodeId={$attributes['ID']} switchId={$attributes['SWITCH']} protocol={$protocol}");
+					throw new \Exception("fail to create the node (Switch) nodeId={$attributes['ID']} switchId={$attributes['SWITCH']} protocol={$protocol}");
 				$this->logger->info("RFLink: new node (Switch) nodeId={$attributes['ID']} switchId={$attributes['SWITCH']} protocol={$protocol}");
 			}
 		}
@@ -192,7 +192,7 @@ abstract class Controller extends \Stream {
 				$this->open();
 				$this->logger->info("RFLink: connected");
 				$this->preventFailConnectLog = false;
-			} catch(Exception $e){
+			} catch(\Exception $e){
 				if(!$this->preventFailConnectLog) $this->logger->warn("RFLink: unable to connect : {$e->getMessage()}");
 				$this->preventFailConnectLog = true;
 			}
@@ -251,11 +251,11 @@ abstract class Controller extends \Stream {
 	
 	protected $stream = null;
 	
-	public function getStream(){
-		return $this->stream;
+	public function getStreams(){
+		return array($this->stream);
 	}
 	
-	public function process(){
+	public function process($stream){
 		$this->read();
 	}
 	

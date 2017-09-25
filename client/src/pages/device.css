@@ -130,14 +130,28 @@
 #device .d-contentpanel-item-api .operation-header {
 	cursor: pointer;
 	padding: 10px;
-    font-weight: bold;
 	background-color: #f7f7f7;
 	color: #333333;
 	border-radius: 4px;
     border: 1px solid #f1f1f1;
 }
 
-#device .d-contentpanel-item-api .operation .operation-header:after {
+#device .d-contentpanel-item-api .operation-header-name,
+#device .d-contentpanel-item-api .operation-header-mime {
+	display: inline-block;
+}
+
+#device .d-contentpanel-item-api .operation-header-name {
+	font-weight: bold;
+	color: #333333;
+}
+
+#device .d-contentpanel-item-api .operation-header-mime {
+	color: #a9a9a9;
+	float: right;
+}
+
+#device .d-contentpanel-item-api .operation .operation-header-name:after {
 	position: relative;
     top: 1px;
     display: inline-block;
@@ -150,11 +164,11 @@
 	margin-left: 10px;
 }
 
-#device .d-contentpanel-item-api .operation:not(.opened) .operation-header:after {
+#device .d-contentpanel-item-api .operation:not(.opened) .operation-header-name:after {
 	content: "\e114";
 }
 
-#device .d-contentpanel-item-api .operation.opened .operation-header:after {
+#device .d-contentpanel-item-api .operation.opened .operation-header-name:after {
 	content: "\e113";
 }
 

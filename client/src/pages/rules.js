@@ -566,6 +566,50 @@
 	},
 	
 	{
+		type: 'Email',
+		name: 'Email', 
+		toString: function(options){
+			return "send an email to <mark>"+options.to+"</mark> with the subject <mark>"+options.subject+"</mark>";
+		},
+		description: null,
+		form: function(){
+			return new $.Form.FormLayout({items: [
+				{
+					name: 'to',
+					item: new $.Form.Text({
+						validators: [$.Form.validator.NotEmpty]
+					})
+				},{
+					name: 'subject',
+					item: new $.Form.Text({
+						validators: [$.Form.validator.NotEmpty]
+					})
+				},{
+					name: 'content',
+					description: "You may use the following identifiers:<br><b>%%</b> : prints a literal % character<br><b>%D</b> : prints date using the format 'Y-m-d H:i:s'<br><b>%R</b> : prints the resource's name that emits the signal<br><b>%I</b> : prints the resource's id that emits the signal<br><b>%d</b> : prints the data attached to the signal (JSON)<br><b>%r</b> : prints the rule's name<br><b>%s</b> : prints the signal's name<br>",
+					item: new $.Form.Textarea({
+						validators: [$.Form.validator.NotEmpty]
+					})
+				}, {
+					name: 'attachments',
+					description: 'Select files or tables to attach to this notification',
+					item: ResourceSelection.form({
+						'filter' : function(r){
+							return r instanceof EThing.Table || r instanceof EThing.File;
+						},
+						all : false,
+						selection : true,
+						expression: true,
+						emitter: false,
+						resourcesName: 'files or tables'
+					}),
+					checkable: true
+				}
+			]});
+		}
+	},
+	
+	{
 		type: 'ResourceClear',
 		name: 'clear resource',
 		toString: function(options){

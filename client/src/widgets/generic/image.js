@@ -30,7 +30,8 @@
 							}
 						},
 						deviceRequest: {
-							acceptedMimeType: 'image/*'
+							acceptedMimeType: 'image/*',
+							refreshPeriod: true
 						}
 					})
 				}]
@@ -77,6 +78,7 @@
 			}
 			
 			
+			
 			var $iv;
 			
 			var widget = $.extend(Widget(), {
@@ -88,10 +90,31 @@
 						'background-color': '#ffffff',
 						'color': '#4e4e4e'
 					}).imageViewer(imageViewerOptions).appendTo(this.$element);
+					
+					var update = function(){
+						$iv.imageViewer('refresh');
+					}
+					
+					if(dataType === 'file.content'){
+						this.onResourceUpdate = function(evt,updatedKeys){
+							if(updatedKeys.indexOf('contentModifiedDate')!==-1) update();
+						};
+						resource.on('updated', this.onResourceUpdate);
+					} else if(dataType === 'device.request'){
+						this.refeshIntervalId = setInterval(update, (options.refreshPeriod || 30)*1000);
+					}
+					
 				},
 				
 				destroy: function(){
 					$iv.imageViewer('destroy');
+					
+					if(this.onResourceUpdate){
+						resource.off('updated', this.onResourceUpdate);
+					}
+					if(this.refeshIntervalId){
+						clearInterval(this.refeshIntervalId);
+					}
 				}
 				
 			});

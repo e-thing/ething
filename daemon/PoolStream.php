@@ -18,25 +18,25 @@ class PoolStream {
 		}
 	}
 	
-	static public function streams(){
-		$streams = array();
-		foreach(self::$streams as $stream){
-			$st = $stream->getStream();
-			if(isset($st)){
-				$streams[] = $st;
-			}
-		}
-		return $streams;
-	}
-	
 	static public function process($timeout = 1){
 		
 		$t0 = microtime(true);
 		
 		while(1){
-			$read = self::streams();
+			$read = array();
+			$readMap = array();
 			$write = array();
 			$except = array();
+			
+			foreach(self::$streams as $stream){
+				$st = $stream->getStreams();
+				if(!empty($st)){
+					foreach($st as $s){
+						$read[] = $s;
+						$readMap[] = array($stream, $s);
+					}
+				}
+			}
 			
 			if(empty($read)) return;
 			
@@ -44,10 +44,13 @@ class PoolStream {
 			
 			if($r>0){
 				// incomming data
-				foreach(self::$streams as $stream){
-					if(in_array($stream->getStream(), $read)){
-						Log::debug("data available for stream ".get_class($stream));
-						$stream->process();
+				foreach($read as $stream){
+					foreach($readMap as $readMapItem){
+						if($readMapItem[1] === $stream){
+							Log::debug("data available for stream ".get_class($readMapItem[0]));
+							$readMapItem[0]->process($stream);
+							break;
+						}
 					}
 				}
 			} else {
@@ -95,9 +98,11 @@ class PoolStream {
 	static public function closeAll(){
 		Log::debug("close all stream");
 		foreach(self::$streams as $stream){
-			$str = $stream->getStream();
-			if(isset($str)){
-				@fclose($str);
+			$st = $stream->getStreams();
+			if(!empty($st)){
+				foreach($st as $s){
+					@fclose($s);
+				}
 			}
 		}
 	}

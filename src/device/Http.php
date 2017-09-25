@@ -70,6 +70,7 @@ use \Ething\Swagger;
 use \Ething\Request;
 use \Ething\Stream;
 use \Ething\Helpers;
+use \Ething\Net;
 
 class Http extends Device
 {
@@ -281,6 +282,26 @@ class Http extends Device
 			return $op->device()->request($data['path'], $data['method'], $data['headers'], $data['body'], $stream, $options);
 		}); 
 		
+		
+		$host = parse_url($this->url)['host'];
+		
+		if(!Net::isLocalhost($host)){
+			$operations[] = new Operation($this, 'ping', null, 'application/json', 'send ping request', function($op, $stream, $data, $options){
+				$device = $op->device();
+				$host = parse_url($device->url)['host'];
+				return $op->ething()->daemon('net.ping --host '.$host, $stream, $options);
+			});
+			
+			
+			if(Net::isLocalIp($host)){
+				$operations[] = new Operation($this, 'wol', null, null, 'send Wake on Lan packet', function($op, $stream, $data, $options){
+					$device = $op->device();
+					$host = parse_url($device->url)['host'];
+					return $op->ething()->daemon('net.wol --ip '.$host, $stream, $options);
+				});
+			}
+		}
+		
 		return $operations;
 	}
 	
@@ -333,37 +354,13 @@ class Http extends Device
 		return $proxy->request($request, $stream, $this->authUser(), $this->authPassword(), $this->authMode(), $curl_options);
 	}
 	
-	
-	// cf: http://www.php.net/manual/en/function.socket-create.php
 	public function ping($timeout = 1) {
-		$result = false;
 		
 		if(!$this->isServer()) return false;
-			
+		
 		$url_info = parse_url($this->url);
 		
-		/* ICMP ping packet with a pre-calculated checksum */
-		$package = "\x08\x00\x7d\x4b\x00\x00\x00\x00PingHost";
-		/* create the socket, the last '1' denotes ICMP */
-		if($socket  = @socket_create(AF_INET, SOCK_RAW, 1)){
-			/* set socket receive timeout to 1 second */
-			socket_set_option($socket, SOL_SOCKET, SO_RCVTIMEO, array('sec' => $timeout, 'usec' => 0));
-			
-			/* connect to socket */
-			if(@socket_connect($socket, $url_info['host'], null)){
-				$ts = microtime(true);
-				if (@socket_send($socket, $package, strLen($package), 0) && @socket_read($socket, 255))
-					$result = microtime(true) - $ts;
-			}
-			
-			socket_close($socket);
-		}
-		else{
-			$e = new Exception(socket_strerror(socket_last_error()));
-			$this->ething->logger()->error($e);
-			throw $e;
-		}
-		
+		$result = Net::ping($url_info['host'], $timeout);
 		$online = ($result!==false);
 		$previousState = boolval($this->getAttr('_ping'));
 		if($previousState != $online){
@@ -381,8 +378,6 @@ class Http extends Device
 
 		return $result;
 	}
-	
-	
 	
 	
 	

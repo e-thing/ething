@@ -1281,7 +1281,7 @@ $app->get('/files/:id/execute', $auth->permissions('file:read resource:read'),
 		if($r->mime === 'application/javascript'){
 			
 			$args = Utils\getParameter('args',Utils\CHK_STRING, true, null);
-			$res = Ething\Script::runFromFile($r, $args);
+			$res = Ething\ScriptEngine::runFromFile($r, $args);
 			
 			if(!$res){
 				throw new \Utils\Exception('Unable to execute');
@@ -2801,9 +2801,9 @@ $app->get('/devices/:id/call/:operationId', $auth->permissions('device:write res
 		$data = null;
 		$paramData = $app->request->get('paramData');
 		if($paramData){
-			$data = json_decode($jsonStr, true);
+			$data = json_decode($paramData, true);
 			if(json_last_error() !== JSON_ERROR_NONE){
-				throw new Exception('Invalid paramData: JSON parse error: '.json_last_error_msg());
+				throw new Exception('Invalid paramData: "'.$paramData.'". JSON parse error: '.json_last_error_msg());
 			}
 		}
 		
@@ -2882,7 +2882,7 @@ $app->post('/devices/:id/call/:operationId', $auth->permissions('device:write re
 		$data = $app->request->params();
 		try {
 			$jsonData = Utils\getJSON($app, true);
-			$data = array_merge($data, $jsonData);
+			$data = is_array($jsonData) ? array_merge($data, $jsonData) : $jsonData;
 		} catch (\Exception $e){}
 		
 		ob_implicit_flush(true);

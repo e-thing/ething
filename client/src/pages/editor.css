@@ -106,11 +106,18 @@
 #editor #tv-panel .placeholder {
 	color: grey;
 }
+
+#editor #tv-panel .stdout {
+	background-color: #f3ffe5;
+}
+
 #editor #tv-panel .stderr {
 	color: #f34f4f;
+	background-color: #fff4f8;
 }
 #editor #tv-panel .return {
 	color: #1f72f3;
+	background-color: #ebf3ff;
 }
 
 #editor #tv-panel .info {
@@ -131,3 +138,8 @@
     border-radius: initial;
 	overflow: visible;
 }
+
+#editor #tv-console > * {
+	padding: 10px 5px !important;
+}
+

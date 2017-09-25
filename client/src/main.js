@@ -23,7 +23,7 @@
 				
 				'config' : '../../config',
 				
-				"jquery": "//ajax.googleapis.com/ajax/libs/jquery/2.1.4/jquery.min",
+				"jquery": "//ajax.googleapis.com/ajax/libs/jquery/2.1.4/jquery",
 				"jquery-mobile-events": "jquery.mobile.events.min",
 				
 				'jquery.mousewheel': '//cdnjs.cloudflare.com/ajax/libs/jquery-mousewheel/3.1.13/jquery.mousewheel.min',
@@ -31,7 +31,7 @@
 				"bootstrap": '//maxcdn.bootstrapcdn.com/bootstrap/3.3.5/js/bootstrap.min',
 				"bootstrap-css": '//maxcdn.bootstrapcdn.com/bootstrap/3.3.5/css/bootstrap.min',
 				
-				'bootstrap-select': '//cdnjs.cloudflare.com/ajax/libs/bootstrap-select/1.10.0/js/bootstrap-select',
+				'bootstrap-select': '//cdnjs.cloudflare.com/ajax/libs/bootstrap-select/1.10.0/js/bootstrap-select.min',
 				'bootstrap-select-css': '//cdnjs.cloudflare.com/ajax/libs/bootstrap-select/1.10.0/css/bootstrap-select.min',
 				'bootstrap-toggle': '//gitcdn.github.io/bootstrap-toggle/2.2.2/js/bootstrap-toggle.min',
 				'bootstrap-toggle-css': '//gitcdn.github.io/bootstrap-toggle/2.2.2/css/bootstrap-toggle.min',
@@ -65,7 +65,9 @@
 				
 				'mqttws': '//cdnjs.cloudflare.com/ajax/libs/paho-mqtt/1.0.1/mqttws31',
 				
-				'urijs': '//cdnjs.cloudflare.com/ajax/libs/URI.js/1.18.12'
+				'urijs': '//cdnjs.cloudflare.com/ajax/libs/URI.js/1.18.12',
+				
+				'jsonpath': '//cdn.rawgit.com/dchester/jsonpath/4960ea57/jsonpath.min'
 				
 			},
 			

@@ -21,7 +21,7 @@ class Operation implements \JsonSerializable {
 		return $o;
 	}
 	
-	public function __construct($device, $name, \stdClass $schema = null, $response = null, $description = null, $call = null) {
+	public function __construct(Device $device, $name, \stdClass $schema = null, $response = null, $description = null, $call = null) {
 		$this->device_ = $device;
 		$this->name_ = $name;
 		$this->schema_ = isset($schema) ? $schema : self::emptySchema();
@@ -36,6 +36,10 @@ class Operation implements \JsonSerializable {
 	
 	public function name() {
 		return $this->name_;
+	}
+	
+	public function ething() {
+		return $this->device_->ething;
 	}
 	
 	public function device() {

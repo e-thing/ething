@@ -4,7 +4,8 @@ function usage(){
 	console.error();
 	console.error("usage:");
 	console.error("  "+process.argv.slice(0,2).join(' ')+" [--stdout file] [--stderr file] [--result file]");
-	console.error("      [--globals json] [-t timeout] [--user user] [--password password] [--apiUrl url] script");
+	console.error("      [--globals json] [-t timeout] [--user user] [--password password] [--apiUrl url]");
+	console.error("      [--apikey key] [--filename name] script");
 	console.error();
 }
 
@@ -15,16 +16,18 @@ function extend(a, b){
 	return a;
 }
 
-
+var filename = null;
 var scriptFile = null;
 var stdoutFile = './stdout.log';
 var stderrFile = './stderr.log';
 var resultFile = './result';
 var globals = {};
-var timeout = 300000;
+var timeout = 300000; // in ms
 var user = 'ething';
-var password = 'admin';
+var password = null;
+var apiKey = null;
 var apiUrl = 'http://localhost/ething/api';
+var verbose = false;
 
 // arguments
 
@@ -35,7 +38,11 @@ if(!arguments.length){
 }
 
 while(arguments.length){
+	
 	switch (arguments[0]) {
+		case '--verbose':
+			verbose = true;
+			break;
 		case '--result':
 			arguments.shift();
 			if(!arguments.length){
@@ -73,6 +80,14 @@ while(arguments.length){
 				process.exit(1);
 			}
 			break;
+		case '--filename': // used for stack trace
+			arguments.shift();
+			if(!arguments.length){
+				usage();
+				process.exit(1);
+			}
+			filename = arguments[0];
+			break;
 		case '-t':
 			arguments.shift();
 			if(!arguments.length){
@@ -97,6 +112,14 @@ while(arguments.length){
 			}
 			password = arguments[0];
 			break;
+		case '--apikey':
+			arguments.shift();
+			if(!arguments.length){
+				usage();
+				process.exit(1);
+			}
+			apiKey = arguments[0];
+			break;
 		case '--apiUrl':
 			arguments.shift();
 			if(!arguments.length){
@@ -114,11 +137,19 @@ while(arguments.length){
 		default:
 			if(scriptFile===null){
 				scriptFile = arguments[0];
+			} else {
+				console.error('invalid argument',arguments[0]);
+				usage();
+				process.exit(1);
 			}
 			break;
 	}
 	arguments.shift();
 }
+
+
+
+if(verbose) console.log('command:',process.argv.join(' '));
 
 if(scriptFile===null){
 	usage();
@@ -133,16 +164,28 @@ if (!fs.existsSync(scriptFile)) {
 
 var script = fs.readFileSync(scriptFile).toString('utf8');
 
+if(verbose) console.log('script file:',scriptFile);
 
 var EThing = require("./../../js/ething.js").EThing;
 
+
+if(!filename){
+	filename = scriptFile.split('/').reverse()[0];
+}
 
 
 EThing.initialize({
   apiUrl: apiUrl,
   login: user,
-  password: password
+  password: password,
+  apiKey: apiKey
 }, function(){
+	
+	if(verbose) console.log('EThing initialized');
+	
+	if(verbose) console.log('script stdout:',stdoutFile);
+	if(verbose) console.log('script stderr:',stderrFile);
+	if(verbose) console.log('script result:',resultFile);
 	
 	const vm = require('vm');
 	const output = stdoutFile==='-' ? process.stdout : fs.createWriteStream(stdoutFile);
@@ -150,12 +193,20 @@ EThing.initialize({
 	const resultOutput = resultFile==='-' ? process.stdout : fs.createWriteStream(resultFile);
 	const logger = new console.Console(output, errorOutput);
 	
+	process.on('uncaughtException', function(err){
+		if(verbose) console.error('Error in script:', err);
+		logger.error(err);
+		process.exit(1);
+	});
+	
 	extend(globals, {
 		EThing: EThing,
 		console: logger,
 		Buffer: Buffer,
 		setTimeout: setTimeout,
+		setInterval: setInterval,
 		clearTimeout: clearTimeout,
+		clearInterval: clearInterval,
 		ArrayBuffer: ArrayBuffer,
 		Int8Array: Int8Array,
 		Uint8Array: Uint8Array,
@@ -172,26 +223,40 @@ EThing.initialize({
 	try {
 		
 		var options = {
-			displayErrors  : true
+			displayErrors  : true,
+			filename : filename
 		};
 		
-		if(timeout>0) options.timeout = timeout;
+		if(timeout>0){
+			options.timeout = timeout;
+			if(verbose) console.log('script timeout:', options.timeout,'ms');
+		}
+		
+		if(verbose) console.log('start script', new Date().toISOString());
 		
 		var result = vm.runInNewContext(script, globals, options);
 		
+		if(verbose) console.log('end script', new Date().toISOString());
+		
 		if(typeof result != 'undefined' && result !== null){
-			resultOutput.write(JSON.stringify(result, null, ' '));
+			try {
+				var resultStr = JSON.stringify(result, null, ' ');
+				resultOutput.write(resultStr);
+			} catch(e){
+				if(verbose) console.error('Error stringify output:', e);
+			}
 		}
 		
 	} catch(e){
+		if(verbose) console.error('Error in script:', e);
 		logger.error(e);
 	}
 	
+	
 }, function(error) {
 // on error
-  console.error(error.message);
+  console.error('Ething error:',error.message);
   process.exit(1);
 });
-
 
 

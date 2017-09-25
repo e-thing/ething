@@ -14,12 +14,15 @@ if(function_exists('pcntl_signal')){
 
 register_shutdown_function(function(){
 	
-	if(Task::getCurrentTask()) return; // do not go any further for forked process !
+	if(ForkTask::getCurrentTask()) return; // do not go any further for forked process !
 	
 	// close all streams
 	PoolStream::each(function($stream) {
 		if(method_exists($stream, 'close')) $stream->close();
 	});
+	
+	// kill all sub processes
+	TaskManager::killAll();
 	
 	Log::info("daemon EXIT");
 	
@@ -80,13 +83,113 @@ $cli->add('signal.dispatch', function($args, $client) {
 	}
 });
 
+$cli->add('process.list', function($args, $client) {
+	
+	$out = "name                           status    pid        duration return\n";
+	$out .= "-------------------------------------------------------------------\n";
+	
+	foreach(TaskManager::getTasks() as $task){
+		switch($task->state){
+			case 'running':
+				$status = 'R';
+				break;
+			case 'terminated':
+				$status = 'T';
+				break;
+			case 'error':
+				$status = 'E';
+				break;
+			case 'pending':
+				$status = 'W';
+				break;
+			default:
+				$status = '?';
+				break;
+		}
+		$runCount = $task->getRunningCount();
+		$out .= sprintf("%-30s %6s %6s %15s %6d\n",
+			$task->getName(),
+			$status,
+			$task->state !== 'running' || empty($task->pid) ? '-' : (string)($task->pid),
+			$task->state === 'running' ? (new DateTime())->diff((new DateTime())->setTimestamp($task->getStartTime()))->format('%dd%Hh%Im%Ss') : ($runCount ? (new DateInterval('PT'.$task->getDuration().'S'))->format('%dd%Hh%Im%Ss') : '-'),
+			$runCount>1 ? $task->getLastExitCode() : '-'
+		);
+	}
+	
+	$client->success($out);
+});
+
+$cli->add('process.kill', function($args, $client) {
+	if(count($args)>0 && is_numeric($args[0])){
+		$pid = (int)$args[0];
+		
+		foreach(TaskManager::runningTasks() as $task){
+			if($task->pid === $pid){
+				$task->end();
+				break;
+			}
+		}
+		
+		$client->success($out);
+	}
+	$client->error();
+});
+
+
+$cli->add('net.scan', function($args, $client) {
+	if(count($args) != 0)
+		throw new Exception('invalid arguments');
+	else {
+		
+		TaskManager::add(new ProcessTask('php '.__DIR__.'/tasks/net.scan.php', 'net.scan', array(
+				'enableStdout' => true
+			)), function($task) use ($client){
+			if($task->lastExitCode===0){
+				$client->success($task->data[1]);
+			} else {
+				$client->error();
+			}
+		});
+		
+	}
+});
+
+$cli->add('net.wol', function($args, $client) {
+	if(count($args) == 0)
+		throw new Exception('invalid arguments');
+	else {
+		TaskManager::add(new ProcessTask('php '.__DIR__.'/tasks/net.wol.php '.implode(' ',$args), 'net.wol'), function($task) use ($client){
+			if($task->lastExitCode===0){
+				$client->success();
+			} else {
+				$client->error();
+			}
+		});
+	}
+});
+
+$cli->add('net.ping', function($args, $client) {
+	if(count($args) == 0)
+		throw new Exception('invalid arguments');
+	else {
+		TaskManager::add(new ProcessTask('php '.__DIR__.'/tasks/net.ping.php '.implode(' ',$args), 'net.ping', array(
+				'enableStdout' => true
+			)), function($task) use ($client){
+			if($task->lastExitCode===0){
+				$client->success($task->data[1]);
+			} else {
+				$client->error();
+			}
+		});
+	}
+});
 
 SignalManager::attachHandler(function($signal) use ($ething) {
 	Log::debug("dispatchSignal=> {$signal->debugStr()}");
-	TaskManager::add(new Task(array($ething,'dispatchSignal'), array($signal, false)));
+	TaskManager::add(new ForkTask(array($ething,'dispatchSignal'), array($signal, false)));
 });
 
-Task::$forkInit = function($task) use($ething, $server, $cli) {
+ForkTask::$forkInit = function($task) use($ething, $server, $cli) {
 	
 	$name = 'task:'.$task->getName();
 	
@@ -156,12 +259,12 @@ Timer::setInterval(60, function(){
 
 
 Timer::setInterval(300, function(){
-	TaskManager::add(new Task('pingDevicesTask'));
+	TaskManager::add(new ForkTask('pingDevicesTask'));
 }, 60);
 
 
 Timer::setInterval(600, function(){
-	TaskManager::add(new Task('checkExpiredDataTask'));
+	TaskManager::add(new ForkTask('checkExpiredDataTask'));
 }, 100);
 
 

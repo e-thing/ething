@@ -3,7 +3,7 @@
 
 abstract class Stream {
 	
-	abstract public function getStream();
-	abstract public function process();
+	abstract public function getStreams();
+	abstract public function process($stream);
 	
 };

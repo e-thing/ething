@@ -3,28 +3,6 @@
 	define(['jquery','ething','form','ui/datasource'], factory);
 }(function ($, EThing, Form) {
 	
-	var parseData = function(data){
-		if(Array.isArray(data))
-			data = data[data.length-1];
-		
-		if($.isPlainObject(data)){
-			
-			var keys = Object.keys(data);
-			if(keys.length === 1){
-				data = data[keys[0]];
-			} else if(keys.indexOf('value')!==-1) {
-				data = data['value'];
-			} else if(keys.indexOf('y')!==-1) {
-				data = data['y'];
-			} else if(keys.indexOf('data')!==-1) {
-				data = data['data'];
-			}
-		}
-		
-		return data;
-	};
-	
-	
 	
 	return {
 		description: 'Draw a label containing either the lastest data stored in a table or the data returned by a device !',
@@ -37,7 +15,11 @@
 					item: new $.Form.DataSource({
 						tableColumn: true,
 						deviceRequest: {
-							acceptedMimeType: ['application/json', 'text/*']
+							acceptedMimeType: ['application/json', 'text/*'],
+							jsonPath: true,
+							regexp: true,
+							xpath: true,
+							refreshPeriod: true
 						},
 						resourceData: true
 					})
@@ -85,16 +67,17 @@
 				};
 			} else if(dataType === 'device.request'){
 				
-				var operation = options.source.operation;
-				var parameters = options.source.parameters || null;
-				
-				title += ' - '+operation;
+				title += ' - '+options.source.operation;
 				
 				src = function(){
-					return resource.execute(operation, parameters).then(function(data){
-						return parseData(data);
+					return $.Form.DeviceRequest.makeRequest(options.source).then(function(data){
+						return {
+							value: data,
+							date: new Date()
+						};
 					});
 				}
+				
 			} else if(dataType === 'resource.data'){
 				
 				var key = options.source.data;
@@ -103,7 +86,8 @@
 				
 				src = function(){
 					return {
-						value: resource.data(key)
+						value: resource.data(key),
+						date: resource.modifiedDate()
 					};
 				}
 			} else {
@@ -142,13 +126,28 @@
 				
 				draw: function(){
 					label.draw.call(this);
-					resource.on('updated', update);
+					
+					if(dataType === 'table.column' || dataType === 'resource.data'){
+						this.onResourceUpdate = dataType === 'table.column' ? function(evt,updatedKeys){
+							if(updatedKeys.indexOf('contentModifiedDate')!==-1) update();
+						} : update;
+						resource.on('updated', this.onResourceUpdate);
+					} else if(dataType === 'device.request'){
+						this.refeshIntervalId = setInterval(update, (options.refreshPeriod || 30)*1000);
+					}
+					
 					update();
 				},
 				
 				destroy: function(){
 					label.destroy.call(this);
-					resource.off('updated', update);
+					
+					if(this.onResourceUpdate){
+						resource.off('updated', this.onResourceUpdate);
+					}
+					if(this.refeshIntervalId){
+						clearInterval(this.refeshIntervalId);
+					}
 				}
 				
 			});

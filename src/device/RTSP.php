@@ -37,6 +37,7 @@ use \Ething\Url;
 use \Ething\Request;
 use \Ething\Stream;
 use \Ething\Helpers;
+use \Ething\Net;
 
 class RTSP extends Device
 {	
@@ -206,35 +207,11 @@ class RTSP extends Device
 	}
 	
 	
-	// cf: http://www.php.net/manual/en/function.socket-create.php
 	public function ping($timeout = 1) {
-		$result = false;
 		
 		$url_info = parse_url($this->url);
 		
-		/* ICMP ping packet with a pre-calculated checksum */
-		$package = "\x08\x00\x7d\x4b\x00\x00\x00\x00PingHost";
-		/* create the socket, the last '1' denotes ICMP */
-		if($socket  = @socket_create(AF_INET, SOCK_RAW, 1)){
-			/* set socket receive timeout to 1 second */
-			socket_set_option($socket, SOL_SOCKET, SO_RCVTIMEO, array('sec' => $timeout, 'usec' => 0));
-			
-			/* connect to socket */
-			if(@socket_connect($socket, $url_info['host'], null)){
-				$ts = microtime(true);
-				if (@socket_send($socket, $package, strLen($package), 0) && @socket_read($socket, 255))
-					$result = microtime(true) - $ts;
-			}
-			
-			socket_close($socket);
-		}
-		else{
-			$e = new Exception(socket_strerror(socket_last_error()));
-			$this->ething->logger()->error($e);
-			throw $e;
-		}
-			
-		
+		$result = Net::ping($url_info['host'], $timeout);
 		$online = ($result!==false);
 		$previousState = boolval($this->getAttr('_ping'));
 		if($previousState != $online){
@@ -252,9 +229,6 @@ class RTSP extends Device
 
 		return $result;
 	}
-	
-	
-	
 	
 	
 	

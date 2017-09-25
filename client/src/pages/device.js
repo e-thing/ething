@@ -692,7 +692,10 @@
 						
 						var $operation = $(
 							'<div class="operation" id="'+name+'">'+
-								'<div class="operation-header"></div>'+
+								'<div class="operation-header">'+
+									'<div class="operation-header-name"></div>'+
+									'<div class="operation-header-mime"></div>'+
+								'</div>'+
 								'<div class="operation-body">'+
 									'<div class="operation-body-description"></div>'+
 								'</div>'+
@@ -701,7 +704,8 @@
 						
 						$operation.data('operation', operation);
 						
-						$operation.find('.operation-header').text(name);
+						$operation.find('.operation-header-name').text(name);
+						if(operation.response) $operation.find('.operation-header-mime').text(operation.response);
 						
 						// description
 						markdown( $operation.find('.operation-body-description').text(description));

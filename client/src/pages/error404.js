@@ -6,7 +6,7 @@
 }(this, function (UI, template) {
 	
 	return function(){
-		UI.stopRefresh();
+		UI.disableRefresh();
 		UI.Container.set(template);
 	};
 	

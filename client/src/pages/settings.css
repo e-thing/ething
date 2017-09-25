@@ -83,7 +83,10 @@
 		margin-bottom: 10px;
 	}
 	
-	#settings #log table td.level, #log table th.level {
+	#settings #log table td.level,
+	#settings #log table th.level,
+	#settings #log table td.origin,
+	#settings #log table th.origin	{
 		display: none;
 	}
 }

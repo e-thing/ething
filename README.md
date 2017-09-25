@@ -41,7 +41,7 @@ Compatible devices:
 - [RFLink](//rflink.nl)
 - custom MQTT
 - Denon/Marantz audio receiver (tested on Marantz M-CR611)
-
+- Yeelight
 
 
 #### Notification

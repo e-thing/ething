@@ -23,7 +23,8 @@
 					'image': 'generic/image',
 					'button': 'generic/button',
 					'stream': 'generic/stream',
-					'video': 'generic/video'
+					'video': 'generic/video',
+					'slider': 'generic/slider'
 				},
 				'miscellaneous': {
 					'clock': 'miscellaneous/clock'

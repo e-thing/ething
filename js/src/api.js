@@ -670,8 +670,9 @@
 	EThing.Resource.prototype._fromJson = function(json, noTrigger){
 		
 		var updated = this._json && json && this._json.modifiedDate && json.modifiedDate && this._json.modifiedDate !== json.modifiedDate;
+		var updatedKeys = [];
 		
-		this._json = extend({
+		json = extend({
 			name:null,
 			id:null,
 			type:null,
@@ -683,9 +684,20 @@
 		}, json || {});
 		
 		if(!noTrigger && updated) {
+			// list the kays that have been updated
+			Object.keys(json).forEach(function(key){
+				if((typeof this._json[key] === 'undefined') || !EThing.utils.isEqual(json[key],this._json[key])){
+					updatedKeys.push(key);
+				}
+			},this);
+		}
+		
+		this._json = json;
+		
+		if(!noTrigger && updated) {
 			//console.log('resource updated '+this.name());
-			this.trigger('updated');
-			EThing.trigger('ething.resource.updated',[this]);
+			this.trigger('updated', [updatedKeys]);
+			EThing.trigger('ething.resource.updated',[this, updatedKeys]);
 		}
 		
 		return updated;
@@ -967,6 +979,16 @@
 	}
 	
 	/**
+	 * Last time the content of this resource was modified
+	 * @memberof EThing.File
+	 * @this {EThing.File}
+	 * @returns {Date}
+	 */
+	EThing.File.prototype.contentModifiedDate = function() {
+		return new Date(this._json.contentModifiedDate);
+	}
+	
+	/**
 	 * If this file has a thumbnail (thumbnail is only available for file with MIME type __image/*__), it returns his link, else it returns null.
 	 * 
 	 * @memberof EThing.File
@@ -1180,6 +1202,15 @@
 			if(this._json.keys.hasOwnProperty(k))
 				keys.push(k);
 		return keys;
+	}
+	/**
+	 * Last time the content of this resource was modified
+	 * @memberof EThing.Table
+	 * @this {EThing.Table}
+	 * @returns {Date}
+	 */
+	EThing.Table.prototype.contentModifiedDate = function() {
+		return new Date(this._json.contentModifiedDate);
 	}
 	/**
 	 * Returns rows.
@@ -1450,6 +1481,16 @@
 	 */
 	EThing.App.prototype.getContentUrl = function(auth) {
 		return toApiUrl('apps/'+this.id(),auth);
+	}
+	
+	/**
+	 * Last time the content of this resource was modified
+	 * @memberof EThing.App
+	 * @this {EThing.App}
+	 * @returns {Date}
+	 */
+	EThing.App.prototype.contentModifiedDate = function() {
+		return new Date(this._json.contentModifiedDate);
 	}
 	
 	/**
@@ -2996,24 +3037,14 @@
 		
 		if(arguments.length == 4){
 			
-			if(typeof data == 'boolean'){
+			if(typeof binary == 'function'){
 				callback = binary;
-				binary = data;
-				data = undefined;
-			} else {
-				
-				if(typeof binary == 'function'){
-					callback = binary;
-					binary = undefined;
-				}
+				binary = undefined;
 			}
 			
 		} else if(arguments.length == 3){
 			
-			if(typeof data == 'boolean'){
-				binary = data;
-				data = undefined;
-			} else if(typeof data == 'function'){
+			if(typeof data == 'function'){
 				callback = data;
 				data = undefined;
 			}
@@ -3024,7 +3055,7 @@
 			'url': '/devices/' + device + '/call/' + operationId,
 			'method': 'POST',
 			'contentType': "application/json; charset=utf-8",
-			'data': data,
+			'data': typeof data != 'undefined' && data!==null ? JSON.stringify(data) : undefined,
 			'dataType': binary ? (EThing.utils.isNode ? 'buffer' : 'blob') : 'auto',
 			'context': context
 		},callback);

@@ -99,7 +99,6 @@
 		extended.prototype = Object.create(parent.prototype);
 	};
 	
-	
 	function tree(item){
 		function tree_(item){
 			var lines = [];
@@ -790,8 +789,6 @@
 		});
 		
 		var errors = this.getErrors();
-		
-		console.log(errors);
 		
 		if(errors.length){
 			dfr.rejectWith(this, [errors]);
@@ -1827,8 +1824,9 @@
 			onload: function(){
 				this.change(function(e){
 					e.stopPropagation();
-					self.updateView();
-					self.change();
+					self.update();
+					//self.updateView();
+					//self.change();
 					return false;
 				});
 			}
@@ -1844,6 +1842,7 @@
 		
 		this.$description = $('<p>');
 		this.$content = $('<div>');
+		this.$error = $('<div class="alert alert-danger" role="alert">');
 		
 		var label = this.options.label===false ? false : (this.options.label || this.options.name);
 		
@@ -1852,6 +1851,7 @@
 				label ? ('<label>'+label+'</label>') : null,
 				this.select.$view
 			),
+			this.$error,
 			this.$description,
 			this.$content
 		);
@@ -1882,6 +1882,8 @@
 				this.$description.html(this.layoutItems[i].description || '');
 			this.layoutItems[i].item.$view.toggle( selected );
 		}
+		
+		this.error ? this.$error.html(this.error.message).show() : this.$error.hide();
 		
 	}
 	
@@ -1924,7 +1926,13 @@
 	};
 	Form.SelectPanels.prototype.getErrors = function(){
 		var layoutItem = this.getSelectedLayoutItem();
-		return layoutItem ? layoutItem.item.getErrors() : [];
+		var errors = [];
+		if(this.error)
+			errors.push(this.error);
+		if(layoutItem){
+			errors = errors.concat(layoutItem.item.getErrors());
+		}
+		return errors;
 	};
 	
 	Form.SelectPanels.prototype.setEnable = function(name, enable){
@@ -1943,7 +1951,7 @@
 				};
 			},
 			'out': function(value){
-				return $.extend({
+				return typeof value === 'undefined' ? value : $.extend({
 					type: value.type
 				}, value.value);
 			}
@@ -2269,7 +2277,7 @@
 		};
 		
 		var validators = [function(value){
-			if(value !== null){
+			if(value !== null && !this.options.editable && typeof value != 'undefined'){
 				var ok = false;
 				(Array.isArray(value) && this.options.multiple ? value : [value]).forEach(function(valuetotest){
 					this._values.forEach(function(v){
@@ -2278,7 +2286,8 @@
 							return false;
 						}
 					}, this);
-					if(!ok) throw 'unknown value';
+					if(!ok)
+						throw 'unknown value';
 				}, this);
 			}
 		}];
@@ -2296,7 +2305,7 @@
 		this.setOptions(this.options.items);
 	}
 	
-	Form.Select.prototype.addOption = function(label, value, category){
+	Form.Select.prototype.addOption = function(label, value, category, disabled){
 		
 		var key = String(label), val = value, index = String(this.__index++);
 		
@@ -2308,8 +2317,10 @@
 		this._values.push(val);
 		this._index.push(index);
 		
-		var $select = this.$input, first = !this.options.multiple && $select.find('option').length==0;
-		var html = '<option '+(first?'selected':'')+' value="'+index+'" data-content=\''+key+'\'>'+key+'</option>';
+		var $select = this.$input, first = !this.options.multiple && $select.find('option').length==0 && !disabled;
+		var dataContent = "";
+		if(/<[^>]+>/.test(key)) dataContent = 'data-content=\''+key.replace("'", '&acute;')+'\'';
+		var html = '<option '+(first?'selected':'')+' '+(disabled?'disabled':'')+' value="'+index+'" '+dataContent+'>'+key+'</option>';
 		if(category){
 			// find out if the category already exist
 			var $cat = $select.find('optgroup[label="'+category+'"]');
@@ -2321,38 +2332,70 @@
 			$select.append(html);
 		}
 		
-		if($.fn.selectpicker){
-			$select.selectpicker('refresh');
-		}
+		this.refresh();
 		
 		this.$input.change();
 		return this;
 	}
 	
+	Form.Select.prototype.refresh = function(render){
+		if($.fn.selectpicker){
+			if(this.options.editable){
+				var $edit = this.$input.find('.bs-create').detach();
+			}
+			
+			this.$input.selectpicker(render ? 'render' : 'refresh');
+			
+			var $ul = this.$input.closest('.bootstrap-select').children('div.dropdown-menu').children('ul');
+			
+			if(this.options.editable){
+				$edit.insertAfter( $ul )
+			}
+			
+			$ul.prev('.bs-empty').remove();
+			if(this._keys.length===0){
+				$('<div class="bs-empty">').text('empty !').insertBefore( $ul )
+			}
+		}
+	}
+	
 	Form.Select.prototype.setOptions = function(values){
 		var currentValue = this.getValue();
 		
-		var keys = [], vals = [], index = [], categories = [];
+		var keys = [], vals = [], index = [], categories = [], disabled = [];
 		
 		if(Array.isArray(values)){
 			for(var i=0; i<values.length; i++){
 				keys.push( String(values[i]) );
 				vals.push(values[i]);
 				categories.push(null);
+				disabled.push(false);
 			}
 		} else if($.isPlainObject(values)){
 			for(var i in values){
 				if($.isPlainObject(values[i])){
 					var category = String(i);
 					for(var j in values[i]){
-						keys.push( String(j) );
-						vals.push(values[i][j]);
+						var key = String(j), dis = false;
+						if(key[0] === '!'){
+							dis = true
+							key = key.substr(1);
+						}
+						keys.push(key);
 						categories.push(category);
+						vals.push(values[i][j]);
+						disabled.push(dis);
 					}
 				} else {
-					keys.push( String(i) );
+					var key = String(i), dis = false;
+					if(key[0] === '!'){
+						dis = true
+						key = key.substr(1);
+					}
+					keys.push(key);
 					vals.push(values[i]);
 					categories.push(null);
+					disabled.push(dis);
 				}
 			}
 		}
@@ -2373,9 +2416,9 @@
 			var dataContent = "";
 			
 			if(/<[^>]+>/.test(keys[i]))
-				dataContent = 'data-content=\''+keys[i]+'\'';
+				dataContent = 'data-content=\''+keys[i].replace("'", '&acute;')+'\'';
 			
-			var html = '<option value="'+index[i]+'" '+dataContent+'>'+keys[i]+'</option>',
+			var html = '<option '+(disabled[i]?'disabled':'')+' value="'+index[i]+'" '+dataContent+'>'+keys[i]+'</option>',
 				category = categories[i];
 			
 			if(category){
@@ -2392,11 +2435,9 @@
 		}
 		
 		if(!this.options.multiple)
-			this.$input.find('option').first().attr('selected','selected');
+			this.$input.find('option:not(:disabled)').first().attr('selected','selected');
 		
-		if($.fn.selectpicker){
-			this.$input.selectpicker('refresh');
-		}
+		this.refresh();
 		
 		if(typeof currentValue == 'undefined' || currentValue === null || !this.setValue(currentValue, true))
 			this.$input.change();
@@ -2427,9 +2468,7 @@
 			this._keys.splice(pos,1);
 			this._values.splice(pos,1);
 			
-			if($.fn.selectpicker){
-				this.$input.selectpicker('refresh');
-			}
+			this.refresh();
 			
 			if(isEqual(value, this.value_))
 				this.setValue(null,true);
@@ -2446,9 +2485,7 @@
 		
 		this.$input.find('option, optgroup').remove();
 		
-		if($.fn.selectpicker){
-			this.$input.selectpicker('refresh');
-		}
+		this.refresh();
 		this.$input.change();
 		return this;
 	}
@@ -2478,9 +2515,33 @@
 		});
 		
 		if($.fn.selectpicker){
-			self.$input.selectpicker({
+			this.$input.selectpicker({
+				title: this.options.title || null,
 				showTick: true
 			});
+			
+			if(this.options.editable){
+				
+				var $create_name = $('<input type="text" class="form-control" autocomplete="off" placeholder="add a custom field">');
+				var $create_btn = $('<button class="btn btn-primary" type="button"><span class="glyphicon glyphicon-plus" aria-hidden="true"></span><span class="hidden-xs"> add</span></button>');
+				
+				$create_btn.click(function(e){
+					e.preventDefault();
+					var name = ($create_name.val()||'').trim();
+					if(name){
+						self.addOption(name, name, 'custom');
+					}
+					return false;
+				});
+				
+				
+				$('<div class="bs-create input-group">').append(
+					$create_name,
+					$('<span class="input-group-btn">').html($create_btn)
+				).insertAfter( this.$input.closest('.bootstrap-select').children('div.dropdown-menu').children('ul') );
+				
+			}
+			
 		};
 
 		return $view;
@@ -2495,6 +2556,16 @@
 			} else {
 				var vv = Array.isArray(this.value_) ? this.value_ : [this.value_];
 				var indexes = [];
+				
+				if(this.options.editable){
+					// add unknown values
+					vv.forEach(function(v){
+						if(this._getPos(v) === null){
+							this.addOption(v, v, 'custom');
+						}
+					}, this);
+				}
+				
 				vv.forEach(function(v){
 					var pos = this._getPos(v);
 					if(pos!==null) indexes.push(this._index[pos]);
@@ -2502,8 +2573,7 @@
 				this.$input.val(this.options.multiple ? indexes : indexes[0]);
 			}
 			
-			if($.fn.selectpicker)
-				this.$input.selectpicker('render');
+			this.refresh(true);
 		}
 		
 		this.hasError() ? this.$error.html(this.getErrors()[0].message).show() : this.$error.hide();
@@ -2533,11 +2603,14 @@
 		var pos = this._getPos(value);
 		if(pos !== null){
 			var $opt = this.$input.find('option[value="'+this._index[pos]+'"]');
-			!!enable ? $opt.removeAttr('disabled') : $opt.attr('disabled','disabled');
-			
-			if($.fn.selectpicker){
-				this.$input.selectpicker('refresh');
+			if(!!enable){
+				$opt.removeAttr('disabled');
+			} else {
+				$opt.attr('disabled','disabled');
+				$opt.removeAttr('selected');
 			}
+			
+			this.refresh();
 			
 			if(isEqual(value, this.value_))
 				this.setValue(null,true);
@@ -4173,6 +4246,8 @@
 		};
 		
 	}
+	
+	Form.inherits = inherits;
 	
 	
 	/* register as a plugin in jQuery */

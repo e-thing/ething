@@ -74,6 +74,7 @@ use \Ething\Event;
 use \Ething\Exception;
 use \Ething\Ething;
 use \Ething\Stream;
+use \Ething\Helpers;
 
 abstract class Device extends Resource
 {
@@ -180,11 +181,32 @@ abstract class Device extends Resource
 	
 	// return true if the call was successsfull, false if an error occurs.
 	// the output data is stored in the Stream instance (since it can be a stream, e.g. MJPEG).
-	public function call( $operation, Stream $stream = null, array $data = null, array $options = array()){
+	public function call( $operation, Stream $stream = null, $data = null, array $options = array()){
 		$operation = is_string($operation) ? $this->operation($operation) : $operation;
 		if(!$operation)
 			throw new Exception("this operation is not accessible");
+		
+		// get the data
 		if(!isset($data)) $data = array();
+		else if(is_float($data) || is_int($data) || is_string($data) || is_bool($data)) $data = array($data);
+		else if(!is_array($data))
+			throw new \InvalidArgumentException();
+		
+		if(!empty($data) && Helpers::is_numeric_array($data)){
+			// if the data is a numeric array (ie not assoc), make it assoc from the schema
+			$schema = $operation->schema();
+			$keys = isset($schema->properties) ? array_keys((array)($schema->properties)) : array();
+			$newData = array();
+			
+			foreach($data as $i => $value){
+				if(isset($keys[$i])){
+					$newData[$keys[$i]] = $value;
+				}
+			}
+			
+			$data = $newData;
+		}
+		
 		return $operation->call($stream, $data, $options);
 	}
 	

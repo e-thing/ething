@@ -64,7 +64,7 @@ class Controller extends \Stream {
 		
 		$stream = @stream_socket_client("tcp://".$host.':55443', $errno, $errstr, 10);
 		if($stream === false)
-			throw new Exception("Yeelight: unable to connect to the device {$host} : {$errstr}");
+			throw new \Exception("Yeelight: unable to connect to the device {$host} : {$errstr}");
 		
 		// make this stream non blocking !
 		stream_set_blocking($stream, false);
@@ -229,7 +229,7 @@ class Controller extends \Stream {
 				$this->open();
 				$this->logger->info("Yeelight: connected");
 				$this->preventFailConnectLog = false;
-			} catch(Exception $e){
+			} catch(\Exception $e){
 				if(!$this->preventFailConnectLog) $this->logger->warn("Yeelight: unable to connect : {$e->getMessage()}");
 				$this->preventFailConnectLog = true;
 			}
@@ -290,11 +290,11 @@ class Controller extends \Stream {
 	
 	protected $stream = null;
 	
-	public function getStream(){
-		return $this->stream;
+	public function getStreams(){
+		return array($this->stream);
 	}
 	
-	public function process(){
+	public function process($stream){
 		$this->read();
 	}
 	

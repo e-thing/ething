@@ -29,7 +29,7 @@ class SerialController extends Controller {
 		
 		// Then we need to open it
 		if(!$this->serial->open())
-			throw new Exception("unable to connect to the gateway {$port}, baudrate={$baudrate}");
+			throw new \Exception("unable to connect to the gateway {$port}, baudrate={$baudrate}");
 		
 		$this->stream = $this->serial->pipes[1];
 		$this->buffer = '';

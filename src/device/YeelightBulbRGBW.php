@@ -1,6 +1,18 @@
 <?php
 
-
+	/**
+	 * @swagger-definition
+	 * "Device\\YeelightBulbRGBW":{ 
+	 *   "type": "object",
+	 *   "description": "YeelightBulbRGBW Device resource representation",
+	 * 	 "allOf": [
+	 * 		{
+	 * 		   "$ref":"#/definitions/YeelightDevice"
+	 * 		}
+	 *   ]
+	 * }
+	 */
+	 
 namespace Ething\Device;
 
 use \Ething\Exception;

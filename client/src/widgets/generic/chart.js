@@ -225,8 +225,8 @@
 			});
 			
 			
-			var update = function(){
-				widget.$element.plot('refresh');
+			var update = function(evt,updatedKeys){
+				if(updatedKeys.indexOf('contentModifiedDate')!==-1) widget.$element.plot('refresh');
 			};
 			
 			

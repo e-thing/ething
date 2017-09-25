@@ -89,7 +89,8 @@ Layout
 .f-form  .f-formlayout > div > div > .f-formlayout,
 .f-form  .f-formlayout > div > div > .f-arraylayout,
 .f-form  .f-formlayout > div > div > .f-selectpanels > div > .f-formlayout,
-.f-form  .f-formlayout > div > div > .f-selectpanels > div > .f-arraylayout
+.f-form  .f-formlayout > div > div > .f-selectpanels > div > .f-arraylayout,
+.f-form  .f-selectpanels > div:last-child
  {
 	margin-left: 10px;
     border-left-width: 2px;
@@ -101,7 +102,8 @@ Layout
 .f-form  .f-formlayout > div > div > .f-formlayout:hover,
 .f-form  .f-formlayout > div > div > .f-arraylayout:hover,
 .f-form  .f-formlayout > div > div > .f-selectpanels > div > .f-formlayout:hover,
-.f-form  .f-formlayout > div > div > .f-selectpanels > div > .f-arraylayout:hover
+.f-form  .f-formlayout > div > div > .f-selectpanels > div > .f-arraylayout:hover,
+.f-form  .f-selectpanels > div:last-child:hover
 {
     border-left-color: #15a1f3;
 }
@@ -215,6 +217,19 @@ Layout
 	max-width: 100%;
 }
 
+
+/*
+ Select
+*/
+.f-form .f-select .bs-create{
+	margin: 10px 10px 0 10px;
+}
+
+.f-form .f-select .bs-empty{
+	color: grey;
+    margin: 10px;
+}
+	
 
 /*
  HttpRequest

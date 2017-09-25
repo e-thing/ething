@@ -178,9 +178,9 @@ if($mqttListener){
 				$data = \json_decode($message, true);
 				if(\json_last_error() === JSON_ERROR_NONE){
 					
-					TaskManager::add(new Task(function($device, $operationId, $data){
+					TaskManager::add(new ForkTask(function($device, $operationId, $data){
 						$device->call($operationId, null, $data, array());
-					}, array($device, $operationId, $data), 0, "device.call"));
+					}, array($device, $operationId, $data), "device.call"));
 					
 				}
 			}

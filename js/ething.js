@@ -388,7 +388,31 @@
 		return target;
 	};
 	
-	
+	Utils.isEqual = function(x, y) {
+		'use strict';
+
+		if (x === null || x === undefined || y === null || y === undefined) { return x === y; }
+		// after this just checking type of one would be enough
+		if (x.constructor !== y.constructor) { return false; }
+		// if they are functions, they should exactly refer to same one (because of closures)
+		if (x instanceof Function) { return x === y; }
+		// if they are regexps, they should exactly refer to same one (it is hard to better equality check on current ES)
+		if (x instanceof RegExp) { return x === y; }
+		if (x === y || x.valueOf() === y.valueOf()) { return true; }
+		if (Array.isArray(x) && x.length !== y.length) { return false; }
+
+		// if they are dates, they must had equal valueOf
+		if (x instanceof Date) { return false; }
+
+		// if they are strictly equal, they both need to be object at least
+		if (!(x instanceof Object)) { return false; }
+		if (!(y instanceof Object)) { return false; }
+
+		// recursive object equality check
+		var p = Object.keys(x);
+		return Object.keys(y).every(function (i) { return p.indexOf(i) !== -1; }) &&
+			p.every(function (i) { return Utils.isEqual(x[i], y[i]); });
+	}
 	
 	
 	global.EThing = EThing;
@@ -2086,8 +2110,9 @@ if(typeof module !== 'undefined' && module.exports){
 	EThing.Resource.prototype._fromJson = function(json, noTrigger){
 		
 		var updated = this._json && json && this._json.modifiedDate && json.modifiedDate && this._json.modifiedDate !== json.modifiedDate;
+		var updatedKeys = [];
 		
-		this._json = extend({
+		json = extend({
 			name:null,
 			id:null,
 			type:null,
@@ -2099,9 +2124,20 @@ if(typeof module !== 'undefined' && module.exports){
 		}, json || {});
 		
 		if(!noTrigger && updated) {
+			// list the kays that have been updated
+			Object.keys(json).forEach(function(key){
+				if((typeof this._json[key] === 'undefined') || !EThing.utils.isEqual(json[key],this._json[key])){
+					updatedKeys.push(key);
+				}
+			},this);
+		}
+		
+		this._json = json;
+		
+		if(!noTrigger && updated) {
 			//console.log('resource updated '+this.name());
-			this.trigger('updated');
-			EThing.trigger('ething.resource.updated',[this]);
+			this.trigger('updated', [updatedKeys]);
+			EThing.trigger('ething.resource.updated',[this, updatedKeys]);
 		}
 		
 		return updated;
@@ -2383,6 +2419,16 @@ if(typeof module !== 'undefined' && module.exports){
 	}
 	
 	/**
+	 * Last time the content of this resource was modified
+	 * @memberof EThing.File
+	 * @this {EThing.File}
+	 * @returns {Date}
+	 */
+	EThing.File.prototype.contentModifiedDate = function() {
+		return new Date(this._json.contentModifiedDate);
+	}
+	
+	/**
 	 * If this file has a thumbnail (thumbnail is only available for file with MIME type __image/*__), it returns his link, else it returns null.
 	 * 
 	 * @memberof EThing.File
@@ -2596,6 +2642,15 @@ if(typeof module !== 'undefined' && module.exports){
 			if(this._json.keys.hasOwnProperty(k))
 				keys.push(k);
 		return keys;
+	}
+	/**
+	 * Last time the content of this resource was modified
+	 * @memberof EThing.Table
+	 * @this {EThing.Table}
+	 * @returns {Date}
+	 */
+	EThing.Table.prototype.contentModifiedDate = function() {
+		return new Date(this._json.contentModifiedDate);
 	}
 	/**
 	 * Returns rows.
@@ -2866,6 +2921,16 @@ if(typeof module !== 'undefined' && module.exports){
 	 */
 	EThing.App.prototype.getContentUrl = function(auth) {
 		return toApiUrl('apps/'+this.id(),auth);
+	}
+	
+	/**
+	 * Last time the content of this resource was modified
+	 * @memberof EThing.App
+	 * @this {EThing.App}
+	 * @returns {Date}
+	 */
+	EThing.App.prototype.contentModifiedDate = function() {
+		return new Date(this._json.contentModifiedDate);
 	}
 	
 	/**
@@ -4412,24 +4477,14 @@ if(typeof module !== 'undefined' && module.exports){
 		
 		if(arguments.length == 4){
 			
-			if(typeof data == 'boolean'){
+			if(typeof binary == 'function'){
 				callback = binary;
-				binary = data;
-				data = undefined;
-			} else {
-				
-				if(typeof binary == 'function'){
-					callback = binary;
-					binary = undefined;
-				}
+				binary = undefined;
 			}
 			
 		} else if(arguments.length == 3){
 			
-			if(typeof data == 'boolean'){
-				binary = data;
-				data = undefined;
-			} else if(typeof data == 'function'){
+			if(typeof data == 'function'){
 				callback = data;
 				data = undefined;
 			}
@@ -4440,7 +4495,7 @@ if(typeof module !== 'undefined' && module.exports){
 			'url': '/devices/' + device + '/call/' + operationId,
 			'method': 'POST',
 			'contentType': "application/json; charset=utf-8",
-			'data': data,
+			'data': typeof data != 'undefined' && data!==null ? JSON.stringify(data) : undefined,
 			'dataType': binary ? (EThing.utils.isNode ? 'buffer' : 'blob') : 'auto',
 			'context': context
 		},callback);

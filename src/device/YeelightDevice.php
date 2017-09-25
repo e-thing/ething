@@ -1,5 +1,26 @@
 <?php
 
+	/**
+	 * @swagger-definition
+	 * "Device\\YeelightDevice":{ 
+	 *   "type": "object",
+	 *   "description": "YeelightDevice Device resource representation",
+	 * 	 "allOf": [
+	 * 		{
+	 * 		   "$ref":"#/definitions/Device"
+	 * 		},
+	 * 		{  
+	 * 		   "type": "object",
+	 * 		   "properties":{
+	 *             "host": {
+	 * 		          "type":"string",
+	 * 		          "description":"The ip address of the device to connect to."
+	 * 		       }
+	 * 		   }
+	 * 		}
+	 *   ]
+	 * }
+	 */
 
 namespace Ething\Device;
 
@@ -13,6 +34,9 @@ use \Ething\Response;
 use \Ething\Stream;
 use \Ething\Helpers;
 use \Ething\Net;
+
+
+
 
 abstract class YeelightDevice extends Device
 {	

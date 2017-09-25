@@ -1,7 +1,7 @@
 (function (root, factory) {
     if (typeof define === 'function' && define.amd) {
         // AMD. Register as an anonymous module.
-        define(['jquery','form','ething','./resourceselect','./devicerequest'], factory);
+        define(['jquery','form','ething','./resourceselect','./devicerequest', './resourcedataselect'], factory);
     } else {
         // Browser globals
         factory(root.jQuery,root.Form,root.EThing);
@@ -44,6 +44,7 @@
 					},{
 						name: 'column',
 						item: new Form.Select({
+							items: [],
 							validators: [$.Form.validator.NotEmpty],
 						}),
 						dependencies: {
@@ -73,36 +74,8 @@
 		if(options.resourceData){
 			var item = {
 				name: 'resource.data',
-				label: 'get internal data from a resource',
-				item: new Form.FormLayout({
-					items: [{
-						name: 'resource',
-						item: new Form.ResourceSelect({
-							filter: function(r){
-								return !(r instanceof EThing.Folder) && !$.isEmptyObject(r.data()) && (typeof options.resourceData.filter != 'function' || options.resourceData.filter.call(self, r));
-							},
-							validators: [Form.validator.NotEmpty]
-						})
-					},{
-						name: 'data',
-						item: new Form.Select({
-							validators: [$.Form.validator.NotEmpty],
-						}),
-						dependencies: {
-							'resource': function(layoutItem){
-								var r = EThing.arbo.findOneById(this.getLayoutItemByName('resource').item.value());
-								var options = {};
-								if(r instanceof EThing.Resource){
-									var data = r.data();
-									for(var k in data){
-										options[k+' <span class="small ellipsis" style="color: #b5b4b4;max-width: 100px;display: inline-block;vertical-align: middle;">'+data[k]+'</span>'] = k;
-									}
-								}
-								layoutItem.item.setOptions(options);
-							}
-						}
-					}]
-				})
+				label: 'get resource\'s internal data',
+				item: new Form.ResourceDataSelect($.isPlainObject(options.resourceData) ? options.resourceData : {})
 			};
 			
 			items.push(item);

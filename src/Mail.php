@@ -14,9 +14,9 @@ class Mail
 		$this->ething = $ething;
 	}
 	
-	public function send($subject,$message = null, $attachments = array()){
+	public function send($subject,$message = null, $attachments = array(), $to = array()){
 		$smtpSettings = $this->ething->config('notification.smtp');
-		$mailList = $this->ething->config('notification.emails');
+		$mailList = ((is_array($to) && !empty($to))) ? $to : $this->ething->config('notification.emails');
 		
 		if(empty($smtpSettings)){
 			throw new Exception("Mail feature not enable");

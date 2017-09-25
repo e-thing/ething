@@ -99,7 +99,7 @@ abstract class Controller extends \Stream {
 			'nodeId' => $nodeId,
 			'name' => $gateway->name().'/node-'.$nodeId
 		))))
-			throw new Exception("fail to create the node nodeId={$nodeId}");
+			throw new \Exception("fail to create the node nodeId={$nodeId}");
 		$this->logger->info("MySensors: new node nodeId={$nodeId}");
 		return $node;
 	}
@@ -111,7 +111,7 @@ abstract class Controller extends \Stream {
 			'sensorId' => $sensorId,
 			'sensorType' => $sensorType
 		)))){
-			throw new Exception("fail to create the sensor nodeId={$node->nodeId()} sensorId={$sensorId} sensorType={$sensorType}");
+			throw new \Exception("fail to create the sensor nodeId={$node->nodeId()} sensorId={$sensorId} sensorType={$sensorType}");
 		}
 		$this->logger->info("MySensors: new sensor nodeId={$node->nodeId()} sensorId={$sensorId} sensorType={$sensorType}");
 		return $sensor;
@@ -242,7 +242,7 @@ abstract class Controller extends \Stream {
 									$response = new Message(MySensors::BROADCAST_ADDRESS, MySensors::INTERNAL_CHILD, MySensors::INTERNAL, MySensors::NO_ACK, MySensors::I_ID_RESPONSE, $i);
 									$this->send($response);
 								} else {
-									throw new Exception('No free id available');
+									throw new \Exception('No free id available');
 								}
 								break;
 							
@@ -491,7 +491,7 @@ abstract class Controller extends \Stream {
 						break;
 					
 					default:
-						throw new Exception("unknown message {$message}");
+						throw new \Exception("unknown message {$message}");
 						break;
 				}
 			
@@ -630,7 +630,7 @@ abstract class Controller extends \Stream {
 				$this->open();
 				$this->logger->info("MySensors: connected");
 				$this->preventFailConnectLog = false;
-			} catch(Exception $e){
+			} catch(\Exception $e){
 				if(!$this->preventFailConnectLog) $this->logger->warn("MySensors: unable to connect : {$e->getMessage()}");
 				$this->preventFailConnectLog = true;
 			}
@@ -850,11 +850,11 @@ abstract class Controller extends \Stream {
 	
 	protected $stream = null;
 	
-	public function getStream(){
-		return $this->stream;
+	public function getStreams(){
+		return array($this->stream);
 	}
 	
-	public function process(){
+	public function process($stream){
 		$this->read();
 	}
 	

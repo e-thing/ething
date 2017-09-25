@@ -30,6 +30,12 @@
 	 * 		          "type":"object",
 	 * 		          "description":"A key/value object where the keys correspond to the fields available in this table, and the corresponding value is the number of rows where the field is set. __The default keys ('_id' and 'date' are not listed)__",
 	 *                "readOnly": true
+	 * 		       },
+	 * 		       "contentModifiedDate":{  
+	 * 		          "type":"string",
+	 * 		          "format":"date-time",
+	 * 		          "description":"Last time the conten of this resource was modified (formatted RFC 3339 timestamp).",
+	 *                "readOnly": true
 	 * 		       }
 	 * 		   }
 	 * 		}
@@ -62,8 +68,6 @@ class Table extends Resource
 	
 	
 	private $isDataDirty = false;
-	
-	
 	
 	const TIMESTAMP = 0;
 	const TIMESTAMP_MS = 1;
@@ -138,13 +142,12 @@ class Table extends Resource
 	public function clear() {
 		
 		// remove all the data from this table
-		$c = $this->getCollection();
-		
 		try {
 			$this->getCollection()->drop();
 			
 			$this->setAttr('length', 0);
 			$this->setAttr('keys', array());
+			$this->setAttr('contentModifiedDate', new \MongoDB\BSON\UTCDateTime());
 			$this->update();
 		}
 		catch(Exception $e){}
@@ -244,6 +247,7 @@ class Table extends Resource
 		if($nb){
 			$this->setAttr('length', $this->length - $nb);
 			$this->setAttr('keys', $keys);
+			$this->setAttr('contentModifiedDate', new \MongoDB\BSON\UTCDateTime());
 			$this->update();
 		}
 		
@@ -273,6 +277,7 @@ class Table extends Resource
 				
 				$this->setAttr('length', $this->length - 1);
 				$this->setAttr('keys', $keys);
+				$this->setAttr('contentModifiedDate', new \MongoDB\BSON\UTCDateTime());
 				$this->update();
 				
 				return $removedDoc;
@@ -431,6 +436,7 @@ class Table extends Resource
 			
 			$this->setAttr('length', $length);
 			$this->setAttr('keys', $keys);
+			$this->setAttr('contentModifiedDate', new \MongoDB\BSON\UTCDateTime());
 			$this->update(true);
 			
 			$doc = self::docSerialize($dataArray[0]);
@@ -458,7 +464,7 @@ class Table extends Resource
 		$this->clear();
 		
 		// sanitize the incoming data
-		$this->setAttr('length', static::sanitizeData($dataArray,$this->keys,$invalidFields,$skipError));
+		$length = static::sanitizeData($dataArray,$keys,$invalidFields,$skipError);
 		
 		if(!empty($dataArray)){
 			// add meta data
@@ -472,6 +478,9 @@ class Table extends Resource
 				'ordered' => false
 			));
 		}
+		
+		$this->setAttr('keys', $keys);
+		$this->setAttr('length', $length);
 		
 		$this->update();
 		
@@ -511,6 +520,7 @@ class Table extends Resource
 			$keys_[$k] += $c;
 		}
 		$this->setAttr('keys', $keys_);
+		$this->setAttr('contentModifiedDate', new \MongoDB\BSON\UTCDateTime());
 		$this->update();
 		
 		return true;
@@ -565,6 +575,7 @@ class Table extends Resource
 					}
 				}
 				
+				$this->setAttr('contentModifiedDate', new \MongoDB\BSON\UTCDateTime());
 				$this->setAttr('keys', $keys);
 				$this->update(true);
 				
@@ -615,6 +626,7 @@ class Table extends Resource
 					}
 				}
 				
+				$this->setAttr('contentModifiedDate', new \MongoDB\BSON\UTCDateTime());
 				$this->setAttr('keys', $keys);
 				$this->update(true);
 				
@@ -717,7 +729,7 @@ class Table extends Resource
 	
 	// create a new resource
 	public static function create(Ething $ething, array $attributes, Resource $createdBy = null) {
-		return parent::createRessource($ething, array_merge(self::$defaultAttr, $attributes) , array('length' => 0,'keys' => []) , $createdBy );
+		return parent::createRessource($ething, array_merge(self::$defaultAttr, $attributes) , array('length' => 0, 'keys' => [], 'contentModifiedDate' => new \MongoDB\BSON\UTCDateTime()) , $createdBy );
 	}
 	
 	public function computeStatistics($key, $query = null){

@@ -145,7 +145,7 @@ class Client extends \Stream {
 			$this->logger->debug("MQTT: publish to topic {$topic}");
 			
 			if(empty($topic)){
-				throw new Exception("topic is an empty string");
+				throw new \Exception("topic is an empty string");
 			}
 			
 			$this->mqttClient->publish($topic, $payload, 0, $retain);
@@ -161,11 +161,11 @@ class Client extends \Stream {
 	}
 	
 	
-	public function getStream(){
-		return $this->stream;
+	public function getStreams(){
+		return array($this->stream);
 	}
 	
-	public function process(){
+	public function process($stream){
 		$this->read();
 	}
 }

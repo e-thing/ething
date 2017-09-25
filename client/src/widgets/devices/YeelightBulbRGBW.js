@@ -291,30 +291,6 @@
 					
 				},
 				
-				setColor: function (hex){
-					
-					var $cc = this.$element.find('.color');
-					
-					$cc.css('background-color', hex);
-					
-					color = 'white';
-					var bgc = $cc.css('background-color');
-					
-					var rgb = bgc.match(/^rgba?\((\d+),\s*(\d+),\s*(\d+)/);
-					if(rgb){
-						var luma = 0.2126 * parseInt(rgb[1]) + 0.7152 * parseInt(rgb[2]) + 0.0722 * parseInt(rgb[3]); // per ITU-R BT.709
-						if (luma > 200 || luma === 0) {
-							color = '#a0a0a0';
-						}
-					}
-					
-					$cc.css('color', color);
-				},
-				
-				setBrightness: function(brightness){
-					this.val(brightness);
-				},
-				
 				refreshFromSensorState: function(){
 					// get the sensor value
 					var brightness = 0;

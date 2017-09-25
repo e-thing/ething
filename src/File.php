@@ -36,6 +36,12 @@
 	 * 		          "type":"string",
 	 * 		          "description":"The MIME type of the file (automatically detected from the content).",
 	 *                "readOnly": true
+	 * 		       },
+	 * 		       "contentModifiedDate":{  
+	 * 		          "type":"string",
+	 * 		          "format":"date-time",
+	 * 		          "description":"Last time the conten of this resource was modified (formatted RFC 3339 timestamp).",
+	 *                "readOnly": true
 	 * 		       }
 	 * 		   }
 	 * 		}
@@ -142,6 +148,8 @@ class File extends Resource
 			$this->setAttr('size', $this->ething->fs->getFileSize($this->getAttr('_data')));
 		}
 		
+		$this->setAttr('contentModifiedDate', new \MongoDB\BSON\UTCDateTime());
+		
 		$this->updateMeta(static::META_ALL, $bytes);
 		
 		$this->update();
@@ -167,7 +175,8 @@ class File extends Resource
 			array(
 				'size' => 0,
 				'isText' => true, // will be updated through the 'name' validator callback !
-				'mime' => '' // will be updated through the 'name' validator callback !
+				'mime' => '', // will be updated through the 'name' validator callback !
+				'contentModifiedDate' => new \MongoDB\BSON\UTCDateTime()
 			),
 			$createdBy
 		);

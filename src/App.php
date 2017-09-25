@@ -38,6 +38,12 @@ No permissions by default.
 	 *             "version": {
 	 * 		          "type":"string",
 	 * 		          "description":"The version of this application"
+	 * 		       },
+	 * 		       "contentModifiedDate":{  
+	 * 		          "type":"string",
+	 * 		          "format":"date-time",
+	 * 		          "description":"Last time the conten of this resource was modified (formatted RFC 3339 timestamp).",
+	 *                "readOnly": true
 	 * 		       }
 	 * 		   }
 	 * 		}
@@ -141,7 +147,8 @@ class App extends Resource
 		return parent::createRessource($ething, array_merge(self::$defaultAttr, $attributes) , array(
 			'size' => 0,
 			'mime' => 'x-app/html',
-			'#apikey' => ApiKey::generate()
+			'#apikey' => ApiKey::generate(),
+			'contentModifiedDate' => new \MongoDB\BSON\UTCDateTime()
 		), $createdBy);
 		
 	}
@@ -184,6 +191,7 @@ class App extends Resource
 			$this->setAttr('_content', $this->ething->fs->storeFile('App/'.$this->id().'/content', $content, array(
 				'parent' => $this->id()
 			)));
+		$this->setAttr('contentModifiedDate', new \MongoDB\BSON\UTCDateTime());
 		$this->setAttr('size', $this->computeSize());
 		$this->update();
 		return true;

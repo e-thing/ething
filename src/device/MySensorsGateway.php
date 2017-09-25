@@ -110,10 +110,10 @@ abstract class MySensorsGateway extends Device
 	
 	public function operations(){
 		return array(
-			new Operation($this, 'getVersion', null, 'text/plain', 'request gateway version', function($op, $stream, $data, $options){
+			new Operation($this, 'getVersion', null, 'application/json', 'request gateway version', function($op, $stream, $data, $options){
 					return $op->device()->sendMessageWaitResponse(new Message(MySensors::GATEWAY_ADDRESS, MySensors::INTERNAL_CHILD, MySensors::INTERNAL, MySensors::NO_ACK, MySensors::I_VERSION), $stream, $options);
 				}),
-			new Operation($this, 'sendHeartBeat', null, 'text/plain', 'send a Heartbeat request', function($op, $stream, $data, $options){
+			new Operation($this, 'sendHeartBeat', null, 'application/json', 'send a Heartbeat request', function($op, $stream, $data, $options){
 					return $op->device()->sendMessageWaitResponse(new Message(MySensors::GATEWAY_ADDRESS, MySensors::INTERNAL_CHILD, MySensors::INTERNAL, MySensors::NO_ACK, MySensors::I_HEARTBEAT_REQUEST), $stream, $options);
 				}),
 			new Operation($this, 'sendMessage', Helpers::array_to_object_recursive(array(
@@ -154,10 +154,10 @@ abstract class MySensorsGateway extends Device
 							'maxLength' => 25
 						)
 					)
-				)), 'text/plain', 'send a message', function($op, $stream, $data, $options){
+				)), 'application/json', 'send a message', function($op, $stream, $data, $options){
 					return $op->device()->sendMessage(new Message($data['nodeId'], $data['sensorId'], $data['type'], $data['ack'], $data['subtype'], $data['payload']), $stream, $options);
 				}),
-			new Operation($this, 'reboot', null, 'text/plain', 'Request gateway to reboot', function($op, $stream, $data, $options){
+			new Operation($this, 'reboot', null, null, 'Request gateway to reboot', function($op, $stream, $data, $options){
 					return $op->device()->sendMessage(new Message(MySensors::GATEWAY_ADDRESS, MySensors::INTERNAL_CHILD, MySensors::INTERNAL, MySensors::NO_ACK, MySensors::I_REBOOT), $stream, $options);
 				})
 		);

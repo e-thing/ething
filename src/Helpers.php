@@ -57,6 +57,11 @@ class Helpers
 		return $obj;
 	}
 	
+	static public function object_to_array_recursive( $object ){
+		return json_decode(json_encode($object), true);
+	}
+	
+	
 	static public function isLocalClient(){
 		if(isset($_SERVER['REMOTE_ADDR'])){
 			return in_array($_SERVER['REMOTE_ADDR'], array('127.0.0.1','::1')) || !filter_var($_SERVER['REMOTE_ADDR'], FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE);

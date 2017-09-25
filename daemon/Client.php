@@ -148,11 +148,11 @@ class Client extends Stream {
 		$this->write(">");
 	}
 	
-	public function getStream(){
-		return $this->stream;
+	public function getStreams(){
+		return array($this->stream);
 	}
 	
-	public function process(){
+	public function process($stream){
 		$this->read();
 	}
 };

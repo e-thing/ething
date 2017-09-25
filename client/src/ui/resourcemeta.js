@@ -1,7 +1,7 @@
 (function (root, factory) {
     if (typeof define === 'function' && define.amd) {
         // AMD. Register as an anonymous module.
-        define(['jquery', 'ething', 'form'], factory);
+        define(['jquery', 'ething', 'form', 'ui/localipselect'], factory);
     }
 }(this, function ($) {
 	
@@ -80,6 +80,11 @@
 			name: "modifiedDate",
 			label: "modified",
 			get: "mtime",
+			formatter: UI.dateToString
+		},
+		{
+			name: "contentModifiedDate",
+			label: "content last update",
 			formatter: UI.dateToString
 		},
 		{
@@ -961,7 +966,7 @@
 			name: "host",
 			onlyForType: ['Device\\Denon', 'Device\\Yeelight.*'],
 			editable:function(){
-				return new $.Form.Text({
+				return new $.Form.LocalIpSelect({
 					validators: [$.Form.validator.NotEmpty],
 					placeholder: "IP address"
 				});

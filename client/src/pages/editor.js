@@ -49,7 +49,7 @@
 						}
 						
 						if(result.return){
-							$console.append('<div class="return">'+result.return+'</div>');
+							$console.append('<div class="return"><span>Return value:</span> '+result.return+'</div>');
 						}
 						
 						if(!result.ok){

@@ -28,7 +28,7 @@ class EthernetController extends Controller {
 		$address = $gateway->get('address');
 		$stream = @stream_socket_client("tcp://".$address, $errno, $errstr, 10);
 		if($stream === false)
-			throw new Exception("MySensors[ethernet]: unable to connect to the gateway {$address} : {$errstr}");
+			throw new \Exception("MySensors[ethernet]: unable to connect to the gateway {$address} : {$errstr}");
 		
 		// make this stream non blocking !
 		stream_set_blocking($stream, false);

@@ -59,7 +59,7 @@ class ScriptExecution extends Action {
 		if(!$scriptResource)
 			throw new InvalidRuleException("unable to find the script with id '{$scriptResource}'");
 		
-		$res = \Ething\Script::run($scriptResource);
+		$res = \Ething\ScriptEngine::runFromFile($scriptResource, $this->arguments);
 		
 		if(!$res){
 			throw new \Utils\Exception('Unable to execute the script');

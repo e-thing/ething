@@ -8,6 +8,27 @@
 	
 	return {
 		
+		factory: function(container, preset){
+			
+			var form = new $.Form(container,new $.Form.FormLayout({
+				items:[{
+					name: 'refreshPeriod',
+					label: 'refresh period',
+					item: new $.Form.Number({
+						validators: [$.Form.validator.Integer],
+						value: 60,
+						minimum: 1,
+						suffix: 'secondes'
+					}),
+					checkable: true
+				}]
+			}), preset);
+			
+			return function(){
+				return form.submit();
+			}
+		},
+		
 		require: ['widget/Widget','imageviewer'],
 		
 		instanciate: function(device, options, Widget){
@@ -27,7 +48,7 @@
 			};
 			
 			
-			var $iv, timerId;
+			var $iv, timerId = null;
 			
 			var widget = $.extend(Widget(), {
 				
@@ -39,14 +60,15 @@
 						'color': '#4e4e4e'
 					}).imageViewer(imageViewerOptions).appendTo(this.$element);
 					
-					timerId = setInterval(function(){
-						$iv.imageViewer('refresh');
-					}, 60000);
+					if(options.refreshPeriod)
+						timerId = setInterval(function(){
+							$iv.imageViewer('refresh');
+						}, (options.refreshPeriod) * 1000);
 				},
 				
 				destroy: function(){
 					$iv.imageViewer('destroy');
-					clearInterval(timerId);
+					if(timerId!==null) clearInterval(timerId);
 				}
 				
 			});

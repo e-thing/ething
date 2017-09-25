@@ -194,10 +194,10 @@ class MySensorsNode extends Device
 							'maxLength' => 25
 						)
 					)
-				)), 'text/plain', 'send a message', function($op, $stream, $data, $options){
+				)), 'application/json', 'send a message', function($op, $stream, $data, $options){
 					return $op->device()->sendMessage($data['sensorId'], $data['type'], $data['ack'], $data['subtype'], $data['payload'], $stream, $options);
 				}),
-			new Operation($this, 'reboot', null, 'text/plain', 'Request for node to reboot', function($op, $stream, $data, $options){
+			new Operation($this, 'reboot', null, null, 'Request for node to reboot', function($op, $stream, $data, $options){
 					return $op->device()->sendMessage(MySensors::INTERNAL_CHILD, MySensors::INTERNAL, MySensors::NO_ACK, MySensors::I_REBOOT, null, $stream, $options);
 				}),
 			new Operation($this, 'OTA firmware update', Helpers::array_to_object_recursive(array(
@@ -212,7 +212,7 @@ class MySensorsNode extends Device
 							'description' => 'only *.hex files must be uploaded !'
 						)
 					)
-				)), 'text/plain', 'OTA (on the air) firmware update', function($op, $stream, $data, $options){
+				)), 'application/json', 'OTA (on the air) firmware update', function($op, $stream, $data, $options){
 					return $op->device()->updateFirmware(\base64_decode($data['firmware']), $stream, $options);
 				})
 			

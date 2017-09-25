@@ -354,7 +354,7 @@
 	
 	return function(data){
 		
-		UI.stopRefresh();
+		UI.disableRefresh();
 		
 		var $template = UI.Container.set(template);
 		
@@ -465,7 +465,7 @@
 								break;
 						}
 						
-						$('<tr class="'+cl+'"><td class="date">'+date+'</td><td class="level">'+level+'</td><td class="message">'+message+'</td></tr>').appendTo($body);
+						$('<tr class="'+cl+'"><td class="date">'+date+'</td><td class="level">'+level+'</td><td class="origin">'+name+'</td><td class="message">'+message+'</td></tr>').appendTo($body);
 					}
 					
 				});

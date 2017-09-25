@@ -205,7 +205,7 @@ class MySensorsSensor extends Device
 							'maxLength' => 25
 						)
 					)
-				)), 'text/plain', 'send a message', function($op, $stream, $data, $options){
+				)), 'application/json', 'send a message', function($op, $stream, $data, $options){
 					return $op->device()->sendMessage($data['type'], $data['ack'], $data['subtype'], $data['payload'], $stream, $options);
 				})
 		);
@@ -213,17 +213,17 @@ class MySensorsSensor extends Device
 		$sensorType = $this->sensorType;
 		
 		if(in_array($sensorType, array('S_TEMP','S_WATER_QUALITY'))){
-			$ops[] = new Operation($this, 'getTemperature', null, 'text/plain', 'get the temperature', function($op, $stream, $data, $options){
+			$ops[] = new Operation($this, 'getTemperature', null, 'application/json', 'get the temperature', function($op, $stream, $data, $options){
 				$stream->out($this->getData('V_TEMP',null));
 				return true;
 			});
 		}
 		
 		if(in_array($sensorType, array('S_LIGHT','S_BINARY','S_DIMMER','S_SPRINKLER','S_HVAC','S_HEATER'))){
-			$ops[] = new Operation($this, 'on', null, 'text/plain', 'turn on', function($op, $stream, $data, $options){
+			$ops[] = new Operation($this, 'on', null, 'application/json', 'turn on', function($op, $stream, $data, $options){
 				return $this->sendValue('V_STATUS', true, $stream);
 			});
-			$ops[] = new Operation($this, 'off', null, 'text/plain', 'turn off', function($op, $stream, $data, $options){
+			$ops[] = new Operation($this, 'off', null, 'application/json', 'turn off', function($op, $stream, $data, $options){
 				return $this->sendValue('V_STATUS', false, $stream);
 			});
 		}
@@ -239,7 +239,7 @@ class MySensorsSensor extends Device
 						'maximum' => 100
 					)
 				)
-			)), 'text/plain', 'set percentage value', function($op, $stream, $data, $options){
+			)), 'application/json', 'set percentage value', function($op, $stream, $data, $options){
 				return $this->sendValue('V_PERCENTAGE', $data['percentage'], $stream);
 			});
 		}
@@ -255,7 +255,7 @@ class MySensorsSensor extends Device
 						'maximum' => 60
 					)
 				)
-			)), 'text/plain', 'set temperature', function($op, $stream, $data, $options){
+			)), 'application/json', 'set temperature', function($op, $stream, $data, $options){
 				return $this->sendValue('V_TEMP', $data['temperature'], $stream);
 			});
 		}
@@ -269,10 +269,10 @@ class MySensorsSensor extends Device
 						'type' => 'boolean'
 					)
 				)
-			)), 'text/plain', 'set arm state', function($op, $stream, $data, $options){
+			)), 'application/json', 'set arm state', function($op, $stream, $data, $options){
 				return $this->sendValue('V_ARMED', $data['armed'], $stream);
 			});
-			$ops[] = new Operation($this, 'isArmed', null, 'text/plain', 'get arm state', function($op, $stream, $data, $options){
+			$ops[] = new Operation($this, 'isArmed', null, 'application/json', 'get arm state', function($op, $stream, $data, $options){
 				$stream->out($this->getData('V_ARMED',false));
 				return true;
 			});
@@ -285,10 +285,10 @@ class MySensorsSensor extends Device
 						'type' => 'boolean'
 					)
 				)
-			)), 'text/plain', 'set trip state', function($op, $stream, $data, $options){
+			)), 'application/json', 'set trip state', function($op, $stream, $data, $options){
 				return $this->sendValue('V_TRIPPED', $data['tripped'], $stream);
 			});
-			$ops[] = new Operation($this, 'isTripped', null, 'text/plain', 'get trip state', function($op, $stream, $data, $options){
+			$ops[] = new Operation($this, 'isTripped', null, 'application/json', 'get trip state', function($op, $stream, $data, $options){
 				$stream->out($this->getData('V_TRIPPED',false));
 				return true;
 			});

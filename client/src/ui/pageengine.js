@@ -261,7 +261,7 @@
 		UI.currentPage = null;
 		UI.error = false;
 		
-		UI.startRefresh();
+		UI.enableRefresh();
 		
 		UI.trigger('ui-pageChange');
 		
