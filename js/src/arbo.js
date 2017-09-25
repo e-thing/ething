@@ -50,9 +50,6 @@
 		root = null;
 	
 	
-	function inherits(extended, parent){
-		extended.prototype = Object.create(parent.prototype);
-	};
 	
 	/**
 	 * This class is used in the {@link EThing.arbo} library. It emulates a tree structure using folders.
@@ -77,7 +74,7 @@
 		},json));
 		
 	};
-	inherits(EThing.Folder,EThing.Resource);
+	EThing.utils.inherits(EThing.Folder,EThing.Resource);
 	
 	/*
 	* Overriding some base methods 

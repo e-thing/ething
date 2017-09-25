@@ -9,8 +9,14 @@ var uglify = require('gulp-uglify');
 var source = './src'; // dossier de travail
 var dest = '.'; // dossier à livrer
 
+var files = ["utils.js", "node.js", "event.js", "deferred.js", "api.js", "file.js", "table.js", "app.js", "device.js", "arbo.js", "rules.js", "devices/*.js"];
+
+files = files.map(function(srcFile){
+	return source + '/' + srcFile;
+})
+
 gulp.task('build', function () {
-  return gulp.src([source+"/utils.js", source+"/node.js", source+"/event.js", source+"/deferred.js", source+"/api.js", source+"/arbo.js", source+"/rules.js"])
+  return gulp.src(files)
     .pipe(concat('ething.js'))
 	.pipe(gulp.dest(dest))
     .pipe(rename({

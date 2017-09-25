@@ -415,6 +415,11 @@
 	}
 	
 	
+	Utils.inherits = function (extended, parent){
+		extended.prototype = new parent();
+		extended.prototype.constructor = extended; // fix constructor property
+	};
+	
 	global.EThing = EThing;
 	
 	
@@ -1483,7 +1488,7 @@ if(typeof module !== 'undefined' && module.exports){
 	
 	// only absolute url will be preserved untouched,
 	// else api server url is prepended
-	var toApiUrl = function(url, auth){
+	EThing.toApiUrl = function(url, auth){
 		url = url || '';
 		
 		if(!/^([a-z]+:)?\/\//.test(url)){
@@ -1509,9 +1514,8 @@ if(typeof module !== 'undefined' && module.exports){
 	
 	
 	
-	EThing.toApiUrl = toApiUrl;
 	EThing.apiUrl = function(){
-		return toApiUrl();
+		return EThing.toApiUrl();
 	}
 	
 	
@@ -1541,7 +1545,7 @@ if(typeof module !== 'undefined' && module.exports){
 		if(typeof options.url != 'string')
 			return null;
 		
-		var url = toApiUrl(options.url);
+		var url = EThing.toApiUrl(options.url);
 		var apiRequest = isApiUrl(url);
 		
 		
@@ -2075,10 +2079,7 @@ if(typeof module !== 'undefined' && module.exports){
 	
 	
 	
-	var inherits = EThing.utils.inherits = function (extended, parent){
-		extended.prototype = new parent();
-		extended.prototype.constructor = extended; // fix constructor property
-	};
+	
 	
 	
 	
@@ -2104,7 +2105,7 @@ if(typeof module !== 'undefined' && module.exports){
 		
 		this._fromJson(json, true);
 	}
-	inherits(EThing.Resource,DeferredObject);
+	EThing.utils.inherits(EThing.Resource,DeferredObject);
 	
 	// loader
 	EThing.Resource.prototype._fromJson = function(json, noTrigger){
@@ -2376,6 +2377,541 @@ if(typeof module !== 'undefined' && module.exports){
 		return this.set({'data':data},callback);
 	}
 	
+	
+	
+	
+	
+	
+
+	
+	
+	
+	
+	
+	/**
+	 * This function get the available resources. A filter may be given to retrieve resources with specific attributes (see the HTTP API for more details).
+	 * @method EThing.list
+	 * @param {string} [query] Query string for searching resources
+	 * @param {function(data,XHR,options)} [callback] it is executed once the request is complete whether in failure or success
+	 * @returns {Deferred} a {@link http://api.jquery.com/category/deferred-object/|jQuery like Promise object}. {@link EThing.request|More ...} 
+	 * @example
+	 * // get all the resources
+	 * EThing.list().done(function(resources){
+	 *     console.log(resources);
+	 * })
+	 *
+	 * // get only File & Table resources
+	 * EThing.list('type == "File" or type == "Table"').done(function(resources){
+	 *     console.log(resources);
+	 * })
+	 */
+	EThing.list = EThing.find = function(a,b)
+	{
+		var query = null, callback = null;
+		
+		if(arguments.length==1){
+			if(typeof arguments[0] == 'function')
+				callback = arguments[0];
+			else
+				query = arguments[0];
+		}
+		else if(arguments.length>=2){
+			query = arguments[0];
+			callback = arguments[1];
+		}
+		
+		return EThing.request({
+			'url': '/resources?' + EThing.utils.param({'q':query}),
+			'method': 'GET',
+			'dataType': 'json',
+			'converter': resourceConverter
+		},callback);
+	};
+	
+	
+	/**
+	 * Gets an object containing informations about space usage :
+	 *  - used {number} the amount of space used in bytes
+	 *  - quota_size {number} the maximum space authorized in bytes
+	 *
+	 * @method EThing.Resource.usage
+	 * @param {function(data,XHR,options)} [callback] it is executed once the request is complete whether in failure or success
+	 * @returns {Deferred} a {@link http://api.jquery.com/category/deferred-object/|jQuery like Promise object}. {@link EThing.request|More ...} 
+	 * @example
+	 * // get the occupied space :
+	 * EThing.Resource.usage().done(function(usage){
+	 *     console.log('space used : ' + (100 * usage.used / usage.quota_size) );
+	 * })
+	 */
+	EThing.Resource.usage = function(a)
+	{
+		var callback = a;
+		
+		return EThing.request({
+			'url': '/usage',
+			'dataType': 'json',
+			'method': 'GET'
+		},callback);
+	};
+	
+	
+	/*
+	Resource,callback
+	*/
+	EThing.Resource.remove = function(a,b)
+	{
+		var context;
+		if(a instanceof EThing.Resource){
+			context = a;
+			a = a.id();
+		}
+		else if(!isResourceId(a)) {
+			throw "First argument must be a Resource object or a Resource id : "+a;
+			return;
+		}
+		
+		var callback = b;
+		
+		return EThing.request({
+			'url': '/resources/' + a,
+			'method': 'DELETE',
+			'context': context
+		},callback).done(function(){
+			EThing.trigger('ething.resource.removed',[a]);
+		});
+	};
+	
+	/**
+	 * Gets a resource by its id.
+	 *
+	 * @method EThing.get
+	 * @param {string|EThing.Resource} resourceIdentifier
+	 * @param {function(data,XHR,options)} [callback] it is executed once the request is complete whether in failure or success
+	 * @returns {Deferred} a {@link http://api.jquery.com/category/deferred-object/|jQuery like Promise object}. {@link EThing.request|More ...} 
+	 * @example
+	 * // get a resource by its id
+	 * EThing.get("54516eb").done(function(resource){
+	 *     console.log('the name is ' + resource.name());
+	 * })
+	 */
+	EThing.get = function(a,b)
+	{
+		var context;
+		if(a instanceof EThing.Resource){
+			context = a;
+			a = a.id();
+		}
+		else if(!isResourceId(a)) {
+			throw "First argument must be a Resource object or a Resource id : "+a;
+			return;
+		}
+		
+		var callback = b;
+		
+		return EThing.request({
+			'url': '/resources/' + a,
+			'dataType': 'json',
+			'method': 'GET',
+			'context': context,
+			'converter': resourceConverter
+		},callback);
+	};
+	
+	/*
+	Resource,data,callback
+	*/
+	EThing.Resource.set = function(a,b,c)
+	{
+		var context;
+		
+		if(!isPlainObject(b) || !b){
+			throw 'Second argument must be a unempty object !';
+			return;
+		}
+		
+		if(a instanceof EThing.Resource){
+			context = a;
+			a = a.id();
+		}
+		else if(!isResourceId(a)) {
+			throw "First argument must be a Resource object or a Resource id : "+a;
+			return;
+		}
+		
+		var callback = c;
+		
+		return EThing.request({
+			'url': '/resources/' + a,
+			'dataType': 'json',
+			'method': 'POST',
+			'contentType': "application/json; charset=utf-8",
+			'data': b,
+			'context': context,
+			'headers': {
+				"X-HTTP-Method-Override": "PATCH"
+			},
+			'converter': resourceConverter
+		},callback);
+	};
+	
+	
+	
+	
+	
+	
+	
+	/*
+	* TOOLS
+	*/
+	EThing.Resource.dirname = function(f) {
+		var s = f.replace(/\/[^\/]*\/?$/, '');
+		return ( s === f ) ? "" : s;
+	}
+	EThing.Resource.basename = function(f) {
+		return f.replace( /.*\//, '' );
+	}
+	EThing.Resource.extension = function(f){
+		return f.indexOf('.')>=0 ? f.split('.').pop() : '';
+	}
+	EThing.Resource.fnmatch = function fnmatch(pattern, path) {
+		
+		var patternTab = pattern.split(' ');
+		var parsedPattern, regexp;
+		
+		for(var i=0; i<patternTab.length; i++){
+			if(patternTab[i] == '') continue;
+			
+			parsedPattern = '^' + patternTab[i].replace(/\//g, '\\/').
+			replace(/\*\*/g, '(\\/[^\\/]+)*').
+			replace(/\*/g, '[^\\/]+').
+			replace(/((?!\\))\?/g, '$1.') + '$';
+			
+			parsedPattern = '^' + parsedPattern + '$';
+			
+			regexp = new RegExp(parsedPattern);
+			if( path.match(regexp) != null ) return true;
+		}
+		return false;
+	};
+	
+	
+	
+	
+	/*
+	* Settings
+	*/
+	
+	EThing.settings = EThing.settings || {};
+	
+	/**
+	 * Retrieve the settings.
+	 * @memberof EThing.settings
+	 * @this {EThing.settings}
+	 * @param {function(data,XHR,options)} [callback] it is executed once the request is complete whether in failure or success
+	 * @returns {Deferred} a {@link http://api.jquery.com/category/deferred-object/|jQuery like Promise object}. {@link EThing.request|More ...} 
+	 */
+	
+	EThing.settings.get = function(callback){
+		return EThing.request({
+			'url': '/settings',
+			'dataType': 'json',
+			'method': 'GET'
+		},callback);
+	};
+	
+	/**
+	 * Update the settings.
+	 * @memberof EThing.settings
+	 * @this {EThing.settings}
+	 * @param {object} [data] updated settings object
+	 * @param {function(data,XHR,options)} [callback] it is executed once the request is complete whether in failure or success
+	 * @returns {Deferred} a {@link http://api.jquery.com/category/deferred-object/|jQuery like Promise object}. {@link EThing.request|More ...} 
+	 */
+	EThing.settings.set = function(data, callback){
+		
+		if(!isPlainObject(data))
+			throw "First argument must be an object !";
+		
+		
+		return EThing.request({
+			'url': '/settings',
+			'dataType': 'json',
+			'method': 'POST',
+			'contentType': "application/json; charset=utf-8",
+			'data': data,
+			'headers': {
+				"X-HTTP-Method-Override": "PATCH"
+			}
+		},callback);
+	};
+	
+	
+	
+	/**
+	 * Send a notification.
+	 * @memberof EThing
+	 * @param {string} [subject] The subject of the notification
+	 * @param {string} message The message of the notification
+	 * @param {function(data,XHR,options)} [callback] it is executed once the request is complete whether in failure or success
+	 * @returns {Deferred} a {@link http://api.jquery.com/category/deferred-object/|jQuery like Promise object}. {@link EThing.request|More ...} 
+	 * @example
+	 * EThing.notify("hello world")
+	 *   .done(function(){
+	 *     alert("A notification has been sent");
+	 *   })
+	 */
+	EThing.notify = function(subject,message, callback){
+		var query = {};
+		
+		if(arguments.length == 3){
+			query['body'] = message;
+			query['subject'] = subject;
+		}
+		else if(arguments.length == 2){
+			if(typeof message == 'string'){
+				query['subject'] = subject;
+				query['body'] = message;
+			}
+			else{
+				query['body'] = subject;
+				callback = message;
+			}
+		}
+		else if(arguments.length == 1){
+			query['body'] = subject;
+		}
+		else {
+			throw "Bad arguments!";
+			return;
+		}
+		
+		return EThing.request({
+			'url': '/notification',
+			'method': 'POST',
+			'contentType': "application/json; charset=utf-8",
+			'data': query
+		},callback);
+	}
+	
+	
+	
+	
+	
+	/*
+	 * AUTH
+	 */
+	
+	var NoAuth = function(a){ return a; };
+	
+	
+	// private
+	var _app = null,
+		_device = null,
+		_scope = null,
+		_authType = null,
+		_processAuth = NoAuth; // function(xhr|url) -> return xhr|url
+	
+	
+	
+	/**
+	 * @namespace EThing.auth
+	 */
+
+	EThing.auth = {};
+	
+	
+	
+	/**
+	 * Returns true if the authentication process has been successful.
+	 * @method EThing.auth.isAuthenticated
+	 * @returns {boolean}
+	 */
+	EThing.auth.isAuthenticated = function(){
+		return !!_authType;
+	}
+	
+	/**
+	 * Returns the authenticated app. Only available with app's apikey authentication.
+	 * @method EThing.auth.getApp
+	 * @returns {EThing.App} the authenticated app or null.
+	 */
+	EThing.auth.getApp = function(){
+		return _app;
+	}
+	
+	/**
+	 * Returns the authenticated app. Only available with devices's apikey authentication.
+	 * @method EThing.auth.getDevice
+	 * @returns {EThing.Device} the authenticated device or null.
+	 */
+	EThing.auth.getDevice = function(){
+		return _device;
+	}
+	
+	/**
+	 * Returns the scope of the current authentication
+	 * @method EThing.auth.getScope
+	 * @returns {string} the scope. May be an empty string if no permissions is set. May be null if full permissions.
+	 */
+	EThing.auth.getScope = function(){
+		return _scope;
+	}
+	
+	
+	
+	/**
+	 * Reset authentication. You must restart an authentication process to make API calls again.
+	 * @method EThing.auth.reset
+	 */
+	EThing.auth.reset = function(){
+		_app = null;
+		_device = null;
+		_authType = null;
+		_scope = null;
+		_processAuth = NoAuth;
+	}
+	
+	
+	
+	
+	EThing.auth.setApiKey = function(apiKey){
+		
+		EThing.auth.reset();
+		
+		_processAuth = function(xhrOrUrl){
+			
+			if(typeof xhrOrUrl == 'string')
+				xhrOrUrl = EThing.utils.insertParam(xhrOrUrl, 'api_key', apiKey);
+			else 
+				xhrOrUrl.setRequestHeader('X-API-KEY', apiKey);
+			
+			return xhrOrUrl;
+		};
+		
+	};
+	
+	EThing.auth.setBasicAuth = function(login, password){
+		
+		EThing.auth.reset();
+		
+		_processAuth = function(xhrOrUrl){
+			
+			if(typeof xhrOrUrl == 'string')
+				xhrOrUrl = xhrOrUrl.replace(/\/\/([^:]+:[^@]+@)?/, '//'+login+':'+password+'@');
+			else 
+				xhrOrUrl.setRequestHeader("Authorization", "Basic " + global.btoa(login + ":" + password));
+			
+			return xhrOrUrl;
+		};
+	};
+	
+	
+	
+	
+	/**
+	 * Initialize the eThing library.
+	 *
+	 * @method EThing.initialize
+	 * @param {Object} options
+	 * @param {number} options.apiUrl The URL of your eThing API (e.g. http://example.org/ething/api ).
+	 * @param {number} [options.apiKey] Authenticate with an API key.
+	 * @param {number} [options.login] Basic Authentication login (Should be used only server side i.e. NodeJS).
+	 * @param {number} [options.password] Basic Authentication password (Should be used only server side i.e. NodeJS).
+	 * @param {function(EThing.Error)} [errorFn] it is executed on authentication error.
+	 * @returns {Deferred} a {@link http://api.jquery.com/category/deferred-object/|jQuery like Promise object}
+	 * @fires EThing#ething.authenticated
+	 * @example
+	 *
+	 * EThing.initialize({
+     *    apiUrl: 'http://example.org/ething/api',
+     *    apiKey: 'a4e28b3c-1f05-4a62-95f7-c12453b66b3c'
+     *  }, function(){
+	 *    // on authentication success
+	 *    alert('connected !');
+	 *  }, function(error) {
+     *    // on authentication error
+     *    alert(error.message);
+     *  });
+	 *
+	 */
+	EThing.initialize = function(options, successFn, errorFn){
+		
+		EThing.auth.reset();
+		
+		options = extend({
+			apiUrl: null,
+			// auth apikey
+			apiKey: null,
+			// auth basic
+			login: null,
+			password:null
+		},options || {});
+		
+		if(options.apiUrl)
+			EThing.config.apiUrl = options.apiUrl;
+		
+		
+		if(options.apiKey)
+			EThing.auth.setApiKey(options.apiKey);
+		else if(options.login && options.password)
+			EThing.auth.setBasicAuth(options.login, options.password);
+		
+		return EThing.request({
+			'url': '/auth',
+			'dataType': 'json',
+			'context': EThing,
+			'converter': function(data){
+				_authType = data.type;
+				if(data.app)
+					_app = new EThing.App(data.app);
+				if(data.device)
+					_device = new EThing.Device.Http(data.device);
+				if(data.scope)
+					_scope = data.scope;
+			}
+		}).done(function(){
+			
+			authenticatedCb_.forEach(function(cb){
+				cb.call(EThing);
+			});
+			
+			EThing.trigger('ething.authenticated');
+		}).done(successFn).fail(errorFn);
+		
+	}
+	
+	
+	/**
+	 * Register a handler to be executed once the authentication is complete.
+	 *
+	 * @method EThing.authenticated
+	 * @param {function()} callback it is executed on authentication success.
+	 *
+	 */
+	var authenticatedCb_ = [];
+	EThing.authenticated = function(callback){
+		
+		if(typeof callback == 'function'){
+			authenticatedCb_.push(callback);
+			
+			if(EThing.auth.isAuthenticated()){
+				callback.call(EThing);
+			}
+		}
+	}
+	
+	
+	
+	global.EThing = EThing;
+	
+})(this);
+
+(function (global) {
+	
+	var EThing = global.EThing;
+	
+	
+	
 	/**
 	 * Constructs a File instance from an object decribing a file. Should not be called directly. Use instead {@link EThing.list}.
 	 * @protected
@@ -2388,7 +2924,7 @@ if(typeof module !== 'undefined' && module.exports){
 	{
 		EThing.Resource.call(this, json);
 	}
-	inherits(EThing.File, EThing.Resource);
+	EThing.utils.inherits(EThing.File, EThing.Resource);
 	
 	/**
 	 * Returns the size of this file in bytes.
@@ -2454,7 +2990,7 @@ if(typeof module !== 'undefined' && module.exports){
 	 * });
 	 */
 	EThing.File.prototype.thumbnailLink = function(auth) {
-	  return this._json.hasThumbnail ? toApiUrl('files/'+this.id()+'/thumbnail',auth) : null;
+	  return this._json.hasThumbnail ? EThing.toApiUrl('files/'+this.id()+'/thumbnail',auth) : null;
 	}
 	
 	/**
@@ -2476,7 +3012,7 @@ if(typeof module !== 'undefined' && module.exports){
 	 * document.body.appendChild(image);
 	 */
 	EThing.File.prototype.getContentUrl = function(auth) {
-		return toApiUrl('files/'+this.id(),auth);
+		return EThing.toApiUrl('files/'+this.id(),auth);
 	}
 	
 	/**
@@ -2584,6 +3120,137 @@ if(typeof module !== 'undefined' && module.exports){
 	
 	
 	
+	/**
+	 * Creates a new File from the following attributes :
+	 *   - name {string} __ required__ the name of the file
+	 *   - description {string} a string describing this file 
+	 *   - data {object} key/value pairs to attach to this file
+	 *   - expireAfter {number} amount of seconds after the last update after which this file is removed automatically, 0 means unlimited. Default to 0.
+	 *
+	 * @method EThing.File.create
+	 * @param {object} attributes
+	 * @param {function(data,XHR,options)} [callback] it is executed once the request is complete whether in failure or success
+	 * @returns {Deferred} a {@link http://api.jquery.com/category/deferred-object/|jQuery like Promise object}. {@link EThing.request|More ...} 
+	 * @fires EThing#ething.file.created
+	 * @example
+	 * EThing.File.create({
+	 *   name: "foobar.txt",
+	 *   description: "this is my file"
+	 * }).done(function(resource){
+	 *     console.log('file created : ' + resource.name());
+	 * })
+	 */
+	EThing.File.create = function(a,callback){
+		
+		if(typeof a == "string")
+			a = {
+				'name': a
+			};
+		
+		return EThing.request({
+			'url': '/files',
+			'dataType': 'json',
+			'method': 'POST',
+			'contentType': "application/json; charset=utf-8",
+			'data': a,
+			'converter': resourceConverter
+		},callback).done(function(r){
+			EThing.trigger('ething.file.created',[r]);
+		});
+		
+	};
+	
+	/*
+	Resource,boolean,callback{function({string|buffer})}
+	*/
+	EThing.File.read = function(file, binary, callback)
+	{
+		var context;
+		if(file instanceof EThing.File){
+			context = file;
+			file = file.id();
+		}
+		else if(!isResourceId(file)){
+			throw "First argument must be a File object or a file id !";
+		}
+		
+		if(typeof callback == 'undefined' && typeof binary == 'function'){
+			callback = binary;
+			binary = false;
+		}
+		
+		return EThing.request({
+			'url': '/files/' + file,
+			'method': 'GET',
+			'dataType': binary ? (EThing.utils.isNode ? 'buffer' : 'blob') : 'text',
+			'context': context
+		},callback);
+	};
+	
+	/*
+	Resource,args,callback{function({object})}
+	*/
+	EThing.File.execute = function(file, args, callback)
+	{
+		var context;
+		if(file instanceof EThing.File){
+			context = file;
+			file = file.id();
+		}
+		else if(!isResourceId(file)){
+			throw "First argument must be a File object or a file id !";
+		}
+		
+		if(typeof callback === 'undefined' && typeof args === 'function'){
+			callback = args;
+			args = null;
+		}
+		
+		return EThing.request({
+			'url': '/files/' + file + '/execute?' + EThing.utils.param({'args':args}),
+			'method': 'GET',
+			'dataType': 'json',
+			'context': context
+		},callback);
+	};
+
+	/*
+	Resource,data{string},callback{function({EThing.File})}
+	*/
+	EThing.File.write = function(a,b,c)
+	{
+		var file_id = null, context;
+		if(a instanceof EThing.File){
+			context = a;
+			file_id = a.id();
+		}
+		else if(isResourceId(a))
+			file_id = a;
+		else {
+			throw "First argument must be a File object or a file id !";
+			return;
+		}
+		
+		var callback = c;
+		
+		return EThing.request({
+			'url': '/files/' + file_id,
+			'dataType': 'json',
+			'method': 'PUT',
+			'contentType': (typeof b == 'string') ? 'text/plain' : 'application/octet-stream',
+			'data': b,
+			'context': context,
+			'converter': resourceConverter
+		},callback);
+	};
+	
+	
+	
+	
+})(this);
+(function (global) {
+	
+	var EThing = global.EThing;
 	
 	
 	
@@ -2599,7 +3266,7 @@ if(typeof module !== 'undefined' && module.exports){
 	{
 		EThing.Resource.call(this, json);
 	}
-	inherits(EThing.Table, EThing.Resource);
+	EThing.utils.inherits(EThing.Table, EThing.Resource);
 	
 	
 	// specific methods
@@ -2843,1299 +3510,11 @@ if(typeof module !== 'undefined' && module.exports){
 	 * });
 	 */
 	EThing.Table.prototype.getContentUrl = function(auth) {
-		return toApiUrl('tables/'+this.id(),auth);
+		return EThing.toApiUrl('tables/'+this.id(),auth);
 	}
 	
 	
 	
-	
-
-	
-	/**
-	 * Constructs an App instance from an object decribing an application. Should not be called directly. Use instead {@link EThing.list}.
-	 * @protected
-	 * @class The App resource handle an application
-	 * @memberof EThing
-	 * @extends EThing.Resource
-	 * @param {object} json
-	 */
-	EThing.App = function(json)
-	{
-		EThing.Resource.call(this, json);
-	}
-	inherits(EThing.App, EThing.Resource);
-	
-	// specific methods
-	
-	/**
-	 * Returns the size of this application in bytes.
-	 * @memberof EThing.App
-	 * @this {EThing.App}
-	 * @returns {number}
-	 */
-	EThing.App.prototype.size = function() {
-		return this._json.size || 0;
-	}
-	
-	/**
-	 * If this application has an icon, it returns his link, else it returns null.
-	 * 
-	 * @memberof EThing.App
-	 * @this {EThing.App}
-	 * @param {boolean} [auth=false] wether or not attach any authentication element. Necessary if you are not using {@link EThing.request}.
-	 * @returns {string|null}
-	 * @example
-	 * // the simple way
-	 * var image = new Image();
-	 * image.src = imageFile.iconLink(true);
-	 * document.body.appendChild(image);
-	 *
-	 * // the hard way
-	 * EThing.request({
-	 *   url: imageFile.iconLink(),
-	 *   dataType: "blob"
-	 * }).done(function(blobData){
-	 *   // success
-     *   var image = new Image();
-     *   image.src = window.URL.createObjectURL( blobData );
-     *   
-     *   document.body.appendChild(image);
-	 * });
-	 */
-	EThing.App.prototype.iconLink = function(auth) {
-		return this._json.hasIcon ? toApiUrl('apps/'+this.id()+'/icon',auth) : null;
-	}
-	
-	/**
-	 * Returns the link to access the content.
-	 * @memberof EThing.App
-	 * @this {EThing.App}
-	 * @param {boolean} [auth=false] wether or not attach any authentication element. Necessary if you are not using {@link EThing.request}.
-	 * @returns {string}
-	 * @example
-	 * // using EThing.request() :
-	 * EThing.request(app.getContentUrl()).done(function(content){
-	 *   // success
-	 *   console.log('content as text : '+content);
-	 * });
-	 */
-	EThing.App.prototype.getContentUrl = function(auth) {
-		return toApiUrl('apps/'+this.id(),auth);
-	}
-	
-	/**
-	 * Last time the content of this resource was modified
-	 * @memberof EThing.App
-	 * @this {EThing.App}
-	 * @returns {Date}
-	 */
-	EThing.App.prototype.contentModifiedDate = function() {
-		return new Date(this._json.contentModifiedDate);
-	}
-	
-	/**
-	 * Return the scope of this app.
-	 * @memberof EThing.App
-	 * @this {EThing.App}
-	 * @returns {string}
-	 */
-	EThing.App.prototype.scope = function() {
-	  return (typeof this._json.scope == 'string') ? this._json.scope : '';
-	}
-	
-	/**
-	 * Return the version of this app or null if this app is not versioned.
-	 * @memberof EThing.App
-	 * @this {EThing.App}
-	 * @returns {string}
-	 */
-	EThing.App.prototype.version = function() {
-	  return this._json.version || null;
-	}
-	
-	/**
-	 * Gets the code of this application in text/html.
-	 * @memberof EThing.App
-	 * @this {EThing.App}
-	 * @param {function(data,XHR,options)} [callback] it is executed once the request is complete whether in failure or success
-	 * @returns {EThing.App} The instance on which this method was called.
-	 */
-	EThing.App.prototype.read = function(callback){
-		var args = [].slice.call(arguments);
-		return this.deferred(function(){
-				args.unshift(this);
-				return EThing.App.read.apply(EThing, args);
-			});
-	}
-	
-	/**
-	 * Writes some HTML script in this application. Only available for {@link EThing.App#isEditable|editable app}
-	 * @memberof EThing.App
-	 * @this {EThing.App}
-	 * @param {string} data the full HTML script
-	 * @param {function(data,XHR,options)} [callback] it is executed once the request is complete whether in failure or success
-	 * @returns {EThing.App} The instance on which this method was called.
-	 */
-	EThing.App.prototype.write = function(data, callback){
-		var args = [].slice.call(arguments);
-		return this.deferred(function(){
-				args.unshift(this);
-				return EThing.App.write.apply(EThing, args);
-			});
-	}
-	
-	
-	
-	
-	
-	
-	
-	/* private constructor */
-	/* base class of device */
-	EThing.Device = function(json)
-	{
-		EThing.Resource.call(this, json);
-		
-		(this._json.operations || []).forEach(function(operationId){
-			if(typeof this[operationId] == 'undefined'){
-				var self = this;
-				
-				this[operationId] = function(data, binary, callback){
-					var args = [].slice.call(arguments);
-					return this.deferred(function(){
-						args.unshift(operationId);
-						args.unshift(this);
-						return EThing.Device.execute.apply(EThing, args);
-					});
-				};
-				
-				this[operationId].getApi = function(callback){
-					return EThing.Device.getApi(self, operationId, callback);
-				};
-				
-				this[operationId].executeUrl = function(data){
-					return self.executeUrl(operationId, data);
-				};
-			}
-		}, this);
-	}
-	inherits(EThing.Device, EThing.Resource);
-	
-	
-	/**
-	 * 
-	 * @memberof EThing.Device
-	 * @this {EThing.Device}
-	 * @returns {object|null} Return either an object containing information about the location (coordinates, place, room ...) or null if no location is defined for this device.
-	 */
-	EThing.Device.prototype.location = function() {
-	  return this._json.location || null;
-	}
-	
-	/**
-	 * 
-	 * @memberof EThing.Device
-	 * @this {EThing.Device}
-	 * @returns {Date|null}
-	 */
-	EThing.Device.prototype.lastSeenDate = function() {
-	  return (typeof this._json.lastSeenDate == 'string') ? new Date(this._json.lastSeenDate) : null;
-	}
-	
-	/**
-	 * 
-	 * @memberof EThing.Device
-	 * @this {EThing.Device}
-	 * @returns {boolean}
-	 */
-	EThing.Device.prototype.hasBattery = function() {
-	  return (typeof this._json.battery == "number") && this._json.battery >= 0 ;
-	}
-	
-	/**
-	 * 
-	 * @memberof EThing.Device
-	 * @this {EThing.Device}
-	 * @returns {number}
-	 */
-	EThing.Device.prototype.battery = function() {
-	  return this.hasBattery() ? this._json.battery : null ;
-	}
-	
-	/**
-	 * List the available operations on this device.
-	 * @memberof EThing.Device
-	 * @this {EThing.Device}
-	 * @returns {string[]}
-	 */
-	EThing.Device.prototype.operations = function(){
-		return this._json.operations ? this._json.operations : [];
-	}
-	
-	
-	/**
-	 * Execute an operation on this device.
-	 * @memberof EThing.Device
-	 * @this {EThing.Device}
-	 * @param {string} operationId
-	 * @param {object} [data] the optional data required by the operation
-	 * @param {boolean} [binary] if true, return the content as binary data (as Blob in a browser, or Buffer in NodeJs)
-	 * @param {function(data,XHR,options)} [callback] it is executed once the request is complete whether in failure or success
-	 * @returns {EThing.Device} The instance on which this method was called.
-	 * @example
-	 * // if this device is a thermometer :
-	 * device.execute('getTemperature').done(function(data){
-     *   // success, handle the data here
-     * });
-	 *
-	 * // if this device is a switch :
-	 * device.execute('setState', {
-	 * 	 state: true
-	 * });
-	 * 
-	 * // you may also do :
-	 * device.getTemperature().done(function(data){
-     *   // success, handle the data here
-     * });
-	 *
-	 */
-	EThing.Device.prototype.execute = function(){
-		var args = [].slice.call(arguments);
-		return this.deferred(function(){
-				args.unshift(this);
-				return EThing.Device.execute.apply(EThing, args);
-			});
-	}
-	
-	/**
-	 * Returns an url for executing an operation.
-	 * @memberof EThing.Device
-	 * @this {EThing.Device}
-	 * @param {string} operationId
-	 * @param {object} [data] the optional data required by the operation
-	 * @returns {string} The url.
-	 * @example
-	 * 
-	 * var image = new Image();
-	 * image.src = device.executeUrl('getImage');
-	 * document.body.appendChild(image);
-	 *
-	 */
-	EThing.Device.prototype.executeUrl = function(operationId, data){
-		var url = 'devices/'+this.id()+'/call/'+operationId;
-		
-		if(isPlainObject(data) && Object.keys(data).length !== 0){
-			var jsonStr = JSON.stringify(data);
-			url += '?paramData='+ encodeURIComponent(jsonStr);
-		}
-		
-		return EThing.toApiUrl(url,true);
-	}
-	
-	/**
-	 * Retrieve information about a specific operation or all the operations available for this device.
-	 * @memberof EThing.Device
-	 * @this {EThing.Device}
-	 * @param {string} [operationId] if set, only information about this operation will be returned
-	 * @param {function(data,XHR,options)} [callback] it is executed once the request is complete whether in failure or success
-	 * @returns {EThing.Device} The instance on which this method was called.
-	 *
-	 */
-	EThing.Device.prototype.getApi = function(operationId, callback){
-		var args = [].slice.call(arguments);
-		return this.deferred(function(){
-			args.unshift(this);
-			return EThing.Device.getApi.apply(EThing, args);
-		});
-	}
-	
-	
-	
-	
-	/**
-	 * Constructs a Http Device instance from an object decribing a http device. Should not be called directly. Use instead {@link EThing.list}.
-	 * @protected
-	 * @class The Http Device resource handle
-	 * @memberof EThing.Device
-	 * @extends EThing.Device
-	 * @param {object} json
-	 */
-	EThing.Device.Http = function(json)
-	{
-		EThing.Device.call(this, json);
-	}
-	inherits(EThing.Device.Http, EThing.Device);
-	
-	
-	/**
-	 * 
-	 * @memberof EThing.Device.Http
-	 * @this {EThing.Device.Http}
-	 * @returns {string}
-	 */
-	EThing.Device.Http.prototype.url = function() {
-	  return this._json.url;
-	}
-	
-	/**
-	 * 
-	 * @memberof EThing.Device.Http
-	 * @this {EThing.Device.Http}
-	 * @returns {object|null}
-	 */
-	EThing.Device.Http.prototype.auth = function() {
-	  return this._json.auth;
-	}
-	
-	/**
-	 * Return the scope of this device.
-	 * @memberof EThing.Device.Http
-	 * @this {EThing.Device.Http}
-	 * @returns {string}
-	 */
-	EThing.Device.Http.prototype.scope = function() {
-	  return (typeof this._json.scope == 'string') ? this._json.scope : '';
-	}
-	
-	
-	/**
-	 * Make a HTTP request on this device. __Only available if an URL is set__, see {@link EThing.Device#create}
-	 * The options are the same as the ones used in {@link EThing.request}.
-	 * @memberof EThing.Device.Http
-	 * @this {EThing.Device.Http}
-	 * @param {string|object} options or an URL
-	 * @returns {EThing.Device.Http} The instance on which this method was called.
-	 * @example
-	 * // simple GET request
-	 * device.request('/foo').done(function(data){
-     *   // success, handle the data here
-     * });
-	 *
-	 * // POST request
-	 * device.request({
-	 *   url: '/bar',
-	 *   method: 'POST',
-	 *   data: 'some content here ...',
-	 *   contentType: 'text/plain'
-	 * })
-	 * .done(function(data){
-	 *   // success, handle the data here
-	 * })
-	 * .fail(function(error){
-	 *   console.log("an error occurs : "+error.message);
-	 * });
-	 */
-	EThing.Device.Http.prototype.request = function(settings){
-		var args = [].slice.call(arguments);
-		return this.deferred(function(){
-			args.unshift(this);
-			return EThing.Device.Http.request.apply(EThing, args);
-		});
-	}
-	EThing.Device.Http.prototype.ajax = EThing.Device.Http.prototype.request;
-	
-	
-	EThing.Device.Http.prototype.getResourceUrl = function(url,auth){
-		return EThing.Device.Http.getResourceUrl(this,url,auth);
-	}
-	
-	
-	
-	
-	/**
-	 * Set the swagger API specification of this device.
-	 * @memberof EThing.Device.Http
-	 * @this {EThing.Device.Http}
-	 * @returns {object}
-	 */
-	EThing.Device.Http.prototype.setSpecification = function(spec,callback) {
-	  if(typeof spec == 'string')
-		spec = JSON.parse(spec);
-	  return this.set({
-		specification: spec
-	  },callback);
-	}
-
-	/**
-	 * Get the swagger API specification of this device.
-	 * @memberof EThing.Device.Http
-	 * @this {EThing.Device.Http}
-	 * @returns {object}
-	 */
-	EThing.Device.Http.prototype.getSpecification = function(callback) {
-	  return EThing.Device.Http.getSpecification(this, callback);
-	}
-
-
-
-
-	
-	
-	
-	
-	
-	
-	/**
-	 * MySensorsGateway base class constructor.
-	 * @protected
-	 * @class The MySensorsGateway Device resource handle
-	 * @memberof EThing.Device
-	 * @extends EThing.Device
-	 * @param {object} json
-	 */
-	EThing.Device.MySensorsGateway = function(json)
-	{
-		EThing.Device.call(this, json);
-	}
-	inherits(EThing.Device.MySensorsGateway, EThing.Device);
-	
-	
-	/**
-	 * 
-	 * @memberof EThing.Device.MySensorsGateway
-	 * @this {EThing.Device.MySensorsGateway}
-	 * @returns {boolean}
-	 */
-	EThing.Device.MySensorsGateway.prototype.isMetric = function() {
-	  return this._json.isMetric;
-	}
-	
-	/**
-	 * 
-	 * @memberof EThing.Device.MySensorsGateway
-	 * @this {EThing.Device.MySensorsGateway}
-	 * @returns {string}
-	 */
-	EThing.Device.MySensorsGateway.prototype.libVersion = function() {
-	  return this._json.libVersion;
-	}
-	
-	/**
-	 * Constructs a MySensorsEthernetGateway Device instance from an object decribing a MySensorsEthernetGateway device. Should not be called directly. Use instead {@link EThing.list}.
-	 * @protected
-	 * @class The MySensorsEthernetGateway Device resource handle
-	 * @memberof EThing.Device
-	 * @extends EThing.Device
-	 * @param {object} json
-	 */
-	EThing.Device.MySensorsEthernetGateway = function(json)
-	{
-		EThing.Device.call(this, json);
-	}
-	inherits(EThing.Device.MySensorsEthernetGateway, EThing.Device.MySensorsGateway);
-	
-	/**
-	 * Returns the IP address of the gateway.
-	 * @memberof EThing.Device.MySensorsEthernetGateway
-	 * @this {EThing.Device.MySensorsEthernetGateway}
-	 * @returns {string}
-	 */
-	EThing.Device.MySensorsEthernetGateway.prototype.address = function() {
-	  return this._json.address;
-	}
-	
-	/**
-	 * Constructs a MySensorsSerialGateway Device instance from an object decribing a MySensorsSerialGateway device. Should not be called directly. Use instead {@link EThing.list}.
-	 * @protected
-	 * @class The MySensorsGateway Device resource handle
-	 * @memberof EThing.Device
-	 * @extends EThing.Device
-	 * @param {object} json
-	 */
-	EThing.Device.MySensorsSerialGateway = function(json)
-	{
-		EThing.Device.call(this, json);
-	}
-	inherits(EThing.Device.MySensorsSerialGateway, EThing.Device.MySensorsGateway);
-	
-	/**
-	 * Returns the Serail port of the gateway.
-	 * @memberof EThing.Device.MySensorsSerialGateway
-	 * @this {EThing.Device.MySensorsSerialGateway}
-	 * @returns {string}
-	 */
-	EThing.Device.MySensorsSerialGateway.prototype.port = function() {
-	  return this._json.port;
-	}
-	
-	/**
-	 * Returns the Serail baudrate of the gateway.
-	 * @memberof EThing.Device.MySensorsSerialGateway
-	 * @this {EThing.Device.MySensorsSerialGateway}
-	 * @returns {string}
-	 */
-	EThing.Device.MySensorsSerialGateway.prototype.baudrate = function() {
-	  return this._json.baudrate;
-	}
-	
-	
-	
-	
-	
-	
-	
-	/**
-	 * RFLinkGateway base class constructor.
-	 * @protected
-	 * @class The RFLinkGateway Device resource handle
-	 * @memberof EThing.Device
-	 * @extends EThing.Device
-	 * @param {object} json
-	 */
-	EThing.Device.RFLinkGateway = function(json)
-	{
-		EThing.Device.call(this, json);
-	}
-	inherits(EThing.Device.RFLinkGateway, EThing.Device);
-	
-	/**
-	 * Returns the inclusion mode state .
-	 * @memberof EThing.Device.RFLinkGateway
-	 * @this {EThing.Device.RFLinkGateway}
-	 * @returns {boolean}
-	 */
-	EThing.Device.RFLinkGateway.prototype.inclusion = function() {
-	  return !!this._json.inclusion;
-	}
-	
-	
-	/**
-	 * Returns the version number of the firmware.
-	 * @memberof EThing.Device.RFLinkGateway
-	 * @this {EThing.Device.RFLinkGateway}
-	 * @returns {string}
-	 */
-	EThing.Device.RFLinkGateway.prototype.version = function() {
-	  return this._json.version;
-	}
-	
-	/**
-	 * Returns the revision number of the firmware.
-	 * @memberof EThing.Device.RFLinkGateway
-	 * @this {EThing.Device.RFLinkGateway}
-	 * @returns {string}
-	 */
-	EThing.Device.RFLinkGateway.prototype.revision = function() {
-	  return this._json.revision;
-	}
-	
-	/**
-	 * Returns the build number of the firmware.
-	 * @memberof EThing.Device.RFLinkGateway
-	 * @this {EThing.Device.RFLinkGateway}
-	 * @returns {string}
-	 */
-	EThing.Device.RFLinkGateway.prototype.build = function() {
-	  return this._json.build;
-	}
-	
-	
-	/**
-	 * Constructs a RFLinkSerialGateway Device instance from an object decribing a RFLinkSerialGateway device. Should not be called directly. Use instead {@link EThing.list}.
-	 * @protected
-	 * @class The RFLinkGateway Device resource handle
-	 * @memberof EThing.Device
-	 * @extends EThing.Device
-	 * @param {object} json
-	 */
-	EThing.Device.RFLinkSerialGateway = function(json)
-	{
-		EThing.Device.call(this, json);
-	}
-	inherits(EThing.Device.RFLinkSerialGateway, EThing.Device.RFLinkGateway);
-	
-	/**
-	 * Returns the Serail port of the gateway.
-	 * @memberof EThing.Device.RFLinkSerialGateway
-	 * @this {EThing.Device.RFLinkSerialGateway}
-	 * @returns {string}
-	 */
-	EThing.Device.RFLinkSerialGateway.prototype.port = function() {
-	  return this._json.port;
-	}
-	
-	/**
-	 * Returns the Serail baudrate of the gateway.
-	 * @memberof EThing.Device.RFLinkSerialGateway
-	 * @this {EThing.Device.RFLinkSerialGateway}
-	 * @returns {string}
-	 */
-	EThing.Device.RFLinkSerialGateway.prototype.baudrate = function() {
-	  return this._json.baudrate;
-	}
-	
-	
-	
-	/**
-	 * RFLinkSwitch base class constructor.
-	 * @protected
-	 * @class The RFLinkSwitch Device resource handle
-	 * @memberof EThing.Device
-	 * @extends EThing.Device
-	 * @param {object} json
-	 */
-	EThing.Device.RFLinkSwitch = function(json)
-	{
-		EThing.Device.call(this, json);
-	}
-	inherits(EThing.Device.RFLinkSwitch, EThing.Device);
-	
-	/**
-	 * Returns the protocol used to communicate with this node.
-	 * @memberof EThing.Device.RFLinkSwitch
-	 * @this {EThing.Device.RFLinkSwitch}
-	 * @returns {string}
-	 */
-	EThing.Device.RFLinkSwitch.prototype.protocol = function() {
-	  return !!this._json.protocol;
-	}
-	
-	/**
-	 * Returns the nodeId of this node.
-	 * @memberof EThing.Device.RFLinkSwitch
-	 * @this {EThing.Device.RFLinkSwitch}
-	 * @returns {string}
-	 */
-	EThing.Device.RFLinkSwitch.prototype.nodeId = function() {
-	  return !!this._json.nodeId;
-	}
-	
-	/**
-	 * Returns the switchId of this node.
-	 * @memberof EThing.Device.RFLinkSwitch
-	 * @this {EThing.Device.RFLinkSwitch}
-	 * @returns {string}
-	 */
-	EThing.Device.RFLinkSwitch.prototype.switchId = function() {
-	  return !!this._json.switchId;
-	}
-	
-	
-	
-	/**
-	 * Constructs a MySensorsNode Device instance from an object decribing a MySensorsNode device. Should not be called directly. Use instead {@link EThing.list}.
-	 * @protected
-	 * @class The MySensorsNode Device resource handle
-	 * @memberof EThing.Device
-	 * @extends EThing.Device
-	 * @param {object} json
-	 */
-	EThing.Device.MySensorsNode = function(json)
-	{
-		EThing.Device.call(this, json);
-	}
-	inherits(EThing.Device.MySensorsNode, EThing.Device);
-	
-	/**
-	 * 
-	 * @memberof EThing.Device.MySensorsNode
-	 * @this {EThing.Device.MySensorsNode}
-	 * @returns {string}
-	 */
-	EThing.Device.MySensorsNode.prototype.nodeId = function() {
-	  return this._json.nodeId;
-	}
-	
-	/**
-	 * 
-	 * @memberof EThing.Device.MySensorsNode
-	 * @this {EThing.Device.MySensorsNode}
-	 * @returns {string}
-	 */
-	EThing.Device.MySensorsNode.prototype.sketchName = function() {
-	  return this._json.sketchName;
-	}
-	
-	/**
-	 * 
-	 * @memberof EThing.Device.MySensorsNode
-	 * @this {EThing.Device.MySensorsNode}
-	 * @returns {string}
-	 */
-	EThing.Device.MySensorsNode.prototype.sketchVersion = function() {
-	  return this._json.sketchVersion;
-	}
-	
-	/**
-	 * 
-	 * @memberof EThing.Device.MySensorsNode
-	 * @this {EThing.Device.MySensorsNode}
-	 * @returns {string}
-	 */
-	EThing.Device.MySensorsNode.prototype.smartSleep = function() {
-	  return this._json.smartSleep;
-	}
-	
-	
-	
-	
-	
-	/**
-	 * Constructs a MySensorsSensor Device instance from an object decribing a MySensorsSensor device. Should not be called directly. Use instead {@link EThing.list}.
-	 * @protected
-	 * @class The MySensorsSensor Device resource handle
-	 * @memberof EThing.Device
-	 * @extends EThing.Device
-	 * @param {object} json
-	 */
-	EThing.Device.MySensorsSensor = function(json)
-	{
-		EThing.Device.call(this, json);
-	}
-	inherits(EThing.Device.MySensorsSensor, EThing.Device);
-	
-	/**
-	 * 
-	 * @memberof EThing.Device.MySensorsSensor
-	 * @this {EThing.Device.MySensorsSensor}
-	 * @returns {string}
-	 */
-	EThing.Device.MySensorsSensor.prototype.sensorId = function() {
-	  return this._json.sensorId;
-	}
-	
-	/**
-	 * 
-	 * @memberof EThing.Device.MySensorsSensor
-	 * @this {EThing.Device.MySensorsSensor}
-	 * @returns {string}
-	 */
-	EThing.Device.MySensorsSensor.prototype.sensorType = function() {
-	  return this._json.sensorType;
-	}
-	
-	/**
-	 * 
-	 * @memberof EThing.Device.MySensorsSensor
-	 * @this {EThing.Device.MySensorsSensor}
-	 * @returns {string}
-	 */
-	EThing.Device.MySensorsSensor.prototype.val = function(valueType) {
-	  return this._json.data.hasOwnProperty(valueType) ? this._json.data[valueType] : null;
-	}
-	
-	
-	/**
-	 * 
-	 * @memberof EThing.Device.MySensorsSensor
-	 * @this {EThing.Device.MySensorsSensor}
-	 * @returns {string}
-	 */
-	EThing.Device.MySensorsSensor.prototype.setValue = function(valueType, value, callback) {
-		var data = {};
-		data[valueType] = value;
-		return this.setData(data,callback);
-	}
-	
-	
-	
-	
-	/**
-	 * Constructs a RTSP Device instance from an object decribing a RTSP device (typpicaly an IP camera). Should not be called directly. Use instead {@link EThing.list}.
-	 * @protected
-	 * @class The RTSP Device resource handle
-	 * @memberof EThing.Device
-	 * @extends EThing.Device
-	 * @param {object} json
-	 */
-	EThing.Device.RTSP = function(json)
-	{
-		EThing.Device.call(this, json);
-	}
-	inherits(EThing.Device.RTSP, EThing.Device);
-	
-	
-	/**
-	 * 
-	 * @memberof EThing.Device.RTSP
-	 * @this {EThing.Device.RTSP}
-	 * @returns {string}
-	 */
-	EThing.Device.RTSP.prototype.url = function() {
-	  return this._json.url;
-	}
-	
-	/**
-	 * 
-	 * @memberof EThing.Device.RTSP
-	 * @this {EThing.Device.RTSP}
-	 * @returns {string}
-	 */
-	EThing.Device.RTSP.prototype.transport = function() {
-	  return this._json.transport;
-	}
-	
-	
-	
-	/**
-	 * Constructs a Denon Device instance from an object decribing a Denon device (Marantz M-CR611). Should not be called directly. Use instead {@link EThing.list}.
-	 * @protected
-	 * @class The Denon Device resource handle
-	 * @memberof EThing.Device
-	 * @extends EThing.Device
-	 * @param {object} json
-	 */
-	EThing.Device.Denon = function(json)
-	{
-		EThing.Device.call(this, json);
-	}
-	inherits(EThing.Device.Denon, EThing.Device);
-	
-	
-	/**
-	 * 
-	 * @memberof EThing.Device.Denon
-	 * @this {EThing.Device.Denon}
-	 * @returns {string}
-	 */
-	EThing.Device.Denon.prototype.host = function() {
-	  return this._json.host;
-	}
-	
-	
-	
-	/**
-	 * Constructs a MQTT Device instance from an object decribing a MQTT device. Should not be called directly. Use instead {@link EThing.list}.
-	 * @protected
-	 * @class The MQTT Device resource handle
-	 * @memberof EThing.Device
-	 * @extends EThing.Device
-	 * @param {object} json
-	 */
-	EThing.Device.MQTT = function(json)
-	{
-		EThing.Device.call(this, json);
-	}
-	inherits(EThing.Device.MQTT, EThing.Device);
-	
-	
-	/**
-	 * 
-	 * @memberof EThing.Device.MQTT
-	 * @this {EThing.Device.MQTT}
-	 * @returns {string}
-	 */
-	EThing.Device.MQTT.prototype.host = function() {
-	  return this._json.host;
-	}
-	
-	/**
-	 * 
-	 * @memberof EThing.Device.MQTT
-	 * @this {EThing.Device.MQTT}
-	 * @returns {number}
-	 */
-	EThing.Device.MQTT.prototype.port = function() {
-	  return this._json.port;
-	}
-	
-	/**
-	 * 
-	 * @memberof EThing.Device.MQTT
-	 * @this {EThing.Device.MQTT}
-	 * @returns {string}
-	 */
-	EThing.Device.MQTT.prototype.topic = function() {
-	  return this._json.topic;
-	}
-	
-	/**
-	 * 
-	 * @memberof EThing.Device.MQTT
-	 * @this {EThing.Device.MQTT}
-	 * @returns {object|null}
-	 */
-	EThing.Device.MQTT.prototype.auth = function() {
-	  return this._json.auth || null;
-	}
-	
-	
-	
-	/**
-	 * Constructs a Yeelight Device instance from an object decribing a Yeelight device. Base class of all Yeelight devices.
-	 * @protected
-	 * @class The Yeelight Device resource handle
-	 * @memberof EThing.Device
-	 * @extends EThing.Device
-	 * @param {object} json
-	 */
-	EThing.Device.Yeelight = function(json)
-	{
-		EThing.Device.call(this, json);
-	}
-	inherits(EThing.Device.Yeelight, EThing.Device);
-	
-	
-	/**
-	 * 
-	 * @memberof EThing.Device.Yeelight
-	 * @this {EThing.Device.Yeelight}
-	 * @returns {string}
-	 */
-	EThing.Device.Yeelight.prototype.host = function() {
-	  return this._json.host;
-	}
-	
-	/**
-	 * Constructs a YeelightBulbRGBW Device instance from an object decribing a Yeelight LED bulb (color) device. Should not be called directly. Use instead {@link EThing.list}.
-	 * @protected
-	 * @class The YeelightBulbRGBW Device resource handle
-	 * @memberof EThing.Device
-	 * @extends EThing.Device
-	 * @param {object} json
-	 */
-	EThing.Device.YeelightBulbRGBW = function(json)
-	{
-		EThing.Device.Yeelight.call(this, json);
-	}
-	inherits(EThing.Device.YeelightBulbRGBW, EThing.Device.Yeelight);
-	
-	
-	/**
-	 * This function get the available resources. A filter may be given to retrieve resources with specific attributes (see the HTTP API for more details).
-	 * @method EThing.list
-	 * @param {string} [query] Query string for searching resources
-	 * @param {function(data,XHR,options)} [callback] it is executed once the request is complete whether in failure or success
-	 * @returns {Deferred} a {@link http://api.jquery.com/category/deferred-object/|jQuery like Promise object}. {@link EThing.request|More ...} 
-	 * @example
-	 * // get all the resources
-	 * EThing.list().done(function(resources){
-	 *     console.log(resources);
-	 * })
-	 *
-	 * // get only File & Table resources
-	 * EThing.list('type == "File" or type == "Table"').done(function(resources){
-	 *     console.log(resources);
-	 * })
-	 */
-	EThing.list = EThing.find = function(a,b)
-	{
-		var query = null, callback = null;
-		
-		if(arguments.length==1){
-			if(typeof arguments[0] == 'function')
-				callback = arguments[0];
-			else
-				query = arguments[0];
-		}
-		else if(arguments.length>=2){
-			query = arguments[0];
-			callback = arguments[1];
-		}
-		
-		return EThing.request({
-			'url': '/resources?' + EThing.utils.param({'q':query}),
-			'method': 'GET',
-			'dataType': 'json',
-			'converter': resourceConverter
-		},callback);
-	};
-	
-	
-	/**
-	 * Gets an object containing informations about space usage :
-	 *  - used {number} the amount of space used in bytes
-	 *  - quota_size {number} the maximum space authorized in bytes
-	 *
-	 * @method EThing.Resource.usage
-	 * @param {function(data,XHR,options)} [callback] it is executed once the request is complete whether in failure or success
-	 * @returns {Deferred} a {@link http://api.jquery.com/category/deferred-object/|jQuery like Promise object}. {@link EThing.request|More ...} 
-	 * @example
-	 * // get the occupied space :
-	 * EThing.Resource.usage().done(function(usage){
-	 *     console.log('space used : ' + (100 * usage.used / usage.quota_size) );
-	 * })
-	 */
-	EThing.Resource.usage = function(a)
-	{
-		var callback = a;
-		
-		return EThing.request({
-			'url': '/usage',
-			'dataType': 'json',
-			'method': 'GET'
-		},callback);
-	};
-	
-	
-	/*
-	Resource,callback
-	*/
-	EThing.Resource.remove = function(a,b)
-	{
-		var context;
-		if(a instanceof EThing.Resource){
-			context = a;
-			a = a.id();
-		}
-		else if(!isResourceId(a)) {
-			throw "First argument must be a Resource object or a Resource id : "+a;
-			return;
-		}
-		
-		var callback = b;
-		
-		return EThing.request({
-			'url': '/resources/' + a,
-			'method': 'DELETE',
-			'context': context
-		},callback).done(function(){
-			EThing.trigger('ething.resource.removed',[a]);
-		});
-	};
-	
-	/**
-	 * Gets a resource by its id.
-	 *
-	 * @method EThing.get
-	 * @param {string|EThing.Resource} resourceIdentifier
-	 * @param {function(data,XHR,options)} [callback] it is executed once the request is complete whether in failure or success
-	 * @returns {Deferred} a {@link http://api.jquery.com/category/deferred-object/|jQuery like Promise object}. {@link EThing.request|More ...} 
-	 * @example
-	 * // get a resource by its id
-	 * EThing.get("54516eb").done(function(resource){
-	 *     console.log('the name is ' + resource.name());
-	 * })
-	 */
-	EThing.get = function(a,b)
-	{
-		var context;
-		if(a instanceof EThing.Resource){
-			context = a;
-			a = a.id();
-		}
-		else if(!isResourceId(a)) {
-			throw "First argument must be a Resource object or a Resource id : "+a;
-			return;
-		}
-		
-		var callback = b;
-		
-		return EThing.request({
-			'url': '/resources/' + a,
-			'dataType': 'json',
-			'method': 'GET',
-			'context': context,
-			'converter': resourceConverter
-		},callback);
-	};
-	
-	/*
-	Resource,data,callback
-	*/
-	EThing.Resource.set = function(a,b,c)
-	{
-		var context;
-		
-		if(!isPlainObject(b) || !b){
-			throw 'Second argument must be a unempty object !';
-			return;
-		}
-		
-		if(a instanceof EThing.Resource){
-			context = a;
-			a = a.id();
-		}
-		else if(!isResourceId(a)) {
-			throw "First argument must be a Resource object or a Resource id : "+a;
-			return;
-		}
-		
-		var callback = c;
-		
-		return EThing.request({
-			'url': '/resources/' + a,
-			'dataType': 'json',
-			'method': 'POST',
-			'contentType': "application/json; charset=utf-8",
-			'data': b,
-			'context': context,
-			'headers': {
-				"X-HTTP-Method-Override": "PATCH"
-			},
-			'converter': resourceConverter
-		},callback);
-	};
-	
-	
-	
-	
-	
-	
-	
-	/*
-	* TOOLS
-	*/
-	EThing.Resource.dirname = function(f) {
-		var s = f.replace(/\/[^\/]*\/?$/, '');
-		return ( s === f ) ? "" : s;
-	}
-	EThing.Resource.basename = function(f) {
-		return f.replace( /.*\//, '' );
-	}
-	EThing.Resource.extension = function(f){
-		return f.indexOf('.')>=0 ? f.split('.').pop() : '';
-	}
-	EThing.Resource.fnmatch = function fnmatch(pattern, path) {
-		
-		var patternTab = pattern.split(' ');
-		var parsedPattern, regexp;
-		
-		for(var i=0; i<patternTab.length; i++){
-			if(patternTab[i] == '') continue;
-			
-			parsedPattern = '^' + patternTab[i].replace(/\//g, '\\/').
-			replace(/\*\*/g, '(\\/[^\\/]+)*').
-			replace(/\*/g, '[^\\/]+').
-			replace(/((?!\\))\?/g, '$1.') + '$';
-			
-			parsedPattern = '^' + parsedPattern + '$';
-			
-			regexp = new RegExp(parsedPattern);
-			if( path.match(regexp) != null ) return true;
-		}
-		return false;
-	};
-	
-	
-	
-	
-	
-	
-	/*
-	* File
-	*/
-	
-	/**
-	 * Creates a new File from the following attributes :
-	 *   - name {string} __ required__ the name of the file
-	 *   - description {string} a string describing this file 
-	 *   - data {object} key/value pairs to attach to this file
-	 *   - expireAfter {number} amount of seconds after the last update after which this file is removed automatically, 0 means unlimited. Default to 0.
-	 *
-	 * @method EThing.File.create
-	 * @param {object} attributes
-	 * @param {function(data,XHR,options)} [callback] it is executed once the request is complete whether in failure or success
-	 * @returns {Deferred} a {@link http://api.jquery.com/category/deferred-object/|jQuery like Promise object}. {@link EThing.request|More ...} 
-	 * @fires EThing#ething.file.created
-	 * @example
-	 * EThing.File.create({
-	 *   name: "foobar.txt",
-	 *   description: "this is my file"
-	 * }).done(function(resource){
-	 *     console.log('file created : ' + resource.name());
-	 * })
-	 */
-	EThing.File.create = function(a,callback){
-		
-		if(typeof a == "string")
-			a = {
-				'name': a
-			};
-		
-		return EThing.request({
-			'url': '/files',
-			'dataType': 'json',
-			'method': 'POST',
-			'contentType': "application/json; charset=utf-8",
-			'data': a,
-			'converter': resourceConverter
-		},callback).done(function(r){
-			EThing.trigger('ething.file.created',[r]);
-		});
-		
-	};
-	
-	/*
-	Resource,boolean,callback{function({string|buffer})}
-	*/
-	EThing.File.read = function(file, binary, callback)
-	{
-		var context;
-		if(file instanceof EThing.File){
-			context = file;
-			file = file.id();
-		}
-		else if(!isResourceId(file)){
-			throw "First argument must be a File object or a file id !";
-		}
-		
-		if(typeof callback == 'undefined' && typeof binary == 'function'){
-			callback = binary;
-			binary = false;
-		}
-		
-		return EThing.request({
-			'url': '/files/' + file,
-			'method': 'GET',
-			'dataType': binary ? (EThing.utils.isNode ? 'buffer' : 'blob') : 'text',
-			'context': context
-		},callback);
-	};
-	
-	/*
-	Resource,args,callback{function({object})}
-	*/
-	EThing.File.execute = function(file, args, callback)
-	{
-		var context;
-		if(file instanceof EThing.File){
-			context = file;
-			file = file.id();
-		}
-		else if(!isResourceId(file)){
-			throw "First argument must be a File object or a file id !";
-		}
-		
-		if(typeof callback === 'undefined' && typeof args === 'function'){
-			callback = args;
-			args = null;
-		}
-		
-		return EThing.request({
-			'url': '/files/' + file + '/execute?' + EThing.utils.param({'args':args}),
-			'method': 'GET',
-			'dataType': 'json',
-			'context': context
-		},callback);
-	};
-
-	/*
-	Resource,data{string},callback{function({EThing.File})}
-	*/
-	EThing.File.write = function(a,b,c)
-	{
-		var file_id = null, context;
-		if(a instanceof EThing.File){
-			context = a;
-			file_id = a.id();
-		}
-		else if(isResourceId(a))
-			file_id = a;
-		else {
-			throw "First argument must be a File object or a file id !";
-			return;
-		}
-		
-		var callback = c;
-		
-		return EThing.request({
-			'url': '/files/' + file_id,
-			'dataType': 'json',
-			'method': 'PUT',
-			'contentType': (typeof b == 'string') ? 'text/plain' : 'application/octet-stream',
-			'data': b,
-			'context': context,
-			'converter': resourceConverter
-		},callback);
-	};
-	
-	
-	
-	
-	/*
-	* Table
-	*/
 	
 	/**
 	 * Creates a new Table from the following attributes :
@@ -4450,523 +3829,147 @@ if(typeof module !== 'undefined' && module.exports){
 	
 	
 	
-	/*
-	* Device
-	*/
+})(this);
+(function (global) {
 	
-	
-	
-	
-	/*
-	device, operationId[, data ]
-	*/
-	EThing.Device.execute = function(device, operationId, data, binary, callback){
-		
-		var context;
-		
-		if(device instanceof EThing.Device){
-			context = device;
-			device = device.id();
-		}
-		else if(isResourceId(device))
-			device = device;
-		else {
-			throw "First argument must be a Device object or a Device id !";
-			return;
-		}
-		
-		if(arguments.length == 4){
-			
-			if(typeof binary == 'function'){
-				callback = binary;
-				binary = undefined;
-			}
-			
-		} else if(arguments.length == 3){
-			
-			if(typeof data == 'function'){
-				callback = data;
-				data = undefined;
-			}
-			
-		}
-		
-		return EThing.request({
-			'url': '/devices/' + device + '/call/' + operationId,
-			'method': 'POST',
-			'contentType': "application/json; charset=utf-8",
-			'data': typeof data != 'undefined' && data!==null ? JSON.stringify(data) : undefined,
-			'dataType': binary ? (EThing.utils.isNode ? 'buffer' : 'blob') : 'auto',
-			'context': context
-		},callback);
-		
-	};
-	
-	
-	/*
-	device[, operationId]
-	*/
-	EThing.Device.getApi = function(device, operationId, callback){
-		
-		var context;
-		
-		if(typeof operationId == 'function' && typeof callback == 'undefined'){
-			callback = operationId;
-			operationId = undefined;
-		}
-		
-		if(device instanceof EThing.Device){
-			context = device;
-			device = device.id();
-		}
-		else if(isResourceId(device))
-			device = device;
-		else {
-			throw "First argument must be a Device object or a Device id !";
-			return;
-		}
-		
-		return EThing.request({
-			'url': '/devices/' + device + '/api' + (operationId?('/'+operationId):''),
-			'method': 'GET',
-			'context': context,
-			'dataType': 'json'
-		},callback);
-		
-	};
-	
-	
-	
-	
-	/*
-	* Http Device
-	*/
+	var EThing = global.EThing;
 	
 	
 	/**
-	 * Creates a new HttpDevice
-	 *
-	 * @method EThing.Device.Http.create
-	 * @param {object} attributes
-	 * @param {function(data,XHR,options)} [callback] it is executed once the request is complete whether in failure or success
-	 * @returns {Deferred} a {@link http://api.jquery.com/category/deferred-object/|jQuery like Promise object}. {@link EThing.request|More ...} 
-	 * @fires EThing#ething.device.created
-	 * @example
-	 * EThing.Device.Http.create({
-	 *   name: "foobar",
-	 *   url: "123.45.67.89"
-	 * }).done(function(resource){
-	 *     console.log('the new device can be accessed through : ' + resource.url());
-	 * })
+	 * Constructs an App instance from an object decribing an application. Should not be called directly. Use instead {@link EThing.list}.
+	 * @protected
+	 * @class The App resource handle an application
+	 * @memberof EThing
+	 * @extends EThing.Resource
+	 * @param {object} json
 	 */
-	EThing.Device.Http.create = function(a,callback){
-		
-		a.type = 'Http';
-		
-		return EThing.request({
-			'url': '/devices',
-			'dataType': 'json',
-			'method': 'POST',
-			'contentType': "application/json; charset=utf-8",
-			'data': a,
-			'converter': resourceConverter
-		},callback).done(function(r){
-			EThing.trigger('ething.device.created',[r]);
-		});
-		
-	};
+	EThing.App = function(json)
+	{
+		EThing.Resource.call(this, json);
+	}
+	EThing.utils.inherits(EThing.App, EThing.Resource);
 	
+	// specific methods
 	
-	EThing.Device.Http.getResourceUrl = function(device,url,auth){
-		if(device instanceof EThing.Device.Http){
-			device = device.id();
-		}
-		
-		var o = 'devices/' + device + '/request';
-		if( typeof url == 'string'){
-			if(!/^\//.test(url))
-				url = '/'+url;
-			o += url;
-		}
-		return toApiUrl(o,auth);
+	/**
+	 * Returns the size of this application in bytes.
+	 * @memberof EThing.App
+	 * @this {EThing.App}
+	 * @returns {number}
+	 */
+	EThing.App.prototype.size = function() {
+		return this._json.size || 0;
+	}
+	
+	/**
+	 * If this application has an icon, it returns his link, else it returns null.
+	 * 
+	 * @memberof EThing.App
+	 * @this {EThing.App}
+	 * @param {boolean} [auth=false] wether or not attach any authentication element. Necessary if you are not using {@link EThing.request}.
+	 * @returns {string|null}
+	 * @example
+	 * // the simple way
+	 * var image = new Image();
+	 * image.src = imageFile.iconLink(true);
+	 * document.body.appendChild(image);
+	 *
+	 * // the hard way
+	 * EThing.request({
+	 *   url: imageFile.iconLink(),
+	 *   dataType: "blob"
+	 * }).done(function(blobData){
+	 *   // success
+     *   var image = new Image();
+     *   image.src = window.URL.createObjectURL( blobData );
+     *   
+     *   document.body.appendChild(image);
+	 * });
+	 */
+	EThing.App.prototype.iconLink = function(auth) {
+		return this._json.hasIcon ? EThing.toApiUrl('apps/'+this.id()+'/icon',auth) : null;
+	}
+	
+	/**
+	 * Returns the link to access the content.
+	 * @memberof EThing.App
+	 * @this {EThing.App}
+	 * @param {boolean} [auth=false] wether or not attach any authentication element. Necessary if you are not using {@link EThing.request}.
+	 * @returns {string}
+	 * @example
+	 * // using EThing.request() :
+	 * EThing.request(app.getContentUrl()).done(function(content){
+	 *   // success
+	 *   console.log('content as text : '+content);
+	 * });
+	 */
+	EThing.App.prototype.getContentUrl = function(auth) {
+		return EThing.toApiUrl('apps/'+this.id(),auth);
+	}
+	
+	/**
+	 * Last time the content of this resource was modified
+	 * @memberof EThing.App
+	 * @this {EThing.App}
+	 * @returns {Date}
+	 */
+	EThing.App.prototype.contentModifiedDate = function() {
+		return new Date(this._json.contentModifiedDate);
+	}
+	
+	/**
+	 * Return the scope of this app.
+	 * @memberof EThing.App
+	 * @this {EThing.App}
+	 * @returns {string}
+	 */
+	EThing.App.prototype.scope = function() {
+	  return (typeof this._json.scope == 'string') ? this._json.scope : '';
+	}
+	
+	/**
+	 * Return the version of this app or null if this app is not versioned.
+	 * @memberof EThing.App
+	 * @this {EThing.App}
+	 * @returns {string}
+	 */
+	EThing.App.prototype.version = function() {
+	  return this._json.version || null;
+	}
+	
+	/**
+	 * Gets the code of this application in text/html.
+	 * @memberof EThing.App
+	 * @this {EThing.App}
+	 * @param {function(data,XHR,options)} [callback] it is executed once the request is complete whether in failure or success
+	 * @returns {EThing.App} The instance on which this method was called.
+	 */
+	EThing.App.prototype.read = function(callback){
+		var args = [].slice.call(arguments);
+		return this.deferred(function(){
+				args.unshift(this);
+				return EThing.App.read.apply(EThing, args);
+			});
+	}
+	
+	/**
+	 * Writes some HTML script in this application. Only available for {@link EThing.App#isEditable|editable app}
+	 * @memberof EThing.App
+	 * @this {EThing.App}
+	 * @param {string} data the full HTML script
+	 * @param {function(data,XHR,options)} [callback] it is executed once the request is complete whether in failure or success
+	 * @returns {EThing.App} The instance on which this method was called.
+	 */
+	EThing.App.prototype.write = function(data, callback){
+		var args = [].slice.call(arguments);
+		return this.deferred(function(){
+				args.unshift(this);
+				return EThing.App.write.apply(EThing, args);
+			});
 	}
 	
 	
-	/*
-	device[, settings ]
-	*/
-	EThing.Device.Http.ajax = EThing.Device.Http.request = function(a,b){
-		
-		var devId, context;
-		
-		if(a instanceof EThing.Device.Http){
-			context = a;
-			devId = a.id();
-		}
-		else if(isResourceId(a))
-			devId = a;
-		else {
-			throw "First argument must be a Device object or a Device id !";
-			return;
-		}
-		
-		var settings = {
-			'url': null,
-			'context': context
-		};
-		
-		if(typeof b == 'string')
-			settings['url'] =  b;
-		else
-			extend(settings,b);
-		
-		settings['url'] = EThing.Device.Http.getResourceUrl(devId, settings['url']);
-			
-		return EThing.request(settings);
-		
-	};
 	
-	
-	EThing.Device.Http.getSpecification = function(dev, callback){
-		var context;
-		
-		if(dev instanceof EThing.Device.Http){
-			context = dev;
-			dev = dev.id();
-		}
-		else if(!EThing.utils.isId(dev))
-			throw "First argument must be a Device object or a Device id !";
-		
-		return EThing.request({
-			'url': '/devices/' + dev + '/specification',
-			'dataType': 'json',
-			'context': context,
-			'converter': function(spec){
-				if(context instanceof EThing.Device.Http){
-					// attach this specification to the device
-					context.swaggerSpecification = spec;
-				}
-				return spec;
-			}
-		},callback);
-		
-	};
-
-
-	
-	
-	/**
-	 * Creates a new MySensors gateway.
-	 *
-	 * @method EThing.Device.MySensorsEthernetGateway.create
-	 * @param {object} attributes
-	 * @param {function(data,XHR,options)} [callback] it is executed once the request is complete whether in failure or success
-	 * @returns {Deferred} a {@link http://api.jquery.com/category/deferred-object/|jQuery like Promise object}. {@link EThing.request|More ...} 
-	 * @fires EThing#ething.device.created
-	 * @example
-	 * EThing.Device.MySensorsEthernetGateway.create({
-	 *   name: "foobar",
-	 *   address: "123.45.67.89"
-	 * }).done(function(resource){
-	 *     console.log('the new MySensors gateway has been added');
-	 * })
-	 */
-	EThing.Device.MySensorsEthernetGateway.create = function(a,callback){
-		
-		a.type = 'MySensorsEthernetGateway';
-		
-		return EThing.request({
-			'url': '/devices',
-			'dataType': 'json',
-			'method': 'POST',
-			'contentType': "application/json; charset=utf-8",
-			'data': a,
-			'converter': resourceConverter
-		},callback).done(function(r){
-			EThing.trigger('ething.device.created',[r]);
-		});
-		
-	};
-	
-	/**
-	 * Creates a new MySensors gateway.
-	 *
-	 * @method EThing.Device.MySensorsSerialGateway.create
-	 * @param {object} attributes
-	 * @param {function(data,XHR,options)} [callback] it is executed once the request is complete whether in failure or success
-	 * @returns {Deferred} a {@link http://api.jquery.com/category/deferred-object/|jQuery like Promise object}. {@link EThing.request|More ...} 
-	 * @fires EThing#ething.device.created
-	 * @example
-	 * EThing.Device.MySensorsSerialGateway.create({
-	 *   name: "foobar",
-	 *   port: "/dev/ttyS0",
-	 *   baudrate: 115200,
-	 * }).done(function(resource){
-	 *     console.log('the new MySensors gateway has been added');
-	 * })
-	 */
-	EThing.Device.MySensorsSerialGateway.create = function(a,callback){
-		
-		a.type = 'MySensorsSerialGateway';
-		
-		return EThing.request({
-			'url': '/devices',
-			'dataType': 'json',
-			'method': 'POST',
-			'contentType': "application/json; charset=utf-8",
-			'data': a,
-			'converter': resourceConverter
-		},callback).done(function(r){
-			EThing.trigger('ething.device.created',[r]);
-		});
-		
-	};
-	
-	
-	/**
-	 * Add a new MySensors node to an existing MySensors gateway.
-	 *
-	 * @method EThing.Device.MySensorsNode.create
-	 * @param {object} attributes
-	 * @param {function(data,XHR,options)} [callback] it is executed once the request is complete whether in failure or success
-	 * @returns {Deferred} a {@link http://api.jquery.com/category/deferred-object/|jQuery like Promise object}. {@link EThing.request|More ...} 
-	 * @fires EThing#ething.device.created
-	 * @example
-	 * EThing.Device.MySensorsNode.create({
-	 *   name: "node45",
-	 *   nodeId: 45,
-	 *   gateway: "4ge7r81"
-	 * }).done(function(resource){
-	 *     // success
-	 * })
-	 */
-	EThing.Device.MySensorsNode.create = function(a,callback){
-		
-		a.type = 'MySensorsNode';
-		
-		return EThing.request({
-			'url': '/devices',
-			'dataType': 'json',
-			'method': 'POST',
-			'contentType': "application/json; charset=utf-8",
-			'data': a,
-			'converter': resourceConverter
-		},callback).done(function(r){
-			EThing.trigger('ething.device.created',[r]);
-		});
-		
-	};
-	
-	/**
-	 * Add a new MySensors sensor to an existing MySensors node.
-	 *
-	 * @method EThing.Device.MySensorsSensor.create
-	 * @param {object} attributes
-	 * @param {function(data,XHR,options)} [callback] it is executed once the request is complete whether in failure or success
-	 * @returns {Deferred} a {@link http://api.jquery.com/category/deferred-object/|jQuery like Promise object}. {@link EThing.request|More ...} 
-	 * @fires EThing#ething.device.created
-	 * @example
-	 * EThing.Device.MySensorsSensor.create({
-	 *   name: "sensor5",
-	 *   sensorId: 5,
-	 *   node: "h1e7r81"
-	 * }).done(function(resource){
-	 *     // success
-	 * })
-	 */
-	EThing.Device.MySensorsSensor.create = function(a,callback){
-		
-		a.type = 'MySensorsSensor';
-		
-		return EThing.request({
-			'url': '/devices',
-			'dataType': 'json',
-			'method': 'POST',
-			'contentType': "application/json; charset=utf-8",
-			'data': a,
-			'converter': resourceConverter
-		},callback).done(function(r){
-			EThing.trigger('ething.device.created',[r]);
-		});
-		
-	};
-	
-	
-	/**
-	 * Creates a new RFLink gateway.
-	 *
-	 * @method EThing.Device.RFLinkSerialGateway.create
-	 * @param {object} attributes
-	 * @param {function(data,XHR,options)} [callback] it is executed once the request is complete whether in failure or success
-	 * @returns {Deferred} a {@link http://api.jquery.com/category/deferred-object/|jQuery like Promise object}. {@link EThing.request|More ...} 
-	 * @fires EThing#ething.device.created
-	 * @example
-	 * EThing.Device.RFLinkSerialGateway.create({
-	 *   name: "foobar",
-	 *   port: "/dev/ttyS0",
-	 *   baudrate: 57600,
-	 * }).done(function(resource){
-	 *     console.log('the new RFLink gateway has been added');
-	 * })
-	 */
-	EThing.Device.RFLinkSerialGateway.create = function(a,callback){
-		
-		a.type = 'RFLinkSerialGateway';
-		
-		return EThing.request({
-			'url': '/devices',
-			'dataType': 'json',
-			'method': 'POST',
-			'contentType': "application/json; charset=utf-8",
-			'data': a,
-			'converter': resourceConverter
-		},callback).done(function(r){
-			EThing.trigger('ething.device.created',[r]);
-		});
-		
-	};
-	
-	
-	
-	/**
-	 * Creates a new RTSP device
-	 *
-	 * @method EThing.Device.RTSP.create
-	 * @param {object} attributes
-	 * @param {function(data,XHR,options)} [callback] it is executed once the request is complete whether in failure or success
-	 * @returns {Deferred} a {@link http://api.jquery.com/category/deferred-object/|jQuery like Promise object}. {@link EThing.request|More ...} 
-	 * @fires EThing#ething.device.created
-	 * @example
-	 * EThing.Device.RTSP.create({
-	 *   name: "foobar",
-	 *   url: "rtsp://123.45.67.89/stream"
-	 * }).done(function(resource){
-	 *     console.log('the new device has been created');
-	 * })
-	 */
-	EThing.Device.RTSP.create = function(a,callback){
-		
-		a.type = 'RTSP';
-		
-		return EThing.request({
-			'url': '/devices',
-			'dataType': 'json',
-			'method': 'POST',
-			'contentType': "application/json; charset=utf-8",
-			'data': a,
-			'converter': resourceConverter
-		},callback).done(function(r){
-			EThing.trigger('ething.device.created',[r]);
-		});
-		
-	};
-	
-	
-	/**
-	 * Creates a new Denon device
-	 *
-	 * @method EThing.Device.Denon.create
-	 * @param {object} attributes
-	 * @param {function(data,XHR,options)} [callback] it is executed once the request is complete whether in failure or success
-	 * @returns {Deferred} a {@link http://api.jquery.com/category/deferred-object/|jQuery like Promise object}. {@link EThing.request|More ...} 
-	 * @fires EThing#ething.device.created
-	 * @example
-	 * EThing.Device.Denon.create({
-	 *   name: "Music",
-	 *   host: "192.168.1.45"
-	 * }).done(function(resource){
-	 *     console.log('the new device has been created');
-	 * })
-	 */
-	EThing.Device.Denon.create = function(a,callback){
-		
-		a.type = 'Denon';
-		
-		return EThing.request({
-			'url': '/devices',
-			'dataType': 'json',
-			'method': 'POST',
-			'contentType': "application/json; charset=utf-8",
-			'data': a,
-			'converter': resourceConverter
-		},callback).done(function(r){
-			EThing.trigger('ething.device.created',[r]);
-		});
-		
-	};
-	
-	
-	/**
-	 * Creates a new MQTT device
-	 *
-	 * @method EThing.Device.MQTT.create
-	 * @param {object} attributes
-	 * @param {function(data,XHR,options)} [callback] it is executed once the request is complete whether in failure or success
-	 * @returns {Deferred} a {@link http://api.jquery.com/category/deferred-object/|jQuery like Promise object}. {@link EThing.request|More ...} 
-	 * @fires EThing#ething.device.created
-	 * @example
-	 * EThing.Device.MQTT.create({
-	 *   host: "localhost",
-	 *   topic: "outdoor/thermometer"
-	 * }).done(function(resource){
-	 *     console.log('the new device has been created');
-	 * })
-	 */
-	EThing.Device.MQTT.create = function(a,callback){
-		
-		a.type = 'MQTT';
-		
-		return EThing.request({
-			'url': '/devices',
-			'dataType': 'json',
-			'method': 'POST',
-			'contentType': "application/json; charset=utf-8",
-			'data': a,
-			'converter': resourceConverter
-		},callback).done(function(r){
-			EThing.trigger('ething.device.created',[r]);
-		});
-		
-	};
-	
-	
-	/**
-	 * Creates a new YeelightBulbRGBW device
-	 *
-	 * @method EThing.Device.YeelightBulbRGBW.create
-	 * @param {object} attributes
-	 * @param {function(data,XHR,options)} [callback] it is executed once the request is complete whether in failure or success
-	 * @returns {Deferred} a {@link http://api.jquery.com/category/deferred-object/|jQuery like Promise object}. {@link EThing.request|More ...} 
-	 * @fires EThing#ething.device.created
-	 * @example
-	 * EThing.Device.YeelightBulbRGBW.create({
-	 *   host: "192.168.1.125",
-	 * }).done(function(resource){
-	 *     console.log('the new device has been created');
-	 * })
-	 */
-	EThing.Device.YeelightBulbRGBW.create = function(a,callback){
-		
-		a.type = 'YeelightBulbRGBW';
-		
-		return EThing.request({
-			'url': '/devices',
-			'dataType': 'json',
-			'method': 'POST',
-			'contentType': "application/json; charset=utf-8",
-			'data': a,
-			'converter': resourceConverter
-		},callback).done(function(r){
-			EThing.trigger('ething.device.created',[r]);
-		});
-		
-	};
-	
-	
-	
-	/*
-	* App
-	*/
 	
 	/**
 	 * Creates a new Application from the following attributes :
@@ -5145,316 +4148,260 @@ if(typeof module !== 'undefined' && module.exports){
 		},callback);
 	};
 	
+})(this);
+(function (global) {
+	
+	var EThing = global.EThing;
+	
+	
+	
+	
+	
+	/* private constructor */
+	/* base class of device */
+	EThing.Device = function(json)
+	{
+		EThing.Resource.call(this, json);
+		
+		(this._json.operations || []).forEach(function(operationId){
+			if(typeof this[operationId] == 'undefined'){
+				var self = this;
+				
+				this[operationId] = function(data, binary, callback){
+					var args = [].slice.call(arguments);
+					return this.deferred(function(){
+						args.unshift(operationId);
+						args.unshift(this);
+						return EThing.Device.execute.apply(EThing, args);
+					});
+				};
+				
+				this[operationId].getApi = function(callback){
+					return EThing.Device.getApi(self, operationId, callback);
+				};
+				
+				this[operationId].executeUrl = function(data){
+					return self.executeUrl(operationId, data);
+				};
+			}
+		}, this);
+	}
+	EThing.utils.inherits(EThing.Device, EThing.Resource);
+	
+	
+	/**
+	 * 
+	 * @memberof EThing.Device
+	 * @this {EThing.Device}
+	 * @returns {object|null} Return either an object containing information about the location (coordinates, place, room ...) or null if no location is defined for this device.
+	 */
+	EThing.Device.prototype.location = function() {
+	  return this._json.location || null;
+	}
+	
+	/**
+	 * 
+	 * @memberof EThing.Device
+	 * @this {EThing.Device}
+	 * @returns {Date|null}
+	 */
+	EThing.Device.prototype.lastSeenDate = function() {
+	  return (typeof this._json.lastSeenDate == 'string') ? new Date(this._json.lastSeenDate) : null;
+	}
+	
+	/**
+	 * 
+	 * @memberof EThing.Device
+	 * @this {EThing.Device}
+	 * @returns {boolean}
+	 */
+	EThing.Device.prototype.hasBattery = function() {
+	  return (typeof this._json.battery == "number") && this._json.battery >= 0 ;
+	}
+	
+	/**
+	 * 
+	 * @memberof EThing.Device
+	 * @this {EThing.Device}
+	 * @returns {number}
+	 */
+	EThing.Device.prototype.battery = function() {
+	  return this.hasBattery() ? this._json.battery : null ;
+	}
+	
+	/**
+	 * List the available operations on this device.
+	 * @memberof EThing.Device
+	 * @this {EThing.Device}
+	 * @returns {string[]}
+	 */
+	EThing.Device.prototype.operations = function(){
+		return this._json.operations ? this._json.operations : [];
+	}
+	
+	
+	/**
+	 * Execute an operation on this device.
+	 * @memberof EThing.Device
+	 * @this {EThing.Device}
+	 * @param {string} operationId
+	 * @param {object} [data] the optional data required by the operation
+	 * @param {boolean} [binary] if true, return the content as binary data (as Blob in a browser, or Buffer in NodeJs)
+	 * @param {function(data,XHR,options)} [callback] it is executed once the request is complete whether in failure or success
+	 * @returns {EThing.Device} The instance on which this method was called.
+	 * @example
+	 * // if this device is a thermometer :
+	 * device.execute('getTemperature').done(function(data){
+     *   // success, handle the data here
+     * });
+	 *
+	 * // if this device is a switch :
+	 * device.execute('setState', {
+	 * 	 state: true
+	 * });
+	 * 
+	 * // you may also do :
+	 * device.getTemperature().done(function(data){
+     *   // success, handle the data here
+     * });
+	 *
+	 */
+	EThing.Device.prototype.execute = function(){
+		var args = [].slice.call(arguments);
+		return this.deferred(function(){
+				args.unshift(this);
+				return EThing.Device.execute.apply(EThing, args);
+			});
+	}
+	
+	/**
+	 * Returns an url for executing an operation.
+	 * @memberof EThing.Device
+	 * @this {EThing.Device}
+	 * @param {string} operationId
+	 * @param {object} [data] the optional data required by the operation
+	 * @returns {string} The url.
+	 * @example
+	 * 
+	 * var image = new Image();
+	 * image.src = device.executeUrl('getImage');
+	 * document.body.appendChild(image);
+	 *
+	 */
+	EThing.Device.prototype.executeUrl = function(operationId, data){
+		var url = 'devices/'+this.id()+'/call/'+operationId;
+		
+		if(isPlainObject(data) && Object.keys(data).length !== 0){
+			var jsonStr = JSON.stringify(data);
+			url += '?paramData='+ encodeURIComponent(jsonStr);
+		}
+		
+		return EThing.toApiUrl(url,true);
+	}
+	
+	/**
+	 * Retrieve information about a specific operation or all the operations available for this device.
+	 * @memberof EThing.Device
+	 * @this {EThing.Device}
+	 * @param {string} [operationId] if set, only information about this operation will be returned
+	 * @param {function(data,XHR,options)} [callback] it is executed once the request is complete whether in failure or success
+	 * @returns {EThing.Device} The instance on which this method was called.
+	 *
+	 */
+	EThing.Device.prototype.getApi = function(operationId, callback){
+		var args = [].slice.call(arguments);
+		return this.deferred(function(){
+			args.unshift(this);
+			return EThing.Device.getApi.apply(EThing, args);
+		});
+	}
+	
+	
+	
+	
 	
 	/*
-	* Settings
+	device, operationId[, data ]
 	*/
-	
-	EThing.settings = EThing.settings || {};
-	
-	/**
-	 * Retrieve the settings.
-	 * @memberof EThing.settings
-	 * @this {EThing.settings}
-	 * @param {function(data,XHR,options)} [callback] it is executed once the request is complete whether in failure or success
-	 * @returns {Deferred} a {@link http://api.jquery.com/category/deferred-object/|jQuery like Promise object}. {@link EThing.request|More ...} 
-	 */
-	
-	EThing.settings.get = function(callback){
-		return EThing.request({
-			'url': '/settings',
-			'dataType': 'json',
-			'method': 'GET'
-		},callback);
-	};
-	
-	/**
-	 * Update the settings.
-	 * @memberof EThing.settings
-	 * @this {EThing.settings}
-	 * @param {object} [data] updated settings object
-	 * @param {function(data,XHR,options)} [callback] it is executed once the request is complete whether in failure or success
-	 * @returns {Deferred} a {@link http://api.jquery.com/category/deferred-object/|jQuery like Promise object}. {@link EThing.request|More ...} 
-	 */
-	EThing.settings.set = function(data, callback){
+	EThing.Device.execute = function(device, operationId, data, binary, callback){
 		
-		if(!isPlainObject(data))
-			throw "First argument must be an object !";
+		var context;
 		
+		if(device instanceof EThing.Device){
+			context = device;
+			device = device.id();
+		}
+		else if(isResourceId(device))
+			device = device;
+		else {
+			throw "First argument must be a Device object or a Device id !";
+			return;
+		}
+		
+		if(arguments.length == 4){
+			
+			if(typeof binary == 'function'){
+				callback = binary;
+				binary = undefined;
+			}
+			
+		} else if(arguments.length == 3){
+			
+			if(typeof data == 'function'){
+				callback = data;
+				data = undefined;
+			}
+			
+		}
 		
 		return EThing.request({
-			'url': '/settings',
-			'dataType': 'json',
+			'url': '/devices/' + device + '/call/' + operationId,
 			'method': 'POST',
 			'contentType': "application/json; charset=utf-8",
-			'data': data,
-			'headers': {
-				"X-HTTP-Method-Override": "PATCH"
-			}
+			'data': typeof data != 'undefined' && data!==null ? JSON.stringify(data) : undefined,
+			'dataType': binary ? (EThing.utils.isNode ? 'buffer' : 'blob') : 'auto',
+			'context': context
 		},callback);
+		
 	};
 	
 	
-	
-	/**
-	 * Send a notification.
-	 * @memberof EThing
-	 * @param {string} [subject] The subject of the notification
-	 * @param {string} message The message of the notification
-	 * @param {function(data,XHR,options)} [callback] it is executed once the request is complete whether in failure or success
-	 * @returns {Deferred} a {@link http://api.jquery.com/category/deferred-object/|jQuery like Promise object}. {@link EThing.request|More ...} 
-	 * @example
-	 * EThing.notify("hello world")
-	 *   .done(function(){
-	 *     alert("A notification has been sent");
-	 *   })
-	 */
-	EThing.notify = function(subject,message, callback){
-		var query = {};
+	/*
+	device[, operationId]
+	*/
+	EThing.Device.getApi = function(device, operationId, callback){
 		
-		if(arguments.length == 3){
-			query['body'] = message;
-			query['subject'] = subject;
+		var context;
+		
+		if(typeof operationId == 'function' && typeof callback == 'undefined'){
+			callback = operationId;
+			operationId = undefined;
 		}
-		else if(arguments.length == 2){
-			if(typeof message == 'string'){
-				query['subject'] = subject;
-				query['body'] = message;
-			}
-			else{
-				query['body'] = subject;
-				callback = message;
-			}
+		
+		if(device instanceof EThing.Device){
+			context = device;
+			device = device.id();
 		}
-		else if(arguments.length == 1){
-			query['body'] = subject;
-		}
+		else if(isResourceId(device))
+			device = device;
 		else {
-			throw "Bad arguments!";
+			throw "First argument must be a Device object or a Device id !";
 			return;
 		}
 		
 		return EThing.request({
-			'url': '/notification',
-			'method': 'POST',
-			'contentType': "application/json; charset=utf-8",
-			'data': query
+			'url': '/devices/' + device + '/api' + (operationId?('/'+operationId):''),
+			'method': 'GET',
+			'context': context,
+			'dataType': 'json'
 		},callback);
-	}
-	
-	
-	
-	
-	
-	/*
-	 * AUTH
-	 */
-	
-	var NoAuth = function(a){ return a; };
-	
-	
-	// private
-	var _app = null,
-		_device = null,
-		_scope = null,
-		_authType = null,
-		_processAuth = NoAuth; // function(xhr|url) -> return xhr|url
-	
-	
-	
-	/**
-	 * @namespace EThing.auth
-	 */
-
-	EThing.auth = {};
-	
-	
-	
-	/**
-	 * Returns true if the authentication process has been successful.
-	 * @method EThing.auth.isAuthenticated
-	 * @returns {boolean}
-	 */
-	EThing.auth.isAuthenticated = function(){
-		return !!_authType;
-	}
-	
-	/**
-	 * Returns the authenticated app. Only available with app's apikey authentication.
-	 * @method EThing.auth.getApp
-	 * @returns {EThing.App} the authenticated app or null.
-	 */
-	EThing.auth.getApp = function(){
-		return _app;
-	}
-	
-	/**
-	 * Returns the authenticated app. Only available with devices's apikey authentication.
-	 * @method EThing.auth.getDevice
-	 * @returns {EThing.Device} the authenticated device or null.
-	 */
-	EThing.auth.getDevice = function(){
-		return _device;
-	}
-	
-	/**
-	 * Returns the scope of the current authentication
-	 * @method EThing.auth.getScope
-	 * @returns {string} the scope. May be an empty string if no permissions is set. May be null if full permissions.
-	 */
-	EThing.auth.getScope = function(){
-		return _scope;
-	}
-	
-	
-	
-	/**
-	 * Reset authentication. You must restart an authentication process to make API calls again.
-	 * @method EThing.auth.reset
-	 */
-	EThing.auth.reset = function(){
-		_app = null;
-		_device = null;
-		_authType = null;
-		_scope = null;
-		_processAuth = NoAuth;
-	}
-	
-	
-	
-	
-	EThing.auth.setApiKey = function(apiKey){
-		
-		EThing.auth.reset();
-		
-		_processAuth = function(xhrOrUrl){
-			
-			if(typeof xhrOrUrl == 'string')
-				xhrOrUrl = EThing.utils.insertParam(xhrOrUrl, 'api_key', apiKey);
-			else 
-				xhrOrUrl.setRequestHeader('X-API-KEY', apiKey);
-			
-			return xhrOrUrl;
-		};
 		
 	};
 	
-	EThing.auth.setBasicAuth = function(login, password){
-		
-		EThing.auth.reset();
-		
-		_processAuth = function(xhrOrUrl){
-			
-			if(typeof xhrOrUrl == 'string')
-				xhrOrUrl = xhrOrUrl.replace(/\/\/([^:]+:[^@]+@)?/, '//'+login+':'+password+'@');
-			else 
-				xhrOrUrl.setRequestHeader("Authorization", "Basic " + global.btoa(login + ":" + password));
-			
-			return xhrOrUrl;
-		};
-	};
 	
 	
-	
-	
-	/**
-	 * Initialize the eThing library.
-	 *
-	 * @method EThing.initialize
-	 * @param {Object} options
-	 * @param {number} options.apiUrl The URL of your eThing API (e.g. http://example.org/ething/api ).
-	 * @param {number} [options.apiKey] Authenticate with an API key.
-	 * @param {number} [options.login] Basic Authentication login (Should be used only server side i.e. NodeJS).
-	 * @param {number} [options.password] Basic Authentication password (Should be used only server side i.e. NodeJS).
-	 * @param {function(EThing.Error)} [errorFn] it is executed on authentication error.
-	 * @returns {Deferred} a {@link http://api.jquery.com/category/deferred-object/|jQuery like Promise object}
-	 * @fires EThing#ething.authenticated
-	 * @example
-	 *
-	 * EThing.initialize({
-     *    apiUrl: 'http://example.org/ething/api',
-     *    apiKey: 'a4e28b3c-1f05-4a62-95f7-c12453b66b3c'
-     *  }, function(){
-	 *    // on authentication success
-	 *    alert('connected !');
-	 *  }, function(error) {
-     *    // on authentication error
-     *    alert(error.message);
-     *  });
-	 *
-	 */
-	EThing.initialize = function(options, successFn, errorFn){
-		
-		EThing.auth.reset();
-		
-		options = extend({
-			apiUrl: null,
-			// auth apikey
-			apiKey: null,
-			// auth basic
-			login: null,
-			password:null
-		},options || {});
-		
-		if(options.apiUrl)
-			EThing.config.apiUrl = options.apiUrl;
-		
-		
-		if(options.apiKey)
-			EThing.auth.setApiKey(options.apiKey);
-		else if(options.login && options.password)
-			EThing.auth.setBasicAuth(options.login, options.password);
-		
-		return EThing.request({
-			'url': '/auth',
-			'dataType': 'json',
-			'context': EThing,
-			'converter': function(data){
-				_authType = data.type;
-				if(data.app)
-					_app = new EThing.App(data.app);
-				if(data.device)
-					_device = new EThing.Device.Http(data.device);
-				if(data.scope)
-					_scope = data.scope;
-			}
-		}).done(function(){
-			
-			authenticatedCb_.forEach(function(cb){
-				cb.call(EThing);
-			});
-			
-			EThing.trigger('ething.authenticated');
-		}).done(successFn).fail(errorFn);
-		
-	}
-	
-	
-	/**
-	 * Register a handler to be executed once the authentication is complete.
-	 *
-	 * @method EThing.authenticated
-	 * @param {function()} callback it is executed on authentication success.
-	 *
-	 */
-	var authenticatedCb_ = [];
-	EThing.authenticated = function(callback){
-		
-		if(typeof callback == 'function'){
-			authenticatedCb_.push(callback);
-			
-			if(EThing.auth.isAuthenticated()){
-				callback.call(EThing);
-			}
-		}
-	}
-	
-	
-	
-	global.EThing = EThing;
 	
 })(this);
-
 
 /**
  * This library helps to organise your resources in a tree structure.
@@ -5507,9 +4454,6 @@ if(typeof module !== 'undefined' && module.exports){
 		root = null;
 	
 	
-	function inherits(extended, parent){
-		extended.prototype = Object.create(parent.prototype);
-	};
 	
 	/**
 	 * This class is used in the {@link EThing.arbo} library. It emulates a tree structure using folders.
@@ -5534,7 +4478,7 @@ if(typeof module !== 'undefined' && module.exports){
 		},json));
 		
 	};
-	inherits(EThing.Folder,EThing.Resource);
+	EThing.utils.inherits(EThing.Folder,EThing.Resource);
 	
 	/*
 	* Overriding some base methods 
@@ -6401,6 +5345,1124 @@ if(typeof module !== 'undefined' && module.exports){
 			'url': '/rules/trigger/' + encodeURIComponent(signalName),
 			'method': 'POST'
 		},callback);
+	};
+	
+	
+	
+})(this);
+
+(function (global) {
+	
+	var EThing = global.EThing;
+	
+	
+	
+	
+	/**
+	 * Constructs a Denon Device instance from an object decribing a Denon device (Marantz M-CR611). Should not be called directly. Use instead {@link EThing.list}.
+	 * @protected
+	 * @class The Denon Device resource handle
+	 * @memberof EThing.Device
+	 * @extends EThing.Device
+	 * @param {object} json
+	 */
+	EThing.Device.Denon = function(json)
+	{
+		EThing.Device.call(this, json);
+	}
+	EThing.utils.inherits(EThing.Device.Denon, EThing.Device);
+	
+	
+	/**
+	 * 
+	 * @memberof EThing.Device.Denon
+	 * @this {EThing.Device.Denon}
+	 * @returns {string}
+	 */
+	EThing.Device.Denon.prototype.host = function() {
+	  return this._json.host;
+	}
+	
+	
+	
+	
+	
+	/**
+	 * Creates a new Denon device
+	 *
+	 * @method EThing.Device.Denon.create
+	 * @param {object} attributes
+	 * @param {function(data,XHR,options)} [callback] it is executed once the request is complete whether in failure or success
+	 * @returns {Deferred} a {@link http://api.jquery.com/category/deferred-object/|jQuery like Promise object}. {@link EThing.request|More ...} 
+	 * @fires EThing#ething.device.created
+	 * @example
+	 * EThing.Device.Denon.create({
+	 *   name: "Music",
+	 *   host: "192.168.1.45"
+	 * }).done(function(resource){
+	 *     console.log('the new device has been created');
+	 * })
+	 */
+	EThing.Device.Denon.create = function(a,callback){
+		
+		a.type = 'Denon';
+		
+		return EThing.request({
+			'url': '/devices',
+			'dataType': 'json',
+			'method': 'POST',
+			'contentType': "application/json; charset=utf-8",
+			'data': a,
+			'converter': resourceConverter
+		},callback).done(function(r){
+			EThing.trigger('ething.device.created',[r]);
+		});
+		
+	};
+	
+	
+	
+})(this);
+(function (global) {
+	
+	var EThing = global.EThing;
+	
+	
+	/**
+	 * Constructs a Http Device instance from an object decribing a http device. Should not be called directly. Use instead {@link EThing.list}.
+	 * @protected
+	 * @class The Http Device resource handle
+	 * @memberof EThing.Device
+	 * @extends EThing.Device
+	 * @param {object} json
+	 */
+	EThing.Device.Http = function(json)
+	{
+		EThing.Device.call(this, json);
+	}
+	EThing.utils.inherits(EThing.Device.Http, EThing.Device);
+	
+	
+	/**
+	 * 
+	 * @memberof EThing.Device.Http
+	 * @this {EThing.Device.Http}
+	 * @returns {string}
+	 */
+	EThing.Device.Http.prototype.url = function() {
+	  return this._json.url;
+	}
+	
+	/**
+	 * 
+	 * @memberof EThing.Device.Http
+	 * @this {EThing.Device.Http}
+	 * @returns {object|null}
+	 */
+	EThing.Device.Http.prototype.auth = function() {
+	  return this._json.auth;
+	}
+	
+	/**
+	 * Return the scope of this device.
+	 * @memberof EThing.Device.Http
+	 * @this {EThing.Device.Http}
+	 * @returns {string}
+	 */
+	EThing.Device.Http.prototype.scope = function() {
+	  return (typeof this._json.scope == 'string') ? this._json.scope : '';
+	}
+	
+	
+	/**
+	 * Make a HTTP request on this device. __Only available if an URL is set__, see {@link EThing.Device#create}
+	 * The options are the same as the ones used in {@link EThing.request}.
+	 * @memberof EThing.Device.Http
+	 * @this {EThing.Device.Http}
+	 * @param {string|object} options or an URL
+	 * @returns {EThing.Device.Http} The instance on which this method was called.
+	 * @example
+	 * // simple GET request
+	 * device.request('/foo').done(function(data){
+     *   // success, handle the data here
+     * });
+	 *
+	 * // POST request
+	 * device.request({
+	 *   url: '/bar',
+	 *   method: 'POST',
+	 *   data: 'some content here ...',
+	 *   contentType: 'text/plain'
+	 * })
+	 * .done(function(data){
+	 *   // success, handle the data here
+	 * })
+	 * .fail(function(error){
+	 *   console.log("an error occurs : "+error.message);
+	 * });
+	 */
+	EThing.Device.Http.prototype.request = function(settings){
+		var args = [].slice.call(arguments);
+		return this.deferred(function(){
+			args.unshift(this);
+			return EThing.Device.Http.request.apply(EThing, args);
+		});
+	}
+	EThing.Device.Http.prototype.ajax = EThing.Device.Http.prototype.request;
+	
+	
+	EThing.Device.Http.prototype.getResourceUrl = function(url,auth){
+		return EThing.Device.Http.getResourceUrl(this,url,auth);
+	}
+	
+	
+	
+	
+	/**
+	 * Set the swagger API specification of this device.
+	 * @memberof EThing.Device.Http
+	 * @this {EThing.Device.Http}
+	 * @returns {object}
+	 */
+	EThing.Device.Http.prototype.setSpecification = function(spec,callback) {
+	  if(typeof spec == 'string')
+		spec = JSON.parse(spec);
+	  return this.set({
+		specification: spec
+	  },callback);
+	}
+
+	/**
+	 * Get the swagger API specification of this device.
+	 * @memberof EThing.Device.Http
+	 * @this {EThing.Device.Http}
+	 * @returns {object}
+	 */
+	EThing.Device.Http.prototype.getSpecification = function(callback) {
+	  return EThing.Device.Http.getSpecification(this, callback);
+	}
+
+
+
+
+	
+	
+	/**
+	 * Creates a new HttpDevice
+	 *
+	 * @method EThing.Device.Http.create
+	 * @param {object} attributes
+	 * @param {function(data,XHR,options)} [callback] it is executed once the request is complete whether in failure or success
+	 * @returns {Deferred} a {@link http://api.jquery.com/category/deferred-object/|jQuery like Promise object}. {@link EThing.request|More ...} 
+	 * @fires EThing#ething.device.created
+	 * @example
+	 * EThing.Device.Http.create({
+	 *   name: "foobar",
+	 *   url: "123.45.67.89"
+	 * }).done(function(resource){
+	 *     console.log('the new device can be accessed through : ' + resource.url());
+	 * })
+	 */
+	EThing.Device.Http.create = function(a,callback){
+		
+		a.type = 'Http';
+		
+		return EThing.request({
+			'url': '/devices',
+			'dataType': 'json',
+			'method': 'POST',
+			'contentType': "application/json; charset=utf-8",
+			'data': a,
+			'converter': resourceConverter
+		},callback).done(function(r){
+			EThing.trigger('ething.device.created',[r]);
+		});
+		
+	};
+	
+	
+	EThing.Device.Http.getResourceUrl = function(device,url,auth){
+		if(device instanceof EThing.Device.Http){
+			device = device.id();
+		}
+		
+		var o = 'devices/' + device + '/request';
+		if( typeof url == 'string'){
+			if(!/^\//.test(url))
+				url = '/'+url;
+			o += url;
+		}
+		return EThing.toApiUrl(o,auth);
+	}
+	
+	
+	/*
+	device[, settings ]
+	*/
+	EThing.Device.Http.ajax = EThing.Device.Http.request = function(a,b){
+		
+		var devId, context;
+		
+		if(a instanceof EThing.Device.Http){
+			context = a;
+			devId = a.id();
+		}
+		else if(isResourceId(a))
+			devId = a;
+		else {
+			throw "First argument must be a Device object or a Device id !";
+			return;
+		}
+		
+		var settings = {
+			'url': null,
+			'context': context
+		};
+		
+		if(typeof b == 'string')
+			settings['url'] =  b;
+		else
+			extend(settings,b);
+		
+		settings['url'] = EThing.Device.Http.getResourceUrl(devId, settings['url']);
+			
+		return EThing.request(settings);
+		
+	};
+	
+	
+	EThing.Device.Http.getSpecification = function(dev, callback){
+		var context;
+		
+		if(dev instanceof EThing.Device.Http){
+			context = dev;
+			dev = dev.id();
+		}
+		else if(!EThing.utils.isId(dev))
+			throw "First argument must be a Device object or a Device id !";
+		
+		return EThing.request({
+			'url': '/devices/' + dev + '/specification',
+			'dataType': 'json',
+			'context': context,
+			'converter': function(spec){
+				if(context instanceof EThing.Device.Http){
+					// attach this specification to the device
+					context.swaggerSpecification = spec;
+				}
+				return spec;
+			}
+		},callback);
+		
+	};
+
+
+	
+	
+})(this);
+(function (global) {
+	
+	var EThing = global.EThing;
+	
+	
+	
+	
+	/**
+	 * Constructs a MQTT Device instance from an object decribing a MQTT device. Should not be called directly. Use instead {@link EThing.list}.
+	 * @protected
+	 * @class The MQTT Device resource handle
+	 * @memberof EThing.Device
+	 * @extends EThing.Device
+	 * @param {object} json
+	 */
+	EThing.Device.MQTT = function(json)
+	{
+		EThing.Device.call(this, json);
+	}
+	EThing.utils.inherits(EThing.Device.MQTT, EThing.Device);
+	
+	
+	/**
+	 * 
+	 * @memberof EThing.Device.MQTT
+	 * @this {EThing.Device.MQTT}
+	 * @returns {string}
+	 */
+	EThing.Device.MQTT.prototype.host = function() {
+	  return this._json.host;
+	}
+	
+	/**
+	 * 
+	 * @memberof EThing.Device.MQTT
+	 * @this {EThing.Device.MQTT}
+	 * @returns {number}
+	 */
+	EThing.Device.MQTT.prototype.port = function() {
+	  return this._json.port;
+	}
+	
+	/**
+	 * 
+	 * @memberof EThing.Device.MQTT
+	 * @this {EThing.Device.MQTT}
+	 * @returns {string}
+	 */
+	EThing.Device.MQTT.prototype.topic = function() {
+	  return this._json.topic;
+	}
+	
+	/**
+	 * 
+	 * @memberof EThing.Device.MQTT
+	 * @this {EThing.Device.MQTT}
+	 * @returns {object|null}
+	 */
+	EThing.Device.MQTT.prototype.auth = function() {
+	  return this._json.auth || null;
+	}
+	
+	
+	
+	
+
+	
+	/**
+	 * Creates a new MQTT device
+	 *
+	 * @method EThing.Device.MQTT.create
+	 * @param {object} attributes
+	 * @param {function(data,XHR,options)} [callback] it is executed once the request is complete whether in failure or success
+	 * @returns {Deferred} a {@link http://api.jquery.com/category/deferred-object/|jQuery like Promise object}. {@link EThing.request|More ...} 
+	 * @fires EThing#ething.device.created
+	 * @example
+	 * EThing.Device.MQTT.create({
+	 *   host: "localhost",
+	 *   topic: "outdoor/thermometer"
+	 * }).done(function(resource){
+	 *     console.log('the new device has been created');
+	 * })
+	 */
+	EThing.Device.MQTT.create = function(a,callback){
+		
+		a.type = 'MQTT';
+		
+		return EThing.request({
+			'url': '/devices',
+			'dataType': 'json',
+			'method': 'POST',
+			'contentType': "application/json; charset=utf-8",
+			'data': a,
+			'converter': resourceConverter
+		},callback).done(function(r){
+			EThing.trigger('ething.device.created',[r]);
+		});
+		
+	};
+	
+	
+})(this);
+(function (global) {
+	
+	var EThing = global.EThing;
+	
+	
+	
+	/**
+	 * MySensorsGateway base class constructor.
+	 * @protected
+	 * @class The MySensorsGateway Device resource handle
+	 * @memberof EThing.Device
+	 * @extends EThing.Device
+	 * @param {object} json
+	 */
+	EThing.Device.MySensorsGateway = function(json)
+	{
+		EThing.Device.call(this, json);
+	}
+	EThing.utils.inherits(EThing.Device.MySensorsGateway, EThing.Device);
+	
+	
+	/**
+	 * 
+	 * @memberof EThing.Device.MySensorsGateway
+	 * @this {EThing.Device.MySensorsGateway}
+	 * @returns {boolean}
+	 */
+	EThing.Device.MySensorsGateway.prototype.isMetric = function() {
+	  return this._json.isMetric;
+	}
+	
+	/**
+	 * 
+	 * @memberof EThing.Device.MySensorsGateway
+	 * @this {EThing.Device.MySensorsGateway}
+	 * @returns {string}
+	 */
+	EThing.Device.MySensorsGateway.prototype.libVersion = function() {
+	  return this._json.libVersion;
+	}
+	
+	/**
+	 * Constructs a MySensorsEthernetGateway Device instance from an object decribing a MySensorsEthernetGateway device. Should not be called directly. Use instead {@link EThing.list}.
+	 * @protected
+	 * @class The MySensorsEthernetGateway Device resource handle
+	 * @memberof EThing.Device
+	 * @extends EThing.Device
+	 * @param {object} json
+	 */
+	EThing.Device.MySensorsEthernetGateway = function(json)
+	{
+		EThing.Device.call(this, json);
+	}
+	EThing.utils.inherits(EThing.Device.MySensorsEthernetGateway, EThing.Device.MySensorsGateway);
+	
+	/**
+	 * Returns the IP address of the gateway.
+	 * @memberof EThing.Device.MySensorsEthernetGateway
+	 * @this {EThing.Device.MySensorsEthernetGateway}
+	 * @returns {string}
+	 */
+	EThing.Device.MySensorsEthernetGateway.prototype.address = function() {
+	  return this._json.address;
+	}
+	
+	/**
+	 * Constructs a MySensorsSerialGateway Device instance from an object decribing a MySensorsSerialGateway device. Should not be called directly. Use instead {@link EThing.list}.
+	 * @protected
+	 * @class The MySensorsGateway Device resource handle
+	 * @memberof EThing.Device
+	 * @extends EThing.Device
+	 * @param {object} json
+	 */
+	EThing.Device.MySensorsSerialGateway = function(json)
+	{
+		EThing.Device.call(this, json);
+	}
+	EThing.utils.inherits(EThing.Device.MySensorsSerialGateway, EThing.Device.MySensorsGateway);
+	
+	/**
+	 * Returns the Serail port of the gateway.
+	 * @memberof EThing.Device.MySensorsSerialGateway
+	 * @this {EThing.Device.MySensorsSerialGateway}
+	 * @returns {string}
+	 */
+	EThing.Device.MySensorsSerialGateway.prototype.port = function() {
+	  return this._json.port;
+	}
+	
+	/**
+	 * Returns the Serail baudrate of the gateway.
+	 * @memberof EThing.Device.MySensorsSerialGateway
+	 * @this {EThing.Device.MySensorsSerialGateway}
+	 * @returns {string}
+	 */
+	EThing.Device.MySensorsSerialGateway.prototype.baudrate = function() {
+	  return this._json.baudrate;
+	}
+	
+	
+	
+	
+	/**
+	 * Constructs a MySensorsNode Device instance from an object decribing a MySensorsNode device. Should not be called directly. Use instead {@link EThing.list}.
+	 * @protected
+	 * @class The MySensorsNode Device resource handle
+	 * @memberof EThing.Device
+	 * @extends EThing.Device
+	 * @param {object} json
+	 */
+	EThing.Device.MySensorsNode = function(json)
+	{
+		EThing.Device.call(this, json);
+	}
+	EThing.utils.inherits(EThing.Device.MySensorsNode, EThing.Device);
+	
+	/**
+	 * 
+	 * @memberof EThing.Device.MySensorsNode
+	 * @this {EThing.Device.MySensorsNode}
+	 * @returns {string}
+	 */
+	EThing.Device.MySensorsNode.prototype.nodeId = function() {
+	  return this._json.nodeId;
+	}
+	
+	/**
+	 * 
+	 * @memberof EThing.Device.MySensorsNode
+	 * @this {EThing.Device.MySensorsNode}
+	 * @returns {string}
+	 */
+	EThing.Device.MySensorsNode.prototype.sketchName = function() {
+	  return this._json.sketchName;
+	}
+	
+	/**
+	 * 
+	 * @memberof EThing.Device.MySensorsNode
+	 * @this {EThing.Device.MySensorsNode}
+	 * @returns {string}
+	 */
+	EThing.Device.MySensorsNode.prototype.sketchVersion = function() {
+	  return this._json.sketchVersion;
+	}
+	
+	/**
+	 * 
+	 * @memberof EThing.Device.MySensorsNode
+	 * @this {EThing.Device.MySensorsNode}
+	 * @returns {string}
+	 */
+	EThing.Device.MySensorsNode.prototype.smartSleep = function() {
+	  return this._json.smartSleep;
+	}
+	
+	
+	
+	
+	
+	/**
+	 * Constructs a MySensorsSensor Device instance from an object decribing a MySensorsSensor device. Should not be called directly. Use instead {@link EThing.list}.
+	 * @protected
+	 * @class The MySensorsSensor Device resource handle
+	 * @memberof EThing.Device
+	 * @extends EThing.Device
+	 * @param {object} json
+	 */
+	EThing.Device.MySensorsSensor = function(json)
+	{
+		EThing.Device.call(this, json);
+	}
+	EThing.utils.inherits(EThing.Device.MySensorsSensor, EThing.Device);
+	
+	/**
+	 * 
+	 * @memberof EThing.Device.MySensorsSensor
+	 * @this {EThing.Device.MySensorsSensor}
+	 * @returns {string}
+	 */
+	EThing.Device.MySensorsSensor.prototype.sensorId = function() {
+	  return this._json.sensorId;
+	}
+	
+	/**
+	 * 
+	 * @memberof EThing.Device.MySensorsSensor
+	 * @this {EThing.Device.MySensorsSensor}
+	 * @returns {string}
+	 */
+	EThing.Device.MySensorsSensor.prototype.sensorType = function() {
+	  return this._json.sensorType;
+	}
+	
+	/**
+	 * 
+	 * @memberof EThing.Device.MySensorsSensor
+	 * @this {EThing.Device.MySensorsSensor}
+	 * @returns {string}
+	 */
+	EThing.Device.MySensorsSensor.prototype.val = function(valueType) {
+	  return this._json.data.hasOwnProperty(valueType) ? this._json.data[valueType] : null;
+	}
+	
+	
+	/**
+	 * 
+	 * @memberof EThing.Device.MySensorsSensor
+	 * @this {EThing.Device.MySensorsSensor}
+	 * @returns {string}
+	 */
+	EThing.Device.MySensorsSensor.prototype.setValue = function(valueType, value, callback) {
+		var data = {};
+		data[valueType] = value;
+		return this.setData(data,callback);
+	}
+	
+	
+	
+	
+	
+	/**
+	 * Creates a new MySensors gateway.
+	 *
+	 * @method EThing.Device.MySensorsEthernetGateway.create
+	 * @param {object} attributes
+	 * @param {function(data,XHR,options)} [callback] it is executed once the request is complete whether in failure or success
+	 * @returns {Deferred} a {@link http://api.jquery.com/category/deferred-object/|jQuery like Promise object}. {@link EThing.request|More ...} 
+	 * @fires EThing#ething.device.created
+	 * @example
+	 * EThing.Device.MySensorsEthernetGateway.create({
+	 *   name: "foobar",
+	 *   address: "123.45.67.89"
+	 * }).done(function(resource){
+	 *     console.log('the new MySensors gateway has been added');
+	 * })
+	 */
+	EThing.Device.MySensorsEthernetGateway.create = function(a,callback){
+		
+		a.type = 'MySensorsEthernetGateway';
+		
+		return EThing.request({
+			'url': '/devices',
+			'dataType': 'json',
+			'method': 'POST',
+			'contentType': "application/json; charset=utf-8",
+			'data': a,
+			'converter': resourceConverter
+		},callback).done(function(r){
+			EThing.trigger('ething.device.created',[r]);
+		});
+		
+	};
+	
+	/**
+	 * Creates a new MySensors gateway.
+	 *
+	 * @method EThing.Device.MySensorsSerialGateway.create
+	 * @param {object} attributes
+	 * @param {function(data,XHR,options)} [callback] it is executed once the request is complete whether in failure or success
+	 * @returns {Deferred} a {@link http://api.jquery.com/category/deferred-object/|jQuery like Promise object}. {@link EThing.request|More ...} 
+	 * @fires EThing#ething.device.created
+	 * @example
+	 * EThing.Device.MySensorsSerialGateway.create({
+	 *   name: "foobar",
+	 *   port: "/dev/ttyS0",
+	 *   baudrate: 115200,
+	 * }).done(function(resource){
+	 *     console.log('the new MySensors gateway has been added');
+	 * })
+	 */
+	EThing.Device.MySensorsSerialGateway.create = function(a,callback){
+		
+		a.type = 'MySensorsSerialGateway';
+		
+		return EThing.request({
+			'url': '/devices',
+			'dataType': 'json',
+			'method': 'POST',
+			'contentType': "application/json; charset=utf-8",
+			'data': a,
+			'converter': resourceConverter
+		},callback).done(function(r){
+			EThing.trigger('ething.device.created',[r]);
+		});
+		
+	};
+	
+	
+	/**
+	 * Add a new MySensors node to an existing MySensors gateway.
+	 *
+	 * @method EThing.Device.MySensorsNode.create
+	 * @param {object} attributes
+	 * @param {function(data,XHR,options)} [callback] it is executed once the request is complete whether in failure or success
+	 * @returns {Deferred} a {@link http://api.jquery.com/category/deferred-object/|jQuery like Promise object}. {@link EThing.request|More ...} 
+	 * @fires EThing#ething.device.created
+	 * @example
+	 * EThing.Device.MySensorsNode.create({
+	 *   name: "node45",
+	 *   nodeId: 45,
+	 *   gateway: "4ge7r81"
+	 * }).done(function(resource){
+	 *     // success
+	 * })
+	 */
+	EThing.Device.MySensorsNode.create = function(a,callback){
+		
+		a.type = 'MySensorsNode';
+		
+		return EThing.request({
+			'url': '/devices',
+			'dataType': 'json',
+			'method': 'POST',
+			'contentType': "application/json; charset=utf-8",
+			'data': a,
+			'converter': resourceConverter
+		},callback).done(function(r){
+			EThing.trigger('ething.device.created',[r]);
+		});
+		
+	};
+	
+	/**
+	 * Add a new MySensors sensor to an existing MySensors node.
+	 *
+	 * @method EThing.Device.MySensorsSensor.create
+	 * @param {object} attributes
+	 * @param {function(data,XHR,options)} [callback] it is executed once the request is complete whether in failure or success
+	 * @returns {Deferred} a {@link http://api.jquery.com/category/deferred-object/|jQuery like Promise object}. {@link EThing.request|More ...} 
+	 * @fires EThing#ething.device.created
+	 * @example
+	 * EThing.Device.MySensorsSensor.create({
+	 *   name: "sensor5",
+	 *   sensorId: 5,
+	 *   node: "h1e7r81"
+	 * }).done(function(resource){
+	 *     // success
+	 * })
+	 */
+	EThing.Device.MySensorsSensor.create = function(a,callback){
+		
+		a.type = 'MySensorsSensor';
+		
+		return EThing.request({
+			'url': '/devices',
+			'dataType': 'json',
+			'method': 'POST',
+			'contentType': "application/json; charset=utf-8",
+			'data': a,
+			'converter': resourceConverter
+		},callback).done(function(r){
+			EThing.trigger('ething.device.created',[r]);
+		});
+		
+	};
+	
+	
+	
+	
+})(this);
+(function (global) {
+	
+	var EThing = global.EThing;
+	
+	
+	
+	
+	/**
+	 * RFLinkGateway base class constructor.
+	 * @protected
+	 * @class The RFLinkGateway Device resource handle
+	 * @memberof EThing.Device
+	 * @extends EThing.Device
+	 * @param {object} json
+	 */
+	EThing.Device.RFLinkGateway = function(json)
+	{
+		EThing.Device.call(this, json);
+	}
+	EThing.utils.inherits(EThing.Device.RFLinkGateway, EThing.Device);
+	
+	/**
+	 * Returns the inclusion mode state .
+	 * @memberof EThing.Device.RFLinkGateway
+	 * @this {EThing.Device.RFLinkGateway}
+	 * @returns {boolean}
+	 */
+	EThing.Device.RFLinkGateway.prototype.inclusion = function() {
+	  return !!this._json.inclusion;
+	}
+	
+	
+	/**
+	 * Returns the version number of the firmware.
+	 * @memberof EThing.Device.RFLinkGateway
+	 * @this {EThing.Device.RFLinkGateway}
+	 * @returns {string}
+	 */
+	EThing.Device.RFLinkGateway.prototype.version = function() {
+	  return this._json.version;
+	}
+	
+	/**
+	 * Returns the revision number of the firmware.
+	 * @memberof EThing.Device.RFLinkGateway
+	 * @this {EThing.Device.RFLinkGateway}
+	 * @returns {string}
+	 */
+	EThing.Device.RFLinkGateway.prototype.revision = function() {
+	  return this._json.revision;
+	}
+	
+	/**
+	 * Returns the build number of the firmware.
+	 * @memberof EThing.Device.RFLinkGateway
+	 * @this {EThing.Device.RFLinkGateway}
+	 * @returns {string}
+	 */
+	EThing.Device.RFLinkGateway.prototype.build = function() {
+	  return this._json.build;
+	}
+	
+	
+	/**
+	 * Constructs a RFLinkSerialGateway Device instance from an object decribing a RFLinkSerialGateway device. Should not be called directly. Use instead {@link EThing.list}.
+	 * @protected
+	 * @class The RFLinkGateway Device resource handle
+	 * @memberof EThing.Device
+	 * @extends EThing.Device
+	 * @param {object} json
+	 */
+	EThing.Device.RFLinkSerialGateway = function(json)
+	{
+		EThing.Device.call(this, json);
+	}
+	EThing.utils.inherits(EThing.Device.RFLinkSerialGateway, EThing.Device.RFLinkGateway);
+	
+	/**
+	 * Returns the Serail port of the gateway.
+	 * @memberof EThing.Device.RFLinkSerialGateway
+	 * @this {EThing.Device.RFLinkSerialGateway}
+	 * @returns {string}
+	 */
+	EThing.Device.RFLinkSerialGateway.prototype.port = function() {
+	  return this._json.port;
+	}
+	
+	/**
+	 * Returns the Serail baudrate of the gateway.
+	 * @memberof EThing.Device.RFLinkSerialGateway
+	 * @this {EThing.Device.RFLinkSerialGateway}
+	 * @returns {string}
+	 */
+	EThing.Device.RFLinkSerialGateway.prototype.baudrate = function() {
+	  return this._json.baudrate;
+	}
+	
+	
+	
+	/**
+	 * RFLinkSwitch base class constructor.
+	 * @protected
+	 * @class The RFLinkSwitch Device resource handle
+	 * @memberof EThing.Device
+	 * @extends EThing.Device
+	 * @param {object} json
+	 */
+	EThing.Device.RFLinkSwitch = function(json)
+	{
+		EThing.Device.call(this, json);
+	}
+	EThing.utils.inherits(EThing.Device.RFLinkSwitch, EThing.Device);
+	
+	/**
+	 * Returns the protocol used to communicate with this node.
+	 * @memberof EThing.Device.RFLinkSwitch
+	 * @this {EThing.Device.RFLinkSwitch}
+	 * @returns {string}
+	 */
+	EThing.Device.RFLinkSwitch.prototype.protocol = function() {
+	  return !!this._json.protocol;
+	}
+	
+	/**
+	 * Returns the nodeId of this node.
+	 * @memberof EThing.Device.RFLinkSwitch
+	 * @this {EThing.Device.RFLinkSwitch}
+	 * @returns {string}
+	 */
+	EThing.Device.RFLinkSwitch.prototype.nodeId = function() {
+	  return !!this._json.nodeId;
+	}
+	
+	/**
+	 * Returns the switchId of this node.
+	 * @memberof EThing.Device.RFLinkSwitch
+	 * @this {EThing.Device.RFLinkSwitch}
+	 * @returns {string}
+	 */
+	EThing.Device.RFLinkSwitch.prototype.switchId = function() {
+	  return !!this._json.switchId;
+	}
+	
+	
+	
+	/**
+	 * Creates a new RFLink gateway.
+	 *
+	 * @method EThing.Device.RFLinkSerialGateway.create
+	 * @param {object} attributes
+	 * @param {function(data,XHR,options)} [callback] it is executed once the request is complete whether in failure or success
+	 * @returns {Deferred} a {@link http://api.jquery.com/category/deferred-object/|jQuery like Promise object}. {@link EThing.request|More ...} 
+	 * @fires EThing#ething.device.created
+	 * @example
+	 * EThing.Device.RFLinkSerialGateway.create({
+	 *   name: "foobar",
+	 *   port: "/dev/ttyS0",
+	 *   baudrate: 57600,
+	 * }).done(function(resource){
+	 *     console.log('the new RFLink gateway has been added');
+	 * })
+	 */
+	EThing.Device.RFLinkSerialGateway.create = function(a,callback){
+		
+		a.type = 'RFLinkSerialGateway';
+		
+		return EThing.request({
+			'url': '/devices',
+			'dataType': 'json',
+			'method': 'POST',
+			'contentType': "application/json; charset=utf-8",
+			'data': a,
+			'converter': resourceConverter
+		},callback).done(function(r){
+			EThing.trigger('ething.device.created',[r]);
+		});
+		
+	};
+	
+	
+})(this);
+(function (global) {
+	
+	var EThing = global.EThing;
+	
+	
+	
+	
+	/**
+	 * Constructs a RTSP Device instance from an object decribing a RTSP device (typpicaly an IP camera). Should not be called directly. Use instead {@link EThing.list}.
+	 * @protected
+	 * @class The RTSP Device resource handle
+	 * @memberof EThing.Device
+	 * @extends EThing.Device
+	 * @param {object} json
+	 */
+	EThing.Device.RTSP = function(json)
+	{
+		EThing.Device.call(this, json);
+	}
+	EThing.utils.inherits(EThing.Device.RTSP, EThing.Device);
+	
+	
+	/**
+	 * 
+	 * @memberof EThing.Device.RTSP
+	 * @this {EThing.Device.RTSP}
+	 * @returns {string}
+	 */
+	EThing.Device.RTSP.prototype.url = function() {
+	  return this._json.url;
+	}
+	
+	/**
+	 * 
+	 * @memberof EThing.Device.RTSP
+	 * @this {EThing.Device.RTSP}
+	 * @returns {string}
+	 */
+	EThing.Device.RTSP.prototype.transport = function() {
+	  return this._json.transport;
+	}
+	
+	
+	
+	
+	/**
+	 * Creates a new RTSP device
+	 *
+	 * @method EThing.Device.RTSP.create
+	 * @param {object} attributes
+	 * @param {function(data,XHR,options)} [callback] it is executed once the request is complete whether in failure or success
+	 * @returns {Deferred} a {@link http://api.jquery.com/category/deferred-object/|jQuery like Promise object}. {@link EThing.request|More ...} 
+	 * @fires EThing#ething.device.created
+	 * @example
+	 * EThing.Device.RTSP.create({
+	 *   name: "foobar",
+	 *   url: "rtsp://123.45.67.89/stream"
+	 * }).done(function(resource){
+	 *     console.log('the new device has been created');
+	 * })
+	 */
+	EThing.Device.RTSP.create = function(a,callback){
+		
+		a.type = 'RTSP';
+		
+		return EThing.request({
+			'url': '/devices',
+			'dataType': 'json',
+			'method': 'POST',
+			'contentType': "application/json; charset=utf-8",
+			'data': a,
+			'converter': resourceConverter
+		},callback).done(function(r){
+			EThing.trigger('ething.device.created',[r]);
+		});
+		
+	};
+	
+
+})(this);
+(function (global) {
+	
+	var EThing = global.EThing;
+	
+	
+	
+	/**
+	 * Constructs a Yeelight Device instance from an object decribing a Yeelight device. Base class of all Yeelight devices.
+	 * @protected
+	 * @class The Yeelight Device resource handle
+	 * @memberof EThing.Device
+	 * @extends EThing.Device
+	 * @param {object} json
+	 */
+	EThing.Device.Yeelight = function(json)
+	{
+		EThing.Device.call(this, json);
+	}
+	EThing.utils.inherits(EThing.Device.Yeelight, EThing.Device);
+	
+	
+	/**
+	 * 
+	 * @memberof EThing.Device.Yeelight
+	 * @this {EThing.Device.Yeelight}
+	 * @returns {string}
+	 */
+	EThing.Device.Yeelight.prototype.host = function() {
+	  return this._json.host;
+	}
+	
+	/**
+	 * Constructs a YeelightBulbRGBW Device instance from an object decribing a Yeelight LED bulb (color) device. Should not be called directly. Use instead {@link EThing.list}.
+	 * @protected
+	 * @class The YeelightBulbRGBW Device resource handle
+	 * @memberof EThing.Device
+	 * @extends EThing.Device
+	 * @param {object} json
+	 */
+	EThing.Device.YeelightBulbRGBW = function(json)
+	{
+		EThing.Device.Yeelight.call(this, json);
+	}
+	EThing.utils.inherits(EThing.Device.YeelightBulbRGBW, EThing.Device.Yeelight);
+	
+	
+	
+	
+	
+	/**
+	 * Creates a new YeelightBulbRGBW device
+	 *
+	 * @method EThing.Device.YeelightBulbRGBW.create
+	 * @param {object} attributes
+	 * @param {function(data,XHR,options)} [callback] it is executed once the request is complete whether in failure or success
+	 * @returns {Deferred} a {@link http://api.jquery.com/category/deferred-object/|jQuery like Promise object}. {@link EThing.request|More ...} 
+	 * @fires EThing#ething.device.created
+	 * @example
+	 * EThing.Device.YeelightBulbRGBW.create({
+	 *   host: "192.168.1.125",
+	 * }).done(function(resource){
+	 *     console.log('the new device has been created');
+	 * })
+	 */
+	EThing.Device.YeelightBulbRGBW.create = function(a,callback){
+		
+		a.type = 'YeelightBulbRGBW';
+		
+		return EThing.request({
+			'url': '/devices',
+			'dataType': 'json',
+			'method': 'POST',
+			'contentType': "application/json; charset=utf-8",
+			'data': a,
+			'converter': resourceConverter
+		},callback).done(function(r){
+			EThing.trigger('ething.device.created',[r]);
+		});
+		
 	};
 	
 	

@@ -415,6 +415,11 @@
 	}
 	
 	
+	Utils.inherits = function (extended, parent){
+		extended.prototype = new parent();
+		extended.prototype.constructor = extended; // fix constructor property
+	};
+	
 	global.EThing = EThing;
 	
 	
