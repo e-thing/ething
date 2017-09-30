@@ -245,7 +245,7 @@
 			'method': 'POST',
 			'contentType': "application/json; charset=utf-8",
 			'data': a,
-			'converter': resourceConverter
+			'converter': EThing.resourceConverter
 		},callback).done(function(r){
 			EThing.trigger('ething.file.created',[r]);
 		});
@@ -332,7 +332,7 @@
 			'contentType': (typeof b == 'string') ? 'text/plain' : 'application/octet-stream',
 			'data': b,
 			'context': context,
-			'converter': resourceConverter
+			'converter': EThing.resourceConverter
 		},callback);
 	};
 	

@@ -19,11 +19,12 @@ class Mail
 		$mailList = ((is_array($to) && !empty($to))) ? $to : $this->ething->config('notification.emails');
 		
 		if(empty($smtpSettings)){
-			throw new Exception("Mail feature not enable");
+			return true;
 		}
 		
 		if(!isset($smtpSettings['host']) || !isset($smtpSettings['port']) || !isset($smtpSettings['user']) || !isset($smtpSettings['password']) ){
-			throw new Exception("invalid notification.smtp config");
+			$this->ething->logger()->error("mail: invalid notification.smtp config");
+			return true;
 		}
 		
 		if(empty($mailList)){
@@ -85,8 +86,9 @@ class Mail
 		$mail->isHTML(true); // accept html
 		$mail->Body = $message;
 		//send the message, check for errors
+		$this->ething->logger()->debug("mail: send ".$mail->Subject." to ".implode(",",$mailList));
 		if (!$mail->send()) {
-			throw new Exception("Mailer Error: " . $mail->ErrorInfo);
+			$this->ething->logger()->error("mail: error: ".$mail->ErrorInfo);
 		}
 		
 		return true;

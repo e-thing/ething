@@ -1,7 +1,7 @@
 <?php
 
 
-require_once "Client.php";
+require_once __DIR__."/Client.php";
 
 
 class MQTT {
@@ -61,7 +61,7 @@ class MQTT {
 			
 			if($signal->getName() === 'ResourceMetaUpdated'){
 				if(strpos($signal->rType, 'MQTT') !== false){
-					if(!empty(array_intersect(['port', 'host', 'topic', 'auth'], $signal->attributes)))
+					if(!empty(array_intersect(['port', 'host', 'auth', '_subscription'], $signal->attributes)))
 						\MQTT::startController($signal->resource);
 					else {
 						if($controller = \MQTT::getController($signal->resource))
@@ -132,7 +132,7 @@ $cli->add('device.mqtt.end', function($args, $client) use($ething){
 
 
 
-require_once 'MqttListener.php';
+require_once __DIR__.'/MqttListener.php';
 
 try {
 	$mqttListener = new MqttListener($ething);

@@ -1,8 +1,8 @@
 <?php
 
-require_once "Controller.php";
-require_once "EthernetController.php";
-require_once "SerialController.php";
+require_once __DIR__."/Controller.php";
+require_once __DIR__."/EthernetController.php";
+require_once __DIR__."/SerialController.php";
 
 
 class MySensors {

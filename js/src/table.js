@@ -301,7 +301,7 @@
 			'method': 'POST',
 			'contentType': "application/json; charset=utf-8",
 			'data': a,
-			'converter': resourceConverter
+			'converter': EThing.resourceConverter
 		},callback).done(function(r){
 			EThing.trigger('ething.table.created',[r]);
 		});
@@ -401,7 +401,7 @@
 			'contentType': "application/json; charset=utf-8",
 			'data': id,
 			'context': context,
-			'converter': resourceConverter
+			'converter': EThing.resourceConverter
 		},callback);
 		
 	}
@@ -481,7 +481,7 @@
 			'contentType': "application/json; charset=utf-8",
 			'data': c,
 			'context': context,
-			'converter': resourceConverter
+			'converter': EThing.resourceConverter
 		},callback);
 		
 	}
@@ -530,7 +530,7 @@
 			'contentType': "application/json; charset=utf-8",
 			'data': postData,
 			'context': context,
-			'converter': resourceConverter
+			'converter': EThing.resourceConverter
 		},callback);
 		
 	}
@@ -572,7 +572,7 @@
 			'contentType': "application/json; charset=utf-8",
 			'data': data,
 			'context': context,
-			'converter': resourceConverter
+			'converter': EThing.resourceConverter
 		},callback);
 		
 	}

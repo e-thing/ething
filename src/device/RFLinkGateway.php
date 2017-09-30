@@ -31,6 +31,11 @@
 	 * 		          "type":"string",
 	 * 		          "description":"The build number of the RFLink library used.",
 	 * 		          "readOnly": true
+	 * 		       },
+	 *             "connected": {
+	 * 		          "type":"boolean",
+	 * 		          "description":"Set to true when a connection to that device is opened.",
+	 * 		          "readOnly": true
 	 * 		       }
 	 * 		   }
 	 * 		}
@@ -85,7 +90,7 @@ abstract class RFLinkGateway extends Device
 	}
 	
 	public function addNode($class, $attr){
-		$fullClassname = 'Ething\\Device\\RFLink'.$class;
+		$fullClassname = 'Ething\\'.$class;
 		if(\class_exists($fullClassname)){
 			return $fullClassname::create($this->ething, $attr, $this);
 		}
@@ -142,7 +147,7 @@ abstract class RFLinkGateway extends Device
 			new Operation($this, 'reboot', null, null, 'reboot the gateway', function($op, $stream, $data, $options){
 					return $op->device()->sendMessage("10;REBOOT;", $stream, $options);
 				}),
-			new Operation($this, 'getVersion', null, null, 'get the version of the gateway', function($op, $stream, $data, $options){
+			new Operation($this, 'getVersion', null, 'text/plain', 'get the version of the gateway', function($op, $stream, $data, $options){
 					return $op->device()->sendMessageWaitResponse("10;VERSION;", $stream, $options);
 				})
 		);
@@ -151,7 +156,9 @@ abstract class RFLinkGateway extends Device
 	
 	// create a new resource
 	protected static function createRFLinkGateway(Ething $ething, array $attributes, array $meta = array(), Resource $createdBy = null) {
-		return parent::createDevice($ething, array_merge(self::$defaultAttr, $attributes), $meta, $createdBy);
+		return parent::createDevice($ething, array_merge(self::$defaultAttr, $attributes), array_merge(array(
+			'connected' => false
+		), $meta), $createdBy);
 	}
 	
 	public function remove($removeChildren = false) {
@@ -162,6 +169,15 @@ abstract class RFLinkGateway extends Device
 		// remove the resource
 		parent::remove($removeChildren);
 		
+	}
+	
+	public function setConnectState($connected) {
+		$change = $this->setAttr('connected', boolval($connected));
+		$this->update();
+		
+		if($change){
+			$this->dispatchSignal($connected ? \Ething\Event\DeviceConnected::emit($this) : \Ething\Event\DeviceDisconnected::emit($this));
+		}
 	}
 	
 	public function sendMessage($message, $stream = null, $options = array()){

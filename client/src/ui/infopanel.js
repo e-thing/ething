@@ -216,7 +216,7 @@
 						}
 					}
 				}, function(){
-					return ["name","type","createdBy","createdDate","modifiedDate","lastSeenDate","size","mime","length","maxLength","expireAfter","battery","location","url","version","revision","build","isMetric","libVersion","transport","nodeId","sensorId","sensorType","sketchName","sketchVersion","smartSleep","topic","public","inclusion"].indexOf(this.name) >= 0;
+					return ["name","type","createdBy","createdDate","modifiedDate","lastSeenDate","size","mime","length","maxLength","expireAfter","battery","location","url","version","revision","build","isMetric","libVersion","transport","nodeId","sensorId","sensorType","sketchName","sketchVersion","smartSleep","topic","public","inclusion","protocol","switchId"].indexOf(this.name) >= 0;
 				});
 				
 				// print the data

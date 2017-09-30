@@ -1,7 +1,7 @@
 (function (root, factory) {
     if (typeof define === 'function' && define.amd) {
         // AMD. Register as an anonymous module.
-        define(['ui/core', 'text!./devices.html', 'jquery', 'ething','ui/infopanel', 'ui/browser', 'css!./devices', 'ui/formmodal', 'css!font-awesome'], factory);
+        define(['ui/core', 'text!./devices.html', 'jquery', 'ething','ui/infopanel', 'ui/browser', 'css!./devices', 'ui/formmodal', 'ui/resourceselect', 'css!font-awesome'], factory);
     }
 }(this, function (UI, template, $, EThing, Infopanel) {
 	
@@ -66,10 +66,18 @@
 		else if(battery.value < 62.5) batIcon = 'battery-half';
 		else if(battery.value < 87.5) batIcon = 'battery-three-quarters';
 		else batIcon = 'battery-full';
-		var $battery = battery.value === null ? null : $('<div class="tag col-battery">').html('<i class="fa fa-'+batIcon+'" aria-hidden="true"></i>'+batText);
+		var $battery = battery.value === null ? null : $('<div class="tag col-battery" '+(battery.value < 15?'style="color: #d9534f;"': '')+'>').html('<i class="fa fa-'+batIcon+'" aria-hidden="true"></i>'+batText);
 		
 		// last time the device communicate
 		var $time = $('<div class="tag col-date">').html('<span class="glyphicon glyphicon-time" aria-hidden="true"></span><span>'+lastSeenDate.formattedValue+'</span>');		
+		
+		var $status = null;
+		if(device.isConnected && !device.isConnected()){
+			$status = $('<div class="tag col-status">').html('Disconnected');
+		}
+		if(device.isReachable && !device.isReachable() && !(device instanceof EThing.Device.Http && !device.url())){
+			$status = $('<div class="tag col-status">').html('Unreachable');
+		}
 		
 		// info
 		var $info = $('<span class="glyphicon glyphicon-option-horizontal" aria-hidden="true"></span>').addClass('col-info').click(function(e){
@@ -88,7 +96,8 @@
 					$name,
 					$share,
 					$time,
-					$battery
+					$battery,
+					$status
 				),
 				$info
 			),
@@ -289,16 +298,27 @@
 			});
 			
 			$element.find('#btn-create-MQTT').click(function(){
-				var form = UI.getResourceForm('Device\\MQTT', null, ['name','location','description','host','port','topic']).then(function(formEntries){
+				
+				var form = $.when( 
+					UI.getResourceForm('Device\\MQTT', null, ['name','location','description','host','port']),
+					UI.getResourceForm('Device\\MQTT', null, ['subscription'])
+				).then(function(formEntries, subscriptionFormEntries){
 					
-					formEntries.forEach(function(entry){
-						if(entry.name === 'topic'){
-							entry.description += " Received messages will appended in a table. Only messages in JSON format are supported.";
-						}
-					});
-					
-					return new $.Form.FormLayout({
-						items: formEntries
+					return new $.Form.TabsLayout({
+						format: $.Form.TabsLayout.Format.Merge,
+						items: [{
+							name: 'general',
+							fields: ['name','location','description','host','port'],
+							item: new $.Form.FormLayout({
+								items: formEntries
+							})
+						}, {
+							name: 'subscription',
+							fields: ['topic','contentType'],
+							item: new $.Form.FormLayout({
+								items: subscriptionFormEntries
+							})
+						}]
 					});
 				});
 				
@@ -354,6 +374,130 @@
 				});
 			});
 			
+			$element.find('#btn-create-RFLinkSwitch').click(function(){
+				var form = UI.getResourceForm('Device\\RFLinkSwitch', null, ['name','location','description','protocol','nodeId','switchId']).then(function(formEntries){
+					
+					formEntries.unshift({
+						name: 'gateway',
+						item: new $.Form.ResourceSelect({
+							filter: function(r){
+								return r instanceof EThing.Device.RFLinkGateway;
+							},
+							validators: [$.Form.validator.NotEmpty]
+						})
+					});
+					
+					return new $.Form.FormLayout({
+						items: formEntries
+					});
+				});
+				
+				$.FormModal({
+					header: 'See <a href="//rflink.nl" target="_blank">RFLink website</a>',
+					item: form,
+					title: '<span class="glyphicon glyphicon-phone" aria-hidden="true"></span> Add a new generic RFLink switch node',
+					validLabel: '+Add',
+					loaded: function($form){
+						$form.form('findItem', 'name').focus();
+					}
+				},function(props){
+					return EThing.Device.RFLinkSwitch.create(props);
+				});
+			});
+			
+			$element.find('#btn-create-RFLinkThermometer').click(function(){
+				var form = UI.getResourceForm('Device\\RFLinkThermometer', null, ['name','location','description','protocol','nodeId']).then(function(formEntries){
+					
+					formEntries.unshift({
+						name: 'gateway',
+						item: new $.Form.ResourceSelect({
+							filter: function(r){
+								return r instanceof EThing.Device.RFLinkGateway;
+							},
+							validators: [$.Form.validator.NotEmpty]
+						})
+					});
+					
+					return new $.Form.FormLayout({
+						items: formEntries
+					});
+				});
+				
+				$.FormModal({
+					header: 'See <a href="//rflink.nl" target="_blank">RFLink website</a>',
+					item: form,
+					title: '<span class="glyphicon glyphicon-phone" aria-hidden="true"></span> Add a new generic RFLink thermometer node',
+					validLabel: '+Add',
+					loaded: function($form){
+						$form.form('findItem', 'name').focus();
+					}
+				},function(props){
+					return EThing.Device.RFLinkThermometer.create(props);
+				});
+			});
+			
+			$element.find('#btn-create-RFLinkWeatherStation').click(function(){
+				var form = UI.getResourceForm('Device\\RFLinkWeatherStation', null, ['name','location','description','protocol','nodeId']).then(function(formEntries){
+					
+					formEntries.unshift({
+						name: 'gateway',
+						item: new $.Form.ResourceSelect({
+							filter: function(r){
+								return r instanceof EThing.Device.RFLinkGateway;
+							},
+							validators: [$.Form.validator.NotEmpty]
+						})
+					});
+					
+					return new $.Form.FormLayout({
+						items: formEntries
+					});
+				});
+				
+				$.FormModal({
+					header: 'See <a href="//rflink.nl" target="_blank">RFLink website</a>',
+					item: form,
+					title: '<span class="glyphicon glyphicon-phone" aria-hidden="true"></span> Add a new generic RFLink thermometer node',
+					validLabel: '+Add',
+					loaded: function($form){
+						$form.form('findItem', 'name').focus();
+					}
+				},function(props){
+					return EThing.Device.RFLinkWeatherStation.create(props);
+				});
+			});
+			
+			$element.find('#btn-create-RFLinkMultimeter').click(function(){
+				var form = UI.getResourceForm('Device\\RFLinkMultimeter', null, ['name','location','description','protocol','nodeId']).then(function(formEntries){
+					
+					formEntries.unshift({
+						name: 'gateway',
+						item: new $.Form.ResourceSelect({
+							filter: function(r){
+								return r instanceof EThing.Device.RFLinkGateway;
+							},
+							validators: [$.Form.validator.NotEmpty]
+						})
+					});
+					
+					return new $.Form.FormLayout({
+						items: formEntries
+					});
+				});
+				
+				$.FormModal({
+					header: 'See <a href="//rflink.nl" target="_blank">RFLink website</a>',
+					item: form,
+					title: '<span class="glyphicon glyphicon-phone" aria-hidden="true"></span> Add a new generic RFLink thermometer node',
+					validLabel: '+Add',
+					loaded: function($form){
+						$form.form('findItem', 'name').focus();
+					}
+				},function(props){
+					return EThing.Device.RFLinkMultimeter.create(props);
+				});
+			});
+			
 			$element.find('#btn-create-MySensorsGateway').click(function(){
 				var form = UI.getResourceForm('Device\\MySensorsGateway', null, ['name','location','description','isMetric','transport','address','port','baudrate']).then(function(formEntries){
 				
@@ -405,25 +549,21 @@
 			});
 			
 			$element.find('#btn-create-MySensorsNode').click(function(){
-				var form = $.Deferred();
+				var form = UI.getResourceForm('Device\\MySensorsNode', null, ['name','location','description','nodeId','smartSleep']).then(function(formEntries){
 				
-				require(['ui/resourceselect'], function(){
-					UI.getResourceForm('Device\\MySensorsNode', null, ['name','location','description','nodeId','smartSleep']).done(function(formEntries){
-					
-						formEntries.unshift({
-							name: 'gateway',
-							item: new $.Form.ResourceSelect({
-								filter: function(r){
-									return r instanceof EThing.Device.MySensorsGateway;
-								},
-								validators: [$.Form.validator.NotEmpty]
-							})
-						});
-						
-						form.resolve(new $.Form.FormLayout({
-							items: formEntries
-						}));
+					formEntries.unshift({
+						name: 'gateway',
+						item: new $.Form.ResourceSelect({
+							filter: function(r){
+								return r instanceof EThing.Device.MySensorsGateway;
+							},
+							validators: [$.Form.validator.NotEmpty]
+						})
 					});
+					
+					return (new $.Form.FormLayout({
+						items: formEntries
+					}));
 				});
 				
 				$.FormModal({

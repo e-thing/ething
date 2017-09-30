@@ -5,6 +5,7 @@
 			'require',
 			'ething',
 			'jquery',
+			'json!config.json',
 			'form',
 			'./formmodal',
 			'./event',
@@ -17,10 +18,12 @@
         // Browser globals
         factory(root.EThing,root.jQuery);
     }
-}(this, function (require, EThing, $) {
+}(this, function (require, EThing, $, config) {
 	
 	
 	var UI = window.UI || {};
+	
+	UI.config = config;
 	
 	UI.isTouchDevice = navigator ? (/android|webos|iphone|ipad|ipod|blackberry|iemobile|opera mini/i.test(navigator.userAgent.toLowerCase())) : false;
 	
@@ -335,21 +338,65 @@
 				return true;
 			},
 			fn: function(r){
+				
+				function countChildren(resource){
+					var children = EThing.arbo.find(function(r){
+						return r.createdBy() && r.createdBy().id === resource.id();
+					});
+					return children.length;
+				}
+				
+				var confirmText, resources = [], hasChildren = false;
+				
+				if(Array.isArray(r) && r.length==1) r = r[0];
+				
 				if(r instanceof EThing.Resource){
-					if (confirm("Remove the "+ r.type().toLowerCase() + " '" + r.name() + "' definitely ?")){
-						r.remove();
-					}
+					confirmText = "Remove the "+ r.type().toLowerCase() + " '" + r.name() + "' definitely ?";
+					resources.push(r);
 				} else if(Array.isArray(r) && r.length){
-					if(r.length===1)
-						return arguments.callee.call(this,r[0]);
-					if (confirm("Remove the "+r.length+" selected resource(s) definitely ?")){
-						
-						r.forEach(function(r){
-							r.remove();
-						});
-						
+					confirmText = "Remove the "+r.length+" selected resource(s) definitely ?"
+					resources = r;
+				}
+				
+				for(var i in resources){
+					if(countChildren(resources[i])){
+						hasChildren = true;
+						break;
 					}
 				}
+				
+				var $html = $('<div>').html(
+					'<p>'+
+						confirmText+
+					'</p>'
+				);
+				
+				if(hasChildren){
+					$html.append(
+						'<div class="checkbox">'+
+							'<label>'+
+								'<input type="checkbox"> Remove also the children resources'+
+							'</label>'+
+						'</div>'
+					);
+				}
+				
+				$html.modal({
+					title: 'Removing resources',
+					buttons: {
+						'!Remove': function(){
+							
+							var removeChildren = $html.find('input').prop('checked');
+							
+							resources.forEach(function(r){
+								r.remove(removeChildren);
+							});
+							
+						},
+						'Cancel': null
+					}
+				});
+				
 			}
 		}
 	];

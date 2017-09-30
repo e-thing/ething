@@ -40,7 +40,15 @@
 	  return this._json.transport;
 	}
 	
-	
+	/**
+	 * Return false if the device is not reachable.
+	 * @memberof EThing.Device.RTSP
+	 * @this {EThing.Device.RTSP}
+	 * @returns {boolean}
+	 */
+	EThing.Device.RTSP.prototype.isReachable = function() {
+	  return !!this._json.reachable;
+	}
 	
 	
 	/**
@@ -69,7 +77,7 @@
 			'method': 'POST',
 			'contentType': "application/json; charset=utf-8",
 			'data': a,
-			'converter': resourceConverter
+			'converter': EThing.resourceConverter
 		},callback).done(function(r){
 			EThing.trigger('ething.device.created',[r]);
 		});

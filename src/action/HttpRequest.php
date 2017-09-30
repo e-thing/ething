@@ -232,6 +232,10 @@ class HttpRequest extends Action {
 			CURLOPT_TIMEOUT => 20 // in secondes
 		));
 		
+		if(!$response){
+			throw new \Exception("unable to connect to the host");
+		}
+		
 		if(!$response->isSuccessful()){
 			throw new \Exception( sprintf("status: %d", $response->getStatus()) );
 		}

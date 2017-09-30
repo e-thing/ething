@@ -1,9 +1,9 @@
 <?php
 
 
-require_once 'Task.php';
-require_once 'ForkTask.php';
-require_once 'ProcessTask.php';
+require_once __DIR__."/Task.php";
+require_once __DIR__."/ForkTask.php";
+require_once __DIR__."/ProcessTask.php";
 
 class TaskManager {
 	

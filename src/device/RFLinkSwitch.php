@@ -4,6 +4,7 @@
 	 * @swagger-definition
 	 * "RFLinkSwitch":{ 
 	 *   "type": "object",
+	 *   "summary": "Generic RFLink switch.",
 	 *   "description": "RFLinkSwitch Device resource representation. This device is automatically created by a RFLinkGateway instance.",
 	 * 	 "allOf": [
 	 * 		{
@@ -60,7 +61,7 @@ class RFLinkSwitch extends Device
 			// format
 			foreach($attr as $key => &$value){
 				if($key==='CMD'){
-					$value = is_string($value) ? preg_match('/^on$/i', $value) : boolval($value);
+					$value = boolval(is_string($value) ? preg_match('/^on$/i', $value) : $value);
 				}
 			}
 			
@@ -93,6 +94,19 @@ class RFLinkSwitch extends Device
 		$ret = false;
 		switch($key){
 			case 'nodeId':
+				if(is_string($value) && strlen($value)){
+					$ret = true;
+					// check if there is a node with the same id that already exist
+					$context['postfns'][] = function($r){
+						if($r->gateway()->getNode(array(
+							'nodeId' => $r->nodeId,
+							'protocol' => $r->protocol,
+							'type' => array( '$ne' => $r->type() )
+						)))
+							throw new Exception('a node with the same nodeId and protocol already exists');
+					};
+				}
+				break;
 			case 'protocol':
 			case 'switchId':
 				$ret = (is_string($value) && strlen($value));
@@ -170,6 +184,38 @@ class RFLinkSwitch extends Device
 		return parent::createDevice($ething, array_merge(self::$defaultAttr, $attributes), array(), $createdBy);
 	}
 	
+	// functions used by controller
+	public static function createDeviceFromMessage($protocol, array $args, RFLinkGateway $gateway) {
+		return self::create($gateway->ething, array(
+			'nodeId' => $args['ID'],
+			'switchId' => $args['SWITCH'],
+			'protocol' => $protocol,
+			'name' => 'switch-'.$args['ID'].'-'.$args['SWITCH']
+		), $gateway);
+	}
+	
+	public static function filterDeviceFromMessage(array $devices, $protocol, array $args) {
+		if(isset($args['SWITCH'])){
+			foreach($devices as $device){
+				if($device->switchId === $args['SWITCH']) return $device;
+			}
+		}
+		return null;
+	}
+	
+	public function processMessage($protocol, array $args){
+		$this->updateSeenDate();
+		
+		if(isset($args['CMD'])){
+			$this->storeData(array(
+				'CMD' => $args['CMD']
+			));
+		}
+		
+		if(isset($args['BAT'])){
+			$this->set('battery', RFLink::convertBattery($args['BAT']));
+		}
+	}
 }
 
 

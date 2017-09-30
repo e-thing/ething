@@ -20,7 +20,7 @@
 	
 	
 	/**
-	 * 
+	 * Return the host name
 	 * @memberof EThing.Device.Yeelight
 	 * @this {EThing.Device.Yeelight}
 	 * @returns {string}
@@ -28,6 +28,18 @@
 	EThing.Device.Yeelight.prototype.host = function() {
 	  return this._json.host;
 	}
+	
+	/**
+	 * Return true if a connection to the device is opened
+	 * @memberof EThing.Device.Yeelight
+	 * @this {EThing.Device.Yeelight}
+	 * @returns {boolean}
+	 */
+	EThing.Device.Yeelight.prototype.isConnected = function() {
+	  return !!this._json.connected;
+	}
+	
+	
 	
 	/**
 	 * Constructs a YeelightBulbRGBW Device instance from an object decribing a Yeelight LED bulb (color) device. Should not be called directly. Use instead {@link EThing.list}.
@@ -72,7 +84,7 @@
 			'method': 'POST',
 			'contentType': "application/json; charset=utf-8",
 			'data': a,
-			'converter': resourceConverter
+			'converter': EThing.resourceConverter
 		},callback).done(function(r){
 			EThing.trigger('ething.device.created',[r]);
 		});

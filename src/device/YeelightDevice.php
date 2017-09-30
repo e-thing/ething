@@ -15,6 +15,11 @@
 	 *             "host": {
 	 * 		          "type":"string",
 	 * 		          "description":"The ip address of the device to connect to."
+	 * 		       },
+	 *             "connected": {
+	 * 		          "type":"boolean",
+	 * 		          "description":"Set to true when a connection to that device is opened.",
+	 * 		          "readOnly": true
 	 * 		       }
 	 * 		   }
 	 * 		}
@@ -111,29 +116,9 @@ abstract class YeelightDevice extends Device
 	}*/
 	
 	protected static function createYeelightDevice(Ething $ething, array $attributes, array $meta = array(), Resource $createdBy = null) {
-		return parent::createDevice($ething, array_merge(self::$defaultAttr, $attributes), $meta, $createdBy);
-	}
-	
-	
-	public function ping($timeout = 1) {
-		
-		$result = Net::ping($this->host, $timeout);
-		$online = ($result!==false);
-		$previousState = boolval($this->getAttr('_ping'));
-		if($previousState != $online){
-			// the state changed
-			if(!$online){
-				// this device has been disconnected !
-				$this->dispatchSignal(\Ething\Event\DeviceUnreachable::emit($this));
-			}
-			$this->setAttr('_ping', $online);
-		}
-		
-		if($online){
-			$this->updateSeenDate();
-		}
-
-		return $result;
+		return parent::createDevice($ething, array_merge(self::$defaultAttr, $attributes), array_merge(array(
+			'connected' => false
+		), $meta), $createdBy);
 	}
 	
 	public function sendMessage($message, $stream = null, $options = array()){
@@ -146,6 +131,15 @@ abstract class YeelightDevice extends Device
 	public function sendMessageWaitResponse($message, $stream = null, $options = array()){
 		if(is_array($message)) $message = \json_encode($message);
 		return $this->ething->daemon('device.yeelight.sendWaitResponse '.$this->id().' '.\base64_encode($message)."\n", $stream, $options);
+	}
+	
+	public function setConnectState($connected) {
+		$change = $this->setAttr('connected', boolval($connected));
+		$this->update();
+		
+		if($change){
+			$this->dispatchSignal($connected ? \Ething\Event\DeviceConnected::emit($this) : \Ething\Event\DeviceDisconnected::emit($this));
+		}
 	}
 	
 }

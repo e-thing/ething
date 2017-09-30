@@ -95,6 +95,9 @@
     padding: 0 10px;
 }
 
+#devices .explorer .deviceview .item .tag.col-status {
+    color: #d9534f;
+}
 
 @media (min-width: 768px) {
 #devices .explorer .col-info {

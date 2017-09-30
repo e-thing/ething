@@ -8,6 +8,7 @@ namespace Ething;
 class Response {
 	
 	private $status = 0;
+	private $statusReason = '';
 	public $body = '';
 	private $headers = array();
 	
@@ -21,8 +22,10 @@ class Response {
 		return $this->status >= 200 && $this->status < 300;
 	}
 	
-	public function setStatus($status){
+	public function setStatus($status, $reason = null){
 		$this->status = intval($status);
+		if(is_string($reason))
+			$this->statusReason = $reason;
 	}
 	
 	public function getHeader($name){
@@ -47,7 +50,7 @@ class Response {
 	}
 	
 	public function toString(){
-		$s = "HTTP/1.1 {$this->status} ".PHP_EOL;
+		$s = "HTTP/1.1 {$this->status} {$this->statusReason}".PHP_EOL;
 		foreach($this->headers as $name => $value){
 			$s .= "{$name}: {$value}".PHP_EOL;
 		}

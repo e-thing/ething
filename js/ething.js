@@ -1028,7 +1028,7 @@ if(typeof module !== 'undefined' && module.exports){
 			events = events.split(' ');
 			for(var i=0; i<events.length; i++){
 				var event = events[i];
-				if(event.length){
+				if(event.length && event_map[event]){
 					if(typeof handler == 'function'){
 						for(var j=0; j<event_map[event].length; j++){
 							if(event_map[event][j]===handler){
@@ -1799,7 +1799,7 @@ if(typeof module !== 'undefined' && module.exports){
 	}
 	
 	// if the argument is a json object describing a resource, then it converts it into a Resource instance, else it returns the object unchanged
-	var resourceConverter = function(data, xhr){
+	EThing.resourceConverter = function(data, xhr){
 		
 		if(typeof data == 'object' && data !== null){
 			
@@ -2306,6 +2306,7 @@ if(typeof module !== 'undefined' && module.exports){
 	 * Remove this resource.
 	 * @memberof EThing.Resource
 	 * @this {EThing.Resource}
+	 * @param {Boolean} [removeChildren] When true, the children are also removed. Default to false.
 	 * @param {function(data,XHR,options)} [callback] it is executed once the request is complete whether in failure or success
 	 * @returns {EThing.Resource} The instance on which this method was called.
 	 * @fires EThing#ething.resource.removed
@@ -2314,7 +2315,7 @@ if(typeof module !== 'undefined' && module.exports){
 	 *   // the resource was successfully removed
 	 * });
 	 */
-	EThing.Resource.prototype.remove = function(callback){
+	EThing.Resource.prototype.remove = function(removeChildren, callback){
 		return this.deferred(function(){
 				return EThing.Resource.remove(this, callback);
 			});
@@ -2424,7 +2425,7 @@ if(typeof module !== 'undefined' && module.exports){
 			'url': '/resources?' + EThing.utils.param({'q':query}),
 			'method': 'GET',
 			'dataType': 'json',
-			'converter': resourceConverter
+			'converter': EThing.resourceConverter
 		},callback);
 	};
 	
@@ -2458,7 +2459,7 @@ if(typeof module !== 'undefined' && module.exports){
 	/*
 	Resource,callback
 	*/
-	EThing.Resource.remove = function(a,b)
+	EThing.Resource.remove = function(a,removeChildren,callback)
 	{
 		var context;
 		if(a instanceof EThing.Resource){
@@ -2470,10 +2471,13 @@ if(typeof module !== 'undefined' && module.exports){
 			return;
 		}
 		
-		var callback = b;
+		if(arguments.length==2 && typeof removeChildren === 'function'){
+			callback = removeChildren;
+			removeChildren = false;
+		}
 		
 		return EThing.request({
-			'url': '/resources/' + a,
+			'url': '/resources/' + a + '?' + EThing.utils.param({'children':removeChildren}),
 			'method': 'DELETE',
 			'context': context
 		},callback).done(function(){
@@ -2513,7 +2517,7 @@ if(typeof module !== 'undefined' && module.exports){
 			'dataType': 'json',
 			'method': 'GET',
 			'context': context,
-			'converter': resourceConverter
+			'converter': EThing.resourceConverter
 		},callback);
 	};
 	
@@ -2550,7 +2554,7 @@ if(typeof module !== 'undefined' && module.exports){
 			'headers': {
 				"X-HTTP-Method-Override": "PATCH"
 			},
-			'converter': resourceConverter
+			'converter': EThing.resourceConverter
 		},callback);
 	};
 	
@@ -3153,7 +3157,7 @@ if(typeof module !== 'undefined' && module.exports){
 			'method': 'POST',
 			'contentType': "application/json; charset=utf-8",
 			'data': a,
-			'converter': resourceConverter
+			'converter': EThing.resourceConverter
 		},callback).done(function(r){
 			EThing.trigger('ething.file.created',[r]);
 		});
@@ -3240,7 +3244,7 @@ if(typeof module !== 'undefined' && module.exports){
 			'contentType': (typeof b == 'string') ? 'text/plain' : 'application/octet-stream',
 			'data': b,
 			'context': context,
-			'converter': resourceConverter
+			'converter': EThing.resourceConverter
 		},callback);
 	};
 	
@@ -3551,7 +3555,7 @@ if(typeof module !== 'undefined' && module.exports){
 			'method': 'POST',
 			'contentType': "application/json; charset=utf-8",
 			'data': a,
-			'converter': resourceConverter
+			'converter': EThing.resourceConverter
 		},callback).done(function(r){
 			EThing.trigger('ething.table.created',[r]);
 		});
@@ -3651,7 +3655,7 @@ if(typeof module !== 'undefined' && module.exports){
 			'contentType': "application/json; charset=utf-8",
 			'data': id,
 			'context': context,
-			'converter': resourceConverter
+			'converter': EThing.resourceConverter
 		},callback);
 		
 	}
@@ -3731,7 +3735,7 @@ if(typeof module !== 'undefined' && module.exports){
 			'contentType': "application/json; charset=utf-8",
 			'data': c,
 			'context': context,
-			'converter': resourceConverter
+			'converter': EThing.resourceConverter
 		},callback);
 		
 	}
@@ -3780,7 +3784,7 @@ if(typeof module !== 'undefined' && module.exports){
 			'contentType': "application/json; charset=utf-8",
 			'data': postData,
 			'context': context,
-			'converter': resourceConverter
+			'converter': EThing.resourceConverter
 		},callback);
 		
 	}
@@ -3822,7 +3826,7 @@ if(typeof module !== 'undefined' && module.exports){
 			'contentType': "application/json; charset=utf-8",
 			'data': data,
 			'context': context,
-			'converter': resourceConverter
+			'converter': EThing.resourceConverter
 		},callback);
 		
 	}
@@ -4017,7 +4021,7 @@ if(typeof module !== 'undefined' && module.exports){
 					'method': 'POST',
 					'contentType': "application/json; charset=utf-8",
 					'data': json,
-					'converter': resourceConverter
+					'converter': EThing.resourceConverter
 				  }).done(function(){
 					dfr.resolveWith(this, Array.prototype.slice.call(arguments));
 				  }).fail(function(){
@@ -4050,7 +4054,7 @@ if(typeof module !== 'undefined' && module.exports){
 			'method': 'POST',
 			'contentType': "application/json; charset=utf-8",
 			'data': json,
-			'converter': resourceConverter
+			'converter': EThing.resourceConverter
 		},callback).done(function(r){
 			EThing.trigger('ething.app.created',[r]);
 		});
@@ -4116,7 +4120,7 @@ if(typeof module !== 'undefined' && module.exports){
 			'contentType': (typeof b == 'string') ? 'text/plain' : 'application/octet-stream',
 			'data': b,
 			'context': context,
-			'converter': resourceConverter
+			'converter': EThing.resourceConverter
 		},callback);
 	};
 	
@@ -4489,7 +4493,7 @@ if(typeof module !== 'undefined' && module.exports){
 		var l = this.find(),
 			t = null;
 		for(var i=0; i<l.length; i++){
-			if (t===null || t < l[i].createdDate())
+			if (t===null || t > l[i].createdDate())
 				t = l[i].createdDate();
 		}
 		return t;
@@ -4500,7 +4504,7 @@ if(typeof module !== 'undefined' && module.exports){
 		var l = this.find(),
 			t = null;
 		for(var i=0; i<l.length; i++){
-			if (t===null || t > l[i].modifiedDate())
+			if (t===null || t < l[i].modifiedDate())
 				t = l[i].modifiedDate();
 		}
 		return t;
@@ -5374,7 +5378,7 @@ if(typeof module !== 'undefined' && module.exports){
 	
 	
 	/**
-	 * 
+	 * Return the host.
 	 * @memberof EThing.Device.Denon
 	 * @this {EThing.Device.Denon}
 	 * @returns {string}
@@ -5383,7 +5387,15 @@ if(typeof module !== 'undefined' && module.exports){
 	  return this._json.host;
 	}
 	
-	
+	/**
+	 * Return false if the device is not reachable.
+	 * @memberof EThing.Device.Denon
+	 * @this {EThing.Device.Denon}
+	 * @returns {boolean}
+	 */
+	EThing.Device.Denon.prototype.isReachable = function() {
+	  return !!this._json.reachable;
+	}
 	
 	
 	
@@ -5413,7 +5425,7 @@ if(typeof module !== 'undefined' && module.exports){
 			'method': 'POST',
 			'contentType': "application/json; charset=utf-8",
 			'data': a,
-			'converter': resourceConverter
+			'converter': EThing.resourceConverter
 		},callback).done(function(r){
 			EThing.trigger('ething.device.created',[r]);
 		});
@@ -5473,6 +5485,15 @@ if(typeof module !== 'undefined' && module.exports){
 	  return (typeof this._json.scope == 'string') ? this._json.scope : '';
 	}
 	
+	/**
+	 * Return false if the device is not reachable.
+	 * @memberof EThing.Device.Http
+	 * @this {EThing.Device.Http}
+	 * @returns {boolean}
+	 */
+	EThing.Device.Http.prototype.isReachable = function() {
+	  return !!this._json.reachable;
+	}
 	
 	/**
 	 * Make a HTTP request on this device. __Only available if an URL is set__, see {@link EThing.Device#create}
@@ -5522,7 +5543,9 @@ if(typeof module !== 'undefined' && module.exports){
 	 * Set the swagger API specification of this device.
 	 * @memberof EThing.Device.Http
 	 * @this {EThing.Device.Http}
-	 * @returns {object}
+	 * @param {String|Object} [spec] the swagger API specification.
+	 * @param {function(data,XHR,options)} [callback] it is executed once the request is complete whether in failure or success
+	 * @returns {EThing.Device.Http} The instance on which this method was called.
 	 */
 	EThing.Device.Http.prototype.setSpecification = function(spec,callback) {
 	  if(typeof spec == 'string')
@@ -5536,7 +5559,8 @@ if(typeof module !== 'undefined' && module.exports){
 	 * Get the swagger API specification of this device.
 	 * @memberof EThing.Device.Http
 	 * @this {EThing.Device.Http}
-	 * @returns {object}
+	 * @param {function(data,XHR,options)} [callback] it is executed once the request is complete whether in failure or success
+	 * @returns {EThing.Device.Http} The instance on which this method was called.
 	 */
 	EThing.Device.Http.prototype.getSpecification = function(callback) {
 	  return EThing.Device.Http.getSpecification(this, callback);
@@ -5573,7 +5597,7 @@ if(typeof module !== 'undefined' && module.exports){
 			'method': 'POST',
 			'contentType': "application/json; charset=utf-8",
 			'data': a,
-			'converter': resourceConverter
+			'converter': EThing.resourceConverter
 		},callback).done(function(r){
 			EThing.trigger('ething.device.created',[r]);
 		});
@@ -5706,23 +5730,49 @@ if(typeof module !== 'undefined' && module.exports){
 	 * 
 	 * @memberof EThing.Device.MQTT
 	 * @this {EThing.Device.MQTT}
-	 * @returns {string}
-	 */
-	EThing.Device.MQTT.prototype.topic = function() {
-	  return this._json.topic;
-	}
-	
-	/**
-	 * 
-	 * @memberof EThing.Device.MQTT
-	 * @this {EThing.Device.MQTT}
 	 * @returns {object|null}
 	 */
 	EThing.Device.MQTT.prototype.auth = function() {
 	  return this._json.auth || null;
 	}
 	
+	/**
+	 * Return true if a connection to the device is opened
+	 * @memberof EThing.Device.MQTT
+	 * @this {EThing.Device.MQTT}
+	 * @returns {boolean}
+	 */
+	EThing.Device.MQTT.prototype.isConnected = function() {
+	  return !!this._json.connected;
+	}
 	
+	
+	/**
+	 * Set the subscribed topics of this device.
+	 * @memberof EThing.Device.MQTT
+	 * @this {EThing.Device.MQTT}
+	 * @param {String|Array} [subs] the list of the subscribed topics.
+	 * @param {function(data,XHR,options)} [callback] it is executed once the request is complete whether in failure or success
+	 * @returns {EThing.Device.MQTT} The instance on which this method was called.
+	 */
+	EThing.Device.MQTT.prototype.setSubscription = function(subs,callback) {
+	  if(typeof spec == 'string')
+		spec = JSON.parse(subs);
+	  return this.set({
+		subscription: subs
+	  },callback);
+	}
+
+	/**
+	 * Get the subscribed topics of this device.
+	 * @memberof EThing.Device.MQTT
+	 * @this {EThing.Device.MQTT}
+	 * @param {function(data,XHR,options)} [callback] it is executed once the request is complete whether in failure or success
+	 * @returns {EThing.Device.MQTT} The instance on which this method was called.
+	 */
+	EThing.Device.MQTT.prototype.getSubscription = function(callback) {
+	  return EThing.Device.MQTT.getSubscription(this, callback);
+	}
 	
 	
 
@@ -5753,10 +5803,36 @@ if(typeof module !== 'undefined' && module.exports){
 			'method': 'POST',
 			'contentType': "application/json; charset=utf-8",
 			'data': a,
-			'converter': resourceConverter
+			'converter': EThing.resourceConverter
 		},callback).done(function(r){
 			EThing.trigger('ething.device.created',[r]);
 		});
+		
+	};
+	
+	
+	EThing.Device.MQTT.getSubscription = function(dev, callback){
+		var context;
+		
+		if(dev instanceof EThing.Device.MQTT){
+			context = dev;
+			dev = dev.id();
+		}
+		else if(!EThing.utils.isId(dev))
+			throw "First argument must be a Device object or a Device id !";
+		
+		return EThing.request({
+			'url': '/devices/' + dev + '/subscription',
+			'dataType': 'json',
+			'context': context,
+			'converter': function(subs){
+				if(context instanceof EThing.Device.MQTT){
+					// attach this specification to the device
+					context.subscription = subs;
+				}
+				return subs;
+			}
+		},callback);
 		
 	};
 	
@@ -5802,6 +5878,17 @@ if(typeof module !== 'undefined' && module.exports){
 	EThing.Device.MySensorsGateway.prototype.libVersion = function() {
 	  return this._json.libVersion;
 	}
+	
+	/**
+	 * Return true if a connection to the device is opened
+	 * @memberof EThing.Device.MySensorsGateway
+	 * @this {EThing.Device.MySensorsGateway}
+	 * @returns {boolean}
+	 */
+	EThing.Device.MySensorsGateway.prototype.isConnected = function() {
+	  return !!this._json.connected;
+	}
+	
 	
 	/**
 	 * Constructs a MySensorsEthernetGateway Device instance from an object decribing a MySensorsEthernetGateway device. Should not be called directly. Use instead {@link EThing.list}.
@@ -6009,7 +6096,7 @@ if(typeof module !== 'undefined' && module.exports){
 			'method': 'POST',
 			'contentType': "application/json; charset=utf-8",
 			'data': a,
-			'converter': resourceConverter
+			'converter': EThing.resourceConverter
 		},callback).done(function(r){
 			EThing.trigger('ething.device.created',[r]);
 		});
@@ -6043,7 +6130,7 @@ if(typeof module !== 'undefined' && module.exports){
 			'method': 'POST',
 			'contentType': "application/json; charset=utf-8",
 			'data': a,
-			'converter': resourceConverter
+			'converter': EThing.resourceConverter
 		},callback).done(function(r){
 			EThing.trigger('ething.device.created',[r]);
 		});
@@ -6078,7 +6165,7 @@ if(typeof module !== 'undefined' && module.exports){
 			'method': 'POST',
 			'contentType': "application/json; charset=utf-8",
 			'data': a,
-			'converter': resourceConverter
+			'converter': EThing.resourceConverter
 		},callback).done(function(r){
 			EThing.trigger('ething.device.created',[r]);
 		});
@@ -6112,7 +6199,7 @@ if(typeof module !== 'undefined' && module.exports){
 			'method': 'POST',
 			'contentType': "application/json; charset=utf-8",
 			'data': a,
-			'converter': resourceConverter
+			'converter': EThing.resourceConverter
 		},callback).done(function(r){
 			EThing.trigger('ething.device.created',[r]);
 		});
@@ -6185,6 +6272,16 @@ if(typeof module !== 'undefined' && module.exports){
 	  return this._json.build;
 	}
 	
+	/**
+	 * Return true if a connection to the device is opened
+	 * @memberof EThing.Device.RFLinkGateway
+	 * @this {EThing.Device.RFLinkGateway}
+	 * @returns {boolean}
+	 */
+	EThing.Device.RFLinkGateway.prototype.isConnected = function() {
+	  return !!this._json.connected;
+	}
+	
 	
 	/**
 	 * Constructs a RFLinkSerialGateway Device instance from an object decribing a RFLinkSerialGateway device. Should not be called directly. Use instead {@link EThing.list}.
@@ -6243,7 +6340,7 @@ if(typeof module !== 'undefined' && module.exports){
 	 * @returns {string}
 	 */
 	EThing.Device.RFLinkSwitch.prototype.protocol = function() {
-	  return !!this._json.protocol;
+	  return this._json.protocol;
 	}
 	
 	/**
@@ -6253,7 +6350,7 @@ if(typeof module !== 'undefined' && module.exports){
 	 * @returns {string}
 	 */
 	EThing.Device.RFLinkSwitch.prototype.nodeId = function() {
-	  return !!this._json.nodeId;
+	  return this._json.nodeId;
 	}
 	
 	/**
@@ -6263,9 +6360,113 @@ if(typeof module !== 'undefined' && module.exports){
 	 * @returns {string}
 	 */
 	EThing.Device.RFLinkSwitch.prototype.switchId = function() {
-	  return !!this._json.switchId;
+	  return this._json.switchId;
 	}
 	
+	
+	/**
+	 * RFLinkThermometer base class constructor.
+	 * @protected
+	 * @class The RFLinkThermometer Device resource handle
+	 * @memberof EThing.Device
+	 * @extends EThing.Device
+	 * @param {object} json
+	 */
+	EThing.Device.RFLinkThermometer = function(json)
+	{
+		EThing.Device.call(this, json);
+	}
+	EThing.utils.inherits(EThing.Device.RFLinkThermometer, EThing.Device);
+	
+	/**
+	 * Returns the protocol used to communicate with this node.
+	 * @memberof EThing.Device.RFLinkThermometer
+	 * @this {EThing.Device.RFLinkThermometer}
+	 * @returns {string}
+	 */
+	EThing.Device.RFLinkThermometer.prototype.protocol = function() {
+	  return this._json.protocol;
+	}
+	
+	/**
+	 * Returns the nodeId of this node.
+	 * @memberof EThing.Device.RFLinkThermometer
+	 * @this {EThing.Device.RFLinkThermometer}
+	 * @returns {string}
+	 */
+	EThing.Device.RFLinkThermometer.prototype.nodeId = function() {
+	  return this._json.nodeId;
+	}
+	
+	
+	/**
+	 * RFLinkWeatherStation base class constructor.
+	 * @protected
+	 * @class The RFLinkWeatherStation Device resource handle
+	 * @memberof EThing.Device
+	 * @extends EThing.Device
+	 * @param {object} json
+	 */
+	EThing.Device.RFLinkWeatherStation = function(json)
+	{
+		EThing.Device.call(this, json);
+	}
+	EThing.utils.inherits(EThing.Device.RFLinkWeatherStation, EThing.Device);
+	
+	/**
+	 * Returns the protocol used to communicate with this node.
+	 * @memberof EThing.Device.RFLinkWeatherStation
+	 * @this {EThing.Device.RFLinkWeatherStation}
+	 * @returns {string}
+	 */
+	EThing.Device.RFLinkWeatherStation.prototype.protocol = function() {
+	  return this._json.protocol;
+	}
+	
+	/**
+	 * Returns the nodeId of this node.
+	 * @memberof EThing.Device.RFLinkWeatherStation
+	 * @this {EThing.Device.RFLinkWeatherStation}
+	 * @returns {string}
+	 */
+	EThing.Device.RFLinkWeatherStation.prototype.nodeId = function() {
+	  return this._json.nodeId;
+	}
+	
+	
+	/**
+	 * RFLinkMultimeter base class constructor.
+	 * @protected
+	 * @class The RFLinkMultimeter Device resource handle
+	 * @memberof EThing.Device
+	 * @extends EThing.Device
+	 * @param {object} json
+	 */
+	EThing.Device.RFLinkMultimeter = function(json)
+	{
+		EThing.Device.call(this, json);
+	}
+	EThing.utils.inherits(EThing.Device.RFLinkMultimeter, EThing.Device);
+	
+	/**
+	 * Returns the protocol used to communicate with this node.
+	 * @memberof EThing.Device.RFLinkMultimeter
+	 * @this {EThing.Device.RFLinkMultimeter}
+	 * @returns {string}
+	 */
+	EThing.Device.RFLinkMultimeter.prototype.protocol = function() {
+	  return this._json.protocol;
+	}
+	
+	/**
+	 * Returns the nodeId of this node.
+	 * @memberof EThing.Device.RFLinkMultimeter
+	 * @this {EThing.Device.RFLinkMultimeter}
+	 * @returns {string}
+	 */
+	EThing.Device.RFLinkMultimeter.prototype.nodeId = function() {
+	  return this._json.nodeId;
+	}
 	
 	
 	/**
@@ -6295,7 +6496,148 @@ if(typeof module !== 'undefined' && module.exports){
 			'method': 'POST',
 			'contentType': "application/json; charset=utf-8",
 			'data': a,
-			'converter': resourceConverter
+			'converter': EThing.resourceConverter
+		},callback).done(function(r){
+			EThing.trigger('ething.device.created',[r]);
+		});
+		
+	};
+	
+	/**
+	 * Creates a new RFLink generic switch.
+	 *
+	 * @method EThing.Device.RFLinkSwitch.create
+	 * @param {object} attributes
+	 * @param {function(data,XHR,options)} [callback] it is executed once the request is complete whether in failure or success
+	 * @returns {Deferred} a {@link http://api.jquery.com/category/deferred-object/|jQuery like Promise object}. {@link EThing.request|More ...} 
+	 * @fires EThing#ething.device.created
+	 * @example
+	 * EThing.Device.RFLinkSwitch.create({
+	 *   name: "foobar",
+	 *   gateway: "4ge7r81",
+	 *   protocol: "NewKaku",
+	 *   nodeId: "008440e6",
+	 *   switchId: "a"
+	 * }).done(function(resource){
+	 *     console.log('the new RFLink switch has been added');
+	 * })
+	 */
+	EThing.Device.RFLinkSwitch.create = function(a,callback){
+		
+		a.type = 'RFLinkSwitch';
+		
+		return EThing.request({
+			'url': '/devices',
+			'dataType': 'json',
+			'method': 'POST',
+			'contentType': "application/json; charset=utf-8",
+			'data': a,
+			'converter': EThing.resourceConverter
+		},callback).done(function(r){
+			EThing.trigger('ething.device.created',[r]);
+		});
+		
+	};
+	
+	/**
+	 * Creates a new RFLink generic thermometer.
+	 *
+	 * @method EThing.Device.RFLinkThermometer.create
+	 * @param {object} attributes
+	 * @param {function(data,XHR,options)} [callback] it is executed once the request is complete whether in failure or success
+	 * @returns {Deferred} a {@link http://api.jquery.com/category/deferred-object/|jQuery like Promise object}. {@link EThing.request|More ...} 
+	 * @fires EThing#ething.device.created
+	 * @example
+	 * EThing.Device.RFLinkThermometer.create({
+	 *   name: "foobar",
+	 *   gateway: "4ge7r81",
+	 *   protocol: "OregonV1",
+	 *   nodeId: "000A"
+	 * }).done(function(resource){
+	 *     console.log('the new RFLink thermometer has been added');
+	 * })
+	 */
+	EThing.Device.RFLinkThermometer.create = function(a,callback){
+		
+		a.type = 'RFLinkThermometer';
+		
+		return EThing.request({
+			'url': '/devices',
+			'dataType': 'json',
+			'method': 'POST',
+			'contentType': "application/json; charset=utf-8",
+			'data': a,
+			'converter': EThing.resourceConverter
+		},callback).done(function(r){
+			EThing.trigger('ething.device.created',[r]);
+		});
+		
+	};
+	
+	/**
+	 * Creates a new RFLink generic weather station.
+	 *
+	 * @method EThing.Device.RFLinkWeatherStation.create
+	 * @param {object} attributes
+	 * @param {function(data,XHR,options)} [callback] it is executed once the request is complete whether in failure or success
+	 * @returns {Deferred} a {@link http://api.jquery.com/category/deferred-object/|jQuery like Promise object}. {@link EThing.request|More ...} 
+	 * @fires EThing#ething.device.created
+	 * @example
+	 * EThing.Device.RFLinkWeatherStation.create({
+	 *   name: "foobar",
+	 *   gateway: "4ge7r81",
+	 *   protocol: "Oregon Wind",
+	 *   nodeId: "1a89"
+	 * }).done(function(resource){
+	 *     console.log('the new RFLink weather station has been added');
+	 * })
+	 */
+	EThing.Device.RFLinkWeatherStation.create = function(a,callback){
+		
+		a.type = 'RFLinkWeatherStation';
+		
+		return EThing.request({
+			'url': '/devices',
+			'dataType': 'json',
+			'method': 'POST',
+			'contentType': "application/json; charset=utf-8",
+			'data': a,
+			'converter': EThing.resourceConverter
+		},callback).done(function(r){
+			EThing.trigger('ething.device.created',[r]);
+		});
+		
+	};
+	
+	/**
+	 * Creates a new RFLink generic multimeter.
+	 *
+	 * @method EThing.Device.RFLinkMultimeter.create
+	 * @param {object} attributes
+	 * @param {function(data,XHR,options)} [callback] it is executed once the request is complete whether in failure or success
+	 * @returns {Deferred} a {@link http://api.jquery.com/category/deferred-object/|jQuery like Promise object}. {@link EThing.request|More ...} 
+	 * @fires EThing#ething.device.created
+	 * @example
+	 * EThing.Device.RFLinkMultimeter.create({
+	 *   name: "foobar",
+	 *   gateway: "4ge7r81",
+	 *   protocol: "Revolt",
+	 *   nodeId: "3f8a"
+	 * }).done(function(resource){
+	 *     console.log('the new RFLink multimeter has been added');
+	 * })
+	 */
+	EThing.Device.RFLinkMultimeter.create = function(a,callback){
+		
+		a.type = 'RFLinkMultimeter';
+		
+		return EThing.request({
+			'url': '/devices',
+			'dataType': 'json',
+			'method': 'POST',
+			'contentType': "application/json; charset=utf-8",
+			'data': a,
+			'converter': EThing.resourceConverter
 		},callback).done(function(r){
 			EThing.trigger('ething.device.created',[r]);
 		});
@@ -6346,7 +6688,15 @@ if(typeof module !== 'undefined' && module.exports){
 	  return this._json.transport;
 	}
 	
-	
+	/**
+	 * Return false if the device is not reachable.
+	 * @memberof EThing.Device.RTSP
+	 * @this {EThing.Device.RTSP}
+	 * @returns {boolean}
+	 */
+	EThing.Device.RTSP.prototype.isReachable = function() {
+	  return !!this._json.reachable;
+	}
 	
 	
 	/**
@@ -6375,7 +6725,7 @@ if(typeof module !== 'undefined' && module.exports){
 			'method': 'POST',
 			'contentType': "application/json; charset=utf-8",
 			'data': a,
-			'converter': resourceConverter
+			'converter': EThing.resourceConverter
 		},callback).done(function(r){
 			EThing.trigger('ething.device.created',[r]);
 		});
@@ -6406,7 +6756,7 @@ if(typeof module !== 'undefined' && module.exports){
 	
 	
 	/**
-	 * 
+	 * Return the host name
 	 * @memberof EThing.Device.Yeelight
 	 * @this {EThing.Device.Yeelight}
 	 * @returns {string}
@@ -6414,6 +6764,18 @@ if(typeof module !== 'undefined' && module.exports){
 	EThing.Device.Yeelight.prototype.host = function() {
 	  return this._json.host;
 	}
+	
+	/**
+	 * Return true if a connection to the device is opened
+	 * @memberof EThing.Device.Yeelight
+	 * @this {EThing.Device.Yeelight}
+	 * @returns {boolean}
+	 */
+	EThing.Device.Yeelight.prototype.isConnected = function() {
+	  return !!this._json.connected;
+	}
+	
+	
 	
 	/**
 	 * Constructs a YeelightBulbRGBW Device instance from an object decribing a Yeelight LED bulb (color) device. Should not be called directly. Use instead {@link EThing.list}.
@@ -6458,7 +6820,7 @@ if(typeof module !== 'undefined' && module.exports){
 			'method': 'POST',
 			'contentType': "application/json; charset=utf-8",
 			'data': a,
-			'converter': resourceConverter
+			'converter': EThing.resourceConverter
 		},callback).done(function(r){
 			EThing.trigger('ething.device.created',[r]);
 		});

@@ -1,6 +1,6 @@
 <?php
 
-require_once 'ProcessTaskStream.php';
+require_once __DIR__.'/ProcessTaskStream.php';
 
 class ProcessTask extends Task {
 	

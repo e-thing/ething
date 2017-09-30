@@ -83,6 +83,8 @@ abstract class Resource implements \JsonSerializable, ResourceInterface
 	
 	private $dirtyFields = array();
 	
+	private $updateDisabled = 0;
+	
 	protected static $defaultAttr = array(
 		'name'   => null,
 		'data'       => null,
@@ -145,7 +147,9 @@ abstract class Resource implements \JsonSerializable, ResourceInterface
 		if(!isset($this->_d[$name]) || $this->_d[$name] !== $value || is_object($value) || is_array($value)){
 			$this->_d[$name] = $value;
 			$this->setDirtyAttr($name);
+			return true;
 		}
+		return false;
 	}
 	
 	protected function removeAttr($name) {
@@ -335,7 +339,7 @@ abstract class Resource implements \JsonSerializable, ResourceInterface
 		));
 	}
 	
-	public function hasData($name, $value){
+	public function hasData($name){
 		return isset($this->data->$name);
 	}
 	
@@ -357,24 +361,39 @@ abstract class Resource implements \JsonSerializable, ResourceInterface
 		
 		$this->_d = null;
 		
-		if($removeChildren===true){
-			$children = $this->ething->find(array(
-				'createdBy.id' => $id
-			));
-			foreach($children as $child){
-				$child->remove();
+		$children = $this->ething->find(array(
+			'createdBy.id' => $id
+		));
+		
+		foreach($children as $child){
+			if($removeChildren===true){
+				$child->remove($removeChildren);
+			} else {
+				// remove the relationship
+				$child->setAttr('createdBy', null);
+				$child->update();
 			}
+		}
+		
+	}
+	
+	protected function setUpdateEnableState($enable){
+		if($enable){
+			if($this->updateDisabled>0) $this->updateDisabled--;
+		} else {
+			$this->updateDisabled++;
 		}
 	}
 	
 	protected function update($force = false) {
-		if($force || count($this->dirtyFields)){
+		if($this->updateDisabled===0 && ($force || count($this->dirtyFields))){
 			$this->setAttr('modifiedDate', new \MongoDB\BSON\UTCDateTime()); // update the modification time
 			$c = $this->ething->db()->selectCollection("resources");
 			$c->replaceOne(array('_id' => $this->id()), $this->_d);
-			$this->ething->dispatchSignal(Event\ResourceMetaUpdated::emit($this, array_filter($this->dirtyFields,function($f){
+			$this->ething->dispatchSignal(Event\ResourceMetaUpdated::emit($this, $this->dirtyFields));
+			/*$this->ething->dispatchSignal(Event\ResourceMetaUpdated::emit($this, array_filter($this->dirtyFields,function($f){
 				return $f[0]!=='_';
-			})));
+			})));*/
 			$this->dirtyFields = array();
 		}
 	}

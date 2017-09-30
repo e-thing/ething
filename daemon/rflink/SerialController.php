@@ -82,8 +82,7 @@ class SerialController extends Controller {
 					if(empty($line)) continue;
 					
 					try {
-						$this->processMessage($line);
-						
+						$this->processLine($line);
 					} catch (\Exception $e) {
 						// skip the line
 						$this->logger->warn("RFLink[serial]: unable to handle the message {$line}");

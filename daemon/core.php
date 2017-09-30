@@ -16,6 +16,8 @@ register_shutdown_function(function(){
 	
 	if(ForkTask::getCurrentTask()) return; // do not go any further for forked process !
 	
+	SignalManager::dispatch(\Ething\Event\DaemonStopped::emit());
+	
 	// close all streams
 	PoolStream::each(function($stream) {
 		if(method_exists($stream, 'close')) $stream->close();
@@ -29,9 +31,9 @@ register_shutdown_function(function(){
 });
 
 
-require_once 'SignalManager.php';
-require_once 'CommandInterpreter.php';
-require_once 'Server.php';
+require_once __DIR__.'/SignalManager.php';
+require_once __DIR__.'/CommandInterpreter.php';
+require_once __DIR__.'/Server.php';
 require_once __DIR__.'/../vendor/autoload.php';
 require_once __DIR__.'/../src/Ething.php';
 
@@ -184,10 +186,16 @@ $cli->add('net.ping', function($args, $client) {
 	}
 });
 
-SignalManager::attachHandler(function($signal) use ($ething) {
+
+/* Signals */
+$signalsQueue = array();
+
+SignalManager::attachHandler(function($signal) use (&$signalsQueue) {
 	Log::debug("dispatchSignal=> {$signal->debugStr()}");
-	TaskManager::add(new ForkTask(array($ething,'dispatchSignal'), array($signal, false)));
+	$signalsQueue[] = $signal;
 });
+
+
 
 ForkTask::$forkInit = function($task) use($ething, $server, $cli) {
 	
@@ -208,17 +216,20 @@ ForkTask::$forkInit = function($task) use($ething, $server, $cli) {
 
 function pingDevicesTask(){
 	global $ething;
-			
-	$devices = $ething->find(array(
-		'type' => array( '$in' => array( 'Device\\Http', 'Device\\RTSP' ) ),
-		'url' => array('$ne' => null)
-	));
+	
+	$devices = $ething->find(array( '$or' => array(
+		array(
+			'type' => 'Device\\Http',
+			'url' => array('$ne' => null)
+		),
+		array( 'type' => 'Device\\RTSP' )
+	)));
 	
 	foreach($devices as $device){
 		$t = null;
 		try {
 			$t = $device->ping();
-			Log::info("ping: {$device->name()} -> ".($t===false ? 'fail' : $t));
+			Log::debug("ping: {$device->name()} -> ".($t===false ? 'fail' : $t));
 		}
 		catch(Exception $e){}
 	}
@@ -250,7 +261,7 @@ if(!$server->start()){
 
 
 Timer::delay(1, function(){
-	SignalManager::dispatch(\Ething\Event\DaemonRestarted::emit());
+	SignalManager::dispatch(\Ething\Event\DaemonStarted::emit());
 });
 
 Timer::setInterval(60, function(){
@@ -258,7 +269,7 @@ Timer::setInterval(60, function(){
 });
 
 
-Timer::setInterval(300, function(){
+Timer::setInterval(60, function(){
 	TaskManager::add(new ForkTask('pingDevicesTask'));
 }, 60);
 
@@ -266,6 +277,39 @@ Timer::setInterval(300, function(){
 Timer::setInterval(600, function(){
 	TaskManager::add(new ForkTask('checkExpiredDataTask'));
 }, 100);
+
+Timer::setInterval(5, function() use(&$signalsQueue, $ething) {
+	if($l = count($signalsQueue)){
+		
+		// fuse ResourceMetaUpdated signals 
+		$f = 0;
+		while($l--){
+			$signal = $signalsQueue[$l];
+			if($signal->getName() === "ResourceMetaUpdated"){
+				// merge with previous signal
+				for($i=0; $i<$l; $i++){
+					$s = $signalsQueue[$i];
+					if($signal->getName() === $s->getName() && $signal->resource === $s->resource){
+						// ok same signal describing the same resource -> merge the attributes
+						$signal->attributes = array_unique (array_merge ($signal->attributes, $s->attributes));
+						array_splice($signalsQueue, $i, 1);
+						$i--;
+						$l--;
+						$f++;
+					}
+				}
+			}
+		}
+		
+		Log::debug("signal fuse number {$f}");
+		
+		foreach($signalsQueue as $signal){
+			TaskManager::add(new ForkTask(array($ething,'dispatchSignal'), array($signal, false)));
+		}
+		
+		$signalsQueue = array();
+	}
+});
 
 
 

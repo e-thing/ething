@@ -79,6 +79,7 @@ abstract class Controller extends \Stream {
     }
 	
 	public function open(){
+		$this->gateway->setConnectState(true);
 		$this->isOpened = true;
 		return true;
 	}
@@ -89,6 +90,7 @@ abstract class Controller extends \Stream {
 	public function close(){
 		$this->isOpened = false;
 		$this->lastAutoconnectLoop = 0;
+		$this->gateway->setConnectState(false);
 		$this->logger->info("MySensors: closed");
 		return true;
 	}
@@ -628,7 +630,6 @@ abstract class Controller extends \Stream {
 		if(!$this->isOpened && ($now - $this->lastAutoconnectLoop) > self::AUTOCONNECT_PERIOD ){
 			try{
 				$this->open();
-				$this->logger->info("MySensors: connected");
 				$this->preventFailConnectLog = false;
 			} catch(\Exception $e){
 				if(!$this->preventFailConnectLog) $this->logger->warn("MySensors: unable to connect : {$e->getMessage()}");

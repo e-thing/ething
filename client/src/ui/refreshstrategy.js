@@ -267,6 +267,7 @@
 			
 			if(this.started) return; // already started
 			
+			console.log('this.started = true;');
 			this.started = true;
 			
 			if(this.closeTimeoutId) clearTimeout(this.closeTimeoutId);
@@ -283,7 +284,7 @@
 					require(['mqttws'], function(){
 						console.log("[WS] lib Paho.MQTT.Client loaded");
 						
-						this.initialized = true;
+						self.initialized = true;
 						
 						if(self.started)
 							self.openWS();
@@ -299,6 +300,7 @@
 		
 		stop: function(){
 			var self = this;
+			console.log('this.started = false;');
 			this.started = false;
 			// close the socket only after a period of inactivity !
 			this.closeTimeoutId = setTimeout(function(){

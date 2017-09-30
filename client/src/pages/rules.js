@@ -250,13 +250,37 @@
 			return new $.Form.Cron();
 		}
 	},
-	
 	{
-		type: 'DeviceUnreachable',
-		name: 'Device disconnected',
+		type: 'DeviceReachable',
+		name: 'Device is reachable',
 		category: 'device',
 		toString: function(options){
-			return ResourceSelection.toString(options.resource,'device')+' becomes unreachable';
+			return ResourceSelection.toString(options.resource,'device')+' is reachable';
+		},
+		description: null,
+		form: function(){
+			return new $.Form.FormLayout({
+				items: [{
+					name: 'resource',
+					description: 'Select on which device this event must be bind to.',
+					item: ResourceSelection.form({
+						'filter' : function(r){
+							return (r instanceof EThing.Device.Http) || (r instanceof EThing.Device.RTSP) || (r instanceof EThing.Device.Denon);
+						},
+						prefix: 'on',
+						resourcesName: 'devices'
+					})
+				}],
+				disabledValue: undefined
+			});
+		}
+	},
+	{
+		type: 'DeviceUnreachable',
+		name: 'Device is unreachable',
+		category: 'device',
+		toString: function(options){
+			return ResourceSelection.toString(options.resource,'device')+' is unreachable';
 		},
 		description: null,
 		form: function(){
@@ -277,6 +301,56 @@
 		}
 	},
 	
+	{
+		type: 'DeviceConnected',
+		name: 'Device connect',
+		category: 'device',
+		toString: function(options){
+			return ResourceSelection.toString(options.resource,'device')+' connects';
+		},
+		description: null,
+		form: function(){
+			return new $.Form.FormLayout({
+				items: [{
+					name: 'resource',
+					description: 'Select on which device this event must be bind to.',
+					item: ResourceSelection.form({
+						'filter' : function(r){
+							return (r instanceof EThing.Device.MySensorsGateway) || (r instanceof EThing.Device.RFLinkGateway) || (r instanceof EThing.Device.MQTT) || (r instanceof EThing.Device.Yeelight);
+						},
+						prefix: 'on',
+						resourcesName: 'devices'
+					})
+				}],
+				disabledValue: undefined
+			});
+		}
+	},
+	{
+		type: 'DeviceDisconnected',
+		name: 'Device disconnect',
+		category: 'device',
+		toString: function(options){
+			return ResourceSelection.toString(options.resource,'device')+' disconnects';
+		},
+		description: null,
+		form: function(){
+			return new $.Form.FormLayout({
+				items: [{
+					name: 'resource',
+					description: 'Select on which device this event must be bind to.',
+					item: ResourceSelection.form({
+						'filter' : function(r){
+							return (r instanceof EThing.Device.MySensorsGateway) || (r instanceof EThing.Device.RFLinkGateway) || (r instanceof EThing.Device.MQTT) || (r instanceof EThing.Device.Yeelight);
+						},
+						prefix: 'on',
+						resourcesName: 'devices'
+					})
+				}],
+				disabledValue: undefined
+			});
+		}
+	},
 	{
 		type: 'LowBatteryDevice',
 		name: 'Device low battery level',

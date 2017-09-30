@@ -21,7 +21,7 @@
 	
 	
 	/**
-	 * 
+	 * Return the host.
 	 * @memberof EThing.Device.Denon
 	 * @this {EThing.Device.Denon}
 	 * @returns {string}
@@ -30,7 +30,15 @@
 	  return this._json.host;
 	}
 	
-	
+	/**
+	 * Return false if the device is not reachable.
+	 * @memberof EThing.Device.Denon
+	 * @this {EThing.Device.Denon}
+	 * @returns {boolean}
+	 */
+	EThing.Device.Denon.prototype.isReachable = function() {
+	  return !!this._json.reachable;
+	}
 	
 	
 	
@@ -60,7 +68,7 @@
 			'method': 'POST',
 			'contentType': "application/json; charset=utf-8",
 			'data': a,
-			'converter': resourceConverter
+			'converter': EThing.resourceConverter
 		},callback).done(function(r){
 			EThing.trigger('ething.device.created',[r]);
 		});

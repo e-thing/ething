@@ -32,6 +32,11 @@ class Signal implements \JsonSerializable {
 		return $this->_d;
 	}
 	
+	public function __set($name, $value)
+    {
+		return $this->_d[$name] = $value;
+    }
+	
 	public function __get($name)
     {
 		return isset($this->_d[$name]) ? $this->_d[$name] : null;

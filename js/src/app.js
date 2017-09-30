@@ -185,7 +185,7 @@
 					'method': 'POST',
 					'contentType': "application/json; charset=utf-8",
 					'data': json,
-					'converter': resourceConverter
+					'converter': EThing.resourceConverter
 				  }).done(function(){
 					dfr.resolveWith(this, Array.prototype.slice.call(arguments));
 				  }).fail(function(){
@@ -218,7 +218,7 @@
 			'method': 'POST',
 			'contentType': "application/json; charset=utf-8",
 			'data': json,
-			'converter': resourceConverter
+			'converter': EThing.resourceConverter
 		},callback).done(function(r){
 			EThing.trigger('ething.app.created',[r]);
 		});
@@ -284,7 +284,7 @@
 			'contentType': (typeof b == 'string') ? 'text/plain' : 'application/octet-stream',
 			'data': b,
 			'context': context,
-			'converter': resourceConverter
+			'converter': EThing.resourceConverter
 		},callback);
 	};
 	

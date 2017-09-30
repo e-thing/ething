@@ -1,6 +1,6 @@
 <?php
 
-require_once 'Stream.php';
+require_once __DIR__.'/Stream.php';
 
 class PoolStream {
 	

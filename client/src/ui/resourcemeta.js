@@ -319,18 +319,6 @@
 			}
 		},
 		{
-			name: "topic",
-			isOptional: true,
-			onlyForType: ['Device\\MQTT'],
-			editable:function(){
-				return new $.Form.Text({
-					validators: [$.Form.validator.NotEmpty],
-					placeholder: "topic"
-				});
-			},
-			description: 'The topic to subscribe to.'
-		},
-		{
 			name: "description",
 			editable: function(){
 				return new $.Form.Textarea({
@@ -606,6 +594,116 @@
 			}
 		},
 		{
+			name: "subscription",
+			category: 'subscription',
+			label: 'topic subscription',
+			get: null, // only editable
+			onlyForType: ['Device\\MQTT'],
+			isOptional: false,
+			description: '',
+			editable:function(resource){
+				
+				var jsonPathLibDfr = $.Deferred();
+				require(['jsonpath'], function(JsonPath){
+					jsonPathLibDfr.resolve(JsonPath);
+				});
+				
+				var value=null;
+				
+				if(resource instanceof EThing.Device){
+					value = $.Deferred();
+					
+					resource.getSubscription().then(function(subs){
+						value.resolve(subs);
+					}, function(){
+						value.resolve([]);
+					});
+				}
+				
+				return $.when(
+					value,
+					jsonPathLibDfr
+				).then(function(subs, JsonPath){
+					
+					return new $.Form.ArrayLayout({
+						items: [],
+						editable: true,
+						value: subs,
+						instanciator: function(){
+							return new $.Form.FormLayout({
+								items: [{
+									name: 'topic',
+									item: new $.Form.Text({
+										validators: [$.Form.validator.NotEmpty],
+										placeholder: "topic"
+									})
+								},{
+									name: 'contentType',
+									label: 'content type',
+									item: new $.Form.Select({
+										items: {
+											'none <span style="color:grey;">(no data are stored)</span>': null,
+											'JSON' : 'application/json',
+											'text' : 'text/plain',
+											'XML' : 'application/xml'
+										}
+									})
+								},{
+									name: 'jsonPath',
+									label: 'JSON path',
+									description: 'Retrieve the value from a JSON payload by locating a JSON Element using a JSON path expression.',
+									item: new $.Form.Text({
+										validators:[function(v){
+											if(v){
+												JsonPath.parse(v);
+											}
+										}]
+									}),
+									dependencies: {
+										'contentType': function(currentlayoutItem, dependentLayoutItem){
+											return dependentLayoutItem.item.value() === 'application/json';
+										}
+									}
+									
+								},{
+									name: 'regexp',
+									label: 'Regular Expression',
+									description: 'Retrieve the value from a text payload by locating an element using a regular expression expression.',
+									item: new $.Form.Text({
+										placeholder: '/^startWith/i',
+										validators:[function(v){
+											if(v){
+												var sep = v[0];
+												var reEnd = new RegExp("\\"+sep+"[gimuy]*$");
+												if(!(v.length>1 && reEnd.test(v.substr(1))))
+													throw 'invalid regular expression';
+											}
+										}]
+									}),
+									dependencies: {
+										'contentType': function(currentlayoutItem, dependentLayoutItem){
+											return dependentLayoutItem.item.value() === 'text/plain';
+										}
+									}
+								},{
+									name: 'xpath',
+									label: 'XPath Expression',
+									description: 'Retrieve the value from a XML payload by locating an element using a XPath expression.',
+									item: new $.Form.Text({}),
+									dependencies: {
+										'contentType': function(currentlayoutItem, dependentLayoutItem){
+											return dependentLayoutItem.item.value() === 'application/xml';
+										}
+									}
+								}]
+							});
+						}
+					});
+					
+				});
+			}
+		},
+		{
 			name: "version",
 			formatter: function(v){
 				return v || 'unversioned';
@@ -640,7 +738,7 @@
 			editable: function(){
 				return new $.Form.Text({
 					placeholder: '192.168.1.116:5003',
-					validators: [$.Form.NotEmpty, function(value){
+					validators: [$.Form.validator.NotEmpty, function(value){
 						if(!/^(([0-9]{1,3}.[0-9]{1,3}.[0-9]{1,3}.[0-9]{1,3})|([\w-.]+))(:[0-9]{1,5})?$/.test(value))
 							throw 'invalid address';
 					}]
@@ -661,6 +759,33 @@
 		{
 			name: "build",
 			onlyForType: ['Device\\RFLink.*Gateway']
+		},
+		{
+			name: "protocol",
+			onlyForType: ['Device\\RFLinkSwitch', 'Device\\RFLinkThermometer', 'Device\\RFLinkWeatherStation', 'Device\\RFLinkMultimeter'],
+			editable: function(){
+				return new $.Form.Text({
+					validators: [$.Form.validator.NotEmpty]
+				});
+			}
+		},
+		{
+			name: "nodeId",
+			onlyForType: ['Device\\RFLinkSwitch', 'Device\\RFLinkThermometer', 'Device\\RFLinkWeatherStation', 'Device\\RFLinkMultimeter'],
+			editable: function(){
+				return new $.Form.Text({
+					validators: [$.Form.validator.NotEmpty]
+				});
+			}
+		},
+		{
+			name: "switchId",
+			onlyForType: ['Device\\RFLinkSwitch'],
+			editable: function(){
+				return new $.Form.Text({
+					validators: [$.Form.validator.NotEmpty]
+				});
+			}
 		},
 		{
 			name: "port",

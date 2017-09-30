@@ -48,6 +48,15 @@
 	  return (typeof this._json.scope == 'string') ? this._json.scope : '';
 	}
 	
+	/**
+	 * Return false if the device is not reachable.
+	 * @memberof EThing.Device.Http
+	 * @this {EThing.Device.Http}
+	 * @returns {boolean}
+	 */
+	EThing.Device.Http.prototype.isReachable = function() {
+	  return !!this._json.reachable;
+	}
 	
 	/**
 	 * Make a HTTP request on this device. __Only available if an URL is set__, see {@link EThing.Device#create}
@@ -97,7 +106,9 @@
 	 * Set the swagger API specification of this device.
 	 * @memberof EThing.Device.Http
 	 * @this {EThing.Device.Http}
-	 * @returns {object}
+	 * @param {String|Object} [spec] the swagger API specification.
+	 * @param {function(data,XHR,options)} [callback] it is executed once the request is complete whether in failure or success
+	 * @returns {EThing.Device.Http} The instance on which this method was called.
 	 */
 	EThing.Device.Http.prototype.setSpecification = function(spec,callback) {
 	  if(typeof spec == 'string')
@@ -111,7 +122,8 @@
 	 * Get the swagger API specification of this device.
 	 * @memberof EThing.Device.Http
 	 * @this {EThing.Device.Http}
-	 * @returns {object}
+	 * @param {function(data,XHR,options)} [callback] it is executed once the request is complete whether in failure or success
+	 * @returns {EThing.Device.Http} The instance on which this method was called.
 	 */
 	EThing.Device.Http.prototype.getSpecification = function(callback) {
 	  return EThing.Device.Http.getSpecification(this, callback);
@@ -148,7 +160,7 @@
 			'method': 'POST',
 			'contentType': "application/json; charset=utf-8",
 			'data': a,
-			'converter': resourceConverter
+			'converter': EThing.resourceConverter
 		},callback).done(function(r){
 			EThing.trigger('ething.device.created',[r]);
 		});

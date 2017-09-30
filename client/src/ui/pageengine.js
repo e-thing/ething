@@ -247,7 +247,16 @@
 		
 		// but first remove the current view
 		if(UI.currentPage){
-			if(UI.currentPage.deleteView()===false && !force){
+			
+			var res = null;
+			
+			try {
+				res = UI.currentPage.deleteView();
+			} catch(e){
+				console.error(e);
+			}
+			
+			if(res===false && !force){
 				// cancel the page change
 				UI.setUrl(UI.history[0]);
 				return;

@@ -51,8 +51,8 @@ abstract class Controller extends \Stream {
     }
 	
 	public function open(){
+		$this->gateway->setConnectState(true);
 		$this->isOpened = true;
-		$this->logger->info("RFLink: opened");
 		return true;
 	}
 	
@@ -62,6 +62,7 @@ abstract class Controller extends \Stream {
 	public function close(){
 		$this->isOpened = false;
 		$this->lastAutoconnectLoop = 0;
+		$this->gateway->setConnectState(false);
 		$this->logger->info("RFLink: closed");
 		return true;
 	}
@@ -75,105 +76,123 @@ abstract class Controller extends \Stream {
 		20;04;Cresta;ID=3001;TEMP=00b4;HUM=50;BAT=OK;
 		20;05;Cresta;ID=2801;TEMP=00af;HUM=53;BAT=OK;
 		20;06;NewKaku;ID=008440e6;SWITCH=1;CMD=OFF;
-		10;NewKaku;008440e6;1;OFF;
-		10;REBOOT;
-		10;PING;
-		
+		20;02;VER=1.1;REV=46;BUILD=0c;
 	*/
-	public function processMessage($message) {
-		$r = true;
+	function processLine($line){
 		
-		$this->logger->debug("RFLink: message received = {$message}");
+		$this->logger->debug("RFLink: message received = {$line}");
 		
 		$gateway = $this->gateway;
-		
-		if($this->logMessage) $gateway->log($message);
-		
+		if($this->logMessage) $gateway->log($line);
+		$inclusion = $gateway->inclusion;
 		$gateway->updateSeenDate();
 		
-		foreach($this->responseListeners as $i => $responseListener){
-			
-			// remove this item
-			array_splice($this->responseListeners, $i, 1);
-			
-			if(is_callable($responseListener['callback']))
-				call_user_func($responseListener['callback'], false, $message);
-		}
+		$words = explode(';', rtrim($line,";"));
+		$wordsCount = count($words);
 		
-		try {
-			$messageInfo = RFLink::parseMessage($message);
-		} catch(\Exception $e){
-			return false;
-		}
+		if($wordsCount<3) return;
 		
-		if($messageInfo['type']==20){
+		// keep only messages destined to the gateway
+		if($words[0]!=="20") return;
+		
+		if($wordsCount === 3 || substr($words[2], 0, 4)==='VER='){
+			// system command/response
 			
+			// does a user request wait for a response
+			foreach($this->responseListeners as $i => $responseListener){
+				// remove this item
+				array_splice($this->responseListeners, $i, 1);
+				
+				if(is_callable($responseListener['callback']))
+					call_user_func($responseListener['callback'], false, $line);
+			}
 			
-			if(isset($messageInfo['protocol']) && isset($messageInfo['id'])){
+			if(preg_match('/Nodo RadioFrequencyLink - RFLink Gateway V([\d\.]+) - R([\d]+)/', $words[2], $matches)){
+				$gateway->set('version', $matches[1]);
+				$gateway->set('revision', $matches[2]);
+				$this->logger->info("RFLink: ver:{$matches[1]} rev:{$matches[2]}");
+			} else if(preg_match('/;VER=([\d\.]+);REV=([\d]+);BUILD=([0-9a-fA-F]+);/', $line, $matches)) {
+				$gateway->set('version', $matches[1]);
+				$gateway->set('revision', $matches[2]);
+				$gateway->set('build', $matches[3]);
+				$this->logger->info("RFLink: ver:{$matches[1]} rev:{$matches[2]} build:{$matches[3]}");
+			}
+			
+		} else {
+			
+			$protocol = $words[2];
+			$args = array();
+			
+			for($i=3; $i<$wordsCount; $i++){
 				
-				$protocol = $messageInfo['protocol'];
-				$attr = $messageInfo['attr'];
-				
-				if(isset($attr['SWITCH']) && isset($attr['CMD']) && !isset($attr['RGBW']) && !isset($attr['RGB']) && in_array($attr['CMD'], array('ON', 'OFF', 'ALLON', 'ALLOFF'))){
+				if( $sepi = strpos($words[$i], '=') ){
+					// key value pair
+					$key = substr($words[$i], 0, $sepi);
+					$value = substr($words[$i], $sepi+1);
 					
-					$this->switchMessageHandler($protocol, $attr);
+					$args[$key] = $value;
+				}
+			}
+			
+			if(isset($args['ID'])){
+				
+				$device = null;
+				
+				$devices = $gateway->getNodes(array(
+					'nodeId' => $args['ID'],
+					'protocol' => $protocol
+				));
+				
+				// get the class from the registered device
+				if(count($devices)){
+					$class = 'Ething\\'.$devices[0]->type();
+					
+					if(method_exists($class,'filterDeviceFromMessage'))
+						$device = $class::filterDeviceFromMessage($devices, $protocol, $args);
+					else if(count($devices)===1)
+						$device = $devices[0];
+					else {
+						$this->logger->warn("RFLink: unable to handle the message {$line}, multiple devices found for the Id {$args['ID']}");
+						return;
+					}
 					
 				} else {
-					$this->logger->warn("RFLink: unable to handle the message {$message}");
-					$r = false;
+					
 				}
 				
-			} else if(isset($messageInfo['attr']['VER'])){
-				$gateway->set('version', $messageInfo['attr']['VER']);
-				$gateway->set('revision', $messageInfo['attr']['REV']);
-				$gateway->set('build', $messageInfo['attr']['BUILD']);
-				$this->logger->info("RFLink: ver:{$messageInfo['attr']['VER']} rev:{$messageInfo['attr']['REV']}  build:{$messageInfo['attr']['BUILD']}");
+				if(!$device){
+					if($inclusion){
+						// the device does not exist !
+						
+						// find the best class suited from the protocol and args
+						if($class = \Ething\RFLink\RFLink::getClass($protocol, $args)){
+						
+							// create it !
+							if($device = $class::createDeviceFromMessage($protocol, $args, $gateway)){
+								$this->logger->info("RFLink: new node ({$class}) from {$line}");
+							} else {
+								$this->logger->error("RFLink: fail to create the node ({$class}) from {$line}");
+							}
+						} else {
+							$this->logger->warn("RFLink: unable to handle the message {$line}");
+						}
+					} else {
+						$this->logger->warn("RFLink: new node from {$line}, rejected because inclusion=false");
+					}
+				}
+				
+				if($device){
+					$device->processMessage($protocol, $args);
+				}
+			
 			} else {
-				$this->logger->warn("RFLink: unable to handle the message {$message}");
+				$this->logger->warn("RFLink: unable to handle the message {$line}, no id.");
 			}
 			
 		}
 		
-		return $r;
 	}
 	
-	//20;06;NewKaku;ID=008440e6;SWITCH=1;CMD=OFF;
-	private function switchMessageHandler($protocol, $attributes){
-		
-		$gateway = $this->gateway;
-		
-		$node = $gateway->getNode(array(
-			'nodeId' => $attributes['ID'],
-			'switchId' => $attributes['SWITCH'],
-			'protocol' => $protocol
-		));
-		
-		if(!$node){
-			// the node does not exist !
-			if($gateway->inclusion){
-				if(!($node = $gateway->addNode('Switch', array(
-					'nodeId' => $attributes['ID'],
-					'switchId' => $attributes['SWITCH'],
-					'protocol' => $protocol,
-					'name' => 'switch-'.$attributes['ID'].'-'.$attributes['SWITCH']
-				))))
-					throw new \Exception("fail to create the node (Switch) nodeId={$attributes['ID']} switchId={$attributes['SWITCH']} protocol={$protocol}");
-				$this->logger->info("RFLink: new node (Switch) nodeId={$attributes['ID']} switchId={$attributes['SWITCH']} protocol={$protocol}");
-			}
-		}
-		
-		if($node){
-			
-			$node->updateSeenDate();
-			
-			$node->storeData(array(
-				'CMD' => $attributes['CMD']
-			));
-			
-		}
-		
-		return $node;
-	}
 	
 	private $lastState_ = false;
 	
@@ -190,7 +209,6 @@ abstract class Controller extends \Stream {
 		if(!$this->isOpened && ($now - $this->lastAutoconnectLoop) > self::AUTOCONNECT_PERIOD ){
 			try{
 				$this->open();
-				$this->logger->info("RFLink: connected");
 				$this->preventFailConnectLog = false;
 			} catch(\Exception $e){
 				if(!$this->preventFailConnectLog) $this->logger->warn("RFLink: unable to connect : {$e->getMessage()}");

@@ -40,6 +40,17 @@
 	}
 	
 	/**
+	 * Return true if a connection to the device is opened
+	 * @memberof EThing.Device.MySensorsGateway
+	 * @this {EThing.Device.MySensorsGateway}
+	 * @returns {boolean}
+	 */
+	EThing.Device.MySensorsGateway.prototype.isConnected = function() {
+	  return !!this._json.connected;
+	}
+	
+	
+	/**
 	 * Constructs a MySensorsEthernetGateway Device instance from an object decribing a MySensorsEthernetGateway device. Should not be called directly. Use instead {@link EThing.list}.
 	 * @protected
 	 * @class The MySensorsEthernetGateway Device resource handle
@@ -245,7 +256,7 @@
 			'method': 'POST',
 			'contentType': "application/json; charset=utf-8",
 			'data': a,
-			'converter': resourceConverter
+			'converter': EThing.resourceConverter
 		},callback).done(function(r){
 			EThing.trigger('ething.device.created',[r]);
 		});
@@ -279,7 +290,7 @@
 			'method': 'POST',
 			'contentType': "application/json; charset=utf-8",
 			'data': a,
-			'converter': resourceConverter
+			'converter': EThing.resourceConverter
 		},callback).done(function(r){
 			EThing.trigger('ething.device.created',[r]);
 		});
@@ -314,7 +325,7 @@
 			'method': 'POST',
 			'contentType': "application/json; charset=utf-8",
 			'data': a,
-			'converter': resourceConverter
+			'converter': EThing.resourceConverter
 		},callback).done(function(r){
 			EThing.trigger('ething.device.created',[r]);
 		});
@@ -348,7 +359,7 @@
 			'method': 'POST',
 			'contentType': "application/json; charset=utf-8",
 			'data': a,
-			'converter': resourceConverter
+			'converter': EThing.resourceConverter
 		},callback).done(function(r){
 			EThing.trigger('ething.device.created',[r]);
 		});

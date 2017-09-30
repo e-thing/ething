@@ -4,14 +4,20 @@
 	background-color: #F8F8F8;
 }
 
-#dashboard .db-init, #dashboard .db-loader {
+#dashboard .db-loader {
 	margin-top: 15px;
 }
 
-#dashboard .db-init img {
-	max-width: 100%;
+#dashboard .db-header-title {
+	font-size: large;
+    font-weight: bold;
+    color: #1abc9c;
 }
 
+#dashboard .db-page-empty {
+	color: #b3b3b3;
+    font-size: 32px;
+}
 
 #dashboard .db-widget-edit {
 	position: absolute;

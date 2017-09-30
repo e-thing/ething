@@ -62,11 +62,10 @@ class Proxy {
 		$parts = explode(":", $headers, 2);
 		
 		// extract status code
-		if(preg_match('/HTTP\/1.\d+ (\d+)/', $headers, $matches)){
+		if(preg_match('/HTTP\/1.\d+ (\d+) (.*)/', $headers, $matches)){
 			
 			$this->response->setHeaders(array()); // remove any previous header set, may happen on redirection
-			$this->response->setStatus($matches[1]);
-			
+			$this->response->setStatus($matches[1], $matches[2]);
 		
 		} else if(count($parts) == 2){
 			
@@ -126,6 +125,7 @@ class Proxy {
 	}
 	
 	// by default, the response content will be in the response object
+	// return false, if the url is not reachable !
 	public function request(Request $request, $stream = null, $user = null, $password = null, $auth_mode = 'basic', $curl_options = null){
 		
 		$this->cancelled = false;
@@ -239,21 +239,23 @@ class Proxy {
 		
 		$result = curl_exec($ch);
 		
+		$error = $result ? false : ("Failed to connect [{$url}]: ".curl_error($ch));
+		
+		curl_close($ch);
+		
 		if($this->stream instanceof Stream){
 			
-			if(!$result){
-				$this->stream->close(404, "Failed to connect [{$url}]: ".curl_error($ch));
+			if($error){
+				$this->stream->close(404, $error);
 			} else {
 				$this->stream->close();
 			}
 			
-		} else if(!$result) {
-			throw new Exception("Failed to connect [{$url}]: ".curl_error($ch),404);
-		}
-
-		curl_close($ch);
+		}/* else if(!$result) {
+			throw new Exception($error,404);
+		}*/
 		
-		return $response;
+		return $error ? false : $response;
 		
 	}
 	

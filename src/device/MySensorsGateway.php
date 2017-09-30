@@ -20,6 +20,11 @@
 	 * 		          "type":"string",
 	 * 		          "description":"The version of the MySensors library used.",
 	 * 		          "readOnly": true
+	 * 		       },
+	 *             "connected": {
+	 * 		          "type":"boolean",
+	 * 		          "description":"Set to true when a connection to that device is opened.",
+	 * 		          "readOnly": true
 	 * 		       }
 	 * 		   }
 	 * 		}
@@ -171,8 +176,18 @@ abstract class MySensorsGateway extends Device
 	// create a new resource
 	protected static function createMySensorsGateway(Ething $ething, array $attributes, array $meta = array(), Resource $createdBy = null) {
 		return parent::createDevice($ething, array_merge(self::$defaultAttr, $attributes), array_merge( array(
-			'libVersion' => null
+			'libVersion' => null,
+			'connected' => false
 		), $meta), $createdBy);
+	}
+	
+	public function setConnectState($connected) {
+		$change = $this->setAttr('connected', boolval($connected));
+		$this->update();
+		
+		if($change){
+			$this->dispatchSignal($connected ? \Ething\Event\DeviceConnected::emit($this) : \Ething\Event\DeviceDisconnected::emit($this));
+		}
 	}
 	
 	public function remove($removeChildren = false) {

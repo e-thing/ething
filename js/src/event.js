@@ -79,7 +79,7 @@
 			events = events.split(' ');
 			for(var i=0; i<events.length; i++){
 				var event = events[i];
-				if(event.length){
+				if(event.length && event_map[event]){
 					if(typeof handler == 'function'){
 						for(var j=0; j<event_map[event].length; j++){
 							if(event_map[event][j]===handler){

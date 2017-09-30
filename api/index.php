@@ -2656,19 +2656,29 @@ $app->post('/devices', $auth->permissions('device:write resource:write'),
 					throw new \Utils\Exception('the gateway attribute is mandatory');
 				$gateway = Utils\getResource($auth, $data['gateway'], 'Device\\MySensors.+Gateway');
 				unset($data['gateway']);
-				
-				$r = $gateway->addNode($data);
+				if($gateway) $r = $gateway->addNode($data);
 				break;
 			case 'Device\\MySensorsSensor':
 				if(empty($data['node']))
 					throw new \Utils\Exception('the node attribute is mandatory');
 				$node = Utils\getResource($auth, $data['node'], 'Device\\MySensorsNode');
 				unset($data['node']);
-				
-				$r = $node->addSensor($data);
+				if($node) $r = $node->addSensor($data);
 				break;
 			default:
-				$r = $ething->create($type,$data,$auth->originator());
+			
+				if( strpos($type, 'RFLink') !== -1 &&  strpos($type, 'Gateway') === -1 ){
+					// RFLink nodes !
+					if(empty($data['gateway']))
+						throw new \Utils\Exception('the gateway attribute is mandatory');
+					$gateway = Utils\getResource($auth, $data['gateway'], 'Device\\RFLink.+Gateway');
+					unset($data['gateway']);
+					if($gateway) $r = $gateway->addNode($type, $data);
+				} else {
+					// default behaviour !
+					$r = $ething->create($type,$data,$auth->originator());
+				}
+				
 				break;
 		}
 		
@@ -3052,7 +3062,39 @@ $app->get('/devices/:id/specification', $auth->permissions('device:read resource
 
 
 
-
+/**
+ * @swagger-path
+ * "/devices/{id}/subscription":{  
+ *      "get":{
+ *         "tags": ["device"],
+ *         "description":"Only available for MQTT device. Retrieves the subscribed topics of a device.",
+ *         "parameters":[  
+ *            {  
+ *               "name":"id",
+ *               "in":"path",
+ *               "description":"id of the resource. Devices or Apps using the api key authentication may use the word 'me' to replace their id.",
+ *               "required":true,
+ *               "type":"string"
+ *            }
+ *         ],
+ *         "produces":["application/json"],
+ *         "responses":{
+ *            "200":{
+ *               "description":"The subscribed topics of this device."
+ *            }
+ *         }
+ *      }
+ *   }
+ */
+$app->get('/devices/:id/subscription', $auth->permissions('device:read resource:read'),
+    function ($id) use ($app,$auth) {
+		$r = Utils\getResource($auth, $id, 'Device\\MQTT');
+		$app->lastModified($r->modifiedDate);
+		$spec = $r->getSubscription();
+		$app->contentType('application/json');
+		echo json_encode($spec,JSON_PRETTY_PRINT|JSON_UNESCAPED_SLASHES);
+    }
+);
 
 
 

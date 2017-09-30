@@ -7,7 +7,8 @@
 	"phpmailer/phpmailer": "~5.2",
 	"firebase/php-jwt": "3.*",
 	"mtdowling/cron-expression": "~1.1",
-    "mongodb/mongodb": "^1.1"
+    "mongodb/mongodb": "^1.1",
+    "flow/jsonpath": "^0.3.4"
   },
   "authors": [
     {

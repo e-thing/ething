@@ -42,8 +42,8 @@
 					}
 				});
 				
-				this.update = function(){
-					$template.tableViewer('reload');
+				this.update = function(evt,updatedKeys){
+					if(updatedKeys.indexOf('contentModifiedDate')!==-1) $template.tableViewer('reload');
 				};
 				
 				table.on('updated', this.update);

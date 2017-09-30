@@ -28,7 +28,7 @@ class Client extends \Stream {
 	public function __construct(MQTT $device, $cleanSession = false) {
 		$this->status = "disconnected";
 		$this->device = $device;
-		$this->subscribeMode = isset($this->device->topic);
+		$this->subscribeMode = !empty($this->device->getSubscription());
 		
 		$this->mqttClient = new phpMQTT($this->device->host, $this->device->port, (string)$this->device->id());
 		$this->mqttClient->keepalive = self::KEEPALIVE;
@@ -39,8 +39,10 @@ class Client extends \Stream {
 	public function processMessage($topic, $message) {
 		$this->logger->debug("MQTT: new message for topic {$topic}");
 		try {
-			$this->device->processMessage($topic, $message);
-		} catch (\Exception $e) {} // skip any error
+			$this->device->processPayload($topic, $message);
+		} catch (\Exception $e) {
+			$this->logger->error($e);
+		} // skip any error
 	}
 	
 	public function reset(){
@@ -69,21 +71,24 @@ class Client extends \Stream {
 			
 			$this->logger->info("MQTT: connected");
 			
-			if(isset($this->device->topic)){
-				$this->logger->info("MQTT: subscribing to {$this->device->topic}");
-				
-				$topics = array();
-				$topics[$this->device->topic] = array("qos"=>0, "function"=>array($this, 'processMessage'));
+			$this->device->updateSeenDate();
+			$this->device->setConnectState(true);
+			
+			// subscribe
+			$topics = array();
+			foreach($this->device->getSubscription() as $item){
+				$topic = $item['topic'];
+				$this->logger->info("MQTT: subscribing to {$topic}");
+				$topics[$topic] = array("qos"=>0, "function"=>array($this, 'processMessage'));
+			}
+			if(!empty($topics)){
 				$this->mqttClient->subscribe($topics,0);
-				
 				$this->stream = $this->mqttClient->getSocket();
-				
 				$this->logger->info("MQTT: subscribed");
 			}
 			
-			$this->device->updateSeenDate();
-			
 			$this->status = "connected";
+			
 			return true;
 		}
 		
@@ -96,6 +101,7 @@ class Client extends \Stream {
 			$this->mqttClient->close();
 			$this->stream = null;
 			$this->status = "disconnected";
+			$this->device->setConnectState(false);
 		}
 	}
 	
@@ -128,6 +134,7 @@ class Client extends \Stream {
 				
 				$this->stream = null;
 				$this->status = "disconnected";
+				$this->device->setConnectState(false);
 				$this->lastAutoconnectLoop = 0;
 				// auto reconnect as soon as possible
 			}

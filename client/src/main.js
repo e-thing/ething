@@ -19,11 +19,11 @@
 				"widget": "../widgets",
 				"deviceWidget": "../widgets/devices",
 				
-				'ething' : '../../../js/ething',
+				'ething' : '../../../js/ething.min',
 				
 				'config' : '../../config',
 				
-				"jquery": "//ajax.googleapis.com/ajax/libs/jquery/2.1.4/jquery",
+				"jquery": "//ajax.googleapis.com/ajax/libs/jquery/2.1.4/jquery.min",
 				"jquery-mobile-events": "jquery.mobile.events.min",
 				
 				'jquery.mousewheel': '//cdnjs.cloudflare.com/ajax/libs/jquery-mousewheel/3.1.13/jquery.mousewheel.min',
@@ -63,7 +63,7 @@
 				
 				'jquery.gridster': 'jquery.gridster',
 				
-				'mqttws': '//cdnjs.cloudflare.com/ajax/libs/paho-mqtt/1.0.1/mqttws31',
+				'mqttws': '//cdnjs.cloudflare.com/ajax/libs/paho-mqtt/1.0.1/mqttws31.min',
 				
 				'urijs': '//cdnjs.cloudflare.com/ajax/libs/URI.js/1.18.12',
 				
@@ -124,10 +124,11 @@
 		
 		
         // AMD. Register as an anonymous module.
-        define(['ething', 'jquery'], factory);
+        define(['ething', 'jquery', 'json!config.json'], factory);
     }
-}(this, function (EThing, $) {
+}(this, function (EThing, $, config) {
 	
+	console.log(config);
 	
 	console.log('loading main.js');
 	
@@ -147,10 +148,8 @@
 	var parser = document.createElement('a');
 	parser.href = '.';
 	var clientUrl = parser.href.replace(/\/$/,'');
-	parser.href = '../api';
+	parser.href = config.apiUrl || '../api';
 	var apiUrl = parser.href.replace(/\/$/,'');
-	
-	
 	
 	
 	

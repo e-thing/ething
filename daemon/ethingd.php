@@ -1,10 +1,10 @@
 <?php
 declare(ticks = 1);
 
-require_once 'Log.php';
-require_once 'PoolStream.php';
-require_once 'TaskManager.php';
-require_once 'Timer.php';
+require_once __DIR__.'/Log.php';
+require_once __DIR__.'/PoolStream.php';
+require_once __DIR__.'/TaskManager.php';
+require_once __DIR__.'/Timer.php';
 
 Log::setLevel(Log::INFO);
 Log::info("daemon started");

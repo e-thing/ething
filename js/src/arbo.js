@@ -85,7 +85,7 @@
 		var l = this.find(),
 			t = null;
 		for(var i=0; i<l.length; i++){
-			if (t===null || t < l[i].createdDate())
+			if (t===null || t > l[i].createdDate())
 				t = l[i].createdDate();
 		}
 		return t;
@@ -96,7 +96,7 @@
 		var l = this.find(),
 			t = null;
 		for(var i=0; i<l.length; i++){
-			if (t===null || t > l[i].modifiedDate())
+			if (t===null || t < l[i].modifiedDate())
 				t = l[i].modifiedDate();
 		}
 		return t;

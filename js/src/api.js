@@ -354,7 +354,7 @@
 	}
 	
 	// if the argument is a json object describing a resource, then it converts it into a Resource instance, else it returns the object unchanged
-	var resourceConverter = function(data, xhr){
+	EThing.resourceConverter = function(data, xhr){
 		
 		if(typeof data == 'object' && data !== null){
 			
@@ -861,6 +861,7 @@
 	 * Remove this resource.
 	 * @memberof EThing.Resource
 	 * @this {EThing.Resource}
+	 * @param {Boolean} [removeChildren] When true, the children are also removed. Default to false.
 	 * @param {function(data,XHR,options)} [callback] it is executed once the request is complete whether in failure or success
 	 * @returns {EThing.Resource} The instance on which this method was called.
 	 * @fires EThing#ething.resource.removed
@@ -869,7 +870,7 @@
 	 *   // the resource was successfully removed
 	 * });
 	 */
-	EThing.Resource.prototype.remove = function(callback){
+	EThing.Resource.prototype.remove = function(removeChildren, callback){
 		return this.deferred(function(){
 				return EThing.Resource.remove(this, callback);
 			});
@@ -979,7 +980,7 @@
 			'url': '/resources?' + EThing.utils.param({'q':query}),
 			'method': 'GET',
 			'dataType': 'json',
-			'converter': resourceConverter
+			'converter': EThing.resourceConverter
 		},callback);
 	};
 	
@@ -1013,7 +1014,7 @@
 	/*
 	Resource,callback
 	*/
-	EThing.Resource.remove = function(a,b)
+	EThing.Resource.remove = function(a,removeChildren,callback)
 	{
 		var context;
 		if(a instanceof EThing.Resource){
@@ -1025,10 +1026,13 @@
 			return;
 		}
 		
-		var callback = b;
+		if(arguments.length==2 && typeof removeChildren === 'function'){
+			callback = removeChildren;
+			removeChildren = false;
+		}
 		
 		return EThing.request({
-			'url': '/resources/' + a,
+			'url': '/resources/' + a + '?' + EThing.utils.param({'children':removeChildren}),
 			'method': 'DELETE',
 			'context': context
 		},callback).done(function(){
@@ -1068,7 +1072,7 @@
 			'dataType': 'json',
 			'method': 'GET',
 			'context': context,
-			'converter': resourceConverter
+			'converter': EThing.resourceConverter
 		},callback);
 	};
 	
@@ -1105,7 +1109,7 @@
 			'headers': {
 				"X-HTTP-Method-Override": "PATCH"
 			},
-			'converter': resourceConverter
+			'converter': EThing.resourceConverter
 		},callback);
 	};
 	

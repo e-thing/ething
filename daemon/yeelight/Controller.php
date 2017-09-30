@@ -12,7 +12,7 @@ class Controller extends \Stream {
 	
 	const AUTOCONNECT_PERIOD = 60; // seconds	
 	const RESPONSE_TIMEOUT = 10; // seconds	
-	const NOACTIVITY_DELAY = 300; // seconds
+	const CONNECT_TIMEOUT = 2; // seconds	
 	
 	
 	public $device = null;
@@ -62,7 +62,7 @@ class Controller extends \Stream {
 		$device = $this->device;
 		$host = $device->get('host');
 		
-		$stream = @stream_socket_client("tcp://".$host.':55443', $errno, $errstr, 10);
+		$stream = @stream_socket_client("tcp://".$host.':55443', $errno, $errstr, self::CONNECT_TIMEOUT);
 		if($stream === false)
 			throw new \Exception("Yeelight: unable to connect to the device {$host} : {$errstr}");
 		
@@ -75,6 +75,8 @@ class Controller extends \Stream {
 		
 		$this->isOpened = true;
 		$this->logger->info("Yeelight: connected to {$host}");
+		
+		$device->setConnectState(true);
 		
 		return true;
 	}
@@ -141,6 +143,7 @@ class Controller extends \Stream {
 			$this->stream = null;
 			$this->isOpened = false;
 			$this->lastAutoconnectLoop = 0;
+			$this->device->setConnectState(false);
 			$this->logger->info("Yeelight: closed");
 		}
 		return !$this->isOpened;

@@ -3,10 +3,10 @@
 namespace Ething\Event;
 
 
-class DeviceUnreachable extends AbstractResourceEvent {
+class DeviceReachable extends AbstractResourceEvent {
 	
 	static public function emit(\Ething\Device\Device $resource){
-		return new Signal('DeviceUnreachable', array(
+		return new Signal('DeviceReachable', array(
 			'resource' => $resource->id()
 		));
 	}

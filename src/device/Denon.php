@@ -16,6 +16,11 @@
 	 *             "host": {
 	 * 		          "type":"string",
 	 * 		          "description":"The ip address of the device to connect to."
+	 * 		       },
+	 *             "reachable": {
+	 * 		          "type":"boolean",
+	 * 		          "description":"Set to false when the device is unreachable.",
+	 * 		          "readOnly": true
 	 * 		       }
 	 * 		   }
 	 * 		}
@@ -164,6 +169,12 @@ class Denon extends Device
 		
 		$response = Proxy::get($this->ething, $url);
 		
+		$this->setReachableState($response);
+		
+		if(!$response){
+			return false;
+		}
+		
 		if($response->isSuccessful()){
 			
 			$deviceInfo = new \SimpleXMLElement($response->body);
@@ -185,8 +196,13 @@ class Denon extends Device
 		
 		$response = Proxy::get($this->ething, $url);
 		
+		$this->setReachableState($response);
+		
+		if(!$response){
+			return false;
+		}
+		
 		if($response->isSuccessful()){
-			
 			$xml = new \SimpleXMLElement($response->body);
 			
 			return array(
@@ -207,6 +223,12 @@ class Denon extends Device
 		
 		$response = Proxy::get($this->ething, $url);
 		
+		$this->setReachableState($response);
+		
+		if(!$response){
+			return false;
+		}
+		
 		return $response->isSuccessful();
 	}
 	
@@ -216,6 +238,12 @@ class Denon extends Device
 		
 		$response = Proxy::get($this->ething, $url);
 		
+		$this->setReachableState($response);
+		
+		if(!$response){
+			return false;
+		}
+				
 		return $response->isSuccessful();
 	}
 	
@@ -224,6 +252,12 @@ class Denon extends Device
 		$url->concatPath('/NetAudio/art.asp-jpg');
 		
 		$response = Proxy::get($this->ething, $url, $stream);
+		
+		$this->setReachableState($response);
+		
+		if(!$response){
+			return false;
+		}
 		
 		return $response->isSuccessful();
 	}
@@ -259,6 +293,12 @@ class Denon extends Device
 		
 		$response = Proxy::get($this->ething, $url, $stream);
 		
+		$this->setReachableState($response);
+		
+		if(!$response){
+			return false;
+		}
+		
 		return $response->isSuccessful();
 	}
 	
@@ -292,6 +332,14 @@ class Denon extends Device
 		
 		$response = Proxy::post($this->ething, $url, $body, array(), $stream);
 		
+		$this->setReachableState($response);
+		
+		if(!$response){
+			return false;
+		}
+		
+		return $response->isSuccessful();
+		
 	}
 	
 	
@@ -302,29 +350,34 @@ class Denon extends Device
 		
 		$result = Net::ping($url_info['host'], $timeout);
 		$online = ($result!==false);
-		$previousState = boolval($this->getAttr('_ping'));
-		if($previousState != $online){
-			// the state changed
-			if(!$online){
-				// this device has been disconnected !
-				$this->dispatchSignal(\Ething\Event\DeviceUnreachable::emit($this));
-			}
-			$this->setAttr('_ping', $online);
-		}
 		
-		if($online){
-			$this->updateSeenDate();
-		}
+		$this->setReachableState($online);
 
 		return $result;
 	}
 	
-	
+	protected function setReachableState($reachable){
+		
+		$change = $this->setAttr('reachable', boolval($reachable));
+		
+		if($reachable){
+			$this->updateSeenDate();
+		} else {
+			$this->update();
+		}
+		
+		if($change){
+			$this->dispatchSignal($reachable ? \Ething\Event\DeviceReachable::emit($this) : \Ething\Event\DeviceUnreachable::emit($this));
+		}
+		
+	}
 	
 	
 	// create a new resource
 	public static function create(Ething $ething, array $attributes, Resource $createdBy = null) {
-		return parent::createDevice($ething, array_merge(self::$defaultAttr, $attributes), array(), $createdBy);
+		return parent::createDevice($ething, array_merge(self::$defaultAttr, $attributes), array(
+			'reachable' => false
+		), $createdBy);
 	}
 	
 	

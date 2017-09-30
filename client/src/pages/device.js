@@ -498,7 +498,7 @@
 				}
 			}
 		}, function(){
-			return ["name","type","id","createdBy","createdDate","modifiedDate","lastSeenDate","size","mime","length","maxLength","expireAfter","battery","location","url","version","revision","build","isMetric","libVersion","transport","nodeId","sensorId","sensorType","sketchName","sketchVersion","smartSleep","topic","public","inclusion"].indexOf(this.name) >= 0;
+			return ["name","type","id","createdBy","createdDate","modifiedDate","lastSeenDate","size","mime","length","maxLength","expireAfter","battery","location","url","version","revision","build","isMetric","libVersion","transport","nodeId","sensorId","sensorType","sketchName","sketchVersion","smartSleep","topic","public","inclusion","protocol","switchId"].indexOf(this.name) >= 0;
 		});
 		var $detail = $element.find('[data-role="detail"]');
 		for(var i in props){
@@ -532,6 +532,14 @@
 				
 				$element.append(item.$element);
 				
+			},
+			
+			destroy: function(){
+				this.items.forEach(function(item){
+					item.destroy();
+				});
+				this.items = [];
+				$element.empty();
 			}
 			
 		};
@@ -559,7 +567,12 @@
 				return $element.find('.d-contentpanel-item-content').html(content);
 			},
 			
-			draw: function(){ /* to be implemented */ }
+			draw: function(){ /* to be implemented */ },
+			
+			destroy: function(){
+				this.$element.remove();
+				this.$element = null;
+			}
 			
 		};
 	}
@@ -597,19 +610,35 @@
 				
 				this.setTitle('Data');
 				
-				var data = device.data(), $rows = [];
-				
-				for(var k in data){
+				function update(){
+					var data = device.data(), $rows = [];
 					
-					$rows.push( $('<div class="row">').append(
-						'<div class="col-sm-4">'+k+'</div>',
-						'<div class="col-sm-8">'+data[k]+'</div>'
-					) );
+					for(var k in data){
+						
+						$rows.push( $('<div class="row">').append(
+							'<div class="col-sm-4">'+k+'</div>',
+							'<div class="col-sm-8">'+data[k]+'</div>'
+						) );
+						
+					}
 					
+					this.setContent($('<div class="container-fluid">').html($rows));
 				}
 				
-				this.setContent($('<div class="container-fluid">').html($rows));
+				update.call(this);
 				
+				this.onResourceUpdate = $.proxy(function(evt,updatedKeys){
+					if(updatedKeys.indexOf('data')!==-1) update.call(this);
+				}, this);
+				
+				device.on('updated', this.onResourceUpdate)
+			},
+			
+			destroy: function(){
+				contentpanelItem.destroy.call(this);
+				if(this.onResourceUpdate){
+					device.off('updated', this.onResourceUpdate);
+				}
 			}
 			
 		});
@@ -837,19 +866,25 @@
 		return $.extend({}, contentpanelItem, {
 			
 			draw: function(){
-				
-				var $view = $('<div>');
-				
-				this.setContent($view);
+				var self = this;
 				
 				WidgetCollection.instanciateDeviceWidget(device).done(function(widget, name){
+					var $view = $('<div>');
+					self.setContent($view);
 					widget.$element.addClass('db-widget-type-'+name.replace('/','-'));
 					$view.append($('<div class="db-widget-wrapper">').html(widget.$element));
 					widget.draw();
+					self.widget = widget;
 				}).fail(function(err){
 					console.error(err);
+					self.destroy();
 				});
 				
+			},
+			
+			destroy: function(){
+				contentpanelItem.destroy.call(this);
+				if(self.widget) self.widget.destroy();
 			}
 			
 		});
@@ -1219,6 +1254,8 @@
 					
 				};
 				
+				this.contentpanel = contentpanel;
+				
 				
 			} else {
 				UI.show404();
@@ -1228,7 +1265,7 @@
 		},
 		
 		deleteView: function(){
-			
+			if(this.contentpanel) this.contentpanel.destroy();
 		}
 	};
 	

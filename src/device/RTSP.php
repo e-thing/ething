@@ -21,6 +21,11 @@
 	 * 		          "type":"string",
 	 * 		          "description": "Lower transport protocol. Allowed values are the ones defined for the flags for rtsp_transport (see https://libav.org/avconv.html).",
 	 * 		          "enum":["tcp","udp","http"]
+	 * 		       },
+	 *             "reachable": {
+	 * 		          "type":"boolean",
+	 * 		          "description":"Set to false when the device is unreachable.",
+	 * 		          "readOnly": true
 	 * 		       }
 	 * 		   }
 	 * 		}
@@ -136,12 +141,9 @@ class RTSP extends Device
 		
 		$output = shell_exec($cmd);
 		
-		if(empty($output)){
-			return false;
-		} else {
-			$this->updateSeenDate();
-			return $output;
-		}
+		$this->setReachableState(empty($output));
+		
+		return empty($output) ? false : $output;
 	}
 	
 	public function stream(Stream $stream, $format = 'flv', $duration = 0){
@@ -168,6 +170,8 @@ class RTSP extends Device
 		
 		$fp = popen($cmd, "r");
 		
+		$this->setReachableState($fp);
+		
 		if(!$fp) return false;
 		
 		$stream->contentType($contentType);
@@ -183,16 +187,18 @@ class RTSP extends Device
 	}
 	
 	public function streamInfo(){
-		$cmd = "avprobe -show_format -show_streams -of json {$this->url}";
+		$cmd = "avprobe -show_format -show_streams -of json {$this->url} 2>/dev/null";
 		
-		$output = shell_exec($cmd);
+		exec($cmd, $output, $returnCode);
 		
-		if(empty($output)){
-			return false;
-		} else {
-			$info = \json_decode($output, true);
+		$this->setReachableState($returnCode===0);
+		
+		if($returnCode===0){
+			$info = \json_decode(implode('', $output), true);
 			return \json_last_error() === JSON_ERROR_NONE ? $info : false;
 		}
+		
+		return false;
 	}
 	
 	public function sendStream($sendHeader = false){
@@ -213,28 +219,33 @@ class RTSP extends Device
 		
 		$result = Net::ping($url_info['host'], $timeout);
 		$online = ($result!==false);
-		$previousState = boolval($this->getAttr('_ping'));
-		if($previousState != $online){
-			// the state changed
-			if(!$online){
-				// this device has been disconnected !
-				$this->dispatchSignal(\Ething\Event\DeviceUnreachable::emit($this));
-			}
-			$this->setAttr('_ping', $online);
-		}
 		
-		if($online){
-			$this->updateSeenDate();
-		}
+		$this->setReachableState($online);
 
 		return $result;
 	}
 	
-	
+	protected function setReachableState($reachable){
+		
+		$change = $this->setAttr('reachable', boolval($reachable));
+		
+		if($reachable){
+			$this->updateSeenDate();
+		} else {
+			$this->update();
+		}
+		
+		if($change){
+			$this->dispatchSignal($reachable ? \Ething\Event\DeviceReachable::emit($this) : \Ething\Event\DeviceUnreachable::emit($this));
+		}
+		
+	}
 	
 	// create a new resource
 	public static function create(Ething $ething, array $attributes, Resource $createdBy = null) {
-		return parent::createDevice($ething, array_merge(self::$defaultAttr, $attributes), array(), $createdBy);
+		return parent::createDevice($ething, array_merge(self::$defaultAttr, $attributes), array(
+			'reachable' => false
+		), $createdBy);
 	}
 	
 	

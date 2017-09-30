@@ -49,6 +49,11 @@ Default to an empty string (no access).
 	 * 		          "type":"string",
 	 * 		          "description":"The apikey for authenticating this device.",
 	 * 		          "readOnly": true
+	 * 		       },
+	 *             "reachable": {
+	 * 		          "type":"boolean",
+	 * 		          "description":"Set to false when the device is unreachable.",
+	 * 		          "readOnly": true
 	 * 		       }
 	 * 		   }
 	 * 		}
@@ -346,12 +351,16 @@ class Http extends Device
 		$proxy = new Proxy($this->ething);
 		$proxy->onResponse(function() use ($device){
 			// on response
-			$device->updateSeenDate();
+			$device->setReachableState(true);
 		});
 		$curl_options = array();
 		if(isset($options['timeout']))
 			$curl_options[CURLOPT_TIMEOUT] = $options['timeout'];
-		return $proxy->request($request, $stream, $this->authUser(), $this->authPassword(), $this->authMode(), $curl_options);
+		$response = $proxy->request($request, $stream, $this->authUser(), $this->authPassword(), $this->authMode(), $curl_options);
+		
+		if(!$response) $this->setReachableState(false); // host not reachable
+		
+		return $response;
 	}
 	
 	public function ping($timeout = 1) {
@@ -362,30 +371,34 @@ class Http extends Device
 		
 		$result = Net::ping($url_info['host'], $timeout);
 		$online = ($result!==false);
-		$previousState = boolval($this->getAttr('_ping'));
-		if($previousState != $online){
-			// the state changed
-			if(!$online){
-				// this device has been disconnected !
-				$this->dispatchSignal(\Ething\Event\DeviceUnreachable::emit($this));
-			}
-			$this->setAttr('_ping', $online);
-		}
 		
-		if($online){
-			$this->updateSeenDate();
-		}
+		$this->setReachableState($online);
 
 		return $result;
 	}
 	
-	
+	protected function setReachableState($reachable){
+		
+		$change = $this->setAttr('reachable', boolval($reachable));
+		
+		if($reachable){
+			$this->updateSeenDate();
+		} else {
+			$this->update();
+		}
+		
+		if($change){
+			$this->dispatchSignal($reachable ? \Ething\Event\DeviceReachable::emit($this) : \Ething\Event\DeviceUnreachable::emit($this));
+		}
+		
+	}
 	
 	
 	// create a new resource
 	public static function create(Ething $ething, array $attributes, Resource $createdBy = null) {
 		return parent::createDevice($ething, array_merge(self::$defaultAttr, $attributes), array(
-			'#apikey' => ApiKey::generate()
+			'#apikey' => ApiKey::generate(),
+			'reachable' => false
 		), $createdBy);
 	}
 	
@@ -425,7 +438,7 @@ class Http extends Device
 			
 			$response = Proxy::post($ething, 'http://online.swagger.io/validator/debug', json_encode($swagger), array("Content-type" => "application/json", "Expect" => ""));
 			
-			if(!$response->isSuccessful())
+			if(!$response || !$response->isSuccessful())
 				throw new Exception('unable to reach http://online.swagger.io/validator/debug',500);
 			
 			// the response must be valid JSON data containing an array of errors
