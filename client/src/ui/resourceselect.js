@@ -146,7 +146,8 @@
 			liveSearchNormalize: true,
 			liveSearchPlaceholder: 'filter',
 			noneSelectedText: 'no resource selected',
-			countSelectedText: '{0} resources selected'
+			countSelectedText: '{0} resources selected',
+			size: false
 		});
 		
 		this.$select.on('changed.bs.select', function(e,clickedIndex, select){
@@ -285,7 +286,7 @@
 		
 		if(currentValue!==null) this.value(currentValue);
 		
-		this.$select.closest('.bootstrap-select').find('.bs-searchbox').toggle( resources.length > 20 );
+		this.$select.closest('.bootstrap-select').find('.bs-searchbox').toggle( resources.length > 40 );
 		
 		var $ddmenu = this.$select.closest('.bootstrap-select').children('.dropdown-menu');
 		$ddmenu.children('.bs-empty').remove();
@@ -327,7 +328,7 @@
 						icon = 'flash';
 					else
 						icon = 'asterisk';
-					extra += ' <span class="createdBy hidden-xs"><span class="glyphicon glyphicon-'+icon+'" aria-hidden="true"></span> '+createdByRess.name()+'</span>';
+					extra += ' <span class="createdBy"><span class="glyphicon glyphicon-'+icon+'" aria-hidden="true"></span> '+createdByRess.name()+'</span>';
 				}
 			}
 		}

@@ -38,7 +38,7 @@ class EthernetController extends Controller {
 		$this->buffer = '';
 		parent::open();
 		
-		$this->logger->info("MySensors[ethernet]: opened at {$address}");
+		\Log::info("MySensors[ethernet]: opened at {$address}");
 		
 		return true;
 	}
@@ -75,7 +75,7 @@ class EthernetController extends Controller {
 						$this->processMessage($message);
 					} catch (\Exception $e) {
 						// skip the line
-						$this->logger->warn("MySensors[ethernet]: unable to handle the message {$line}");
+						\Log::warn("MySensors[ethernet]: unable to handle the message {$line}");
 						continue;
 					}
 					
@@ -89,7 +89,7 @@ class EthernetController extends Controller {
 		parent::update();
 		
 		if($this->isOpened && time() - $this->lastActivity > self::NOACTIVITY_DELAY){
-			$this->logger->warn("MySensors[ethernet]: no activity detected, heartbeat sent");
+			\Log::warn("MySensors[ethernet]: no activity detected, heartbeat sent");
 			$this->send(new Message(MySensors::GATEWAY_ADDRESS, MySensors::INTERNAL_CHILD, MySensors::INTERNAL, MySensors::NO_ACK, MySensors::I_HEARTBEAT_REQUEST));
 		}
 	}

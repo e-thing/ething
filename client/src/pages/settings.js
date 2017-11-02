@@ -319,7 +319,8 @@
 							'in': function(v){
 								return !!v;
 							}
-						}
+						},
+						value: false
 					})
 				},{
 					name: 'level',
@@ -406,7 +407,11 @@
 		
 		
 		require(['bootstrap-select'], function(){
-			$('#log-filter').selectpicker({});
+			$('#log-filter').selectpicker({
+				countSelectedText: function(){
+					return 'no filter';
+				}
+			});
 		});
 		
 		$('#log-filter').change(function(){
@@ -434,16 +439,29 @@
 		
 		$('#log-reload').click(loadLog);
 		
+		
+		$('#log-length li>a').click(function(evt){
+			evt.preventDefault();
+			$('#log-length .value').text($(this).text());
+		}).first().click();
+		
+		
+		
 		function loadLog(){
 			// load the log
 			
+			var length = $('#log-length .value').text();
+			if(length != 'all') length = 'line=' + length + '&';
+			else length = '';
+			
+			
 			var $loading = $('<tr>').html('<td>loading...</td>').prependTo($('#log tbody').empty());
 			
-			$.get('../tools/readLog.php?line=100&ts='+Math.floor(Date.now() / 1000), function(data){
+			$.get('../tools/readLog.php?'+length+'ts='+Math.floor(Date.now() / 1000), function(data){
 				
 				var $body = $('#log tbody').empty();
 				
-				data.split("\n").reverse().forEach(function(line){
+				data.split("\n").forEach(function(line){
 					var d = line.split(' ');
 					if(d.length>=6){
 						var date = d[0]+' '+d[1],

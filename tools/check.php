@@ -59,6 +59,15 @@ function check_curl_plugin(){
 		return $curlVersion;
 }
 
+function check_ssh_plugin(){
+
+	if(!extension_loaded('ssh2')){
+		throw new Exception('The ssh2 PHP extension is not installed');
+	}
+	
+	return true;
+}
+
 function check_gd_plugin(){
 	if(!(extension_loaded('gd') && function_exists('gd_info'))){
 		throw new Exception('The GD PHP library is not installed');
@@ -232,6 +241,10 @@ $tests = array(
 	array(
 		'name' => 'curl PHP plugin',
 		'fct' => 'check_curl_plugin'
+	),
+	array(
+		'name' => 'ssh2 PHP plugin',
+		'fct' => 'check_ssh_plugin'
 	),
 	array(
 		'name' => 'GD PHP library',

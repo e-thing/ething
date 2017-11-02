@@ -1,7 +1,7 @@
 {
   "name": "e-thing/ething",
   "require": {
-    "php": ">=5.3.2",
+    "php": "^5.3.2",
 	"ircmaxell/random-lib": "~1.1",
 	"slim/slim": "2.*",
 	"phpmailer/phpmailer": "~5.2",

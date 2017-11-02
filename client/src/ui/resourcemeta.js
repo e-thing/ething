@@ -17,6 +17,8 @@
 			'(\\#[-a-z\\d_]*)?$','i'); // fragment locator
 	
 	
+	var RFLink_protocols = ["X10","Kaku","AB400D","Waveman","EMW200","Impuls","RisingSun","Philips","Energenie","Energenie5","GDR2","NewKaku","HomeEasy","Anslut","Kambrook","Ikea Koppla","PT2262","Lightwave","EMW100","BSB","MDRemote","Conrad","Livolo","TRC02RGB","Aoke","TRC022RGB","Eurodomest","Livolo App","Blyss","Byron","Byron MP","SelectPlus","Doorbell","FA20RF","Chuango","Plieger","SilverCrest","Mertik","HomeConfort","Powerfix","TriState","Deltronic","FA500","HT12E","EV1527","Elmes","Aster","Sartano","Europe","Avidsen","BofuMotor","BrelMotor","RTS","ElroDB","Dooya","Unitec","Maclean","R546","Diya","X10Secure","Atlantic","SilvercrestDB","MedionDB","VMC","Keeloq","CustomSwitch","GeneralSwitch","Koch","Kingpin","Funkbus","Nice","Forest","MC145026","Lobeco","Friedland","BFT","Novatys","Halemeier","Gaposa","MiLightv1","MiLightv2","HT6P20","Doitrand","Warema","Ansluta","Livcol","Bosch","Ningbo","Ditec","Steffen","AlectoSA","GPIOset","KonigSec","RM174RF","Liwin","YW_Secu","Mertik_GV60","Ningbo64","X2D","HRCMotor","Velleman","RFCustom","YW_Sensor","LEGRANDCAD","SysfsGpio"].sort();
+	
 	var properties = [
 		
 		/*
@@ -290,7 +292,7 @@
 		{
 			name: "auth",
 			label: 'authentication',
-			onlyForType: ['Device\\MQTT'],
+			onlyForType: ['Device\\MQTT', 'Device\\SSH'],
 			formatter: function(v){
 				if(v){
 					return v.user+':***';
@@ -761,17 +763,36 @@
 			onlyForType: ['Device\\RFLink.*Gateway']
 		},
 		{
-			name: "protocol",
-			onlyForType: ['Device\\RFLinkSwitch', 'Device\\RFLinkThermometer', 'Device\\RFLinkWeatherStation', 'Device\\RFLinkMultimeter'],
+			name: "subType",
+			onlyForType: ['Device\\RFLinkNode'],
 			editable: function(){
-				return new $.Form.Text({
+				return new $.Form.Select({
+					items: [
+						'switch',
+						'door',
+						'motion',
+						'thermometer',
+						'weatherStation',
+						'multimeter'
+					],
+					validators: [$.Form.validator.NotEmpty]
+				});
+			}
+		},
+		{
+			name: "protocol",
+			onlyForType: ['Device\\RFLinkNode'],
+			editable: function(){
+				return new $.Form.Select({
+					items: RFLink_protocols,
+					editable: true,
 					validators: [$.Form.validator.NotEmpty]
 				});
 			}
 		},
 		{
 			name: "nodeId",
-			onlyForType: ['Device\\RFLinkSwitch', 'Device\\RFLinkThermometer', 'Device\\RFLinkWeatherStation', 'Device\\RFLinkMultimeter'],
+			onlyForType: ['Device\\RFLinkNode'],
 			editable: function(){
 				return new $.Form.Text({
 					validators: [$.Form.validator.NotEmpty]
@@ -780,7 +801,7 @@
 		},
 		{
 			name: "switchId",
-			onlyForType: ['Device\\RFLinkSwitch'],
+			onlyForType: ['Device\\RFLinkNode'],
 			editable: function(){
 				return new $.Form.Text({
 					validators: [$.Form.validator.NotEmpty]
@@ -1089,14 +1110,29 @@
 		},
 		{
 			name: "host",
-			onlyForType: ['Device\\Denon', 'Device\\Yeelight.*'],
+			onlyForType: ['Device\\Denon', 'Device\\Yeelight.*', 'Device\\SSH'],
 			editable:function(){
 				return new $.Form.LocalIpSelect({
 					validators: [$.Form.validator.NotEmpty],
 					placeholder: "IP address"
 				});
 			},
-			description: 'The IP address of the device.'
+			description: 'The IP address or hostname of the device.'
+		},
+		{
+			name: "port",
+			onlyForType: ['Device\\SSH'],
+			default: 22,
+			editable:function(){
+				return new $.Form.Number({
+					validators: [$.Form.validator.Integer],
+					placeholder: "port",
+					value: 1883,
+					minimum: 1,
+					maximum: 65535,
+				});
+			},
+			description: 'The port number of the device.'
 		}
 	];
 	

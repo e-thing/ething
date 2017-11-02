@@ -150,7 +150,7 @@ class FileLogger extends Logger {
 		// Close file and return
 		fclose($f);
 		
-		return explode("\n", trim($output));
+		return array_reverse(explode("\n", trim($output)));
 	}
 	
 	

@@ -10,11 +10,8 @@
 	},
 	
 	{
-		"type": "Device\\RFLinkSwitch",
-		"widget": "RFLinkSwitch"
-	},
-	{
-		"type": "Device\\RFLinkThermometer",
+		"type": "Device\\RFLinkNode",
+		"subType": "thermometer",
 		"widget": "RFLinkThermometer"
 	},
 	{

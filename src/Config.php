@@ -104,7 +104,7 @@ class Config implements \JsonSerializable
 		
 		// logging. Set to false to disable logging.
 		'log' => array(
-			'file' => ETHING_LOG_FILE, // if not given, log will be written in the database
+			//'file' => ETHING_LOG_FILE, // if not given, log will be written in the database
 			'level' => Logger::INFO
 		),
 		
@@ -149,14 +149,11 @@ class Config implements \JsonSerializable
 		else if(is_readable($this->filename)){
 			$content = file_get_contents($this->filename);
 			$content = json_decode($content, true);
-			if(is_array($content)){
-				$this->_d = array_replace_recursive($this->_d, $content);
-			} else {
-				// invalid content
-				return false;
+			if(json_last_error()===JSON_ERROR_NONE){
+				if(is_array($content)){
+					$this->_d = array_replace_recursive($this->_d, $content);
+				}
 			}
-		} else {
-			return false;
 		}
 		return true;
 	}

@@ -28,7 +28,7 @@
 			});
 			
 			var update = function(){
-				widget.setActiveBtn(sensor.data('CMD', false) ? 0 : 1);
+				widget.setActiveBtn(sensor.data('status', false) ? 0 : 1);
 				widget.setFooter(sensor.modifiedDate().toLocaleString());
 			};
 			

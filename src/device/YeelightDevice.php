@@ -14,7 +14,7 @@
 	 * 		   "properties":{
 	 *             "host": {
 	 * 		          "type":"string",
-	 * 		          "description":"The ip address of the device to connect to."
+	 * 		          "description":"The ip address or hostname of the device to connect to."
 	 * 		       },
 	 *             "connected": {
 	 * 		          "type":"boolean",

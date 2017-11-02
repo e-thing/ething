@@ -89,12 +89,8 @@ abstract class RFLinkGateway extends Device
 		));
 	}
 	
-	public function addNode($class, $attr){
-		$fullClassname = 'Ething\\'.$class;
-		if(\class_exists($fullClassname)){
-			return $fullClassname::create($this->ething, $attr, $this);
-		}
-		return false;
+	public function addNode($attr){
+		return RFLinkNode::create($this->ething, $attr, $this);
 	}
 	
 	public function removeAllNodes(){

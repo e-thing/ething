@@ -18,6 +18,8 @@ class Log {
 
 	static protected $name = 'LOG';
 	
+	static public $ething = null;
+	
 	static public function setName($name){
 		if(is_string($name))
 			self::$name = $name;
@@ -60,6 +62,9 @@ class Log {
 		if($level >= self::$level || $force){
 			self::write(self::layout(self::render($message, $level), $level), $level);
 		}
+		
+		if(isset(self::$ething))
+			self::$ething->logger()->log($level, $message, $force);
 	}
 	
 	static public function trace($message){

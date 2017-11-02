@@ -349,6 +349,11 @@ abstract class Resource implements \JsonSerializable, ResourceInterface
 		));
 	}
 	
+	public function removeParent(){
+		$child->setAttr('createdBy', null);
+		$child->update();
+	}
+	
 	
 	public function remove($removeChildren = false) {
 		
@@ -370,8 +375,7 @@ abstract class Resource implements \JsonSerializable, ResourceInterface
 				$child->remove($removeChildren);
 			} else {
 				// remove the relationship
-				$child->setAttr('createdBy', null);
-				$child->update();
+				$child->removeParent();
 			}
 		}
 		

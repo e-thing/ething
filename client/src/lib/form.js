@@ -2517,7 +2517,8 @@
 		if($.fn.selectpicker){
 			this.$input.selectpicker({
 				title: this.options.title || null,
-				showTick: true
+				showTick: true,
+				size: false
 			});
 			
 			if(this.options.editable){
@@ -2530,6 +2531,7 @@
 					var name = ($create_name.val()||'').trim();
 					if(name){
 						self.addOption(name, name, 'custom');
+						self.$view.find('.dropdown-menu.inner li:last-child > a').focus();
 					}
 					return false;
 				});

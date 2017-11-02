@@ -534,7 +534,7 @@
 					description: 'Select on which device this event must be bind to.',
 					item: ResourceSelection.form({
 						'filter' : function(r){
-							return r instanceof EThing.Device.RFLinkSwitch || r instanceof EThing.Device.MySensorsSensor;
+							return r instanceof EThing.Device.RFLinkNode || r instanceof EThing.Device.MySensorsSensor;
 						},
 						prefix: 'on',
 						resourcesName: 'devices'

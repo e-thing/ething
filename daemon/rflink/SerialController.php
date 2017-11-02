@@ -36,7 +36,7 @@ class SerialController extends Controller {
 		
 		parent::open();
 		
-		$this->logger->info("RFLink[serial]: opened {$port} {$baudrate}");
+		\Log::info("RFLink[serial]: opened {$port} {$baudrate}");
 		
 		return true;
 	}
@@ -46,6 +46,7 @@ class SerialController extends Controller {
 		// check if the serial port is still opened !
 		if($this->isOpened && !$this->serial->isOpen()){
 			$this->close();
+			$this->lastAutoconnectLoop = microtime(true);
 		}
 		
 		parent::update();
@@ -60,7 +61,7 @@ class SerialController extends Controller {
 			
 			if($chunk===''){
 				// connection closed
-				$this->logger->debug("RFLink[serial]: empty string received... close");
+				\Log::debug("RFLink[serial]: empty string received... close");
 				$this->close();
 			}
 			
@@ -85,7 +86,7 @@ class SerialController extends Controller {
 						$this->processLine($line);
 					} catch (\Exception $e) {
 						// skip the line
-						$this->logger->warn("RFLink[serial]: unable to handle the message {$line}");
+						\Log::warn("RFLink[serial]: unable to handle the message {$line}");
 						continue;
 					}
 					
@@ -97,7 +98,7 @@ class SerialController extends Controller {
 	
 	public function write($str){
 		if($this->isOpened){
-			$this->logger->debug("RFLink[serial]: send message = {$str}");
+			\Log::debug("RFLink[serial]: send message = {$str}");
 			$this->serial->write($str."\r\n");
 		} else {
 			return 0;
@@ -109,7 +110,7 @@ class SerialController extends Controller {
 			$this->serial->close();
 			$this->stream = null;
 			parent::close();
-			$this->logger->info("RFLink[serial]: closed");
+			\Log::info("RFLink[serial]: closed");
 		}
 		return !$this->isOpened;
 	}

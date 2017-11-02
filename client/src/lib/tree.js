@@ -96,7 +96,8 @@
 			root: null,
 			height: null,
 			width: null,
-			onopen: null
+			onopen: null,
+			onload: null
 		}, opt);
 		
 		var self = this;
@@ -121,8 +122,7 @@
 		  .append("g")
 			.attr("transform", "translate(" + margin.left + "," + margin.top + ")");
 		
-		setTimeout(function(){
-			
+		function build(){
 			root = makeTree(self.options.root || null);
 			root.x0 = height / 2;
 			root.y0 = 0;
@@ -137,6 +137,19 @@
 
 			//root.children.forEach(collapse);
 			update(root);
+		}
+		
+		setTimeout(function(){
+			
+			build();
+			
+			self.onArboChanged = function(evt, added, removed, updated){
+				if(added.length || removed.length) build();
+			};
+			EThing.on('ething.arbo.changed',self.onArboChanged);
+			
+			if(typeof self.options.onload === 'function')
+				self.options.onload.call(self);
 			
 		},1);
 
@@ -246,10 +259,17 @@
 		
 		// open resource on click
 		function open(d) {
-			if(d.resource && typeof onopen === 'function')
-				onopen.call(this, d.resource);
+			if(d.resource && typeof self.options.onopen === 'function')
+				self.options.onopen.call(self, d.resource);
 		}
 		
+	}
+	
+	
+	Tree.prototype.destroy = function(){
+		if(this.onArboChanged){
+			EThing.off('ething.arbo.changed',this.onArboChanged);
+		}
 	}
 	
 	

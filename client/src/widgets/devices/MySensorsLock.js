@@ -18,7 +18,7 @@
 			});
 			
 			var update = function(){
-				var locked = sensor.val('V_LOCK_STATUS');
+				var locked = sensor.val('status');
 				if(typeof locked !== 'boolean') locked = null;
 				var icl = 'fa-'+(locked===null?'question':(locked?'lock':'unlock'));
 				widget.val('<i class="fa '+icl+'" aria-hidden="true"></i>');

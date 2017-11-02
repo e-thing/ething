@@ -19,7 +19,7 @@
 			
 			var update = function(){
 				
-				var vol = sensor.val('V_VOLUME');
+				var vol = sensor.val('volume');
 				var unit = 'L';
 				
 				if(vol < 1){

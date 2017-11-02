@@ -17,8 +17,6 @@ class Client extends \Stream {
 	protected $status;
 	protected $mqttClient = null;
 	
-	protected $logger;
-	
 	private $lastAutoconnectLoop = 0;
 	
 	public $device = null;
@@ -32,16 +30,14 @@ class Client extends \Stream {
 		
 		$this->mqttClient = new phpMQTT($this->device->host, $this->device->port, (string)$this->device->id());
 		$this->mqttClient->keepalive = self::KEEPALIVE;
-		
-		$this->logger = $device->ething->logger();
 	}
 	
 	public function processMessage($topic, $message) {
-		$this->logger->debug("MQTT: new message for topic {$topic}");
+		\Log::debug("MQTT: new message for topic {$topic}");
 		try {
 			$this->device->processPayload($topic, $message);
 		} catch (\Exception $e) {
-			$this->logger->error($e);
+			\Log::error($e);
 		} // skip any error
 	}
 	
@@ -53,9 +49,9 @@ class Client extends \Stream {
 	
 	public function connect(){
 		$this->disconnect();
-		$this->mqttClient->broker($this->device->host, $this->device->port, (string)$this->device->id());
+		//$this->mqttClient->broker($this->device->host, $this->device->port, (string)$this->device->id());
 		
-		$this->logger->info("MQTT: connecting to {$this->device->host}:{$this->device->port}");
+		\Log::info("MQTT: connecting to {$this->device->host}:{$this->device->port}");
 		
 		$clean = true; // If the clean session is set to true then the client does not have a persistent session and all information are lost when the client disconnects for any reason. When clean session is set to false, a persistent session is created and it will be preserved until the client requests a clean session again. If there is already a session available then it is used and queued messages will be delivered to the client if available.
 		$will = null; // array ( 'topic' => ? , 'content' => ? , 'qos' => ? , 'retain' => ? ) 
@@ -69,7 +65,7 @@ class Client extends \Stream {
 		
 		if($this->mqttClient->connect($clean, $will, $username, $password)){
 			
-			$this->logger->info("MQTT: connected");
+			\Log::info("MQTT: connected");
 			
 			$this->device->updateSeenDate();
 			$this->device->setConnectState(true);
@@ -78,13 +74,13 @@ class Client extends \Stream {
 			$topics = array();
 			foreach($this->device->getSubscription() as $item){
 				$topic = $item['topic'];
-				$this->logger->info("MQTT: subscribing to {$topic}");
+				\Log::info("MQTT: subscribing to {$topic}");
 				$topics[$topic] = array("qos"=>0, "function"=>array($this, 'processMessage'));
 			}
 			if(!empty($topics)){
 				$this->mqttClient->subscribe($topics,0);
 				$this->stream = $this->mqttClient->getSocket();
-				$this->logger->info("MQTT: subscribed");
+				\Log::info("MQTT: subscribed");
 			}
 			
 			$this->status = "connected";
@@ -97,7 +93,7 @@ class Client extends \Stream {
 	
 	public function disconnect(){
 		if($this->status !== "disconnected"){
-			$this->logger->info("MQTT: disconnect");
+			\Log::info("MQTT: disconnect");
 			$this->mqttClient->close();
 			$this->stream = null;
 			$this->status = "disconnected";
@@ -130,7 +126,7 @@ class Client extends \Stream {
 		if($this->status === "connected"){
 			if(!$this->mqttClient->proc()){
 				// disconnected !
-				$this->logger->info("MQTT: disconnected by the host");
+				\Log::info("MQTT: disconnected by the host");
 				
 				$this->stream = null;
 				$this->status = "disconnected";
@@ -149,7 +145,7 @@ class Client extends \Stream {
 		}
 		
 		if($this->status === "connected"){
-			$this->logger->debug("MQTT: publish to topic {$topic}");
+			\Log::debug("MQTT: publish to topic {$topic}");
 			
 			if(empty($topic)){
 				throw new \Exception("topic is an empty string");

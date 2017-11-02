@@ -10,6 +10,15 @@ class RFLink {
 	static public $specialCtrlCmds = array('OK','REBOOT','PING','PONG','VERSION','RFDEBUG','RFUDEBUG','QRFDEBUG','TRISTATEINVERT','RTSCLEAN','RTSRECCLEAN','RTSSHOW','RTSINVERT','RTSLONGTX');
 	
 	
+	public static $subTypes = array(
+		'switch',
+		'door',
+		'motion',
+		'thermometer',
+		'weatherStation',
+		'multimeter'
+	);
+	
 	static public $switchProtocols = array(
 		"X10",
 		"Kaku",
@@ -134,92 +143,47 @@ class RFLink {
 		"DISCO-"
 	);
 	
+	static public $attrMap = array(
+		'CMD' => array("status", "convertCmd"),
+		'KWATT' => array("watt", "convertKWatt"),
+		'WATT' => array("watt", "convertWatt"),
+		'CURRENT' => array("current", "convertCurrent"),
+		'CURRENT2' => array("current", "convertCurrent"),
+		'CURRENT3' => array("current", "convertCurrent"),
+		'VOLT' => array("voltage", "convertVoltage"),
+		'FREQ' => array("frequency", "convertFreq"),
+		'PF' => array("power factor", "convertPowerFactor"),
+		'ENERGY' => array("energy", "convertEnergy"),
+		'TEMP' => array("temperature", "convertTemperature"),
+		'HUM' => array("humidity", "convertHum"),
+		'BARO' => array("pressure", "convertBaro"),
+		'UV' => array("UV", "convertUV"),
+		'RAIN' => array("rain", "convertRain"),
+		'RAINRATE' => array("rain rate", "convertRainRate"),
+		'WINSP' => array("wind", "convertWindSpeed"),
+		'AWINSP' => array("average wind", "convertWindSpeed"),
+		'WINGS' => array("gust", "convertWindGust"),
+		'WINDIR' => array("wind direction", "convertWindDirection"),
+		'WINCHL' => array("wind chill", "convertTemperature"), // wind chill
+		'WINTMP' => array("wind temperature", "convertTemperature"), // Wind meter temperature reading
+		'LUX' => array("lux", "convertLux"),
+		'HSTATUS' => array("status", "convertHygroStatus"), //  => array(0=Normal, 1=Comfortable, 2=Dry, 3=Wet
+		'BFORECAST' => array("forecast", "convertForecast") // => array(0=No Info/Unknown, 1=Sunny, 2=Partly Cloudy, 3=Cloudy, 4=Rain
+	);
 	
-	static public function parseMessage($rawMessage){
-		
-		$items = array_filter( explode(';', $rawMessage), 'strlen' ); 
-		$obj = array( 'raw' => $rawMessage );
-		
-		
-		if(count($items)>0){
-			
-			$nodeNumber = $obj['type'] = intval(array_shift($items));
-			
-			if($nodeNumber===20 || $nodeNumber===11){
-				// from the RFLink Gateway to the master
-				// 20;04;Cresta;ID=3001;TEMP=00b4;HUM=50;BAT=OK;
-				$obj['counter'] = intval(array_shift($items), 16);
-				
-				preg_match('/^([^=]*)(=(.*))?$/', $items[0], $matches);
-				
-				if(in_array($matches[1], static::$specialCtrlCmds) || isset($matches[2])){
-					if(!isset($matches[2]))
-						$obj['command'] = $matches[1];
-				} else {
-					$obj['protocol'] = array_shift($items);
-				}
-				
-				$obj['attr'] = array();
-				$i=0;
-				foreach($items as $item){
-					if( preg_match('/^(.*)=(.*)$/', $item, $matches) ){
-						
-						$key = $matches[1];
-						$value = $matches[2];
-						
-						if($key==='ID'){
-							$obj['id'] = $value;
-						}
-						
-						if( in_array($key, array('TEMP','HUM','BARO','HSTATUS','BFORECAST','UV','LUX','RAIN','RAINRATE','RAINTOT','WINSP','AWINSP','WINGS','WINDIR','WINCHL','WINTMP','CHIME','CO2','SOUND','KWATT','WATT','CURRENT','CURRENT2','CURRENT3','DIST','METER','VOLT')) ){
-							// number
-							if( in_array($key, array('TEMP','BARO','UV','LUX','RAIN','RAINRATE','RAINTOT','WINSP','AWINSP','WINGS','WINCHL','WINTMP','KWATT','WATT')) ){
-								$value = hexdec($value);
-							} else {
-								$value = intval($value);
-							}
-							
-							if( in_array($key, array('TEMP','RAIN','RAINRATE','RAINTOT','WINSP','AWINSP','WINCHL','WINTMP','AWINSP')) ){
-								$value = $value / 10;
-							}
-						}
-						$obj['attr'][$key] = $value;
-					} else if(!empty($item)) {
-						$obj['attr']['_'.$i++] = $item;
-					}
-				}
-				
-			} else if($nodeNumber===10){
-				// from the master to the RFLink Gateway
-				
-				if(in_array($items[0], static::$specialCtrlCmds)){
-					// special command !
-					$obj['command'] = array_shift($items);
-				} else {
-					$obj['protocol'] = array_shift($items);
-					$obj['address'] = array_shift($items);
-					if(count($items)==1){
-						$obj['value'] = array_shift($items);
-					} else if(count($items)>=2){
-						$obj['buttonNumber'] = array_shift($items);
-						$obj['value'] = array_shift($items);
-					}
-				}
-				
-			} else {
-				throw new \Exception("invalid rflink message, bad node number {$nodeNumber}");
-			}
-			
-		} else {
-			throw new \Exception("invalid rflink message");
-		}
-		
-		return $obj;
-		
+	static public function getAttrName($attr){
+		return array_key_exists($attr, static::$attrMap) ? static::$attrMap[$attr][0] : $attr;
 	}
 	
+	static public function convertAttrValue($attr, $value){
+		if(array_key_exists($attr, static::$attrMap)){
+			if(!empty(static::$attrMap[$attr][1]))
+				return call_user_func(__NAMESPACE__.'\\RFLink::'.static::$attrMap[$attr][1], $value);
+		}
+		return $value;
+	}
 	
-	static public function getClass($protocol, array $args){
+	static public function getSubType($protocol, array $args){
 		
 		if($protocol === 'Debug') return;
 		
@@ -230,29 +194,42 @@ class RFLink {
 		// 20;83;Oregon Rain2;ID=2a19;RAIN=002a;RAINTOT=0054;BAT=OK;
 		if(!empty(array_intersect($keys, array('RAIN','RAINRATE','WINSP','AWINSP','WINGS','WINDIR','WINCHL','WINTMP','UV','LUX','HSTATUS','BFORECAST')))){
 			// generic Weather Station
-			return 'Ething\\Device\\RFLinkWeatherStation';
+			return 'weatherStation';
 		}
 		
 		// 20;1F;OregonV1;ID=000A;TEMP=00cd;BAT=LOW;
 		if(isset($args['ID']) && isset($args['TEMP'])){
 			// generic thermometer
-			return 'Ething\\Device\\RFLinkThermometer';
+			return 'thermometer';
 		}
 		
 		// 20;12;NewKaku;ID=000002;SWITCH=2;CMD=OFF;
-		if(empty(array_diff($keys, array('ID', 'SWITCH', 'CMD')))){
+		if(empty(array_diff(array('ID', 'SWITCH', 'CMD'), $keys))){
 			if(in_array($args['CMD'], array('ON', 'OFF', 'ALLON', 'ALLOFF'))){
 				// generic switch
-				return 'Ething\\Device\\RFLinkSwitch';
+				return 'switch';
 			}
 		}
 		
 		if(!empty(array_intersect($keys, array('KWATT','WATT','CURRENT','CURRENT2','CURRENT3','VOLT','FREQ','PF','ENERGY')))){
 			// generic Weather Station
-			return 'Ething\\Device\\RFLinkMultimeter';
+			return 'multimeter';
 		}
 		
-		return; // no class found !
+		return; // unknow !
+	}
+	
+	
+	
+	static public function convertSwitchId($value){
+		// remove leading 0
+		$value = ltrim($value, '0');
+		if(strlen($value)===0) $value = '0';
+		return $value;
+	}
+	
+	static public function convertCmd($value){
+		return boolval(is_string($value) ? preg_match('/^on$/i', $value) : $value);
 	}
 	
 	static public function convertTemperature($value){
@@ -310,7 +287,11 @@ class RFLink {
 	}
 	
 	static public function convertWatt($value){
-		return hexdec($value) / 10; // km. p/h
+		return hexdec($value) / 10; // watt
+	}
+	
+	static public function convertKWatt($value){
+		return static::convertWatt($value) * 1000; // watt
 	}
 	
 	static public function convertCurrent($value){

@@ -18,7 +18,7 @@
 			});
 			
 			var update = function(){
-				widget.val(sensor.val('V_RAIN'));
+				widget.val(sensor.val('rain'));
 				widget.setFooter(sensor.modifiedDate().toLocaleString());
 			};
 			

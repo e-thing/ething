@@ -74,7 +74,7 @@ abstract class Logger {
 		return date("Y-m-d H:i:s").' '.$this->name.' '.Logger::$levelToStr[$level].' - '.$message;
 	}
 	
-	private function log($level, $message, $force = false){
+	public function log($level, $message, $force = false){
 		if($level >= $this->level || $force){
 			$this->write($this->layout($this->render($message, $level), $level), $level);
 		}

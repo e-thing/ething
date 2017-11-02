@@ -82,5 +82,13 @@ class DbFs
 		return 0;
 	}
 	
+	public function listFiles(){
+		$bucket = $this->ething->db()->selectGridFSBucket();
+		try {
+			return $bucket->find()->toArray();
+		} catch(\Exception $e){}
+		return array();
+	}
+	
 }
 

@@ -180,10 +180,12 @@
 				
 				if(preg_match('/^tb\./', $name)){
 					
-					$i = $this->db()->command(array('collStats' => $name))->toArray()[0];
-					
-					$tbinfo['count'] += $i['count'];
-					$tbinfo['size'] += $i['size'];
+					try {
+						$i = $this->db()->command(array('collStats' => $name))->toArray()[0];
+						
+						$tbinfo['count'] += $i['count'];
+						$tbinfo['size'] += $i['size'];
+					} catch(\Exception $e){}
 				}
 				
 			}
@@ -216,7 +218,50 @@
 		}
 		
 		
-		
+		public function repair($simulate = false){
+			
+			// check that files in the FS collection has a parent that still exists
+			foreach( $this->fs->listFiles() as $file ){
+				if(isset($file['metadata']['parent'])){
+					// does the parent exist ?
+					$parent = $this->get($file['metadata']['parent']);
+					if(!$parent){
+						$this->logger()->debug("repair: the parent of the file {$file['filename']} does not exist anymore -> removed");
+						if(!$simulate) $this->fs->removeFile($file['_id']);
+					}
+				}
+			}
+			
+			// table data unassociated
+			foreach( $this->db()->listCollections() as $collInfo){
+				
+				$name = $collInfo->getName();
+				
+				if(preg_match('/^tb\.(.+)/', $name, $matches)){
+					$id = $matches[1];
+					// does the table exist ?
+					$table = $this->get($id);
+					if(!$table){
+						// remove this table
+						$this->logger()->debug("repair: drop table {$name} -> no resource associated");
+						if(!$simulate) $this->db()->selectCollection($name)->drop();
+					}
+				}
+				
+			}
+			
+			// check parent
+			foreach( $this->find(array("createdBy" => array( '$ne' => null ))) as $r){
+				$parent = $r->createdBy();
+				if(!$parent){
+					$this->logger()->debug("repair: the parent of the resource {$r} does not exist anymore");
+					if(!$simulate) $r->removeParent();
+				}
+			}
+			
+			
+			return;
+		}
 		
 		
 		/*
@@ -364,7 +409,7 @@
 			if(!isset($this->logger)){
 				$logConf = $this->config('log');
 				if(is_array($logConf)){
-					if(is_string($logConf['file'])){
+					if(isset($logConf['file']) && is_string($logConf['file'])){
 						$this->logger = new RollingFileLogger($this, $this->name, $logConf['file'], $logConf['level']);
 					} else {
 						$this->logger = new DbLogger($this, $this->name, $logConf['level']);

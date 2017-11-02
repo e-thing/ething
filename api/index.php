@@ -1280,6 +1280,8 @@ $app->get('/files/:id/execute', $auth->permissions('file:read resource:read'),
 		
 		if($r->mime === 'application/javascript'){
 			
+			// cf. https://stackoverflow.com/questions/11394159/php-kill-exec-on-client-disconnect
+			
 			$args = Utils\getParameter('args',Utils\CHK_STRING, true, null);
 			$res = Ething\ScriptEngine::runFromFile($r, $args);
 			
@@ -2649,6 +2651,7 @@ $app->post('/devices', $auth->permissions('device:write resource:write'),
 		if(!is_subclass_of('Ething\\'.$type, 'Ething\\Device\\Device'))
 			throw new \Utils\Exception("invalid 'type' attribute : {$type}");
 		
+		
 		// special cases
 		switch($type){
 			case 'Device\\MySensorsNode':
@@ -2665,20 +2668,16 @@ $app->post('/devices', $auth->permissions('device:write resource:write'),
 				unset($data['node']);
 				if($node) $r = $node->addSensor($data);
 				break;
-			default:
-			
-				if( strpos($type, 'RFLink') !== -1 &&  strpos($type, 'Gateway') === -1 ){
-					// RFLink nodes !
-					if(empty($data['gateway']))
-						throw new \Utils\Exception('the gateway attribute is mandatory');
-					$gateway = Utils\getResource($auth, $data['gateway'], 'Device\\RFLink.+Gateway');
-					unset($data['gateway']);
-					if($gateway) $r = $gateway->addNode($type, $data);
-				} else {
-					// default behaviour !
-					$r = $ething->create($type,$data,$auth->originator());
-				}
+			case 'Device\\RFLinkNode':
+				if(empty($data['gateway']))
+					throw new \Utils\Exception('the gateway attribute is mandatory');
+				$gateway = Utils\getResource($auth, $data['gateway'], 'Device\\RFLink.+Gateway');
+				unset($data['gateway']);
+				if($gateway) $r = $gateway->addNode($data);
+				break;
 				
+			default:
+				$r = $ething->create($type,$data,$auth->originator());
 				break;
 		}
 		

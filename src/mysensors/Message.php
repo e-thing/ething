@@ -59,11 +59,11 @@ class Message implements \JsonSerializable {
 		$subTypeStr = false;
 		switch($this->messageType){
 			case MySensors::PRESENTATION :
-				$subTypeStr = array_search($this->subType, MySensors::$sensorTypes);
+				$subTypeStr = MySensors::sensorTypeStr($this->subType);
 				break;
 			case MySensors::SET :
 			case MySensors::REQ :
-				$subTypeStr = array_search($this->subType, MySensors::$valueTypes);
+				$subTypeStr = MySensors::valueTypeStr($this->subType);
 				break;
 			case MySensors::INTERNAL :
 				$subTypeStr = array_search($this->subType, MySensors::$internalTypes);

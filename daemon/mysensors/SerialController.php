@@ -37,7 +37,7 @@ class SerialController extends Controller {
 		
 		parent::open();
 		
-		$this->logger->info("MySensors[serial]: opened {$port} {$baudrate}");
+		\Log::info("MySensors[serial]: opened {$port} {$baudrate}");
 		
 		return true;
 	}
@@ -47,6 +47,7 @@ class SerialController extends Controller {
 		// check if the serial port is still opened !
 		if($this->isOpened && !$this->serial->isOpen()){
 			$this->close();
+			$this->lastAutoconnectLoop = microtime(true);
 		}
 		
 		parent::update();
@@ -61,7 +62,7 @@ class SerialController extends Controller {
 			
 			if($chunk===''){
 				// connection closed
-				$this->logger->debug("MySensors[serial]: empty string received... close");
+				\Log::debug("MySensors[serial]: empty string received... close");
 				$this->close();
 			}
 			
@@ -83,7 +84,7 @@ class SerialController extends Controller {
 						
 					} catch (\Exception $e) {
 						// skip the line
-						$this->logger->warn("MySensors[serial]: unable to handle the message {$line}");
+						\Log::warn("MySensors[serial]: unable to handle the message {$line}");
 						continue;
 					}
 					
@@ -106,7 +107,7 @@ class SerialController extends Controller {
 			$this->serial->close();
 			$this->stream = null;
 			parent::close();
-			$this->logger->info("MySensors[serial]: closed");
+			\Log::info("MySensors[serial]: closed");
 		}
 		return !$this->isOpened;
 	}

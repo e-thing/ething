@@ -50,15 +50,18 @@ class phpMQTT {
 	private $username;			/* stores username */
 	private $password;			/* stores password */
 
-	function __construct($address, $port, $clientid){
-		$this->broker($address, $port, $clientid);
+	public $cafile;
+
+	function __construct($address, $port, $clientid, $cafile = NULL){
+		$this->broker($address, $port, $clientid, $cafile);
 	}
 
 	/* sets the broker details */
-	function broker($address, $port, $clientid){
+	function broker($address, $port, $clientid, $cafile = NULL){
 		$this->address = $address;
 		$this->port = $port;
-		$this->clientid = $clientid;		
+		$this->clientid = $clientid;
+		$this->cafile = $cafile;
 	}
 
 	function connect_auto($clean = true, $will = NULL, $username = NULL, $password = NULL){
@@ -76,11 +79,19 @@ class phpMQTT {
 		if($username) $this->username = $username;
 		if($password) $this->password = $password;
 
-		$address = gethostbyname($this->address);	
-		$this->socket = fsockopen($address, $this->port, $errno, $errstr, 60);
+
+		if ($this->cafile) {
+			$socketContext = stream_context_create(["ssl" => [
+				"verify_peer_name" => true,
+				"cafile" => $this->cafile
+				]]);
+			$this->socket = stream_socket_client("tls://" . $this->address . ":" . $this->port . '/' . uniqid("tt"), $errno, $errstr, 60, STREAM_CLIENT_CONNECT, $socketContext);
+		} else {
+			$this->socket = stream_socket_client("tcp://" . $this->address . ":" . $this->port . '/' . uniqid("tt"), $errno, $errstr, 60, STREAM_CLIENT_CONNECT);
+		}
 
 		if (!$this->socket ) {
-		    if($this->debug) error_log("fsockopen() $errno, $errstr \n");
+		    if($this->debug) error_log("stream_socket_create() $errno, $errstr \n");
 			return false;
 		}
 
@@ -227,7 +238,7 @@ class phpMQTT {
 	/* close: sends a proper disconect, then closes the socket */
 	function close(){
 	 	$this->disconnect();
-		fclose($this->socket);	
+		stream_socket_shutdown($this->socket, STREAM_SHUT_WR);	
 	}
 
 	/* publish: publishes $content on a $topic */
@@ -322,16 +333,19 @@ class phpMQTT {
 			if($this->debug) echo "Fetching: $value\n";
 			
 			if($value)
-				$string = $this->read($value,"fetch");
+				$string = $this->read($value);
 			
 			if($cmd){
 				switch($cmd){
 					case 3:
 						$this->message($string);
 					break;
+					default:
+						$this->timesinceping = time();
+					break;
 				}
 
-				$this->timesinceping = time();
+				//$this->timesinceping = time();
 			}
 		}
 
@@ -410,4 +424,3 @@ class phpMQTT {
 	}
 }
 
-?>

@@ -141,7 +141,7 @@ class RTSP extends Device
 		
 		$output = shell_exec($cmd);
 		
-		$this->setReachableState(empty($output));
+		$this->setReachableState(!empty($output));
 		
 		return empty($output) ? false : $output;
 	}

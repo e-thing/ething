@@ -685,6 +685,7 @@
 	Table.prototype.destroy = function(){
 		
 		this.view().clear();
+		this.model().destroy();
 		
 		if(this.options.pagination.enable && this.options.pagination.itemsPerPage === 'lazy')
 			$(this.options.pagination.lazyScrollTarget).off('scroll.table');
@@ -943,6 +944,7 @@
 	Model.prototype.index = function(item){
 		return null;
 	}
+	Model.prototype.destroy = function(){}
 	
 	
 	Table.Model = Model;

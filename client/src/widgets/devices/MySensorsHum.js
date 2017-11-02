@@ -18,7 +18,7 @@
 			});
 			
 			var update = function(){
-				widget.val(sensor.val('V_HUM'));
+				widget.val(sensor.val('humidity'));
 				widget.setFooter(sensor.modifiedDate().toLocaleString());
 			};
 			

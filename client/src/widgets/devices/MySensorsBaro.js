@@ -18,7 +18,7 @@
 			});
 			
 			var update = function(){
-				var pressure = sensor.val('V_PRESSURE');
+				var pressure = sensor.val('pressure');
 				
 				if(typeof pressure === 'number'){
 					if(pressure > 80000){

@@ -46,6 +46,9 @@
 	fill: #c1c1c1;
 }
 
-
+.resource-select .bootstrap-select ul.dropdown-menu.inner {
+	max-height: 200px;
+    overflow: auto;
+}
 
 

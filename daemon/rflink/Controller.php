@@ -6,6 +6,7 @@ namespace Ething\RFLink;
 
 use \Ething\RFLink\RFLink;
 use \Ething\Device\RFLinkGateway;
+use \Ething\Device\RFLinkNode;
 use \Ething\Event;
 
 abstract class Controller extends \Stream {
@@ -17,10 +18,8 @@ abstract class Controller extends \Stream {
 	
 	public $gatewayLibVersion = false;
 	
-	protected $logger;
-	
-	private $lastAutoconnectLoop = 0;
-	private $preventFailConnectLog = false;
+	protected $lastAutoconnectLoop = 0;
+	private $preventFailConnectLog = 0;
 	
 	private $logMessage = false;
 	
@@ -35,7 +34,6 @@ abstract class Controller extends \Stream {
 		
 		$this->gateway = $gateway;
 		$this->options = array_replace_recursive($this->options, $options);
-		$this->logger = $this->gateway->ething->logger();
 	}
 	
 	public function ething(){
@@ -63,7 +61,7 @@ abstract class Controller extends \Stream {
 		$this->isOpened = false;
 		$this->lastAutoconnectLoop = 0;
 		$this->gateway->setConnectState(false);
-		$this->logger->info("RFLink: closed");
+		\Log::info("RFLink: closed");
 		return true;
 	}
 	
@@ -80,7 +78,7 @@ abstract class Controller extends \Stream {
 	*/
 	function processLine($line){
 		
-		$this->logger->debug("RFLink: message received = {$line}");
+		\Log::debug("RFLink: message received = {$line}");
 		
 		$gateway = $this->gateway;
 		if($this->logMessage) $gateway->log($line);
@@ -110,12 +108,12 @@ abstract class Controller extends \Stream {
 			if(preg_match('/Nodo RadioFrequencyLink - RFLink Gateway V([\d\.]+) - R([\d]+)/', $words[2], $matches)){
 				$gateway->set('version', $matches[1]);
 				$gateway->set('revision', $matches[2]);
-				$this->logger->info("RFLink: ver:{$matches[1]} rev:{$matches[2]}");
+				\Log::info("RFLink: ver:{$matches[1]} rev:{$matches[2]}");
 			} else if(preg_match('/;VER=([\d\.]+);REV=([\d]+);BUILD=([0-9a-fA-F]+);/', $line, $matches)) {
 				$gateway->set('version', $matches[1]);
 				$gateway->set('revision', $matches[2]);
 				$gateway->set('build', $matches[3]);
-				$this->logger->info("RFLink: ver:{$matches[1]} rev:{$matches[2]} build:{$matches[3]}");
+				\Log::info("RFLink: ver:{$matches[1]} rev:{$matches[2]} build:{$matches[3]}");
 			}
 			
 		} else {
@@ -138,46 +136,32 @@ abstract class Controller extends \Stream {
 				
 				$device = null;
 				
-				$devices = $gateway->getNodes(array(
-					'nodeId' => $args['ID'],
-					'protocol' => $protocol
-				));
+				$switchId = isset($args['SWITCH']) ? RFLink::convertSwitchId($args['SWITCH']) : null;
 				
-				// get the class from the registered device
-				if(count($devices)){
-					$class = 'Ething\\'.$devices[0]->type();
-					
-					if(method_exists($class,'filterDeviceFromMessage'))
-						$device = $class::filterDeviceFromMessage($devices, $protocol, $args);
-					else if(count($devices)===1)
-						$device = $devices[0];
-					else {
-						$this->logger->warn("RFLink: unable to handle the message {$line}, multiple devices found for the Id {$args['ID']}");
-						return;
-					}
-					
-				} else {
-					
-				}
+				$device = $gateway->getNode(array(
+					'nodeId' => $args['ID'],
+					'protocol' => $protocol,
+					'switchId' => $switchId
+				));
 				
 				if(!$device){
 					if($inclusion){
 						// the device does not exist !
 						
-						// find the best class suited from the protocol and args
-						if($class = \Ething\RFLink\RFLink::getClass($protocol, $args)){
+						// find the best subType suited from the protocol and args
+						if($subType = RFLink::getSubType($protocol, $args)){
 						
 							// create it !
-							if($device = $class::createDeviceFromMessage($protocol, $args, $gateway)){
-								$this->logger->info("RFLink: new node ({$class}) from {$line}");
+							if($device = RFLinkNode::createDeviceFromMessage($subType, $protocol, $args, $gateway)){
+								\Log::info("RFLink: new node ({$subType}) from {$line}");
 							} else {
-								$this->logger->error("RFLink: fail to create the node ({$class}) from {$line}");
+								\Log::error("RFLink: fail to create the node ({$subType}) from {$line}");
 							}
 						} else {
-							$this->logger->warn("RFLink: unable to handle the message {$line}");
+							\Log::warn("RFLink: unable to handle the message {$line}");
 						}
 					} else {
-						$this->logger->warn("RFLink: new node from {$line}, rejected because inclusion=false");
+						\Log::warn("RFLink: new node from {$line}, rejected because inclusion=false");
 					}
 				}
 				
@@ -186,7 +170,7 @@ abstract class Controller extends \Stream {
 				}
 			
 			} else {
-				$this->logger->warn("RFLink: unable to handle the message {$line}, no id.");
+				\Log::warn("RFLink: unable to handle the message {$line}, no id.");
 			}
 			
 		}
@@ -202,17 +186,19 @@ abstract class Controller extends \Stream {
 		
 		// check for a deconnection
 		if(!$this->isOpened && $this->isOpened != $this->lastState_)
-			$this->logger->info("RFLink: disconnected");
+			\Log::info("RFLink: disconnected");
 		$this->lastState_ = $this->isOpened;
 		
 		// autoconnect
 		if(!$this->isOpened && ($now - $this->lastAutoconnectLoop) > self::AUTOCONNECT_PERIOD ){
 			try{
 				$this->open();
-				$this->preventFailConnectLog = false;
+				$this->preventFailConnectLog = 0;
 			} catch(\Exception $e){
-				if(!$this->preventFailConnectLog) $this->logger->warn("RFLink: unable to connect : {$e->getMessage()}");
-				$this->preventFailConnectLog = true;
+				$this->gateway->setConnectState(false);
+				
+				if($this->preventFailConnectLog % 20 === 0) \Log::warn("RFLink: unable to connect : {$e->getMessage()}");
+				$this->preventFailConnectLog += 1;
 			}
 			$this->lastAutoconnectLoop = $now;
 		}
@@ -239,7 +225,7 @@ abstract class Controller extends \Stream {
 	*/
 	public function send($message, $callback = null, $waitResponse = null) {
 		
-		$this->logger->debug("RFLink: message send");
+		\Log::debug("RFLink: message send");
 		
 		if(!$this->isOpened){
 			if(is_callable($callback)){

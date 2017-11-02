@@ -179,157 +179,111 @@ class MySensors {
 	);
 	
 	static public $sensorTypes = array(
-		'S_DOOR' => 0 ,
-		'S_MOTION' => 1 ,
-		'S_SMOKE' => 2 ,
-		'S_BINARY' => 3 ,
-		'S_LIGHT' => 3 ,
-		'S_DIMMER' => 4 ,
-		'S_COVER' => 5 ,
-		'S_TEMP' => 6 ,
-		'S_HUM' => 7 ,
-		'S_BARO' => 8 ,
-		'S_WIND' => 9 ,
-		'S_RAIN' => 10,
-		'S_UV' => 11,
-		'S_WEIGHT' => 12,
-		'S_POWER' => 13,
-		'S_HEATER' => 14,
-		'S_DISTANCE' => 15,
-		'S_LIGHT_LEVEL' => 16,
-		'S_ARDUINO_NODE' => 17,
-		'S_ARDUINO_REPEATER_NODE' => 18,
-		'S_LOCK' => 19,
-		'S_IR' => 20,
-		'S_WATER' => 21,
-		'S_AIR_QUALITY' => 22,
-		'S_CUSTOM' => 23,
-		'S_DUST' => 24,
-		'S_SCENE_CONTROLLER' => 25,
-		'S_RGB_LIGHT' => 26,
-		'S_RGBW_LIGHT' => 27,
-		'S_COLOR_SENSOR' => 28,
-		'S_HVAC' => 29,
-		'S_MULTIMETER' => 30,
-		'S_SPRINKLER' => 31,
-		'S_WATER_LEAK' => 32,
-		'S_SOUND' => 33,
-		'S_VIBRATION' => 34,
-		'S_MOISTURE' => 35,
-		'S_INFO' => 36,
-		'S_GAS' => 37,
-		'S_GPS' => 38,
-		'S_WATER_QUALITY' => 39,
-		'S_CAM' => 52,
-		'S_UNK' => 9999
-	);
-	
-	static public $sensorNames = array(
-		'S_DOOR' => 'door' ,
-		'S_MOTION' => 'motion' ,
-		'S_SMOKE' => 'smoke' ,
-		'S_BINARY' => 'switch' ,
-		'S_LIGHT' => 'light' ,
-		'S_DIMMER' => 'dimmer' ,
-		'S_COVER' => 'cover' ,
-		'S_TEMP' => 'thermometer' ,
-		'S_HUM' => 'humidity sensor' ,
-		'S_BARO' => 'barometer' ,
-		'S_WIND' => 'wind sensor' ,
-		'S_RAIN' => 'rain sensor',
-		'S_UV' => 'UV sensor',
-		'S_WEIGHT' => 'weight sensor',
-		'S_POWER' => 'power meter',
-		'S_HEATER' => 'heater',
-		'S_DISTANCE' => 'distance sensor',
-		'S_LIGHT_LEVEL' => 'light',
-		'S_ARDUINO_NODE' => 'arduino',
-		'S_ARDUINO_REPEATER_NODE' => 'repeater',
-		'S_LOCK' => 'locker',
-		'S_IR' => 'IR device',
-		'S_WATER' => 'water meter',
-		'S_AIR_QUALITY' => 'air quality sensor',
-		'S_CUSTOM' => 'custom',
-		'S_DUST' => 'dust sensor',
-		'S_SCENE_CONTROLLER' => 'scene controller',
-		'S_RGB_LIGHT' => 'RGB light',
-		'S_RGBW_LIGHT' => 'RGBW light',
-		'S_COLOR_SENSOR' => 'color sensor',
-		'S_HVAC' => 'HVAC',
-		'S_MULTIMETER' => 'multimeter',
-		'S_SPRINKLER' => 'sprinkler',
-		'S_WATER_LEAK' => 'water leak sensor',
-		'S_SOUND' => 'sound sensor',
-		'S_VIBRATION' => 'vibration sensor',
-		'S_MOISTURE' => 'moisture sensor',
-		'S_INFO' => 'LCD',
-		'S_GAS' => 'gas meter',
-		'S_GPS' => 'GPS',
-		'S_WATER_QUALITY' => 'water quality sensor',
-		'S_CAM' => 'camera',
-		'S_UNK' => 'unknown'
+		'S_DOOR' => array(0 , "door"),
+		'S_MOTION' => array(1 , "motion"),
+		'S_SMOKE' => array(2 , "smoke"),
+		'S_BINARY' => array(3 , "switch"),
+		'S_LIGHT' => array(3 , "light"),
+		'S_DIMMER' => array(4 , "dimmer"),
+		'S_COVER' => array(5 , "window cover"),
+		'S_TEMP' => array(6 , "thermometer"),
+		'S_HUM' => array(7 , "humidity sensor"),
+		'S_BARO' => array(8 , "barometer"),
+		'S_WIND' => array(9 , "wind sensor"),
+		'S_RAIN' => array(10, "rain sensor"),
+		'S_UV' => array(11, "UV sensor"),
+		'S_WEIGHT' => array(12, "weight sensor"),
+		'S_POWER' => array(13, "power meter"),
+		'S_HEATER' => array(14, "heater device"),
+		'S_DISTANCE' => array(15, "distance sensor"),
+		'S_LIGHT_LEVEL' => array(16, "light sensor"),
+		'S_ARDUINO_NODE' => array(17, "arduino"),
+		'S_ARDUINO_REPEATER_NODE' => array(18, "arduino repeater"),
+		'S_LOCK' => array(19, "locker"),
+		'S_IR' => array(20, "IR device"),
+		'S_WATER' => array(21, "water meter"),
+		'S_AIR_QUALITY' => array(22, "air quality sensor"),
+		'S_CUSTOM' => array(23, "custom"),
+		'S_DUST' => array(24, "dust sensor"),
+		'S_SCENE_CONTROLLER' => array(25, "scene controller"),
+		'S_RGB_LIGHT' => array(26, "RGB light"),
+		'S_RGBW_LIGHT' => array(27, "RGBW light"),
+		'S_COLOR_SENSOR' => array(28, "color sensor"),
+		'S_HVAC' => array(29, "HVAC"),
+		'S_MULTIMETER' => array(30, "multimeter"),
+		'S_SPRINKLER' => array(31, "sprinkler"),
+		'S_WATER_LEAK' => array(32, "water leak sensor"),
+		'S_SOUND' => array(33, "sound sensor"),
+		'S_VIBRATION' => array(34, "vibration sensor"),
+		'S_MOISTURE' => array(35, "moisture sensor"),
+		'S_INFO' => array(36, "LCD"),
+		'S_GAS' => array(37, "gas meter"),
+		'S_GPS' => array(38, "GPS"),
+		'S_WATER_QUALITY' => array(39, "water quality sensor"),
+		'S_CAM' => array(52, "camera"),
+		'S_UNK' => array(9999, "unknown")
 	);
 	
 	static public $valueTypes = array(
-		'V_TEMP' => 0 ,
-		'V_HUM' => 1 ,
-		'V_STATUS' => 2 ,
-		'V_LIGHT' => 2 ,
-		'V_PERCENTAGE' => 3 ,
-		'V_DIMMER' => 3 ,
-		'V_PRESSURE' => 4 ,
-		'V_FORECAST' => 5 ,
-		'V_RAIN' => 6 ,
-		'V_RAINRATE' => 7 ,
-		'V_WIND' => 8 ,
-		'V_GUST' => 9 ,
-		'V_DIRECTION' => 10,
-		'V_UV' => 11,
-		'V_WEIGHT' => 12,
-		'V_DISTANCE' => 13,
-		'V_IMPEDANCE' => 14,
-		'V_ARMED' => 15,
-		'V_TRIPPED' => 16,
-		'V_WATT' => 17,
-		'V_KWH' => 18,
-		'V_SCENE_ON' => 19,
-		'V_SCENE_OFF' => 20,
-		'V_HVAC_FLOW_STATE' => 21,
-		'V_HVAC_SPEED' => 22,
-		'V_LIGHT_LEVEL' => 23,
-		'V_VAR1' => 24,
-		'V_VAR2' => 25,
-		'V_VAR3' => 26,
-		'V_VAR4' => 27,
-		'V_VAR5' => 28,
-		'V_UP' => 29,
-		'V_DOWN' => 30,
-		'V_STOP' => 31,
-		'V_IR_SEND' => 32,
-		'V_IR_RECEIVE' => 33,
-		'V_FLOW' => 34,
-		'V_VOLUME' => 35,
-		'V_LOCK_STATUS' => 36,
-		'V_LEVEL' => 37,
-		'V_VOLTAGE' => 38,
-		'V_CURRENT' => 39,
-		'V_RGB' => 40,
-		'V_RGBW' => 41,
-		'V_ID' => 42,
-		'V_UNIT_PREFIX' => 43,
-		'V_HVAC_SETPOINT_COOL' => 44,
-		'V_HVAC_SETPOINT_HEAT' => 45,
-		'V_HVAC_FLOW_MODE' => 46,
-		'V_TEXT' => 47,
-		'V_CUSTOM' => 48,
-		'V_POSITION' => 49,
-		'V_IR_RECORD' => 50,
-		'V_PH' => 51,
-		'V_ORP' => 52,
-		'V_EC' => 53,
-		'V_VAR' => 54,
-		'V_VA' => 55,
-		'V_POWER_FACTOR' => 56
+		'V_TEMP' => array(0 , "temperature"),
+		'V_HUM' => array(1 , "humidity"),
+		'V_STATUS' => array(2 , "status"),
+		'V_LIGHT' => array(2 , "status"),
+		'V_PERCENTAGE' => array(3 , "percentage"),
+		'V_DIMMER' => array(3 , "percentage"),
+		'V_PRESSURE' => array(4 , "pressure"),
+		'V_FORECAST' => array(5 , "forecast"), // Whether forecast. One of "stable", "sunny", "cloudy", "unstable", "thunderstorm" or "unknown"
+		'V_RAIN' => array(6 , "rain"),
+		'V_RAINRATE' => array(7 , "rain rate"),
+		'V_WIND' => array(8 , "wind"), // Windspeed
+		'V_GUST' => array(9 , "gust"),
+		'V_DIRECTION' => array(10, "wind direction"), // Wind direction 0-360 (degrees)	
+		'V_UV' => array(11, "UV"),
+		'V_WEIGHT' => array(12, "weight"),
+		'V_DISTANCE' => array(13, "distance"),
+		'V_IMPEDANCE' => array(14, "impedance"),
+		'V_ARMED' => array(15, "armed"),
+		'V_TRIPPED' => array(16, "tripped"),
+		'V_WATT' => array(17, "watt"),
+		'V_KWH' => array(18, "KWH"), // Accumulated number of KWH for a power meter
+		'V_SCENE_ON' => array(19, "scene on"), // Turn on a scene
+		'V_SCENE_OFF' => array(20, "scene off"), // Turn off a scene
+		'V_HVAC_FLOW_STATE' => array(21, "HVAC flow state"), // Mode of header. One of "Off", "HeatOn", "CoolOn", or "AutoChangeOver"
+		'V_HVAC_SPEED' => array(22, "HVAC speed"), // HVAC/Heater fan speed ("Min", "Normal", "Max", "Auto")
+		'V_LIGHT_LEVEL' => array(23, "light percentage"), // Uncalibrated light level. 0-100%. Use V_LEVEL for light level in lux.
+		'V_VAR1' => array(24, "var1"),
+		'V_VAR2' => array(25, "var2"),
+		'V_VAR3' => array(26, "var3"),
+		'V_VAR4' => array(27, "var4"),
+		'V_VAR5' => array(28, "var5"),
+		'V_UP' => array(29, "shutter up"), // Window covering. Up.
+		'V_DOWN' => array(30, "shutter down"), // Window covering. Down.
+		'V_STOP' => array(31, "shutter stop"), // Window covering. Stop.
+		'V_IR_SEND' => array(32, "sent IR"), // Send out an IR-command
+		'V_IR_RECEIVE' => array(33, "received IR"), // This message contains a received IR-command	
+		'V_FLOW' => array(34, "flow"), // Flow of water (in meter)	
+		'V_VOLUME' => array(35, "volume"), // Water volume	
+		'V_LOCK_STATUS' => array(36, "status"), // Set or get lock status. 1=Locked, 0=Unlocked	
+		'V_LEVEL' => array(37, "level"),
+		'V_VOLTAGE' => array(38, "voltage"),
+		'V_CURRENT' => array(39, "current"),
+		'V_RGB' => array(40, "RGB"), //RGB value transmitted as ASCII hex string (I.e "ff0000" for red)	
+		'V_RGBW' => array(41, "RGBW"), // RGBW value transmitted as ASCII hex string (I.e "ff0000ff" for red + full white)	
+		'V_ID' => array(42, "ID"),
+		'V_UNIT_PREFIX' => array(43, "unit"), // Allows sensors to send in a string representing the unit prefix to be displayed in GUI. This is not parsed by controller! E.g. cm, m, km, inch.
+		'V_HVAC_SETPOINT_COOL' => array(44, "HVAC cold setpoint"),
+		'V_HVAC_SETPOINT_HEAT' => array(45, "HVAC setpoint"),
+		'V_HVAC_FLOW_MODE' => array(46, "HVAC flow mode"), // Flow mode for HVAC ("Auto", "ContinuousOn", "PeriodicOn")	
+		'V_TEXT' => array(47, "text"),
+		'V_CUSTOM' => array(48, "custom"),
+		'V_POSITION' => array(49, "position"), // GPS position and altitude. Payload: latitude;longitude;altitude(m). E.g. "55.722526;13.017972;18"	
+		'V_IR_RECORD' => array(50, "IR record"),
+		'V_PH' => array(51, "PH"),
+		'V_ORP' => array(52, "ORP"), // Water ORP : redox potential in mV	
+		'V_EC' => array(53, "electric conductivity"), // Water electric conductivity μS/cm (microSiemens/cm)	
+		'V_VAR' => array(54, "reactive power"), // Reactive power: volt-ampere reactive (var)	
+		'V_VA' => array(55, "apparent power"), // Apparent power: volt-ampere (VA)	
+		'V_POWER_FACTOR' => array(56, "power factor") // Ratio of real power to apparent power: floating point value in the range [-1,..,1]
 	);
 	
 	static public $internalTypes = array(
@@ -382,8 +336,10 @@ class MySensors {
 	}
 	
 	static public function sensorTypeStr($sensorType){
-		if(is_int($sensorType) && ($i = array_search($sensorType, static::$sensorTypes, true)) !== false){
-			return $i;
+		if(is_int($sensorType)){
+			foreach(static::$sensorTypes as $type => $item){
+				if($item[0] === $sensorType) return $type;
+			}
 		} else if(is_string($sensorType) && array_key_exists($sensorType, static::$sensorTypes)){
 			return $sensorType;
 		}
@@ -392,19 +348,31 @@ class MySensors {
 	static public function sensorTypeToName($sensorType){
 		
 		$sensorType = static::sensorTypeStr($sensorType);
-		if(array_key_exists($sensorType, static::$sensorNames)){
-			return static::$sensorNames[$sensorType];
+		if(array_key_exists($sensorType, static::$sensorTypes)){
+			return static::$sensorTypes[$sensorType][1];
 		}
 		
-		return static::$sensorNames['S_UNK'];
+		return static::$sensorTypes['S_UNK'][1];
 	}
 	
 	static public function valueTypeStr($valueType){
-		if(is_int($valueType) && ($i = array_search($valueType, static::$valueTypes, true)) !== false){
-			return $i;
+		if(is_int($valueType)){
+			foreach(static::$valueTypes as $type => $item){
+				if($item[0] === $valueType) return $type;
+			}
 		} else if(is_string($valueType) && array_key_exists($valueType, static::$valueTypes)){
 			return $valueType;
 		}
+	}
+	
+	static public function valueTypeToName($valueType){
+		
+		$valueType = static::valueTypeStr($valueType);
+		if(array_key_exists($valueType, static::$valueTypes)){
+			return static::$valueTypes[$valueType][1];
+		}
+		
+		return $valueType;
 	}
 	
 	static public function streamTypeStr($streamType){
@@ -416,18 +384,16 @@ class MySensors {
 	}
 	
 	static public function sensorTypeInt($sensorType){
-		if(is_int($sensorType) && false !== array_search($sensorType, static::$sensorTypes, true)){
-			return $sensorType;
-		} else if(is_string($sensorType) && array_key_exists($sensorType, static::$sensorTypes)){
-			return static::$sensorTypes[$sensorType];
+		if(is_int($valueType)) return $valueType;
+		if(is_string($sensorType) && array_key_exists($sensorType, static::$sensorTypes)){
+			return static::$sensorTypes[$sensorType][0];
 		}
 	}
 	
 	static public function valueTypeInt($valueType){
-		if(is_int($valueType) && false !== array_search($valueType, static::$valueTypes, true)){
-			return $valueType;
-		} else if(is_string($valueType) && array_key_exists($valueType, static::$valueTypes)){
-			return static::$valueTypes[$valueType];
+		if(is_int($valueType)) return $valueType;
+		if(is_string($valueType) && array_key_exists($valueType, static::$valueTypes)){
+			return static::$valueTypes[$valueType][0];
 		}
 	}
 	

@@ -570,8 +570,10 @@
 			draw: function(){ /* to be implemented */ },
 			
 			destroy: function(){
-				this.$element.remove();
-				this.$element = null;
+				if(this.$element){
+					this.$element.remove();
+					this.$element = null;
+				}
 			}
 			
 		};
@@ -682,6 +684,191 @@
 					});
 				});
 				
+			}
+			
+		});
+		
+	}
+	
+	var TimeLineContentpanelItem = function(device){
+		
+		var contentpanelItem = ContentpanelItem();
+		
+		contentpanelItem.$element.addClass('d-contentpanel-item-timeline');
+		
+		return $.extend({}, contentpanelItem, {
+			
+			draw: function(){
+				
+				var self = this;
+				
+				this.setTitle('Time Line');
+				
+				var $view = $('<div>loading...</div>');
+				
+				this.setContent($view);
+				
+				
+				// retrieve the table containing the data
+				var tables = EThing.arbo.find(function(r){
+					return r instanceof EThing.Table && r.createdBy() && r.createdBy().id === device.id();
+				});
+				
+				if(!tables.length){
+					this.destroy();
+					return;
+				}
+				
+				var table = tables[0];
+				
+				function load(){
+					
+					google.charts.load('current', {'packages':['timeline']});
+					google.charts.setOnLoadCallback(function() {
+						
+						var $container = $('<div>');
+						
+						$view.empty().append(
+							'<div class="zoom-bar">'+
+								'<span>Zoom</span>'+
+								'<span class="zoom-item" data-value="3600">1h</span>'+
+								'<span class="zoom-item" data-value="7200">2h</span>'+
+								'<span class="zoom-item" data-value="21600">6h</span>'+
+								'<span class="zoom-item.selected" data-value="86400">1d</span>'+
+								'<span class="zoom-item" data-value="604800">1w</span>'+
+							'</div>',
+							$container
+						);
+						
+						$view.find('.zoom-item').click(function(){
+							$view.find('.zoom-item.selected').removeClass('selected');
+							timespan = parseInt($(this).addClass('selected').attr('data-value'));
+							draw();
+						});
+						
+						var timespan = 86400;
+						var container = $container[0];
+						var chart = new google.visualization.Timeline(container);
+						var dataTable = new google.visualization.DataTable();
+						var rowHeight = 41;
+						var lastData = null;
+						
+						var options = {
+							timeline: { showRowLabels: false },
+							hAxis: {
+								format: 'HH:mm'
+							}
+						};
+						
+						dataTable.addColumn({ type: 'string', id: 'Line' });
+						dataTable.addColumn({ type: 'string', id: 'State' });
+						dataTable.addColumn({ type: 'date', id: 'Start' });
+						dataTable.addColumn({ type: 'date', id: 'End' });
+						
+						var delay = 250, // delay between calls
+							throttled = false; // are we currently throttled?
+						
+						function chartDraw(){
+							if (throttled) return;
+					
+							throttled = true;
+							// set a timeout to un-throttle
+							setTimeout(function() {
+							  throttled = false;
+							  
+							  chart.draw(dataTable, options);
+							}, delay);
+							
+						}
+						
+						function draw(){
+							
+							if(!self.onResize){
+								self.onResize = chartDraw;
+								$(window).on('resize', self.onResize);
+							}
+					
+							dataTable.removeRows(0,dataTable.getNumberOfRows());
+							
+							var d = new Date( Date.now() - (timespan*1000) );
+							var query = "date > '"+d.toISOString()+"'";
+							
+							table.select({
+								datefmt: 'TIMESTAMP_MS',
+								fields: ['date', 'status'],
+								query: query // restrict to the desired timespan
+							}).done(function(data){
+								
+								if(data.length>0){
+									lastData = data[data.length-1];
+								} else if(lastData){
+									data.push(lastData);
+								} else {
+									data.push({
+										date: Date.now() - (timespan*1000),
+										status: false
+									});
+								}
+								
+								var rows = [];
+								var colors = [];
+								var lastValue = null;
+								var lastDate = null;
+								
+								var iterateFn = function(d, force){
+									
+									var date = new Date(d['date']);
+									var value = d['status'] ? 'on' : 'off';
+									
+									if(lastValue === value && !(force===true)) return;
+									
+									if(lastDate !== null){
+										var dateStart = lastDate;
+										var dateEnd = date;
+										var label = lastValue;
+										var color = label === 'on' ? '#73ff71' : '#ff7171';
+										
+										rows.push(['state', label, dateStart, dateEnd]);
+										colors.push(color);
+									}
+									
+									lastValue = value;
+									lastDate = date;
+									
+								};
+								
+								data.forEach(iterateFn);
+								
+								iterateFn({
+									date: Date.now(),
+									status: null
+								}, true);
+								
+								dataTable.addRows(rows);
+								
+								options.colors = colors;
+								
+								if(!options.height) options.height = 1 * rowHeight + 100;
+								
+								chartDraw();
+							});
+						}
+						
+						draw();
+						
+					});
+					
+				}
+				
+				typeof google === "undefined" ? require(['https://www.gstatic.com/charts/loader.js'], load) : load();
+				
+			},
+			
+			destroy: function(){
+				contentpanelItem.destroy.call(this);
+				if(this.onResize){
+					$(window).off('resize', this.onResize);
+				}
 			}
 			
 		});
@@ -1124,7 +1311,7 @@
 		}, ApiContentpanelItem]
 	},{
 		filter: function(r){
-			return r instanceof EThing.Device.MySensorsSensor;
+			return r instanceof EThing.Device.MySensorsSensor || r instanceof EThing.Device.RFLinkNode;
 		},
 		items: [ParentContentpanelItem, {
 			class: DescriptionContentpanelItem,
@@ -1135,6 +1322,11 @@
 			class: DataContentpanelItem,
 			filter: function(r){
 				return !$.isEmptyObject(r.data());
+			}
+		}, {
+			class: TimeLineContentpanelItem,
+			filter: function(d){
+				return d instanceof EThing.Device.RFLinkNode && d.subType() === 'switch';
 			}
 		}, {
 			class: PlotContentpanelItem,

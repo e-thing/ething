@@ -22,11 +22,7 @@
 			});
 			
 			var update = function(){
-				var value = sensor.val('V_STATUS');
-			
-				if(value===null){
-					value = sensor.val('V_LIGHT');
-				}
+				var value = sensor.val('status');
 				
 				widget.val(!!value);
 				widget.setFooter(sensor.modifiedDate().toLocaleString());

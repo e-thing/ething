@@ -25,10 +25,10 @@
 			<div role="tabpanel" class="tab-pane" id="log">
 				
 				<div class="row toolbar">
-					<div class="col-sm-6 col-md-5">
+					<div class="col-sm-5 col-md-5">
 						<div class="input-group">
-							<span class="input-group-addon">filter</span>
-							<select id="log-filter" class="form-control" multiple>
+							<span class="input-group-addon"><span class="glyphicon glyphicon-filter" aria-hidden="true"></span> <span class="visible-md-inline visible-lg-inline">filter</span></span>
+							<select id="log-filter" class="form-control" multiple data-selected-text-format="count > 5">
 								<option selected value="TRACE">trace</option>
 								<option selected value="DEBUG">debug</option>
 								<option selected value="INFO">info</option>
@@ -40,13 +40,21 @@
 					</div>
 					<div class="col-sm-4 col-md-4">
 						<div class="input-group">
-							<span class="input-group-addon">search</span>
+							<span class="input-group-addon"><span class="glyphicon glyphicon-search" aria-hidden="true"></span> <span class="visible-md-inline visible-lg-inline">search</span></span>
 							<input type="text" id="log-search" class="form-control" placeholder="Search for...">
 						</div>
 					</div>
-					<div class="col-sm-2 col-md-3">
+					<div class="col-sm-3 col-md-3">
 						<div class="btn-group" role="group" aria-label="...">
-						  <button type="button" class="btn btn-default" id="log-reload"><span class="glyphicon glyphicon-refresh" aria-hidden="true"></span> <span class="hidden-sm">reload</span></button>
+							<div class="btn-group" id="log-length">
+								<button type="button" class="btn btn-default dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false"><span class="value"></span> <span class="caret"></span></button>
+								<ul class="dropdown-menu">
+									<li><a href="#">100</a></li>
+									<li><a href="#">200</a></li>
+									<li><a href="#">all</a></li>
+								</ul>
+							</div>
+							<button type="button" class="btn btn-default" id="log-reload"><span class="glyphicon glyphicon-refresh" aria-hidden="true"></span> <span class="hidden-sm">reload</span></button>
 						</div>
 					</div>
 				</div>

@@ -18,7 +18,7 @@
 			});
 			
 			var update = function(){
-				widget.val(sensor.val('V_LEVEL'));
+				widget.val(sensor.val('level'));
 				widget.setFooter(sensor.modifiedDate().toLocaleString());
 			};
 			

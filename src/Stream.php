@@ -71,6 +71,22 @@ class Stream {
 		return $len;
 	}
 	
+	public function sendJSON($data, $no = Stream::STDOUT){
+		if($this->closed) return;
+		$data = \json_encode($data, JSON_PRETTY_PRINT);
+		if($data===false){
+			$this->close(400,'invalid data');
+			return 0;
+		}
+		$this->contentType('application/json');
+		$len = strlen($data);
+		$this->receivedLength += $len;
+		if($this->outCb !== null)
+			call_user_func($this->outCb, $this, $data, $no);
+		$this->close();
+		return $len;
+	}
+	
 	public function err($data){
 		return $this->out($data, Stream::STDERR);
 	}

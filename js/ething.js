@@ -6318,154 +6318,58 @@ if(typeof module !== 'undefined' && module.exports){
 	}
 	
 	
-	
 	/**
-	 * RFLinkSwitch base class constructor.
+	 * RFLinkNode base class constructor.
 	 * @protected
-	 * @class The RFLinkSwitch Device resource handle
+	 * @class The RFLinkNode Device resource handle
 	 * @memberof EThing.Device
 	 * @extends EThing.Device
 	 * @param {object} json
 	 */
-	EThing.Device.RFLinkSwitch = function(json)
+	EThing.Device.RFLinkNode = function(json)
 	{
 		EThing.Device.call(this, json);
 	}
-	EThing.utils.inherits(EThing.Device.RFLinkSwitch, EThing.Device);
+	EThing.utils.inherits(EThing.Device.RFLinkNode, EThing.Device);
 	
 	/**
 	 * Returns the protocol used to communicate with this node.
-	 * @memberof EThing.Device.RFLinkSwitch
-	 * @this {EThing.Device.RFLinkSwitch}
+	 * @memberof EThing.Device.RFLinkNode
+	 * @this {EThing.Device.RFLinkNode}
 	 * @returns {string}
 	 */
-	EThing.Device.RFLinkSwitch.prototype.protocol = function() {
+	EThing.Device.RFLinkNode.prototype.protocol = function() {
 	  return this._json.protocol;
 	}
 	
 	/**
 	 * Returns the nodeId of this node.
-	 * @memberof EThing.Device.RFLinkSwitch
-	 * @this {EThing.Device.RFLinkSwitch}
+	 * @memberof EThing.Device.RFLinkNode
+	 * @this {EThing.Device.RFLinkNode}
 	 * @returns {string}
 	 */
-	EThing.Device.RFLinkSwitch.prototype.nodeId = function() {
+	EThing.Device.RFLinkNode.prototype.nodeId = function() {
 	  return this._json.nodeId;
 	}
 	
 	/**
-	 * Returns the switchId of this node.
-	 * @memberof EThing.Device.RFLinkSwitch
-	 * @this {EThing.Device.RFLinkSwitch}
+	 * Returns the switchId of this node (only available for switch/door/motion nodes).
+	 * @memberof EThing.Device.RFLinkNode
+	 * @this {EThing.Device.RFLinkNode}
 	 * @returns {string}
 	 */
-	EThing.Device.RFLinkSwitch.prototype.switchId = function() {
+	EThing.Device.RFLinkNode.prototype.switchId = function() {
 	  return this._json.switchId;
 	}
 	
-	
 	/**
-	 * RFLinkThermometer base class constructor.
-	 * @protected
-	 * @class The RFLinkThermometer Device resource handle
-	 * @memberof EThing.Device
-	 * @extends EThing.Device
-	 * @param {object} json
-	 */
-	EThing.Device.RFLinkThermometer = function(json)
-	{
-		EThing.Device.call(this, json);
-	}
-	EThing.utils.inherits(EThing.Device.RFLinkThermometer, EThing.Device);
-	
-	/**
-	 * Returns the protocol used to communicate with this node.
-	 * @memberof EThing.Device.RFLinkThermometer
-	 * @this {EThing.Device.RFLinkThermometer}
+	 * Returns the subType of this node.
+	 * @memberof EThing.Device.RFLinkNode
+	 * @this {EThing.Device.RFLinkNode}
 	 * @returns {string}
 	 */
-	EThing.Device.RFLinkThermometer.prototype.protocol = function() {
-	  return this._json.protocol;
-	}
-	
-	/**
-	 * Returns the nodeId of this node.
-	 * @memberof EThing.Device.RFLinkThermometer
-	 * @this {EThing.Device.RFLinkThermometer}
-	 * @returns {string}
-	 */
-	EThing.Device.RFLinkThermometer.prototype.nodeId = function() {
-	  return this._json.nodeId;
-	}
-	
-	
-	/**
-	 * RFLinkWeatherStation base class constructor.
-	 * @protected
-	 * @class The RFLinkWeatherStation Device resource handle
-	 * @memberof EThing.Device
-	 * @extends EThing.Device
-	 * @param {object} json
-	 */
-	EThing.Device.RFLinkWeatherStation = function(json)
-	{
-		EThing.Device.call(this, json);
-	}
-	EThing.utils.inherits(EThing.Device.RFLinkWeatherStation, EThing.Device);
-	
-	/**
-	 * Returns the protocol used to communicate with this node.
-	 * @memberof EThing.Device.RFLinkWeatherStation
-	 * @this {EThing.Device.RFLinkWeatherStation}
-	 * @returns {string}
-	 */
-	EThing.Device.RFLinkWeatherStation.prototype.protocol = function() {
-	  return this._json.protocol;
-	}
-	
-	/**
-	 * Returns the nodeId of this node.
-	 * @memberof EThing.Device.RFLinkWeatherStation
-	 * @this {EThing.Device.RFLinkWeatherStation}
-	 * @returns {string}
-	 */
-	EThing.Device.RFLinkWeatherStation.prototype.nodeId = function() {
-	  return this._json.nodeId;
-	}
-	
-	
-	/**
-	 * RFLinkMultimeter base class constructor.
-	 * @protected
-	 * @class The RFLinkMultimeter Device resource handle
-	 * @memberof EThing.Device
-	 * @extends EThing.Device
-	 * @param {object} json
-	 */
-	EThing.Device.RFLinkMultimeter = function(json)
-	{
-		EThing.Device.call(this, json);
-	}
-	EThing.utils.inherits(EThing.Device.RFLinkMultimeter, EThing.Device);
-	
-	/**
-	 * Returns the protocol used to communicate with this node.
-	 * @memberof EThing.Device.RFLinkMultimeter
-	 * @this {EThing.Device.RFLinkMultimeter}
-	 * @returns {string}
-	 */
-	EThing.Device.RFLinkMultimeter.prototype.protocol = function() {
-	  return this._json.protocol;
-	}
-	
-	/**
-	 * Returns the nodeId of this node.
-	 * @memberof EThing.Device.RFLinkMultimeter
-	 * @this {EThing.Device.RFLinkMultimeter}
-	 * @returns {string}
-	 */
-	EThing.Device.RFLinkMultimeter.prototype.nodeId = function() {
-	  return this._json.nodeId;
+	EThing.Device.RFLinkNode.prototype.subType = function() {
+	  return this._json.subType;
 	}
 	
 	
@@ -6504,62 +6408,28 @@ if(typeof module !== 'undefined' && module.exports){
 	};
 	
 	/**
-	 * Creates a new RFLink generic switch.
+	 * Creates a new RFLink node. The kinf of node is defined by the mandatory subType attribute.
 	 *
-	 * @method EThing.Device.RFLinkSwitch.create
+	 * @method EThing.Device.RFLinkNode.create
 	 * @param {object} attributes
 	 * @param {function(data,XHR,options)} [callback] it is executed once the request is complete whether in failure or success
 	 * @returns {Deferred} a {@link http://api.jquery.com/category/deferred-object/|jQuery like Promise object}. {@link EThing.request|More ...} 
 	 * @fires EThing#ething.device.created
 	 * @example
-	 * EThing.Device.RFLinkSwitch.create({
+	 * EThing.Device.RFLinkNode.create({
 	 *   name: "foobar",
 	 *   gateway: "4ge7r81",
+	 *   subType: "switch", // switch | door | motion | thermometer | weatherStation | multimeter
 	 *   protocol: "NewKaku",
 	 *   nodeId: "008440e6",
-	 *   switchId: "a"
+	 *   switchId: "a" // nedded for switch | door | motion
 	 * }).done(function(resource){
 	 *     console.log('the new RFLink switch has been added');
 	 * })
 	 */
-	EThing.Device.RFLinkSwitch.create = function(a,callback){
+	EThing.Device.RFLinkNode.create = function(a,callback){
 		
-		a.type = 'RFLinkSwitch';
-		
-		return EThing.request({
-			'url': '/devices',
-			'dataType': 'json',
-			'method': 'POST',
-			'contentType': "application/json; charset=utf-8",
-			'data': a,
-			'converter': EThing.resourceConverter
-		},callback).done(function(r){
-			EThing.trigger('ething.device.created',[r]);
-		});
-		
-	};
-	
-	/**
-	 * Creates a new RFLink generic thermometer.
-	 *
-	 * @method EThing.Device.RFLinkThermometer.create
-	 * @param {object} attributes
-	 * @param {function(data,XHR,options)} [callback] it is executed once the request is complete whether in failure or success
-	 * @returns {Deferred} a {@link http://api.jquery.com/category/deferred-object/|jQuery like Promise object}. {@link EThing.request|More ...} 
-	 * @fires EThing#ething.device.created
-	 * @example
-	 * EThing.Device.RFLinkThermometer.create({
-	 *   name: "foobar",
-	 *   gateway: "4ge7r81",
-	 *   protocol: "OregonV1",
-	 *   nodeId: "000A"
-	 * }).done(function(resource){
-	 *     console.log('the new RFLink thermometer has been added');
-	 * })
-	 */
-	EThing.Device.RFLinkThermometer.create = function(a,callback){
-		
-		a.type = 'RFLinkThermometer';
+		a.type = 'RFLinkNode';
 		
 		return EThing.request({
 			'url': '/devices',
@@ -6574,75 +6444,6 @@ if(typeof module !== 'undefined' && module.exports){
 		
 	};
 	
-	/**
-	 * Creates a new RFLink generic weather station.
-	 *
-	 * @method EThing.Device.RFLinkWeatherStation.create
-	 * @param {object} attributes
-	 * @param {function(data,XHR,options)} [callback] it is executed once the request is complete whether in failure or success
-	 * @returns {Deferred} a {@link http://api.jquery.com/category/deferred-object/|jQuery like Promise object}. {@link EThing.request|More ...} 
-	 * @fires EThing#ething.device.created
-	 * @example
-	 * EThing.Device.RFLinkWeatherStation.create({
-	 *   name: "foobar",
-	 *   gateway: "4ge7r81",
-	 *   protocol: "Oregon Wind",
-	 *   nodeId: "1a89"
-	 * }).done(function(resource){
-	 *     console.log('the new RFLink weather station has been added');
-	 * })
-	 */
-	EThing.Device.RFLinkWeatherStation.create = function(a,callback){
-		
-		a.type = 'RFLinkWeatherStation';
-		
-		return EThing.request({
-			'url': '/devices',
-			'dataType': 'json',
-			'method': 'POST',
-			'contentType': "application/json; charset=utf-8",
-			'data': a,
-			'converter': EThing.resourceConverter
-		},callback).done(function(r){
-			EThing.trigger('ething.device.created',[r]);
-		});
-		
-	};
-	
-	/**
-	 * Creates a new RFLink generic multimeter.
-	 *
-	 * @method EThing.Device.RFLinkMultimeter.create
-	 * @param {object} attributes
-	 * @param {function(data,XHR,options)} [callback] it is executed once the request is complete whether in failure or success
-	 * @returns {Deferred} a {@link http://api.jquery.com/category/deferred-object/|jQuery like Promise object}. {@link EThing.request|More ...} 
-	 * @fires EThing#ething.device.created
-	 * @example
-	 * EThing.Device.RFLinkMultimeter.create({
-	 *   name: "foobar",
-	 *   gateway: "4ge7r81",
-	 *   protocol: "Revolt",
-	 *   nodeId: "3f8a"
-	 * }).done(function(resource){
-	 *     console.log('the new RFLink multimeter has been added');
-	 * })
-	 */
-	EThing.Device.RFLinkMultimeter.create = function(a,callback){
-		
-		a.type = 'RFLinkMultimeter';
-		
-		return EThing.request({
-			'url': '/devices',
-			'dataType': 'json',
-			'method': 'POST',
-			'contentType': "application/json; charset=utf-8",
-			'data': a,
-			'converter': EThing.resourceConverter
-		},callback).done(function(r){
-			EThing.trigger('ething.device.created',[r]);
-		});
-		
-	};
 	
 	
 })(this);
@@ -6733,6 +6534,110 @@ if(typeof module !== 'undefined' && module.exports){
 	};
 	
 
+})(this);
+(function (global) {
+	
+	var EThing = global.EThing;
+	
+	
+	
+	
+	/**
+	 * Constructs a SSH Device instance from an object decribing a SSH device. Should not be called directly. Use instead {@link EThing.list}.
+	 * @protected
+	 * @class The SSH Device resource handle
+	 * @memberof EThing.Device
+	 * @extends EThing.Device
+	 * @param {object} json
+	 */
+	EThing.Device.SSH = function(json)
+	{
+		EThing.Device.call(this, json);
+	}
+	EThing.utils.inherits(EThing.Device.SSH, EThing.Device);
+	
+	
+	/**
+	 * 
+	 * @memberof EThing.Device.SSH
+	 * @this {EThing.Device.SSH}
+	 * @returns {string}
+	 */
+	EThing.Device.SSH.prototype.host = function() {
+	  return this._json.host;
+	}
+	
+	/**
+	 * 
+	 * @memberof EThing.Device.SSH
+	 * @this {EThing.Device.SSH}
+	 * @returns {number}
+	 */
+	EThing.Device.SSH.prototype.port = function() {
+	  return this._json.port;
+	}
+	
+	/**
+	 * 
+	 * @memberof EThing.Device.SSH
+	 * @this {EThing.Device.SSH}
+	 * @returns {object}
+	 */
+	EThing.Device.SSH.prototype.auth = function() {
+	  return this._json.auth || null;
+	}
+	
+	/**
+	 * Return false if the device is not reachable.
+	 * @memberof EThing.Device.SSH
+	 * @this {EThing.Device.SSH}
+	 * @returns {boolean}
+	 */
+	EThing.Device.SSH.prototype.isReachable = function() {
+	  return !!this._json.reachable;
+	}
+	
+	
+
+	
+	/**
+	 * Creates a new SSH device
+	 *
+	 * @method EThing.Device.SSH.create
+	 * @param {object} attributes
+	 * @param {function(data,XHR,options)} [callback] it is executed once the request is complete whether in failure or success
+	 * @returns {Deferred} a {@link http://api.jquery.com/category/deferred-object/|jQuery like Promise object}. {@link EThing.request|More ...} 
+	 * @fires EThing#ething.device.created
+	 * @example
+	 * EThing.Device.SSH.create({
+	 *   host: "localhost",
+	 *   auth: {
+	 *     user: "foo",
+	 *     password: "bar"
+	 *   }
+	 * }).done(function(resource){
+	 *     console.log('the new SSH device has been created');
+	 * })
+	 */
+	EThing.Device.SSH.create = function(a,callback){
+		
+		a.type = 'SSH';
+		
+		return EThing.request({
+			'url': '/devices',
+			'dataType': 'json',
+			'method': 'POST',
+			'contentType': "application/json; charset=utf-8",
+			'data': a,
+			'converter': EThing.resourceConverter
+		},callback).done(function(r){
+			EThing.trigger('ething.device.created',[r]);
+		});
+		
+	};
+	
+	
+	
 })(this);
 (function (global) {
 	

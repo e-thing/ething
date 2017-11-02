@@ -328,12 +328,11 @@
 			UI.trigger('ui-pageChanged');
 			
 		}, function(err){
+			if(cntCheck!==cnt) return; // too late !
+			
 			console.log('unable to load: '+pathjs);
 			console.error(err);
 			
-			if(cntCheck!==cnt) return; // too late !
-			
-			UI.show404();
 		});
 		
 	};

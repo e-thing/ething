@@ -17,14 +17,12 @@ class Controller extends \Stream {
 	
 	public $device = null;
 	
-	protected $logger;
-	
 	private $lastActivity = 0;
 	
 	private $buffer = "";
 	
 	private $lastAutoconnectLoop = 0;
-	private $preventFailConnectLog = false;
+	private $preventFailConnectLog = 0;
 	
 	protected $isOpened = false;
 	
@@ -37,7 +35,6 @@ class Controller extends \Stream {
 		
 		$this->device = $device;
 		$this->options = array_replace_recursive($this->options, $options);
-		$this->logger = $this->device->ething->logger();
 	}
 	
 	public function ething(){
@@ -74,7 +71,7 @@ class Controller extends \Stream {
 		$this->buffer = '';
 		
 		$this->isOpened = true;
-		$this->logger->info("Yeelight: connected to {$host}");
+		\Log::info("Yeelight: connected to {$host}");
 		
 		$device->setConnectState(true);
 		
@@ -113,12 +110,12 @@ class Controller extends \Stream {
 						$message = json_decode($line, true);
 						if(!is_array($message)) throw new \Exception();
 						
-						$this->logger->debug("Yeelight: message received = {$line}");
+						\Log::debug("Yeelight: message received = {$line}");
 						$this->processMessage($message);
 						
 					} catch (\Exception $e) {
 						// skip the line
-						$this->logger->warn("Yeelight: unable to handle the message {$line}");
+						\Log::warn("Yeelight: unable to handle the message {$line}");
 						continue;
 					}
 					
@@ -144,7 +141,7 @@ class Controller extends \Stream {
 			$this->isOpened = false;
 			$this->lastAutoconnectLoop = 0;
 			$this->device->setConnectState(false);
-			$this->logger->info("Yeelight: closed");
+			\Log::info("Yeelight: closed");
 		}
 		return !$this->isOpened;
 	}
@@ -223,18 +220,19 @@ class Controller extends \Stream {
 		
 		// check for a deconnection
 		if(!$this->isOpened && $this->isOpened != $this->lastState_)
-			$this->logger->info("Yeelight: disconnected");
+			\Log::info("Yeelight: disconnected");
 		$this->lastState_ = $this->isOpened;
 		
 		// autoconnect
 		if(!$this->isOpened && ($now - $this->lastAutoconnectLoop) > self::AUTOCONNECT_PERIOD ){
 			try{
 				$this->open();
-				$this->logger->info("Yeelight: connected");
-				$this->preventFailConnectLog = false;
+				$this->preventFailConnectLog = 0;
 			} catch(\Exception $e){
-				if(!$this->preventFailConnectLog) $this->logger->warn("Yeelight: unable to connect : {$e->getMessage()}");
-				$this->preventFailConnectLog = true;
+				$this->device->setConnectState(false);
+				
+				if($this->preventFailConnectLog % 5 === 0) \Log::warn("Yeelight: unable to connect : {$e->getMessage()}");
+				$this->preventFailConnectLog += 1;
 			}
 			$this->lastAutoconnectLoop = $now;
 		}
@@ -263,7 +261,7 @@ class Controller extends \Stream {
 		
 		$message['id'] = rand(1,9999);
 		
-		$this->logger->debug("Yeelight: message send id={$message['id']}");
+		\Log::debug("Yeelight: message send id={$message['id']}");
 		
 		if(!$this->isOpened){
 			if(is_callable($callback)){

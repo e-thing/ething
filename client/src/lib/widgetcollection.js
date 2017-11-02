@@ -10,8 +10,6 @@
 		
 		var cachedWidgetPluginObject = {};
 		
-		var map = DevMap;
-		
 		return {
 			
 			types: {
@@ -96,6 +94,21 @@
 					}
 					
 				});
+				
+				if(!widgetName){
+					// try to find a generic widget !
+					
+					if( device.data().hasOwnProperty('temperature') || device.operations().indexOf('getTemperature') !== -1 ) {
+						widgetName = 'GenericThermometer';
+					} else if ( device.data().hasOwnProperty('humidity') || device.operations().indexOf('getHumidity') !== -1 ) {
+						widgetName = 'GenericHygrometer';
+					} else if ( device.data().hasOwnProperty('pressure') || device.operations().indexOf('getPressure') !== -1 ) {
+						widgetName = 'GenericBarometer';
+					} else if ( device.operations().indexOf('on') !== -1 && device.operations().indexOf('off') !== -1 ) {
+						widgetName = 'GenericSwitch';
+					}
+					
+				}
 				
 				return widgetName ? 'devices/'+widgetName : null;
 			},

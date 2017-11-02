@@ -5,7 +5,6 @@
     }
 }(this, function ($) {
 	
-	
 	return {
 		
 		require: ['widget/Number'],
@@ -13,23 +12,29 @@
 		instanciate: function(sensor, options, Number){
 			
 			var widget = Number({
-				unit : '&#8451;',
+				unit : '%',
 				title: sensor.basename()
 			});
 			
-			var update = function(){
-				widget.val(sensor.val('temperature'));
+			var setValue = function(value){
+				widget.val(value);
 				widget.setFooter(sensor.modifiedDate().toLocaleString());
+			};
+			
+			var update = function(){
+				var value = sensor.data('humidity', false);
+				if(value===false){
+					sensor.execute('getHumidity').done(setValue);
+				} else {
+					setValue(value);
+				}
 			};
 			
 			return $.extend({}, widget, {
 				
 				draw: function(){
-					
 					widget.draw.call(this);
-					
 					sensor.on('updated', update);
-					
 					update();
 				},
 				
@@ -43,6 +48,5 @@
 		}
 		
 	};
-	
 	
 }));

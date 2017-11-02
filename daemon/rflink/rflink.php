@@ -39,7 +39,7 @@ class RFLink {
 	static public function stopController($id) {
 		
 		if($controller = static::getController($id)){
-			$device = $controller->device;
+			$device = $controller->gateway;
 			\Log::info("stopping RFLink controller '".$device->name()."' id=".$device->id()." type=".$device->type());
 			$controller->close();
 			\PoolStream::remove($controller);

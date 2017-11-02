@@ -36,3 +36,7 @@
 	margin-bottom: 15px;
 }
 
+#resource .f-select .bootstrap-select ul.dropdown-menu.inner {
+	max-height: 200px;
+    overflow: auto;
+}

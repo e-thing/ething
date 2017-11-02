@@ -238,3 +238,8 @@
 	max-height: 250px;
     overflow: auto;
 }
+
+#devices .f-select .bootstrap-select ul.dropdown-menu.inner {
+	max-height: 200px;
+    overflow: auto;
+}

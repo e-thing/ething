@@ -43,15 +43,17 @@ $cli = new CommandInterpreter();
 $server = new Server($cli, $ething->config('daemon.port'));
 
 
-PoolStream::add($server);
 
-Log::setName('daemon');
+PoolStream::add($server);
 
 $ething->setName('daemon');
 $ething->setSignalsDispatcher('SignalManager::dispatch');
 
 
-$ething->logger()->info(" *** DAEMON START *** ");
+Log::$ething = $ething;
+Log::info(" *** DAEMON START *** ");
+
+
 
 $cli->add('info', function($args, $client) use($startTime) {
 	$client->success('e-Thing '.\Ething\Ething::VERSION."\nuptime=".(time() - $startTime));
@@ -59,7 +61,6 @@ $cli->add('info', function($args, $client) use($startTime) {
 
 $cli->add('restart', function($args, $client) use ($ething) {
 	$client->success();
-	$ething->logger()->warn('daemon restart');
 	Log::info("daemon restart");
 	system('service ethingd restart &');
 });
@@ -222,7 +223,8 @@ function pingDevicesTask(){
 			'type' => 'Device\\Http',
 			'url' => array('$ne' => null)
 		),
-		array( 'type' => 'Device\\RTSP' )
+		array( 'type' => 'Device\\RTSP' ),
+		array( 'type' => 'Device\\SSH' )
 	)));
 	
 	foreach($devices as $device){
@@ -255,6 +257,42 @@ function checkExpiredDataTask(){
 	
 }
 
+function repairDB(){
+	global $ething;
+	
+	Log::info("repairing DB");
+	$ething->repair();
+	
+	foreach ( $ething->find() as $r ) {
+		if(method_exists($r, "repair")){
+			Log::debug("repairing {$r}");
+			
+			try {
+				$r->repair();
+			} catch( \Exception $e ) {
+				Log::error("repair failed for {$r} : {$e->getMessage()}");
+			}
+		}
+	}
+	
+	// also clean the database
+	Log::debug("cleaning DB");
+	foreach( $ething->db()->listCollections() as $collInfo){
+		$name = $collInfo->getName();
+		
+		if(preg_match('/^system\./', $name)) continue;
+		
+		Log::debug("compacting collection {$name}");
+		
+		$ething->db()->command(array(
+			'compact' => $name
+		));
+		
+	}
+	
+}
+
+
 if(!$server->start()){
 	Log::fatal("unable to start the server at port {$server->getPort()}");
 }
@@ -277,6 +315,10 @@ Timer::setInterval(60, function(){
 Timer::setInterval(600, function(){
 	TaskManager::add(new ForkTask('checkExpiredDataTask'));
 }, 100);
+
+Timer::at(function(){
+	TaskManager::add(new ForkTask('repairDB'));
+}, 4);
 
 Timer::setInterval(5, function() use(&$signalsQueue, $ething) {
 	if($l = count($signalsQueue)){

@@ -7,6 +7,7 @@ require_once __DIR__.'/TaskManager.php';
 require_once __DIR__.'/Timer.php';
 
 Log::setLevel(Log::INFO);
+Log::setName('daemon');
 Log::info("daemon started");
 
 

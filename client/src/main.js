@@ -4,6 +4,7 @@
 
 		requirejs.config({
 			//baseUrl: "src/lib",
+			waitSeconds: 10,
 			map: {
 				'*': {
 					'css': 'require-css/css',
@@ -122,6 +123,13 @@
 			
 		});
 		
+		
+		requirejs.onError = function (err) {
+			console.log(err.requireType);
+			if (err.requireType === 'timeout') {
+				console.log('modules: ' + err.requireModules);
+			}
+		};
 		
         // AMD. Register as an anonymous module.
         define(['ething', 'jquery', 'json!config.json'], factory);

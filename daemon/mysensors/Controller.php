@@ -43,13 +43,11 @@ abstract class Controller extends \Stream {
 	private $responseListeners = array();
 	
 	private $lastAutoconnectLoop = 0;
-	private $preventFailConnectLog = false;
+	private $preventFailConnectLog = 0;
 	
 	private $logMessage = false;
 	
 	protected $isOpened = false;
-	
-	protected $logger;
 	
 	public $options = array(
 		'isMetric' => true, // Metric or Imperial
@@ -62,8 +60,6 @@ abstract class Controller extends \Stream {
 		$this->options = array_replace_recursive($this->options, $options);
 		
 		$this->options['isMetric'] = $gateway->isMetric();
-		
-		$this->logger = $this->gateway->ething->logger();
 	}
 	
 	public function ething(){
@@ -91,7 +87,7 @@ abstract class Controller extends \Stream {
 		$this->isOpened = false;
 		$this->lastAutoconnectLoop = 0;
 		$this->gateway->setConnectState(false);
-		$this->logger->info("MySensors: closed");
+		\Log::info("MySensors: closed");
 		return true;
 	}
 	
@@ -102,7 +98,7 @@ abstract class Controller extends \Stream {
 			'name' => $gateway->name().'/node-'.$nodeId
 		))))
 			throw new \Exception("fail to create the node nodeId={$nodeId}");
-		$this->logger->info("MySensors: new node nodeId={$nodeId}");
+		\Log::info("MySensors: new node nodeId={$nodeId}");
 		return $node;
 	}
 	
@@ -115,14 +111,14 @@ abstract class Controller extends \Stream {
 		)))){
 			throw new \Exception("fail to create the sensor nodeId={$node->nodeId()} sensorId={$sensorId} sensorType={$sensorType}");
 		}
-		$this->logger->info("MySensors: new sensor nodeId={$node->nodeId()} sensorId={$sensorId} sensorType={$sensorType}");
+		\Log::info("MySensors: new sensor nodeId={$node->nodeId()} sensorId={$sensorId} sensorType={$sensorType}");
 		return $sensor;
 	}
 	
 	public function processMessage(Message $message) {
 		$r = true;
 		
-		$this->logger->debug("MySensors: message received {$message}");
+		\Log::debug("MySensors: message received {$message}");
 		
 		$gateway = $this->gateway;
 		$nodeId = $message->nodeId;
@@ -178,12 +174,12 @@ abstract class Controller extends \Stream {
 						
 						if($sensor){
 							
-							$this->logger->debug("MySensors: set value nodeId={$nodeId} sensorId={$sensorId} valueType={$message->subType} value={$message->payload}");
+							\Log::debug("MySensors: set value nodeId={$nodeId} sensorId={$sensorId} valueType={$message->subType} value={$message->payload}");
 							if(($datatype = MySensors::valueTypeStr($message->subType)) !== null){
 								$value = $message->getValue();
 								$sensor->storeData($datatype, $value);
 							} else {
-								$this->logger->warn("MySensors: unknown value subtype {$message->subType}");
+								\Log::warn("MySensors: unknown value subtype {$message->subType}");
 							}
 						}
 						
@@ -201,7 +197,7 @@ abstract class Controller extends \Stream {
 									// no value stored ! No response
 								}
 							} else {
-								$this->logger->warn("MySensors: unknown value subtype {$message->subType}");
+								\Log::warn("MySensors: unknown value subtype {$message->subType}");
 							}
 						}
 						
@@ -213,13 +209,13 @@ abstract class Controller extends \Stream {
 							
 							case MySensors::I_GATEWAY_READY :
 								$this->gatewayReady = true;
-								$this->logger->info("info: gateway ready");
+								\Log::info("info: gateway ready");
 								break;
 							
 							case MySensors::I_VERSION :
 								$this->gatewayLibVersion = $message->payload;
 								$gateway->set('libVersion', $message->payload);
-								$this->logger->info("MySensors: gateway version = {$this->gatewayLibVersion}");
+								\Log::info("MySensors: gateway version = {$this->gatewayLibVersion}");
 								break;
 							
 							case MySensors::I_TIME :
@@ -293,11 +289,11 @@ abstract class Controller extends \Stream {
 								
 								break;
 							case MySensors::I_LOG_MESSAGE :
-								$this->logger->info("MySensors: nodeId={$message->nodeId} sensorId={$message->childSensorId} {$message->payload}");
+								\Log::info("MySensors: nodeId={$message->nodeId} sensorId={$message->childSensorId} {$message->payload}");
 								break;
 							
 							default:
-								$this->logger->warn("MySensors: message not processed {$message->messageType} {$message->subType} nodeId={$message->nodeId} sensorId={$message->childSensorId} {$message->payload}");
+								\Log::warn("MySensors: message not processed {$message->messageType} {$message->subType} nodeId={$message->nodeId} sensorId={$message->childSensorId} {$message->payload}");
 								break;
 								
 						}
@@ -323,7 +319,7 @@ abstract class Controller extends \Stream {
 									list($type, $version, $nbBlocks, $crc) = $parts;
 									$bootloaderVersion = count($parts)>4 ? $parts[4] : 0;
 									
-									$this->logger->info(sprintf("MySensors: FW CONFIG : nodeId=%d type=%04X version=%04X blocks=%d crc=%04X BLVersion=%04X", $nodeId, $type, $version, $nbBlocks, $crc, $bootloaderVersion));
+									\Log::info(sprintf("MySensors: FW CONFIG : nodeId=%d type=%04X version=%04X blocks=%d crc=%04X BLVersion=%04X", $nodeId, $type, $version, $nbBlocks, $crc, $bootloaderVersion));
 									
 									if($node){
 										$node->set('firmware', array(
@@ -345,9 +341,9 @@ abstract class Controller extends \Stream {
 										$ok = $firmwareInfo['type'] === $type && $firmwareInfo['version'] === $version && $firmwareInfo['blocks'] === $blocks && $firmwareInfo['crc'] === $crc;
 										
 										if($ok){
-											$this->logger->info(sprintf("MySensors: FW updated successfully : nodeId=%d type=%04X version=%04X blocks=%d crc=%04X", $nodeId, $type, $version, $nbBlocks, $crc));
+											\Log::info(sprintf("MySensors: FW updated successfully : nodeId=%d type=%04X version=%04X blocks=%d crc=%04X", $nodeId, $type, $version, $nbBlocks, $crc));
 										} else {
-											$this->logger->warn(sprintf("MySensors: FW update ERROR : nodeId=%d", $nodeId));
+											\Log::warn(sprintf("MySensors: FW update ERROR : nodeId=%d", $nodeId));
 										}
 										
 										if(is_callable($firmwareInfo['callback'])){
@@ -384,7 +380,7 @@ abstract class Controller extends \Stream {
 									
 									list($type, $version, $iBlock) = unpack("n3", $message->payload);
 									
-									$this->logger->warn(sprintf("MySensors: FW GET : nodeId=%d type=%04X version=%04X block=%d", $nodeId, $type, $version, $iBlock));
+									\Log::warn(sprintf("MySensors: FW GET : nodeId=%d type=%04X version=%04X block=%d", $nodeId, $type, $version, $iBlock));
 									
 									if(isset($this->pendingFirmware[$nodeId])){
 										$chunk = substr($this->pendingFirmware[$nodeId]['firmware'], $iBlock*static::FIRMWARE_BLOCK_SIZE, static::FIRMWARE_BLOCK_SIZE);
@@ -400,7 +396,7 @@ abstract class Controller extends \Stream {
 										$this->send($response);
 										
 									} else {
-										$this->logger->warn("MySensors: FW GET : no firmware found");
+										\Log::warn("MySensors: FW GET : no firmware found");
 									}
 								}
 								
@@ -437,7 +433,7 @@ abstract class Controller extends \Stream {
 												'type' => $message->subType
 											);
 										} else {
-											$this->logger->warn("MySensors: STREAM: first packet must start with index=1, got {$index}");
+											\Log::warn("MySensors: STREAM: first packet must start with index=1, got {$index}");
 											break;
 										}
 									}
@@ -468,15 +464,15 @@ abstract class Controller extends \Stream {
 													unset($this->pendingStreams[$nodeId]);
 													
 													
-													$this->logger->warn("MySensors: STREAM: end of stream, packetCount={$stream['packetCount']}, size(B)={$size}, time(s)={$timeElapsed}");
+													\Log::warn("MySensors: STREAM: end of stream, packetCount={$stream['packetCount']}, size(B)={$size}, time(s)={$timeElapsed}");
 												}
 												
 											} else {
 												unset($this->pendingStreams[$nodeId]); // remove on first error
-												$this->logger->warn("MySensors: STREAM: index mismatch");
+												\Log::warn("MySensors: STREAM: index mismatch");
 											}
 										} else {
-											$this->logger->warn("MySensors: STREAM: type mismatch");
+											\Log::warn("MySensors: STREAM: type mismatch");
 										}
 									}
 									
@@ -485,7 +481,7 @@ abstract class Controller extends \Stream {
 								break;
 							
 							default:
-								$this->logger->warn("MySensors: message not processed {$message->messageType} {$message->subType} nodeId={$message->nodeId} sensorId={$message->childSensorId} {$message->payload}");
+								\Log::warn("MySensors: message not processed {$message->messageType} {$message->subType} nodeId={$message->nodeId} sensorId={$message->childSensorId} {$message->payload}");
 								break;
 							
 						}
@@ -498,7 +494,7 @@ abstract class Controller extends \Stream {
 				}
 			
 			} catch(\Exception $e){
-				$this->logger->error($e);
+				\Log::error($e);
 				$r = false;
 			}
 			
@@ -623,17 +619,19 @@ abstract class Controller extends \Stream {
 		
 		// check for a deconnection
 		if(!$this->isOpened && $this->isOpened != $this->lastState_)
-			$this->logger->info("MySensors: disconnected");
+			\Log::info("MySensors: disconnected");
 		$this->lastState_ = $this->isOpened;
 		
 		// autoconnect
 		if(!$this->isOpened && ($now - $this->lastAutoconnectLoop) > self::AUTOCONNECT_PERIOD ){
 			try{
 				$this->open();
-				$this->preventFailConnectLog = false;
+				$this->preventFailConnectLog = 0;
 			} catch(\Exception $e){
-				if(!$this->preventFailConnectLog) $this->logger->warn("MySensors: unable to connect : {$e->getMessage()}");
-				$this->preventFailConnectLog = true;
+				$this->gateway->setConnectState(false);
+				
+				if($this->preventFailConnectLog % 20 === 0) \Log::warn("MySensors: unable to connect : {$e->getMessage()}");
+				$this->preventFailConnectLog += 1;
 			}
 			$this->lastAutoconnectLoop = $now;
 		}
@@ -764,7 +762,7 @@ abstract class Controller extends \Stream {
 			};
 		}
 		
-		$this->logger->debug("MySensors: message send nodeId={$message->nodeId} sensorId={$message->childSensorId} messageType={$message->messageType} smartSleep=".($smartSleep?'1':'0'));
+		\Log::debug("MySensors: message send nodeId={$message->nodeId} sensorId={$message->childSensorId} messageType={$message->messageType} smartSleep=".($smartSleep?'1':'0'));
 		
 		$ts = microtime(true);
 		
