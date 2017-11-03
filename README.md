@@ -19,6 +19,7 @@ This project can easily be installed on a Raspberry Pi or any computer.
 A web client is also provided to browse, view and edit your data, to manage and communicate with your devices.
 Use the online editor to write your own script or application using the [Javascript API](http://e-thing.github.io/doc/js).
 
+![screenshot of the dashboard](https://user-images.githubusercontent.com/17341216/32382863-abc4d784-c0b6-11e7-8c4d-71708fe670d9.PNG)
 
 #### Hardware
 
