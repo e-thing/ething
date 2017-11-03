@@ -1110,7 +1110,7 @@
 		},
 		{
 			name: "host",
-			onlyForType: ['Device\\Denon', 'Device\\Yeelight.*', 'Device\\SSH'],
+			onlyForType: ['Device\\Denon', 'Device\\Yeelight.*', 'Device\\SSH', 'Device\\BleaEthernetGateway'],
 			editable:function(){
 				return new $.Form.LocalIpSelect({
 					validators: [$.Form.validator.NotEmpty],
@@ -1121,7 +1121,7 @@
 		},
 		{
 			name: "port",
-			onlyForType: ['Device\\SSH'],
+			onlyForType: ['Device\\SSH', 'Device\\BleaEthernetGateway'],
 			default: 22,
 			editable:function(){
 				return new $.Form.Number({

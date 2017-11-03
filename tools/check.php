@@ -168,7 +168,7 @@ function check_python(){
 	if(empty($results))
 		throw new Exception('unable to find python');
 	else {
-		exec("python pycheck.py 2>&1", $lines, $return_var);
+		exec("python ".__DIR__."/pycheck.py 2>&1", $lines, $return_var);
 		if($return_var!==0){
 			array_unshift($lines, $results);
 			$results = implode(', ',$lines);
@@ -201,7 +201,7 @@ function check_nodejs(){
 	if(empty($results))
 		throw new Exception('unable to find node');
 	else {
-		exec("node nodecheck.js 2>&1", $lines, $return_var);
+		exec("node ".__DIR__."/nodecheck.js 2>&1", $lines, $return_var);
 		if($return_var!==0){
 			array_unshift($lines, $results);
 			$results = implode(', ',$lines);
@@ -306,10 +306,25 @@ foreach($tests as $test){
 			$result['message'] = $e->getMessage();
 		}
 		
+		$result['message'] = trim($result['message']);
+		
 		$results[] = $result;
 	}
 }
 
-header('Content-Type: application/json');
-echo json_encode($results,JSON_PRETTY_PRINT|JSON_UNESCAPED_SLASHES);
-
+if( php_sapi_name() === 'cli'){
+	
+	foreach($results as $result){
+		
+		echo $result['name'].': ';
+		
+		echo ($result['ok'] ? "\e[32m" : "\e[31m");
+		echo $result['message'];
+		echo "\e[0m".PHP_EOL;
+		
+	}
+	
+} else {
+	header('Content-Type: application/json');
+	echo json_encode($results,JSON_PRETTY_PRINT|JSON_UNESCAPED_SLASHES);
+}
