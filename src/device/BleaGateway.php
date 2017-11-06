@@ -62,10 +62,33 @@ abstract class BleaGateway extends Device
 	
 	public function operations(){
 		return array(
-			
+			new Operation($this, 'learnin', null, null, 'enter into learn mode', function($op, $stream, $data, $options){
+				return $op->device()->learnin();
+			}),
+			new Operation($this, 'learnout', null, null, 'exit the learn mode', function($op, $stream, $data, $options){
+				return $op->device()->learnout();
+			})
 		);
 	}
 	
+	
+	public function learnin(){
+		return $this->sendData(array(
+			'cmd' => 'learnin',
+			'allowAll' => 0
+		));
+	}
+	
+	public function learnout(){
+		return $this->sendData(array(
+			'cmd' => 'learnout',
+			'allowAll' => 0
+		));
+	}
+	
+	public function sendData(array $data, $stream = null, $options = array()){
+		return $this->ething->daemon('device.blea.send '.$this->id().' '.\base64_encode(\json_encode($data))."\n", $stream, $options);
+	}
 	
 	// create a new resource
 	protected static function createBleaGateway(Ething $ething, array $attributes, array $meta = array(), Resource $createdBy = null) {

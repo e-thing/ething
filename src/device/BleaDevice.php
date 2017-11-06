@@ -94,7 +94,16 @@ class BleaDevice extends Device
 	}
 	
 	public function sendData(array $data, $stream = null, $options = array()){
-		return $this->ething->daemon('device.blea.send '.$this->id().' '.\base64_encode(\json_encode($data))."\n", $stream, $options);
+		// send through the last gateway which saw this device.
+		$gatewayId = $this->gateway;
+		if($gatewayId){
+			$gateway = $this->ething->get($gatewayId);
+			if($gateway){
+				return $gateway->sendData($data, $stream, $options);
+			}
+		}
+		
+		return false;
 	}
 	
 	
@@ -123,7 +132,7 @@ class BleaDevice extends Device
 			$this->set('battery', $attr['battery']);
 		}
 		
-		if(isset($attr['rssi'])){
+		if(isset($attr['rssi']) && $attr['rssi']!=='same'){
 			$this->setAttr('rssi', $attr['rssi']);
 		}
 		

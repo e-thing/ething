@@ -33,6 +33,8 @@ abstract class Controller {
 			
 			if($device instanceof \Ething\Device\BleaEthernetGateway){
 				$gateway = new EthernetGateway($device);
+			} else if($device instanceof \Ething\Device\BleaLocalGateway){
+				$gateway = new LocalGateway($device);
 			} else {
 				\Log::error("Blea: unable to instanciate the gateway from device {$id}");
 			}

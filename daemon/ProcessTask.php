@@ -46,6 +46,8 @@ class ProcessTask extends Task {
 		if($this->options['enableStderr'])
 			$descriptorspec[2] = array("pipe", "w");
 		
+		Log::debug("Process: executing {$this->cmd}");
+		
 		$this->process = proc_open("exec {$this->cmd}", $descriptorspec, $this->pipes);
 		
 		if (is_resource($this->process)) {

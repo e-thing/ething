@@ -353,8 +353,8 @@
 				});
 			});
 			
-			$element.find('#btn-create-BleaEthernetGateway').click(function(){
-				var form = UI.getResourceForm('Device\\BleaEthernetGateway', null, ['name','location','description','host','port']).then(function(formEntries){
+			$element.find('#btn-create-BleaLocalGateway').click(function(){
+				var form = UI.getResourceForm('Device\\BleaLocalGateway', null, ['name','location','description','device']).then(function(formEntries){
 					return new $.Form.FormLayout({
 						items: formEntries
 					});
@@ -368,7 +368,27 @@
 						$form.form('findItem', 'name').focus();
 					}
 				},function(props){
-					return EThing.Device.SSH.create(props);
+					return EThing.Device.BleaLocalGateway.create(props);
+				});
+			});
+			
+			$element.find('#btn-create-BleaEthernetGateway').click(function(){
+				var form = UI.getResourceForm('Device\\BleaEthernetGateway', null, ['name','location','description','host','port']).then(function(formEntries){
+					return new $.Form.FormLayout({
+						items: formEntries
+					});
+				});
+				
+				$.FormModal({
+					header: 'This device is used to connect to a distant bluetooth low energy gateway. To get it working, install first (on a raspberry pi for instance) this <a href="https://github.com/e-thing/ething/tree/master/resources/blead" target="_blank">project</a>.',
+					item: form,
+					title: '<span class="glyphicon glyphicon-phone" aria-hidden="true"></span> Add a new Blea gateway',
+					validLabel: '+Add',
+					loaded: function($form){
+						$form.form('findItem', 'name').focus();
+					}
+				},function(props){
+					return EThing.Device.BleaEthernetGateway.create(props);
 				});
 			});
 			

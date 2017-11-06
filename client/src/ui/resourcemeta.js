@@ -1122,7 +1122,10 @@
 		{
 			name: "port",
 			onlyForType: ['Device\\SSH', 'Device\\BleaEthernetGateway'],
-			default: 22,
+			default: function(type){
+				if(type==='Device\\BleaEthernetGateway') return 5005;
+				if(type==='Device\\SSH') return 22;
+			},
 			editable:function(){
 				return new $.Form.Number({
 					validators: [$.Form.validator.Integer],
@@ -1133,6 +1136,18 @@
 				});
 			},
 			description: 'The port number of the device.'
+		},
+		{
+			name: "device",
+			onlyForType: ['Device\\BleaLocalGateway'],
+			default: 'hci0',
+			editable:function(){
+				return new $.Form.Text({
+					placeholder: 'hci0',
+					validators: [$.Form.validator.NotEmpty]
+				});
+			},
+			description: 'The name of the bluetooth device. Usually hci0.'
 		}
 	];
 	
@@ -1196,8 +1211,7 @@
 			
 			if(pass){
 				
-				var value = undefined,
-					hasDefaultValue = (typeof property.default != 'undefined');
+				var value = undefined;
 				
 				// get the value
 				if(resource instanceof EThing.Resource){
@@ -1212,8 +1226,17 @@
 				}
 				
 				if(typeof value == "undefined"){
-					if(hasDefaultValue)
-						value = property.default;
+					
+					// default value
+					
+					if(typeof property.default != 'undefined'){
+						var defaultValue = property.default;
+						if(typeof property.default === 'function')
+							defaultValue = property.default.call(property,resourceType);
+						if(defaultValue != 'undefined' && defaultValue!==null){
+							value = property.default;
+						}
+					}
 				}
 				
 				if(typeof value != "undefined"){
