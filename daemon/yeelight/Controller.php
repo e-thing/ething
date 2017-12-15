@@ -50,6 +50,7 @@ class Controller extends \Stream {
     }
 	
 	public function open(){
+		$this->lastAutoconnectLoop = microtime(true);
 		
 		if($this->isOpened){
 			if(!$this->close())
@@ -59,14 +60,14 @@ class Controller extends \Stream {
 		$device = $this->device;
 		$host = $device->get('host');
 		
-		$stream = @stream_socket_client("tcp://".$host.':55443', $errno, $errstr, self::CONNECT_TIMEOUT);
+		$stream = @stream_socket_client("tcp://".$host.':'.Yeelight::PORT, $errno, $errstr, self::CONNECT_TIMEOUT);
 		if($stream === false)
 			throw new \Exception("Yeelight: unable to connect to the device {$host} : {$errstr}");
 		
 		// make this stream non blocking !
 		stream_set_blocking($stream, false);
 		
-		$this->stream = $stream;
+		$this->registerStream($stream, 0);
 		$this->lastActivity = time();
 		$this->buffer = '';
 		
@@ -75,13 +76,15 @@ class Controller extends \Stream {
 		
 		$device->setConnectState(true);
 		
+		$this->refresh();
+		
 		return true;
 	}
 	
-	public function read(){
+	public function process($stream, $id){
 		if($this->isOpened){
 			
-			$chunk = fgets($this->stream);
+			$chunk = fgets($stream);
 			if($chunk===false){
 				// an error occurs
 				$this->close();
@@ -129,17 +132,15 @@ class Controller extends \Stream {
 	public function write($str){
 		if($this->isOpened){
 			$this->lastActivity = time();
-			return @fwrite($this->stream, $str);
+			return @fwrite($this->getRegisteredStream(0), $str);
 		}
 		return 0;
 	}
 	
 	public function close(){
 		if( $this->isOpened ){
-			@fclose($this->stream);
-			$this->stream = null;
+			$this->closeAndUnregisterAll();
 			$this->isOpened = false;
-			$this->lastAutoconnectLoop = 0;
 			$this->device->setConnectState(false);
 			\Log::info("Yeelight: closed");
 		}
@@ -155,7 +156,7 @@ class Controller extends \Stream {
 		{"method":"props","params":{"power":"off"}}
 		
 	*/
-	public function processMessage($message) {
+	public function processMessage(array $message) {
 		
 		$device = $this->device;
 		
@@ -210,6 +211,37 @@ class Controller extends \Stream {
 		
 	}
 	
+	// Retrieve and return the properties of the device.
+	public function refresh(){
+		
+		$device = $this->device;
+		
+		$requestedProperties = array(
+            "power", "bright", "ct", "rgb", "hue", "sat",
+            "color_mode", "flowing", "delayoff", "flow_params",
+            "music_on", "name"
+        );
+		
+		$this->send(array(
+			"method" => "get_prop",
+			"params" => $requestedProperties
+		), function($error, $messageSent, $response) use ($requestedProperties, $device){
+			if(!$error){
+				if(is_array($response) && count($response) === count($requestedProperties)){
+					$params = array();
+					
+					foreach($response as $i => $value){
+						if(is_numeric($value))
+							$value = $value + 0;
+						$params[$requestedProperties[$i]] = $value;
+					}
+					
+					$device->storeData($params);
+				}
+			}
+		}, true);
+		
+	}
 	
 	
 	private $lastState_ = false;
@@ -234,7 +266,6 @@ class Controller extends \Stream {
 				if($this->preventFailConnectLog % 5 === 0) \Log::warn("Yeelight: unable to connect : {$e->getMessage()}");
 				$this->preventFailConnectLog += 1;
 			}
-			$this->lastAutoconnectLoop = $now;
 		}
 		
 		// check response timeout
@@ -289,15 +320,6 @@ class Controller extends \Stream {
 		return $wb;
 	}
 	
-	protected $stream = null;
-	
-	public function getStreams(){
-		return array($this->stream);
-	}
-	
-	public function process($stream){
-		$this->read();
-	}
 	
 };
 

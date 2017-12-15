@@ -7,7 +7,9 @@ namespace Ething\Yeelight;
 
 class Yeelight {
 	
-	
+	const MULTICAST_ADDRESS = '239.255.255.250';
+    const MULTICAST_PORT    = 1982;
+	const PORT       = 55443;
 	
 	/*
 	scan Yeelight devices on the local network
@@ -54,7 +56,7 @@ class Yeelight {
 			socket_set_option($socket, SOL_SOCKET, SO_RCVTIMEO, array('sec' => 2, 'usec' => 0));
 			socket_set_option($socket, SOL_SOCKET, IP_MULTICAST_TTL, 32);
 			
-			if(socket_sendto($socket, $package, strlen($package), 0, "239.255.255.250", 1982)){
+			if(socket_sendto($socket, $package, strlen($package), 0, Yeelight::MULTICAST_ADDRESS, Yeelight::MULTICAST_PORT)){
 				
 				while(true){
 					if(socket_recvfrom($socket, $buf, 512, 0, $remote_ip, $remote_port) === false) break;

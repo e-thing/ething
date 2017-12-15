@@ -427,7 +427,7 @@ abstract class Resource implements \JsonSerializable, ResourceInterface
 			if(!array_key_exists($key, $attr)) continue;
 			try {
 				if(!call_user_func_array($class.'::validate',array($key,&$attr[$key],&$context)))
-					throw new Exception('Invalid value');
+					throw new Exception('Invalid value : '.((string)$attr));
 			}
 			catch(Exception $e){
 				throw new Exception("[{$key}] ".$e->getMessage(),$e->getCode(),$e);

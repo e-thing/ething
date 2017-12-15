@@ -1,7 +1,39 @@
 <?php
 
 
-	 
+	/**
+	 * @swagger-definition
+	 * "Device\\RFLinkNode":{ 
+	 *   "type": "object",
+	 *   "description": "RFLinkNode Device base class.",
+	 * 	 "allOf": [
+	 * 		{
+	 * 		   "$ref":"#/definitions/Device"
+	 * 		},
+	 * 		{  
+	 * 		   "type": "object",
+	 * 		   "properties":{
+	 *             "subType": {
+	 * 		          "type":"string",
+	 * 		          "description":"The subtype of the device, ie: thermometer, switch, ..."
+	 * 		       },
+	 *             "nodeId": {
+	 * 		          "type":"string",
+	 * 		          "description":"The hardware id of the node."
+	 * 		       },
+	 *             "protocol": {
+	 * 		          "type":"string",
+	 * 		          "description":"The protocol name of the node."
+	 * 		       },
+	 *             "switchId": {
+	 * 		          "type":"string",
+	 * 		          "description":"The switch id of the node. Only available for switch/door/motion subtypes."
+	 * 		       }
+	 * 		   }
+	 * 		}
+	 *   ]
+	 * }
+	 */
 	 
 namespace Ething\Device;
 
@@ -125,7 +157,7 @@ class RFLinkNode extends Device
 				}
 				return false;
 			});
-			$ops[] = new Operation($this, 'setState', Helpers::array_to_object_recursive(array(
+			$ops[] = new Operation($this, 'setStatus', Helpers::array_to_object_recursive(array(
 				'type' => 'object',
 				'additionalProperties' => false,
 				'required' => array('CMD'),
@@ -158,7 +190,7 @@ class RFLinkNode extends Device
 		}
 		
 		if( in_array($this->subType , array('switch', 'door' , 'motion')) ){
-			$ops[] = new Operation($this, 'getState', null, 'application/json', 'return current state', function($op, $stream, $data, $options){
+			$ops[] = new Operation($this, 'getStatus', null, 'application/json', 'return the current state', function($op, $stream, $data, $options){
 				$stream->sendJSON($op->device()->getData(RFLink::getAttrName('CMD'),false));
 				return true;
 			});

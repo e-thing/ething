@@ -5,7 +5,6 @@
 
 class Client extends Stream {
 	
-	private $stream = null;
 	public $isOpened = false;
 	private $buffer = '';
 	public $id = 0;
@@ -17,21 +16,21 @@ class Client extends Stream {
 		$this->commandInterpreter = $ci;
 		// make this stream non blocking !
 		stream_set_blocking($stream, false);
-		$this->stream = $stream;
+		$this->registerStream($stream, 0);
 		$this->isOpened = true;
 		PoolStream::add($this);
 		$this->write(">");
 	}
 	
 	public function write($str){
-		return $this->isOpened ? @fwrite($this->stream, $str) : 0;
+		return $this->isOpened ? @fwrite($this->getRegisteredStream(0), $str) : 0;
 	}
 	
-	public function read(){
+	public function process($stream, $id){
 		
 		if($this->isOpened){
 			
-			$chunk = fgets($this->stream);
+			$chunk = fgets($stream);
 			if($chunk===false){
 				// an error occurs
 				$this->close();
@@ -119,9 +118,9 @@ class Client extends Stream {
 	
 	public function close(){
 		global $streams;
-		if( $this->isOpened && @fclose($this->stream) ){
+		if( $this->isOpened ){
 			$this->isOpened = false;
-			$this->stream = null;
+			$this->closeAndUnregisterAll();
 			PoolStream::remove($this);
 			Log::debug("client {$this->id} disconnected");
 		}
@@ -148,11 +147,5 @@ class Client extends Stream {
 		$this->write(">");
 	}
 	
-	public function getStreams(){
-		return array($this->stream);
-	}
 	
-	public function process($stream){
-		$this->read();
-	}
 };

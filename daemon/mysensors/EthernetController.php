@@ -18,6 +18,7 @@ class EthernetController extends Controller {
 	const NOACTIVITY_DELAY = 300; // seconds
 	
 	public function open(){
+		$this->lastAutoconnectLoop = microtime(true);
 		
 		if($this->isOpened){
 			if(!$this->close())
@@ -26,14 +27,14 @@ class EthernetController extends Controller {
 		
 		$gateway = $this->gateway;
 		$address = $gateway->get('address');
-		$stream = @stream_socket_client("tcp://".$address, $errno, $errstr, 10);
+		$stream = @stream_socket_client("tcp://".$address, $errno, $errstr, 5);
 		if($stream === false)
 			throw new \Exception("MySensors[ethernet]: unable to connect to the gateway {$address} : {$errstr}");
 		
 		// make this stream non blocking !
 		stream_set_blocking($stream, false);
 		
-		$this->stream = $stream;
+		$this->registerStream($stream, 0);
 		$this->lastActivity = time();
 		$this->buffer = '';
 		parent::open();
@@ -43,10 +44,10 @@ class EthernetController extends Controller {
 		return true;
 	}
 	
-	public function read(){
+	public function process($stream, $id){
 		if($this->isOpened){
 			
-			$chunk = fgets($this->stream);
+			$chunk = fgets($stream);
 			if($chunk===false){
 				// an error occurs
 				$this->close();
@@ -97,15 +98,14 @@ class EthernetController extends Controller {
 	public function write($str){
 		if($this->isOpened){
 			$this->lastActivity = time();
-			return @fwrite($this->stream, $str);
+			return @fwrite($this->getRegisteredStream(0), $str);
 		}
 		return 0;
 	}
 	
 	public function close(){
 		if( $this->isOpened ){
-			@fclose($this->stream);
-			$this->stream = null;
+			$this->closeAndUnregisterAll();
 			parent::close();
 		}
 		return !$this->isOpened;

@@ -80,12 +80,10 @@ abstract class Controller extends \Stream {
 		return true;
 	}
 	
-	abstract public function read();
 	abstract public function write($str);
 	
 	public function close(){
 		$this->isOpened = false;
-		$this->lastAutoconnectLoop = 0;
 		$this->gateway->setConnectState(false);
 		\Log::info("MySensors: closed");
 		return true;
@@ -633,7 +631,6 @@ abstract class Controller extends \Stream {
 				if($this->preventFailConnectLog % 20 === 0) \Log::warn("MySensors: unable to connect : {$e->getMessage()}");
 				$this->preventFailConnectLog += 1;
 			}
-			$this->lastAutoconnectLoop = $now;
 		}
 		
 	}
@@ -847,15 +844,6 @@ abstract class Controller extends \Stream {
 		
 	}
 	
-	protected $stream = null;
-	
-	public function getStreams(){
-		return array($this->stream);
-	}
-	
-	public function process($stream){
-		$this->read();
-	}
 	
 	
 };

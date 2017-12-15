@@ -115,7 +115,7 @@ class LocalGateway extends Gateway {
 		// make this stream non blocking !
 		stream_set_blocking($stream, false);
 		
-		$this->stream = $stream;
+		$this->registerStream($stream, 0);
 		$this->lastActivity = time();
 		$this->buffer = '';
 		parent::open();
@@ -126,6 +126,7 @@ class LocalGateway extends Gateway {
 	}
 	
 	public function open(){
+		$this->lastAutoconnectLoop = microtime(true);
 		
 		if($this->isOpened){
 			if(!$this->close())
@@ -145,10 +146,10 @@ class LocalGateway extends Gateway {
 		return false;
 	}
 	
-	public function read(){
+	public function process($stream, $id){
 		if($this->isOpened){
 			
-			$chunk = fgets($this->stream);
+			$chunk = fgets($stream);
 			if($chunk===false){
 				// an error occurs
 				$this->close();
@@ -188,15 +189,14 @@ class LocalGateway extends Gateway {
 	public function write(array $data){
 		if($this->isOpened){
 			$this->lastActivity = time();
-			return @fwrite($this->stream, \json_encode($data)."\n");
+			return @fwrite($this->getRegisteredStream(0), \json_encode($data)."\n");
 		}
 		return 0;
 	}
 	
 	public function close(){
 		if( $this->isOpened ){
-			@fclose($this->stream);
-			$this->stream = null;
+			$this->closeAndUnregisterAll();
 		}
 		
 		$this->endDaemon();

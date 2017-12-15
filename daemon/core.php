@@ -12,6 +12,18 @@ if(function_exists('pcntl_signal')){
 	pcntl_signal(SIGHUP,  "sig_handler");
 }
 
+set_exception_handler(function($exception) use($ething) {
+	Log::warn("daemon stopped by exception : ".$exception->getMessage());
+	
+	// notify the user
+	if(isset($ething)){
+		Log::info("send notification");
+		$ething->notify('ething daemon stopped', "ething daemon stopped by exception : ".$exception->getMessage());
+	}
+	
+	exit(2);
+});
+
 register_shutdown_function(function(){
 	
 	if(ForkTask::getCurrentTask()) return; // do not go any further for forked process !

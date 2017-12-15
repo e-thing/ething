@@ -16,6 +16,7 @@
 			'(\\?[;&a-z\\d%_.~+=-]*)?'+ // query string
 			'(\\#[-a-z\\d_]*)?$','i'); // fragment locator
 	
+	var ip_re = /^(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?).(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?).(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?).(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/;
 	
 	var RFLink_protocols = ["X10","Kaku","AB400D","Waveman","EMW200","Impuls","RisingSun","Philips","Energenie","Energenie5","GDR2","NewKaku","HomeEasy","Anslut","Kambrook","Ikea Koppla","PT2262","Lightwave","EMW100","BSB","MDRemote","Conrad","Livolo","TRC02RGB","Aoke","TRC022RGB","Eurodomest","Livolo App","Blyss","Byron","Byron MP","SelectPlus","Doorbell","FA20RF","Chuango","Plieger","SilverCrest","Mertik","HomeConfort","Powerfix","TriState","Deltronic","FA500","HT12E","EV1527","Elmes","Aster","Sartano","Europe","Avidsen","BofuMotor","BrelMotor","RTS","ElroDB","Dooya","Unitec","Maclean","R546","Diya","X10Secure","Atlantic","SilvercrestDB","MedionDB","VMC","Keeloq","CustomSwitch","GeneralSwitch","Koch","Kingpin","Funkbus","Nice","Forest","MC145026","Lobeco","Friedland","BFT","Novatys","Halemeier","Gaposa","MiLightv1","MiLightv2","HT6P20","Doitrand","Warema","Ansluta","Livcol","Bosch","Ningbo","Ditec","Steffen","AlectoSA","GPIOset","KonigSec","RM174RF","Liwin","YW_Secu","Mertik_GV60","Ningbo64","X2D","HRCMotor","Velleman","RFCustom","YW_Sensor","LEGRANDCAD","SysfsGpio"].sort();
 	
@@ -1121,16 +1122,16 @@
 		},
 		{
 			name: "port",
-			onlyForType: ['Device\\SSH', 'Device\\BleaEthernetGateway'],
+			onlyForType: ['Device\\SSH', 'Device\\BleaEthernetGateway', 'Device\\MihomeGateway'],
 			default: function(type){
 				if(type==='Device\\BleaEthernetGateway') return 5005;
 				if(type==='Device\\SSH') return 22;
+				if(type==='Device\\MihomeGateway') return 9898;
 			},
 			editable:function(){
 				return new $.Form.Number({
 					validators: [$.Form.validator.Integer],
 					placeholder: "port",
-					value: 1883,
 					minimum: 1,
 					maximum: 65535,
 				});
@@ -1148,6 +1149,41 @@
 				});
 			},
 			description: 'The name of the bluetooth device. Usually hci0.'
+		},
+		{
+			name: "ip",
+			onlyForType: ['Device\\MihomeGateway'],
+			editable:function(){
+				return new $.Form.Text({
+					placeholder: '192.168.xx.xx',
+					validators: [$.Form.validator.NotEmpty, function(value){
+						if(!ip_re.test(value)) throw 'invalid IP address';
+					}]
+				});
+			},
+			description: 'The IP address of the device.'
+		},
+		{
+			name: "sid",
+			onlyForType: ['Device\\MihomeGateway'],
+			editable:function(){
+				return new $.Form.Text({
+					placeholder: 'SID',
+					validators: [$.Form.validator.NotEmpty]
+				});
+			},
+			description: 'The SID of the gateway.'
+		},
+		{
+			name: "password",
+			onlyForType: ['Device\\MihomeGateway'],
+			editable:function(){
+				return new $.Form.Text({
+					placeholder: 'password',
+					validators: [$.Form.validator.NotEmpty]
+				});
+			},
+			description: 'The password of the gateway. This password must retrieved from the MiHome app.'
 		}
 	];
 	
@@ -1234,7 +1270,7 @@
 						if(typeof property.default === 'function')
 							defaultValue = property.default.call(property,resourceType);
 						if(defaultValue != 'undefined' && defaultValue!==null){
-							value = property.default;
+							value = defaultValue;
 						}
 					}
 				}

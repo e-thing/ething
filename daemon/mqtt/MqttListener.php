@@ -10,7 +10,6 @@ class MqttListener extends Stream {
 	const AUTOCONNECT_PERIOD = 15; // seconds
 	const KEEPALIVE = 60; // seconds
 	
-	protected $stream = null;
 	
 	protected $status;
 	protected $mqttClient = null;
@@ -102,7 +101,8 @@ class MqttListener extends Stream {
 			$topics[$topic] = array("qos"=>0, "function"=>array($this, 'processMessage'));
 			$this->mqttClient->subscribe($topics,0);
 			
-			$this->stream = $this->mqttClient->getSocket();
+			$stream = $this->mqttClient->getSocket();
+			$this->registerStream($stream, 0);
 			
 			Log::info("MQTT(server): subscribed");
 			
@@ -117,7 +117,7 @@ class MqttListener extends Stream {
 		if($this->status !== "disconnected"){
 			Log::info("MQTT(server): disconnect");
 			$this->mqttClient->close();
-			$this->stream = null;
+			$this->unregisterAll();
 			$this->status = "disconnected";
 		}
 	}
@@ -126,7 +126,7 @@ class MqttListener extends Stream {
 		return $this->status;
 	}
 	
-	public function read(){
+	public function process($stream, $id){
 		return $this->update();
 	}
 	
@@ -149,7 +149,7 @@ class MqttListener extends Stream {
 				// disconnected !
 				Log::info("MQTT(server): disconnected by the host");
 				
-				$this->stream = null;
+				$this->unregisterAll();
 				$this->status = "disconnected";
 				$this->lastAutoconnectLoop = 0;
 				// auto reconnect as soon as possible
@@ -189,11 +189,4 @@ class MqttListener extends Stream {
 		return $t;
 	}
 	
-	public function getStreams(){
-		return array($this->stream);
-	}
-	
-	public function process($stream){
-		$this->read();
-	}
 }

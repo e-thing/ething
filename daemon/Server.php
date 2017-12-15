@@ -4,7 +4,7 @@
 
 class Server extends Stream {
 	
-	protected $stream = null;
+	protected $started = false;
 	protected $port;
 	
 	public function __construct(CommandInterpreter $cli, $port = null){
@@ -20,32 +20,30 @@ class Server extends Stream {
 		
 		$serverAddress = "tcp://0.0.0.0:{$this->port}";
 		Log::info("start server {$serverAddress}");
-		$this->stream = stream_socket_server($serverAddress, $errno, $errstr);
-		if(!$this->stream){
+		$stream = stream_socket_server($serverAddress, $errno, $errstr);
+		if(!$stream){
 			Log::error("unable to start server at {$serverAddress} , reason is {$errstr}");
-			$this->stream = null;
+			$this->started = false;
 			return false;
 		}
+		$this->registerStream($stream, 0);
+		$this->started = true;
 		return true;
 	}
 	
 	
 	public function close(){
-		if($this->stream){
+		if($this->started){
 			Log::info("stop server");
-			@fclose($this->stream);
-			$this->stream = null;
+			$this->closeAndUnregisterAll();
 		}
 	}
 	
-	public function getStreams(){
-		return array($this->stream);
-	}
 	
-	public function process($stream){
+	public function process($stream, $id){
 		
 		// incomming client
-		$sock = @stream_socket_accept($this->stream);
+		$sock = @stream_socket_accept($stream);
 		$client = new Client($sock, $this->cli);
 		Log::debug("new client {$client->id} connected");
 		

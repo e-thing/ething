@@ -20,7 +20,7 @@
 				"widget": "../widgets",
 				"deviceWidget": "../widgets/devices",
 				
-				'ething' : '../../../js/ething.min',
+				'ething' : '../../../js/ething',
 				
 				'config' : '../../config',
 				

@@ -8,7 +8,7 @@ use \Ething\Device\BleaGateway;
 use \Ething\Event;
 
 
-abstract class Controller {
+class Controller {
 	
 	public $gateways = array();
 	

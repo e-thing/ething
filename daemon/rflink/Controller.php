@@ -54,14 +54,11 @@ abstract class Controller extends \Stream {
 		return true;
 	}
 	
-	abstract public function read();
 	abstract public function write($str);
 	
 	public function close(){
 		$this->isOpened = false;
-		$this->lastAutoconnectLoop = 0;
 		$this->gateway->setConnectState(false);
-		\Log::info("RFLink: closed");
 		return true;
 	}
 	
@@ -200,7 +197,6 @@ abstract class Controller extends \Stream {
 				if($this->preventFailConnectLog % 20 === 0) \Log::warn("RFLink: unable to connect : {$e->getMessage()}");
 				$this->preventFailConnectLog += 1;
 			}
-			$this->lastAutoconnectLoop = $now;
 		}
 		
 		// check response timeout
@@ -253,15 +249,6 @@ abstract class Controller extends \Stream {
 		return $wb;
 	}
 	
-	protected $stream = null;
-	
-	public function getStreams(){
-		return array($this->stream);
-	}
-	
-	public function process($stream){
-		$this->read();
-	}
 	
 };
 

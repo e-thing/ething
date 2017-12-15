@@ -392,6 +392,25 @@
 				});
 			});
 			
+			$element.find('#btn-create-MihomeGateway').click(function(){
+				var form = UI.getResourceForm('Device\\MihomeGateway', null, ['name','location','description','ip','port','sid','password']).then(function(formEntries){
+					return new $.Form.FormLayout({
+						items: formEntries
+					});
+				});
+				
+				$.FormModal({
+					item: form,
+					title: '<span class="glyphicon glyphicon-phone" aria-hidden="true"></span> Add a new MiHome gateway',
+					validLabel: '+Add',
+					loaded: function($form){
+						$form.form('findItem', 'name').focus();
+					}
+				},function(props){
+					return EThing.Device.MihomeGateway.create(props);
+				});
+			});
+			
 			$element.find('#btn-create-YeelightBulbRGBW').click(function(){
 				var form = UI.getResourceForm('Device\\YeelightBulbRGBW', null, ['name','location','description','host']).then(function(formEntries){
 					return new $.Form.FormLayout({

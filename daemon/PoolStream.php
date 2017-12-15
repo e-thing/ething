@@ -29,11 +29,11 @@ class PoolStream {
 			$except = array();
 			
 			foreach(self::$streams as $stream){
-				$st = $stream->getStreams();
+				$st = $stream->getRegisteredStreams();
 				if(!empty($st)){
-					foreach($st as $s){
+					foreach($st as $i => $s){
 						$read[] = $s;
-						$readMap[] = array($stream, $s);
+						$readMap[] = array($stream, $s, $i);
 					}
 				}
 			}
@@ -48,7 +48,7 @@ class PoolStream {
 					foreach($readMap as $readMapItem){
 						if($readMapItem[1] === $stream){
 							Log::debug("data available for stream ".get_class($readMapItem[0]));
-							$readMapItem[0]->process($stream);
+							$readMapItem[0]->onSocketActivity($readMapItem[2]);
 							break;
 						}
 					}
@@ -98,12 +98,7 @@ class PoolStream {
 	static public function closeAll(){
 		Log::debug("close all stream");
 		foreach(self::$streams as $stream){
-			$st = $stream->getStreams();
-			if(!empty($st)){
-				foreach($st as $s){
-					@fclose($s);
-				}
-			}
+			$stream->closeAndUnregisterAll();
 		}
 	}
 };

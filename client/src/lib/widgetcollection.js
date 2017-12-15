@@ -97,6 +97,7 @@
 				
 				if(!widgetName){
 					// try to find a generic widget !
+					var isLight = (device instanceof EThing.Device.Yeelight) || (device instanceof EThing.Device.MihomeGateway) || (device instanceof EThing.Device.MySensorsSensor && (device.sensorType() === 'S_LIGHT' || device.sensorType() === 'S_RGB_LIGHT' || device.sensorType() === 'S_RGBW_LIGHT'));
 					
 					if( device.data().hasOwnProperty('temperature') || device.operations().indexOf('getTemperature') !== -1 ) {
 						widgetName = 'GenericThermometer';
@@ -105,7 +106,7 @@
 					} else if ( device.data().hasOwnProperty('pressure') || device.operations().indexOf('getPressure') !== -1 ) {
 						widgetName = 'GenericBarometer';
 					} else if ( device.operations().indexOf('on') !== -1 && device.operations().indexOf('off') !== -1 ) {
-						widgetName = 'GenericSwitch';
+						widgetName = isLight ? 'GenericLight' : 'GenericSwitch';
 					}
 					
 				}

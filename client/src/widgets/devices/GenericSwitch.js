@@ -33,9 +33,11 @@
 			};
 			
 			var update = function(){
-				var value = sensor.data('status', false);
-				if(value===false){
-					sensor.execute('getStatus').done(setValue);
+				var value = sensor.data('status');
+				if(typeof value==='undefined'){
+					if(sensor.operations().indexOf('getStatus') !== -1){
+						sensor.execute('getStatus').done(setValue);
+					}
 				} else {
 					setValue(value);
 				}
@@ -44,15 +46,21 @@
 			return $.extend({}, widget, {
 				
 				draw: function(){
+					var self = this;
+					
 					widget.draw.call(this);
 					
-					sensor.on('updated', update);
+					this.resourceUpdateFn = function(evt,updatedKeys){
+						if(updatedKeys.indexOf('data')!==-1) self.update();
+					};
+					
+					sensor.on('updated', this.resourceUpdateFn);
 					
 					update();
 				},
 				
 				destroy: function(){
-					sensor.off('updated', update);
+					sensor.off('updated', this.resourceUpdateFn);
 					widget.destroy.call(this);
 				}
 				

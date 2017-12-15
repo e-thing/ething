@@ -1,18 +1,19 @@
 <?php
 
 
-namespace Ething\RFLink;
+namespace Ething\Zigate;
 
 
-use \Ething\RFLink\RFLink;
-use \Ething\RFLink\Controller;
-use \Ething\Device\RFLinkGateway;
+use \Ething\Zigate\Controller;
+use \Ething\Device\ZigateGateway;
+use \Ething\Zigate\Message;
 use \Ething\Serial;
 
 class SerialController extends Controller {
 	
 	private $serial = null;
 	private $buffer = "";
+	private $transcodage = false;
 	
 	public function open(){
 		$this->lastAutoconnectLoop = microtime(true);
@@ -24,7 +25,7 @@ class SerialController extends Controller {
 		
 		$gateway = $this->gateway;
 		$port = $gateway->get('port');
-		$baudrate = $gateway->get('baudrate');
+		$baudrate = 115200;
 		
 		$this->serial = new Serial($port, $baudrate);
 		
@@ -35,10 +36,11 @@ class SerialController extends Controller {
 		$stream = $this->serial->pipes[1];
 		$this->registerStream($stream, 0);
 		$this->buffer = '';
+		$this->transcodage = false;
 		
 		parent::open();
 		
-		\Log::info("RFLink[serial]: opened {$port} {$baudrate}");
+		\Log::info("Zigate[serial]: opened {$port} {$baudrate}");
 		
 		return true;
 	}
@@ -57,37 +59,51 @@ class SerialController extends Controller {
 		if($this->isOpened){
 			
 			$chunk = '';
-			while(($t = fread($stream, 1)) !== false && $t!=='')
-				$chunk .= $t;
+			while(($t = fread($stream, 1)) !== false && $t!==''){
+				$t=bin2hex($t);
+				
+				if($t=="02"){
+					$this->transcodage = true;
+				} else {
+					
+					if ($this->transcodage) {
+						$t.= sprintf("%02X",(hexdec($t) ^ 0x10));
+						$this->transcodage = false;
+					}
+					
+					$chunk .= $t;
+					
+				}
+				
+			}
 			
 			if($chunk===''){
 				// connection closed
-				\Log::debug("RFLink[serial]: empty string received... close");
+				\Log::debug("Zigate[serial]: empty string received... close");
 				$this->close();
 			}
 			
-			/*$chunk = fgets($stream);
-			if($chunk===false){
-				return;
-			}*/
-			
 			$this->buffer .= $chunk;
 			
-			if( false !== ($p = strrpos($this->buffer, "\n")) ){
+			if( false !== ($p = strrpos($this->buffer, "03")) ){
 				
-				$lines = preg_split("/\r?\n/", substr($this->buffer, 0, $p+1));
-				$this->buffer = substr($this->buffer, $p+1);
+				$packets = explode("03", substr($this->buffer, 0, $p));
+				$this->buffer = substr($this->buffer, $p+2);
 				
-				foreach($lines as $line){
+				foreach($packets as $packet){
 					
-					$line = trim($line);
-					if(empty($line)) continue;
+					if(empty($packet)) {
+						continue;
+					}
 					
 					try {
-						$this->processLine($line);
+						
+						$message = Message::parse($packet."03");
+						$this->processMessage($message);
+						
 					} catch (\Exception $e) {
-						// skip the line
-						\Log::warn("RFLink[serial]: unable to handle the message {$line}");
+						// skip the packet
+						\Log::warn("Zigate[serial]: unable to handle the packet {$packet} : ".$e->getMessage());
 						continue;
 					}
 					
@@ -99,8 +115,7 @@ class SerialController extends Controller {
 	
 	public function write($str){
 		if($this->isOpened){
-			\Log::debug("RFLink[serial]: send message = {$str}");
-			$this->serial->write($str."\r\n");
+			$this->serial->write($str);
 		} else {
 			return 0;
 		}
@@ -111,7 +126,7 @@ class SerialController extends Controller {
 			$this->serial->close();
 			$this->unregisterAll();
 			parent::close();
-			\Log::info("RFLink[serial]: closed");
+			\Log::info("Zigate[serial]: closed");
 		}
 		return !$this->isOpened;
 	}

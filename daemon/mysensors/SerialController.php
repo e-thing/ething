@@ -16,6 +16,7 @@ class SerialController extends Controller {
 	private $buffer = "";
 	
 	public function open(){
+		$this->lastAutoconnectLoop = microtime(true);
 		
 		if($this->isOpened){
 			if(!$this->close())
@@ -32,7 +33,8 @@ class SerialController extends Controller {
 		if(!$this->serial->open())
 			throw new \Exception("unable to connect to the gateway {$port}, baudrate={$baudrate}");
 		
-		$this->stream = $this->serial->pipes[1];
+		$stream = $this->serial->pipes[1];
+		$this->registerStream($stream, 0);
 		$this->buffer = '';
 		
 		parent::open();
@@ -47,17 +49,16 @@ class SerialController extends Controller {
 		// check if the serial port is still opened !
 		if($this->isOpened && !$this->serial->isOpen()){
 			$this->close();
-			$this->lastAutoconnectLoop = microtime(true);
 		}
 		
 		parent::update();
 	}
 	
-	public function read(){
+	public function process($stream, $id){
 		if($this->isOpened){
 			
 			$chunk = '';
-			while(($t = fread($this->stream, 1)) !== false && $t!=='')
+			while(($t = fread($stream, 1)) !== false && $t!=='')
 				$chunk .= $t;
 			
 			if($chunk===''){
@@ -105,7 +106,7 @@ class SerialController extends Controller {
 	public function close(){
 		if( $this->isOpened ){
 			$this->serial->close();
-			$this->stream = null;
+			$this->unregisterAll();
 			parent::close();
 			\Log::info("MySensors[serial]: closed");
 		}

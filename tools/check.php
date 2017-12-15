@@ -26,8 +26,12 @@ function check_php_version(){
 	if(version_compare($phpVersion, $phpVersionMin, '<')){
 		throw new Exception('Upgrade PHP '.$phpVersion.' < '.$phpVersionMin);
 	}
-	else
-		return $phpVersion;
+	
+	if (!function_exists('socket_import_stream')) {
+		throw new Exception('Function socket_import_stream missing (requires ext-sockets and PHP 5.4+)');
+	}
+	
+	return $phpVersion;
 }
 
 function check_mongodb_driver(){

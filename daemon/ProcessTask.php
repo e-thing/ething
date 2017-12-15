@@ -32,6 +32,7 @@ class ProcessTask extends Task {
 	}
 	
 	protected function process(){
+		if(isset($this->process)) return false;// already running!
 		
 		$this->pid = null;
 		for($i=1; $i<3; $i++)

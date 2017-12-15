@@ -26,6 +26,20 @@ class YeelightBulbRGBW extends YeelightDevice
 	public static $defaultAttr = array();
 	
 	
+	public function storeData(array $state){
+		
+		if(isset($state['rgb'])){
+			$state['color'] = '#'.strtoupper(\str_pad(\dechex($state['rgb']), 6, '0', STR_PAD_LEFT));
+		}
+		
+		if(isset($state['bright'])){
+			$state['brightness'] = $state['bright'];
+			unset($state['bright']);
+		}
+		
+		parent::storeData($state);
+	}
+	
 	public function operations(){
 		return array_merge(parent::operations(), array(
 			
@@ -58,11 +72,10 @@ class YeelightBulbRGBW extends YeelightDevice
 				'required' => array('color'),
 				'properties' => array(
 					'color' => array(
-						"description" =>  "It should be expressed in decimal integer ranges from 0 to 16777215 (hex: 0xFFFFFF).",
-						"type" => "integer",
-						"minimum" => 0,
-						"maximum" => 16777215,
-						"default" => 65280
+						"description" =>  "It should be expressed in hexadecimal, by exemple 0xFFFFFF).",
+						"type" => "string",
+						"format" => "color",
+						"default" => 0x0000FF
 					),
 					'brightness' => array(
 						"type" => "integer",
@@ -72,7 +85,9 @@ class YeelightBulbRGBW extends YeelightDevice
 					)
 				)
 			)), null, 'turn on the device with the specified color', function($op, $stream, $data, $options){
-				$data = array_merge(array('color'=>65280, 'brightness'=>100), $data);
+				$data = array_merge(array('color'=>0x0000FF, 'brightness'=>100), $data);
+				if(is_string($data['color'])) // hex ?
+					$data['color'] = \hexdec(preg_replace('/^(#|0x)/i', '', $data['color']));
 				return $op->device()->sendMessageWaitResponse('{"id":1,"method":"set_scene", "params":["color", '.$data['color'].', '.$data['brightness'].']}', $stream, $options);
 			}),
 			
@@ -103,6 +118,38 @@ class YeelightBulbRGBW extends YeelightDevice
 			)), null, 'turn on the device with the specified color', function($op, $stream, $data, $options){
 				$data = array_merge(array('hue'=>255, 'saturation'=>45, 'brightness'=>100), $data);
 				return $op->device()->sendMessageWaitResponse('{"id":1,"method":"set_scene", "params":["hsv", '.$data['hue'].', '.$data['saturation'].', '.$data['brightness'].']}', $stream, $options);
+			}),
+			
+			new Operation($this, 'setBrightness', Helpers::array_to_object_recursive(array(
+				'type' => 'object',
+				'additionalProperties' => false,
+				'required' => array('brightness'),
+				'properties' => array(
+					'brightness' => array(
+						"type" => "integer",
+						"minimum" => 0,
+						"maximum" => 100,
+						"default" => 50
+					)
+				)
+			)), null, 'turn on the device with the specified brightness', function($op, $stream, $data, $options){
+				$data = array_merge(array('color'=>$op->device()->getData('rgb',0xFFFFFF), 'brightness'=>100), $data);
+				return $op->device()->sendMessageWaitResponse('{"id":1,"method":"set_scene", "params":["color", '.$data['color'].', '.$data['brightness'].']}', $stream, $options);
+			}),
+			
+			new Operation($this, 'getStatus', null, 'application/json', 'return the current state', function($op, $stream, $data, $options){
+				$stream->sendJSON(boolval(preg_match('/on/i', $op->device()->getData('power','off'))));
+				return true;
+			}),
+			
+			new Operation($this, 'getBrightness', null, 'application/json', 'return the brightness (%)', function($op, $stream, $data, $options){
+				$stream->sendJSON($op->device()->getData('brightness',0));
+				return true;
+			}),
+			
+			new Operation($this, 'getColor', null, 'application/json', 'return the color (hex)', function($op, $stream, $data, $options){
+				$stream->sendJSON($op->device()->getData('color','#000000'));
+				return true;
 			})
 			
 		));

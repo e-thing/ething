@@ -3556,6 +3556,8 @@
 							item = new Form.File(options);
 						} else if(schema.format === 'text'){
 							item = new Form.Textarea(options);
+						} else if(schema.format === 'color'){
+							item = new Form.Color(options);
 						} else {
 							item = new Form.Text(options);
 						}

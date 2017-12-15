@@ -37,7 +37,7 @@ class Serial {
 			return false;
 		}
 		
-		$this->process = proc_open("exec python {$prog} {$this->port} {$this->baudrate}", $descriptorspec, $this->pipes);
+		$this->process = proc_open("exec python {$prog} {$this->port} {$this->baudrate} 2> /dev/null", $descriptorspec, $this->pipes);
 		
 		if (is_resource($this->process)) {
 			

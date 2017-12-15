@@ -50,12 +50,10 @@ abstract class Gateway extends \Stream {
 		return true;
 	}
 	
-	abstract public function read();
 	abstract public function write(array $data);
 	
 	public function close(){
 		$this->isOpened = false;
-		$this->lastAutoconnectLoop = 0;
 		$this->gateway->setConnectState(false);
 		\Log::info("Blea: closed");
 		return true;
@@ -89,24 +87,12 @@ abstract class Gateway extends \Stream {
 				if($this->preventFailConnectLog % 20 === 0) \Log::warn("Blea: unable to connect : {$e->getMessage()}");
 				$this->preventFailConnectLog += 1;
 			}
-			$this->lastAutoconnectLoop = $now;
 		}
 		
 	}
 	
 	
 	
-	
-	
-	protected $stream = null;
-	
-	public function getStreams(){
-		return array($this->stream);
-	}
-	
-	public function process($stream){
-		$data = $this->read();
-	}
 	
 	
 };

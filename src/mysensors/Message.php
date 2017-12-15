@@ -3,6 +3,8 @@
 
 namespace Ething\MySensors;
 
+use \Ething\Exception;
+
 class Message implements \JsonSerializable {
 	
 	
