@@ -1,3 +1,0 @@
-RewriteEngine on 
-RewriteRule ^$ %{REQUEST_URI}client/ [R=301,L]
-RewriteRule ^[^/]*$ - [R=404]

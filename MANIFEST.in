@@ -1,0 +1,10 @@
+
+include *.md *.rst LICENSE VERSION
+
+recursive-include ething *.py *.js *.html *.css *.json
+
+graft ething/webui
+prune ething/webui/node_modules
+
+
+

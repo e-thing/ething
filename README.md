@@ -2,13 +2,15 @@
 e-Thing
 =====
 
+
 ![e-Thing diagram](https://cloud.githubusercontent.com/assets/17341216/17180858/1fce5e54-541e-11e6-8e0a-09cc853e4e93.png)
 
 This project is an "Internet of Things" application. Store and retrieve data using HTTP requests from devices such as an [Arduino](https://github.com/e-thing/arduino).
 Access remotely to your data and control your devices from anywhere.
 
-This project can easily be installed on a Raspberry Pi or any computer.
+This project was developped on a Raspberry Pi but should work on any Linux computer.
 
+Written in Python 2.7.
 
 ## Overview
 
@@ -16,7 +18,7 @@ This project can easily be installed on a Raspberry Pi or any computer.
 
 #### Access your data anywhere
 
-A web client is also provided to browse, view and edit your data, to manage and communicate with your devices.
+A web interface is provided to browse, view and edit your data, to manage and communicate with your devices.
 Use the online editor to write your own script or application using the [Javascript API](http://e-thing.github.io/doc/js).
 
 ![screenshot of the dashboard](https://user-images.githubusercontent.com/17341216/32382863-abc4d784-c0b6-11e7-8c4d-71708fe670d9.PNG)
@@ -32,16 +34,20 @@ Compatible devices/protocols :
 - MQTT
 - Denon/Marantz audio receiver (tested on Marantz M-CR611)
 - Yeelight
-- bluetooth low energy devices
+- MiHome
+- bluetooth low energy devices (coming soon...)
 - SSH
-- ZigBee (coming soon...)
+- [Zigate](//zigate.fr) (coming soon...)
 
 
+#### Node-RED
 
-#### Rules editor
+Compatible with [Node-RED](//nodered.org). 
+See [ething-node-red repository](//github.com/e-thing/ething-node-red).
 
-Create custom rules to execute tasks when an event occurs and under certains conditions.
-Users can easily create or change any automation process without any previous programing or automation experience.
+#### Script editor
+
+Create JavaScript script to execute custom tasks when an event occurs and under certains conditions.
 
 
 #### APIs
@@ -55,107 +61,33 @@ Many APIs are provided to communicate with the e-Thing server :
 Use these APIs to create your own device !
 
 
+## Running Ething
+
+### Requirements
+
+ - [Node](//nodejs.org/en/download/package-manager/)
+ - Python 2.7
+ - MongoDB
+
+### Installation
+
+```bash
+git clone https://github.com/e-thing/ething
+cd ething
+python setup.py install
+```
 
 
-#### Notification
+### Launch
 
-Notification can also be sent on event. For instance, the user can be notified by email when a device sends
-a value greater than a threshold or if it has low battery.
+```bash
+ething [--daemon]
+```
 
+The --daemon argument will start the process as a daemon.
 
-
-## Installation
-
-- Easy install
- 
- ```bash
- sudo ./install.sh
- ```
-
-- Manual install
- 
- see [INSTALL.md](INSTALL.md)
- 
- 
-## Configuration
-
-The configuration file **config.json** is located in the root directory. An example is given in `default-config.json`.
-
-* set your mongodb server address here with the correct port number. Default to the local database.
-
- ```json
- {
-     "db": {
-        "host": "localhost",
-        "port": 27017,
-        "user": null,
-        "password": null,
-        "database": "ething"
-     }
- }
- ```
-* set the URL-path of the EThing root url. For instance, if EThing is accessible through http://192.168.1.117/path, the value is "/path". Default to "/ething".
-
- ```json
- {
-     "path": "/ething"
- }
- ```
-* [optional] change the default password.
-
- ```json
- {
-     "auth": {
-        "password": "admin",
-        "localonly": false
-     }
- }
- ```
-* [optional] configure a SMTP server if you want some notification to be sent.
-
- ```json
- {
-     "notification": {
-        "emails": [
-            "example@gmail.com"
-        ],
-        "smtp": {
-            "host": "smtp.gmail.com",
-            "port": 587,
-            "user": "example@gmail.com",
-            "password": "password"
-        }
-     }
- }
- ```
-* [optional] set proxy settings if needed.
-
- ```json
- {
-     "proxy": {
-        "host": "proxy-host",
-        "port": 8080,
-        "user": null,
-        "password": null
-     }
- }
- ```
-* [optional] enable MQTT.
-
- ```json
- {
-     "mqtt": {
-        "host": "localhost",
-        "port": 1883
-     }
- }
- ```
-
-## Installation check
-
-To check if the installation worked, go to the admin interface [http://&lt;YOUR_SERVER_ADDRESS&gt;/ething/client/#!settings?page=status](http://localhost/ething/client/#!settings?page=status).
-Connect with the credentials set in the **config.php** file (default is admin).
-In that page, you will see if something is missing.
-
+The web interface is available at `http://localhost:8000`. The default password is `admin`.
+The log file is stored in `/var/log`.
+The configuration file is stored in `~/.ething`.
 
 

@@ -1,0 +1,145 @@
+
+
+"""
+ @swagger-definition
+ "MySensorsNode":{ 
+   "type": "object",
+   "description": "MySensorsNode Device resource representation. This device is normally automatically created by a MySensorsGateway instance.",
+	 "allOf": [
+		{
+		   "$ref":"#/definitions/Device"
+		},
+		{  
+		   "type": "object",
+		   "properties":{
+			 "nodeId": {
+				  "type":"number",
+				  "description":"The id of the node."
+			   },
+			 "sketchName": {
+				  "type":"string",
+				  "description":"The name of the sketch uploaded.",
+				  "readOnly": true
+			   },
+			 "sketchVersion": {
+				  "type":"string",
+				  "description":"The version of the sketch uploaded.",
+				  "readOnly": true
+			   },
+			 "smartSleep": {
+				  "type":"boolean",
+				  "description":"SmartSleep feature enabled for this node."
+			   },
+			 "libVersion": {
+				  "type":"string",
+				  "description":"The version of the MySensors library used.",
+				  "readOnly": true
+			   }
+		   }
+		}
+   ]
+ }
+"""
+
+from ething.Device import Device, method, attr, isInteger, isString, isNone, isBool, READ_ONLY
+import MySensors
+import base64
+import binascii
+
+
+@attr('nodeId', validator = isInteger(min=1, max=254))
+@attr('sketchName', default='', mode = READ_ONLY)
+@attr('sketchVersion', default='', mode = READ_ONLY)
+@attr('smartSleep', validator = isBool(), default=False)
+@attr('firmware', default=None, mode = READ_ONLY)
+@attr('libVersion', default=None, mode = READ_ONLY)
+@attr('createdBy', required = True)
+class MySensorsNode(Device):
+
+	
+	
+	@property
+	def gateway (self):
+		return self.createdBy
+	
+	def _save (self, data ):
+		super(MySensorsNode, self)._save(data)
+		
+		if 'battery' in self.getDirtyAttr():
+			# update the battery value to the attached sensors too
+			for sensor in self.getSensors():
+				sensor.battery = self.battery
+				sensor.save()
+	
+	def getSensors (self, filter = None):
+		q = {
+			'type' : 'MySensorsSensor',
+			'createdBy' : self.id
+		}
+		
+		if filter is not None:
+			q = {
+				'and' : [q, filter]
+			}
+		
+		return self.ething.find(q)
+	
+	
+	def getSensor (self, sensorId):
+		return self.ething.findOne({
+			'type' : 'MySensorsSensor',
+			'createdBy' : self.id,
+			'sensorId' : sensorId
+		})
+	
+	def removeAllSensors (self):
+		# remove all the nodes attached to it !
+		for sensor in self.getSensors():
+			sensor.remove()
+	
+	
+	def remove (self, removeChildren = False):
+		
+		# remove all the sensors attached to it !
+		self.removeAllSensors()
+		
+		# remove the resource
+		super(MySensorsNode, self).remove(removeChildren)
+	
+	
+	
+	@method.arg('firmware', type='string', format='binary', minLength=1, description='only *.hex files must be uploaded !')
+	def updateFirmware (self, firmware):
+		"""
+		OTA (on the air) firmware update.
+		"""
+		
+		# may be base64 encoded ?
+		try:
+			firmware = base64.decodestring(firmware)
+		except binascii.Error:
+			pass
+		return self.ething.rpc.request('device.mysensors.updateFirmware',self.id, firmware)
+	
+	
+	@method.arg('sensorId', type='integer', minimum=0, maximum=255)
+	@method.arg('type', type='integer', minimum=0, maximum=4)
+	@method.arg('ack', type='bool', default = False)
+	@method.arg('subtype', type='integer', minimum=0, maximum=255)
+	@method.arg('payload', type='string', maxLength=25)
+	@method.return_type('application/json')
+	def sendMessage (self, sensorId, type, ack, subtype, payload = ''):
+		"""
+		send a message.
+		"""
+		return self.gateway.sendMessage(device.nodeId, sensorId, type, ack, subtype, payload)
+	
+	@method
+	def reboot(self):
+		"""
+		Request this node to reboot
+		"""
+		self.sendMessage(MySensors.INTERNAL_CHILD, MySensors.INTERNAL, MySensors.NO_ACK, MySensors.I_REBOOT)
+
+
+
