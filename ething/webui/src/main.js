@@ -87,9 +87,6 @@
 				"bootstrap" : {
 					deps :['jquery','css!bootstrap-css']
 				},
-				"ething": {
-					exports: 'EThing'
-				},
 				
 				'form': ['css!form','bootstrap-select','bootstrap-toggle','bootstrap-datetimepicker','bootstrap-typeahead'],
 				
@@ -140,6 +137,8 @@
 	console.log('loading main.js');
 	
 	var sessionUrl = window.sessionUrl = '../auth';
+    
+    window.EThing = EThing;
 	
 	var auth_disabled = false;
 	
@@ -156,12 +155,7 @@
 	}
 	
 	
-	// sanitize and set the server URL and client URL
-	var parser = document.createElement('a');
-	parser.href = '.';
-	var clientUrl = parser.href.replace(/\/$/,'');
-	parser.href = '../api';
-	var apiUrl = parser.href.replace(/\/$/,'');
+	var serverUrl = location.protocol+'//'+location.hostname+(location.port ? ':'+location.port: '');
 	
 	
 	
@@ -197,7 +191,7 @@
 		});
 		
 		EThing.initialize({
-			apiUrl: apiUrl
+			serverUrl: serverUrl
 		}).fail(auth);
 
 		

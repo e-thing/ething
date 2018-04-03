@@ -12,7 +12,7 @@
 	var usageDfr;
 	function getUsage(cb){
 		if(!usageDfr)
-			usageDfr = EThing.Resource.usage();
+			usageDfr = EThing.usage();
 		
 		usageDfr.done(function(usage){
 			

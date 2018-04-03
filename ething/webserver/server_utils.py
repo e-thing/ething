@@ -6,179 +6,173 @@ import json as js
 import re
 import datetime
 
+from webargs.flaskparser import use_args as webargs_use_args
+from marshmallow.fields import Field
+from webargs.flaskparser import parser
+from webargs import fields, validate
 
-CHK_STRING = 4
-CHK_LOGIC = 10
-CHK_INT = 13
-CHK_UNSIGNED_INT = 15
-CHK_URL = 19
-CHK_ID = 20
-CHK_STRING_ARRAY = 34
-CHK_FORMAT = 35
-CHK_DATEFORMAT = 36
-CHK_INVALIDFIELDMODE = 38
+from functools import wraps
 
 
-FMT_JSON = 1
-FMT_JSON_PRETTY = 2
-FMT_CSV  = 5
-FMT_CSV_NOHEADER = 6
+VALID_METHODS = [
+    'GET',
+    'POST',
+    'PUT',
+    'PATCH',
+    'DELETE',
+    'HEAD',
+    'OPTIONS',
+]
 
-table_output_formats = {
-	"json": FMT_JSON,
-	"json_pretty": FMT_JSON_PRETTY,
-	"csv": FMT_CSV,
-	"csv_no_header": FMT_CSV_NOHEADER
-}
 
-date_formats = {
-	"timestamp": Table.TIMESTAMP,
-	"timestamp_ms": Table.TIMESTAMP_MS,
-	"rfc3339": None
-}
 
-invalid_field_modes = {
-	"rename": Table.INVALID_FIELD_RENAME,
-	"stop": Table.INVALID_FIELD_STOP,
-	"skip": Table.INVALID_FIELD_SKIP,
-	"none": Table.INVALID_FIELD_NONE
-}
+# Field patch
+__field_init = getattr(Field, '__init__', None)
 
+def __field_init_patched(self, *args, **kwargs):
+    kwargs.setdefault('default', None)
+    __field_init(self, *args, **kwargs)
+
+setattr(Field, '__init__', __field_init_patched)
+
+
+
+def use_args(args, **kwargs):
+    def d(view):
+        
+        webargs = getattr(view, 'webargs', None)
+        
+        if webargs is None:
+            webargs = {
+                '*': {
+                    'schema': args,
+                    'options': kwargs
+                }
+            }
+        else:
+            raise Exception('two or more successive call of "use_args" has been made for the view %s' % str(view))
+        
+        setattr(view, 'webargs', webargs)
+        
+        return webargs_use_args(args, **kwargs)(view)
+    
+    return d
+
+def use_multi_args(**kwargs):
+    def d(view):
+        
+        webargs = getattr(view, 'webargs', None)
+        
+        if webargs is None:
+            webargs = {}
+        else:
+            raise Exception('two or more successive call of "use_multi_args" has been made for the view %s' % str(view))
+        
+        for m in VALID_METHODS:
+            args = kwargs.pop(m, None)
+            if args:
+                
+                schema = None
+                options = {}
+                
+                if isinstance(args, list) or isinstance(args, tuple):
+                    if len(args)>0:
+                        schema = args[0]
+                    if len(args)>1:
+                        if isinstance(args, dict):
+                            options = args[1]
+                        else:
+                            options['locations'] = args[1]
+                else:
+                    schema = args
+                
+                if schema:
+                    webargs[m] = {
+                        'schema': schema,
+                        'options': options
+                    }
+        
+        if kwargs:
+            for m in webargs:
+                options = {}
+                options.update(kwargs)
+                options.update(webargs[m]['options'])
+                webargs[m]['options'] = options
+        
+        setattr(view, 'webargs', webargs)
+        
+        @wraps(view)
+        def wrapper(*args, **kwds):
+            
+            if request.method in webargs:
+                wa_args = parser.parse(webargs[request.method]['schema'], request, **webargs[request.method]['options'])
+            else:
+                wa_args = {}
+            
+            args = (wa_args,) + args
+            
+            return view(*args, **kwds)
+            
+        
+        return wrapper
+    
+    return d
 
 
 def jsonify(obj, **kwargs):
-	return Response(toJson(obj, **kwargs), mimetype='application/json')
-
-def getParameter(key, checker = None, optional = False, default = None):
-	
-	key = key.lower()
-	value = None
-	
-	found = True
-	for k in request.values:
-		if k.lower() == key:
-			found = True
-			value = request.values[k]
-			break
-	
-	if not found:
-		# not found
-		if not optional:
-			raise Exception('The key "%s" is mandatory' % key)
-	
-	if checker and value is not None:
-		# check the type of the value
-		
-			
-		if checker == CHK_ID:
-			if not ShortId.validate(value):
-				raise Exception("The key %s is not a regular resource identifier ('%s')." % (key,value))
-		elif checker == CHK_LOGIC:
-			if re.search('^(false|0)$', value, re.IGNORECASE):
-				value = False
-			elif re.search('^(true|1)$', value, re.IGNORECASE):
-				value = True
-			else:
-				raise Exception("The key %s is not a regular boolean ('%s')." % (key,value))
-		elif checker == CHK_INT or checker == CHK_UNSIGNED_INT:
-			
-			try:
-				v = int(value)
-			except ValueError:
-				raise Exception("The key %s is not a regular numeric value ('%s')." % (key,value))
-			
-			value = v
-			
-			if checker == CHK_UNSIGNED_INT and value<0:
-				raise Exception("The key %s must be positive ('%s')." % (key,value))
-		
-		elif checker == CHK_URL: # accept empty string
-			if not re.search('^https?:\/\/([0-9a-zA-Z\.-]+)(:[0-9]+)?(\/[a-zA-Z0-9_\-\s\.\/\?\%\#\&\=]*)?$', value):
-				raise Exception("The key %s is not regular url ('%s')." % (key,value))
-		elif checker == CHK_STRING:
-			pass
-		elif checker == CHK_STRING_ARRAY: # accept comma separated values
-			value = value.split(',')
-		elif checker == CHK_FORMAT:
-			value = value.lower()
-			
-			if value not in table_output_formats:
-				raise Exception("The key %s is a unknown table output format '%s'" % (key,value))
-			
-			value = table_output_formats[value]
-			
-		elif checker == CHK_DATEFORMAT:
-			
-			value = value.lower()
-			
-			if value not in date_formats:
-				raise Exception("The key %s is a unknown date format '%s'" % (key,value))
-			
-			value = date_formats[value]
-			
-		elif checker == CHK_INVALIDFIELDMODE:
-			
-			value = value.lower()
-			
-			if value not in invalid_field_modes:
-				raise Exception("The key %s is a unknown mode '%s'" % (key,value))
-			
-			value = invalid_field_modes[value]
-	
-	if value is None:
-		value = default
-	
-	return value
+    return Response(toJson(obj, **kwargs), mimetype='application/json')
 
 
-def getResource(ething, id, restrictToTypes = None):
-	
-	authenticated = hasattr(g, 'auth')
-	
-	if id == 'me' and authenticated and g.auth.resource:
-		# special case, needs api key auth
-		r = g.auth.resource
-	else:
-		r = ething.get(id)
-	
-	if r is None:
-		raise Exception('resource not found')
-	
-	if restrictToTypes is not None:
-		ok = False
-		for type in restrictToTypes:
-			if r.isTypeof(type):
-				ok = True
-				break
-		if not ok:
-			raise Exception('resource not found')
-	
-	
-	if authenticated:
-		scope = g.auth.scope
-		
-		if scope is not None:
-			
-			scopes = filter(None, auth.scope.split(" "))
-			
-			allowed_types = []
-			for scope in scopes:
-				type = scope.split(':')[0].capitalize()
-				if type not in allowed_types:
-					allowed_types.append(type)
-			
-			if 'resource' not in allowed_types:
-				# restrict the search to the allowed_types
-				ok = False
-				for allowed_type in allowed_types:
-					if r.isTypeof(allowed_type):
-						ok = True
-						break
-				if not ok:
-					raise Exception('resource not found')
-	
-	
-	return r
+def getResource(core, id, restrictToTypes = None):
+    
+    message = 'resource with id="%s" not found or has not the right type' % id
+    
+    authenticated = hasattr(g, 'auth')
+    
+    if id == 'me' and authenticated and g.auth.resource:
+        # special case, needs api key auth
+        r = g.auth.resource
+    else:
+        r = core.get(id)
+    
+    if r is None:
+        raise Exception(message)
+    
+    if restrictToTypes is not None:
+        ok = False
+        for type in restrictToTypes:
+            if r.isTypeof(type):
+                ok = True
+                break
+        if not ok:
+            raise Exception(message)
+    
+    
+    if authenticated:
+        scope = g.auth.scope
+        
+        if scope is not None:
+            
+            scopes = filter(None, auth.scope.split(" "))
+            
+            allowed_types = []
+            for scope in scopes:
+                type = scope.split(':')[0].capitalize()
+                if type not in allowed_types:
+                    allowed_types.append(type)
+            
+            if 'resource' not in allowed_types:
+                # restrict the search to the allowed_types
+                ok = False
+                for allowed_type in allowed_types:
+                    if r.isTypeof(allowed_type):
+                        ok = True
+                        break
+                if not ok:
+                    raise Exception(message)
+    
+    
+    return r
 
 
 def dict_intersect_keys(dict1, *dicts):
@@ -200,57 +194,34 @@ def dict_intersect_keys(dict1, *dicts):
 
 
 def jsonEncodeFilterByFields(resources,fields = None):
-	if isinstance(fields, list):
-		fields = dict(zip(fields, range(len(fields))))
-		if isinstance(resources, list):
-			out = [];
-			for resource in resources:
-				out.append(dict_intersect_keys(resource.toJson(), fields))
-		else:
-			out = dict_intersect_keys(resources.toJson(), fields)
-	else:
-		out = resources
-	return jsonify(out)
+    if isinstance(fields, list):
+        fields = dict(zip(fields, range(len(fields))))
+        if isinstance(resources, list):
+            out = [];
+            for resource in resources:
+                out.append(dict_intersect_keys(resource.toJson(), fields))
+        else:
+            out = dict_intersect_keys(resources.toJson(), fields)
+    else:
+        out = resources
+    return jsonify(out)
 
-class HTTPMethodOverrideMiddleware(object):
-    allowed_methods = frozenset([
-        'GET',
-        'HEAD',
-        'POST',
-        'DELETE',
-        'PUT',
-        'PATCH',
-        'OPTIONS'
-    ])
-    bodyless_methods = frozenset(['GET', 'HEAD', 'OPTIONS', 'DELETE'])
-
-    def __init__(self, app):
-        self.app = app
-
-    def __call__(self, environ, start_response):
-        method = environ.get('HTTP_X_HTTP_METHOD_OVERRIDE', '').upper()
-        if method in self.allowed_methods:
-            method = method.encode('ascii', 'replace')
-            environ['REQUEST_METHOD'] = method
-        if method in self.bodyless_methods:
-            environ['CONTENT_LENGTH'] = '0'
-        return self.app(environ, start_response)
 
 
 if __name__ == '__main__':
-	
-	from ething.core import Core
-	
-	ething = Core({
-		'db':{
-			'database': 'test'
-		},
-		'log':{
-			'level': 'debug'
-		}
-	})
-	
-	resp = jsonEncodeFilterByFields(ething.find(), ['id'])
-	print resp.response
-	
-	
+    
+    from ething.core import Core
+    
+    ething = Core({
+        'db':{
+            'database': 'test'
+        },
+        'log':{
+            'level': 'debug'
+        }
+    })
+    
+    resp = jsonEncodeFilterByFields(ething.find(), ['id'])
+    print resp.response
+    
+    

@@ -2,9 +2,9 @@
 from .. import Event
 
 class DaemonStarted(Event):
-	pass
+    pass
 
 
 if __name__ == '__main__':
-	
-	print DaemonStarted.emit()
+    
+    print DaemonStarted.emit()

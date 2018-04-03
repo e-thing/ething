@@ -3,5 +3,5 @@ from dimmableSwitch import DimmableSwitch
 
 @interface
 class DimmableLight (DimmableSwitch):
-	pass
+    pass
 

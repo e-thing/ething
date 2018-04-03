@@ -1,7 +1,7 @@
 
 class InvalidRuleException(Exception):
     pass
-	
+    
 from .Signal import Signal
 from .Event import Event
 from .Condition import Condition

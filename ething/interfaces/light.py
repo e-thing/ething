@@ -4,5 +4,5 @@ from switch import Switch
 
 @interface
 class Light (Switch):
-	pass
+    pass
 

@@ -161,7 +161,6 @@
 			base = base.type()
 		
 		if(Meta.reg.hasOwnProperty(cls)){
-			
 			var bases = Meta.reg[cls].bases || [];
 			
 			for(var i in bases){

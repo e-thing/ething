@@ -19,7 +19,7 @@ Written in Python 2.7.
 #### Access your data anywhere
 
 A web interface is provided to browse, view and edit your data, to manage and communicate with your devices.
-Use the online editor to write your own script or application using the [Javascript API](http://e-thing.github.io/doc/js).
+Use the online editor to write your own script or application using the [Javascript API](https://github.com/e-thing/ething-js).
 
 ![screenshot of the dashboard](https://user-images.githubusercontent.com/17341216/32382863-abc4d784-c0b6-11e7-8c4d-71708fe670d9.PNG)
 
@@ -54,9 +54,8 @@ Create JavaScript script to execute custom tasks when an event occurs and under 
 
 Many APIs are provided to communicate with the e-Thing server :
 
-- [HTTP API](http://e-thing.github.io/doc/http)
-- [Javascript API](http://e-thing.github.io/doc/js)
-- [Arduino API](http://e-thing.github.io/doc/arduino.html)
+- [HTTP API](https://github.com/e-thing/ething/blob/master/doc/readme.md)
+- [Javascript API](https://github.com/e-thing/ething-js)
 
 Use these APIs to create your own device !
 
@@ -67,7 +66,7 @@ Use these APIs to create your own device !
 
  - [Node](//nodejs.org/en/download/package-manager/)
  - Python 2.7
- - MongoDB
+ - [MongoDB](//www.mongodb.com)
 
 ### Installation
 

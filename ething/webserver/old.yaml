@@ -1,0 +1,573 @@
+
+host: localhost
+
+tags:
+  - name: auth
+    description: Authentication endpoints.
+  - name: resource
+    description: Operations on resources no matter his type.
+  - name: file
+    description: Operations specific to File resource
+  - name: table
+    description: Operations specific to Table resource
+  - name: app
+    description: Operations specific to Application resource
+  - name: device
+    description: Operations specific to Device resource
+  - name: settings
+    description: Operations to manage settings
+
+paths:
+  /auth:
+  /settings:
+    
+  /usage:
+    get:
+      tags:
+        - resource
+      description: Returns information about the resource usage
+      responses:
+        '200':
+          description: Some usage information
+          schema:
+            type: object
+            properties:
+              used:
+                type: number
+                description: The space used in bytes
+              quota_size:
+                type: number
+                description: The maximum space authorized in bytes
+          examples:
+            application/json:
+              quota_size: 100000000
+              used: 697699
+      summary: Returns information about the resource usage
+
+'/resources/{id}':
+    
+  /files:
+    
+  '/files/{id}':
+    
+  '/files/{id}/thumbnail':
+    get:
+      tags:
+        - file
+      description: Retrieves the thumbnail of a file. Only image can have a thumbnail. The thumbnail is automatically generated when the content is uploaded.
+      parameters:
+        - name: id
+          in: path
+          description: id of the resource
+          required: true
+          type: string
+      produces:
+        - image/jpeg
+        - image/png
+      responses:
+        '200':
+          description: The thumbnail of this image
+          schema:
+            type: file
+      summary: Retrieves the thumbnail of a file.
+  /tables:
+    
+  '/tables/{id}':
+    
+
+  /apps:
+    
+  '/apps/{id}':
+    
+  /devices:
+    
+  '/devices/{id}/api':
+    
+  '/devices/{id}/api/{operationId}':
+    
+  '/devices/{id}/call/{operationId}':
+    
+  '/devices/{id}/request/{path}':
+    get:
+      tags:
+        - device
+      summary: send a GET request to a device.
+      description: Only available for HTTP device. Forward this HTTP request to a device with the specified path.
+      responses:
+        default:
+          description: The answer from the device
+    post:
+      tags:
+        - device
+      summary: send a POST request to a device.
+      description: Only available for HTTP device. Forward this HTTP request to a device with the specified path.
+      responses:
+        default:
+          description: The answer from the device
+    put:
+      tags:
+        - device
+      summary: send a PUT request to a device.
+      description: Only available for HTTP device. Forward this HTTP request to a device with the specified path.
+      responses:
+        default:
+          description: The answer from the device
+    delete:
+      tags:
+        - device
+      summary: send a DELETE request to a device.
+      description: Only available for HTTP device. Forward this HTTP request to a device with the specified path.
+      responses:
+        default:
+          description: The answer from the device
+    patch:
+      tags:
+        - device
+      summary: send a PATCH request to a device.
+      description: Only available for HTTP device. Forward this HTTP request to a device with the specified path.
+      responses:
+        default:
+          description: The answer from the device
+    parameters:
+      - name: id
+        in: path
+        description: id of the resource. Devices or Apps using the api key authentication may use the word 'me' to replace their id.
+        required: true
+        type: string
+      - name: path
+        in: path
+        description: the path of the HTTP request including an optional query string
+        required: true
+        type: string
+  '/devices/{id}/specification':
+    
+  /notification:
+    
+  /rules:
+    get:
+      tags:
+        - rule
+      description: Lists the rules.
+      parameters: []
+      responses:
+        '200':
+          description: A list of rules
+          schema:
+            type: array
+            items:
+              $ref: '#/definitions/Rule'
+      summary: Lists the rules.
+    post:
+      tags:
+        - rule
+      description: Creates a new rule.
+      parameters:
+        - name: attributes
+          in: body
+          description: |-
+
+            the metadata of the rule to be created
+             
+          required: true
+          schema:
+            $ref: '#/definitions/Rule'
+      responses:
+        '200':
+          description: The rule was successfully created
+          schema:
+            $ref: '#/definitions/Rule'
+      summary: Creates a new rule.
+  '/rules/{id}':
+    get:
+      tags:
+        - rule
+      description: Returns the attributes of a rule.
+      parameters:
+        - name: id
+          in: path
+          description: id of the rule
+          required: true
+          type: string
+      responses:
+        '200':
+          description: resource object
+          schema:
+            $ref: '#/definitions/Rule'
+      summary: Returns the attributes of a rule.
+    delete:
+      tags:
+        - rule
+      description: delete a rule
+      parameters:
+        - name: id
+          in: path
+          description: id of the rule
+          required: true
+          type: string
+      responses:
+        '200':
+          description: the rule has been deleted successfully
+      summary: delete a rule
+    patch:
+      tags:
+        - rule
+      description: update a rule. Only properties which are not readonly can be modified.
+      parameters:
+        - name: id
+          in: path
+          description: id of the rule
+          required: true
+          type: string
+        - name: modification
+          in: body
+          description: the attributes to modify
+          required: true
+          schema:
+            $ref: '#/definitions/Rule'
+      responses:
+        '200':
+          description: rule successfully updated
+          schema:
+            $ref: '#/definitions/Rule'
+        '400':
+          description: an error occurs
+          schema:
+            $ref: '#/definitions/Error'
+      summary: update a rule.
+  '/rules/trigger/{eventName}':
+    post:
+      tags:
+        - rule
+      description: Trigger a custom event. The rules which are configured with that event name will be triggered.
+      parameters:
+        - name: eventName
+          in: path
+          description: the name of the custom event to dispatch
+          required: true
+          type: string
+      responses:
+        '200':
+          description: The event has been dispatched
+      summary: Trigger a custom event.
+definitions:
+
+  App:
+    type: object
+    description: Application resource representation
+    allOf:
+      - $ref: '#/definitions/Resource'
+      - type: object
+        properties:
+          size:
+            type: number
+            description: The size of the application in bytes
+            readOnly: true
+          hasIcon:
+            type: boolean
+            description: True if the application has an icon set. See the /app/<id>/icon endpoint for more details.
+            readOnly: true
+          scope:
+            type: string
+            description: |
+
+              The allowed scopes for this application (space separated list).
+              No permissions by default.
+          apikey:
+            type: string
+            description: The apikey for authenticating this app.
+          version:
+            type: string
+            description: The version of this application
+  Settings:
+    type: object
+    description: The settings object
+    properties: {}
+  Device:
+    type: object
+    description: Device base class representation
+    allOf:
+      - $ref: '#/definitions/Resource'
+      - type: object
+        properties:
+          lastSeenDate:
+            type: string
+            format: date-time
+            readOnly: true
+            description: Last time this device was reached or made a request (formatted RFC 3339 timestamp).
+          battery:
+            type: number
+            description: 'The battery level of this device (must be between 0 (empty) and 100 (full) , or null if the device has no battery information).'
+          location:
+            type: object
+            properties:
+              latitude:
+                type: number
+                description: the latitude
+              longitude:
+                type: number
+                description: the longitude
+              altitude:
+                type: number
+                description: the altitude
+              place:
+                type: string
+                description: the name of the place. For instance 'home'.
+              floor:
+                type: number
+                description: the floor number
+              room:
+                type: string
+                description: the name of the room
+            description: The location of this device.
+          operations:
+            type: array
+            items:
+              type: string
+            description: The list of the operations available.
+            readOnly: true
+  HttpDevice:
+    type: object
+    description: Http Device resource representation
+    allOf:
+      - $ref: '#/definitions/Device'
+      - type: object
+        properties:
+          url:
+            type: string
+            description: |-
+              The URL of the device, or null if there is none defined. No URL defined means that the device cannot be reached.
+              Only device with an URL set has a Swagger specification (see /device/<id>/specification endpoint).
+              The specification object define all the available HTTP requests this device accepts.
+          scope:
+            type: string
+            description: |
+
+              The allowed scopes for this device (space separated list). Restrict the Http api access.
+              Default to an empty string (no access).
+          auth:
+            type: object
+            properties:
+              type:
+                type: string
+                enum:
+                  - basic
+                  - digest
+                description: the HTTP authentication method to use.
+              user:
+                type: string
+                description: the username to use for the authentication.
+              password:
+                type: string
+                description: the password to use for the authentication.
+            description: An object describing the authentication method to use on HTTP request.
+          apikey:
+            type: string
+            description: The apikey for authenticating this device.
+            readOnly: true
+  File:
+    type: object
+    description: File resource representation
+    allOf:
+      - $ref: '#/definitions/Resource'
+      - type: object
+        properties:
+          expireAfter:
+            type: number
+            description: The amount of time (in seconds) after which this resource will be removed.
+          size:
+            type: number
+            description: The size of this resource in bytes
+            readOnly: true
+          hasThumbnail:
+            type: boolean
+            description: True if this file has a thumbnail. Thumbnail is only available for file with MIME type __image/*__). See the /file/<id>/thumbnail endpoint for more details.
+            readOnly: true
+          isText:
+            type: boolean
+            description: True if this file has text based content.
+            readOnly: true
+          mime:
+            type: string
+            description: The MIME type of the file (automatically detected from the content).
+            readOnly: true
+  Resource:
+    type: object
+    description: The base representation of a resource object
+    required:
+      - name
+    discriminator: type
+    properties:
+      id:
+        type: string
+        description: The id of the resource.
+        readOnly: true
+      name:
+        type: string
+        description: The name of the resource.
+      type:
+        type: string
+        description: The type of the resource.
+        readOnly: true
+      createdDate:
+        type: string
+        format: date-time
+        description: Create time for this resource (formatted RFC 3339 timestamp).
+        readOnly: true
+      modifiedDate:
+        type: string
+        format: date-time
+        description: Last time this resource was modified (formatted RFC 3339 timestamp).
+        readOnly: true
+      createdBy:
+        type: object
+        properties:
+          type:
+            type: string
+            description: type.
+          id:
+            type: string
+            description: id.
+        description: 'The id of the resource responsible of the creation of this resource, or null.'
+        readOnly: true
+      description:
+        type: string
+        description: A description of this resource. Limited to 4096 characters
+      data:
+        type: object
+        description: 'A collection of arbitrary key-value pairs. Entries with null values are cleared in update. The keys must not be empty or longer than 64 characters, and must contain only the following characters : letters, digits, underscore and dash. Values must be either a string or a boolean or a number'
+      public:
+        type: boolean
+        description: 'False: this resource is not publicly accessible. "readonly": this resource is accessible for reading by anyone. "readwrite": this resource is accessible for reading and writing by anyone.'
+  Rule:
+    type: object
+    description: |+
+
+
+      A rule object. A rule is consisted of three parts:
+
+      - The event part specifies the signal that triggers the invocation of the rule
+      - The condition part is a logical test that, if satisfied, causes the action to be carried out
+      - The action part
+
+    required:
+      - events
+      - actions
+    properties:
+      events:
+        type: array
+        items:
+          $ref: '#/definitions/Event'
+        description: A collection of events. The rule will be executed each time an event from the collection is dispatched.
+      conditions:
+        type: array
+        items:
+          $ref: '#/definitions/Condition'
+        description: A collection of conditions. May be empty.
+      actions:
+        type: array
+        items:
+          $ref: '#/definitions/Action'
+        description: A collection of actions. Must not be empty !
+      executedDate:
+        type: string
+        format: date-time
+        description: The last time this rule has been executed.
+        readOnly: true
+      executedCount:
+        type: integer
+        description: The number of time this rule has been executed.
+        readOnly: true
+      createdDate:
+        type: string
+        format: date-time
+        description: The time this rule was created.
+        readOnly: true
+      state:
+        type: string
+        description: The state of this rule.
+        readOnly: true
+        enum:
+          - active
+          - inactive
+          - invalid
+      enabled:
+        type: boolean
+        description: If this rule is enabled or not.
+      name:
+        type: string
+        description: The name of this rule. Two or more rules can share the same name.
+      priority:
+        type: integer
+        description: The priority of this rule. Rules with highest priority will be executed first.
+  Event:
+    type: object
+    description: |+
+
+      The base representation of an event object used in rule.
+
+      For exemple, a rule that will be running every hour will have the following event :
+
+      ```json
+      {
+        "type": "Timer",
+        "cron" : "0 * * * *"
+      }
+      ```
+
+    required:
+      - type
+    properties:
+      type:
+        type: string
+        description: The type of the event.
+  Condition:
+    type: object
+    description: |
+
+      The base representation of a condition object used in rule.
+    required:
+      - type
+    properties:
+      type:
+        type: string
+        description: The type of the condition.
+      isInvalid:
+        type: boolean
+        description: Set to true if this condition is invalid.
+        readOnly: true
+  Action:
+    type: object
+    description: |
+
+      The base representation of an action object used in rule.
+    required:
+      - type
+    properties:
+      type:
+        type: string
+        description: The type of the action.
+      isInvalid:
+        type: boolean
+        description: Set to true if this action is invalid.
+        readOnly: true
+  Table:
+    type: object
+    description: Table resource representation
+    allOf:
+      - $ref: '#/definitions/Resource'
+      - type: object
+        properties:
+          expireAfter:
+            type: number
+            description: The amount of time (in seconds) after which a records will be automatically removed. Set it to null or 0 to disable this feature.
+          maxLength:
+            type: number
+            description: 'The maximum of records allowed in this table. When this number is reached, the oldest records will be removed to insert the new ones (first in, first out). Set it to null or 0 to disable this feature.'
+          length:
+            type: number
+            description: The number of records in the table
+            readOnly: true
+          keys:
+            type: object
+            description: 'A key/value object where the keys correspond to the fields available in this table, and the corresponding value is the number of rows where the field is set. __The default keys ("_id" and "date" are not listed)__'
+            readOnly: true

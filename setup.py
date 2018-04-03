@@ -141,18 +141,18 @@ def npm_preproc(cls, strict=True):
 
 
 setup(
-	name='ething',  # Required
+	name='ething', 
 	
-	version=__version__,  # Required
+	version=__version__, 
 	
-	description='A home automation project',  # Required
+	description='A home automation project', 
 	
-	long_description=long_description,  # Optional
+	long_description=long_description, 
 	
-	url='https://github.com/e-thing/ething',  # Optional
+	url='https://github.com/e-thing/ething',  
 	
-	author='Adrien Mezerette',  # Optional
-	author_email='a.mezerette@gmail.com',  # Optional
+	author='Adrien Mezerette',  
+	author_email='a.mezerette@gmail.com',  
 	
 	classifiers=[  # Optional
 		# How mature is this project? Common values are
@@ -168,9 +168,9 @@ setup(
 	],
 	
 	
-	keywords='home automation ething iot mysensors rflink zigate',  # Optional
+	keywords='home automation ething iot mysensors rflink zigate', 
 	
-	packages=['ething'],  # Required
+	packages=['ething'],
 
 	
 	install_requires=[
@@ -192,19 +192,25 @@ setup(
 		"scapy",
 		"PyJWT",
 		"netaddr",
-	],  # Optional
+		"webargs",
+	],
 	
-	extras_require={},
+	extras_require={
+		"dev": [
+			"apispec", # http api
+            "Jinja2",
+		]
+	},
 	
 	include_package_data=True,
 	
-	entry_points={  # Optional
+	entry_points={ 
 		'console_scripts': [
 			'ething=ething.main:main',
 		],
 	},
 	
-	project_urls={  # Optional
+	project_urls={ 
 		'Bug Reports': 'https://github.com/e-thing/ething/issues',
 		'Source': 'https://github.com/e-thing/ething/',
 	},

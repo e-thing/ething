@@ -4,7 +4,7 @@
   <head>
 
     <!-- CORE -->
-    <script src="__API_URL__/../js/ething.js"></script>
+    <script src="__JS_URL__"></script>
 
 
   </head>
@@ -29,7 +29,7 @@
       };
 
       EThing.initialize({
-        apiUrl: '__API_URL__',
+        serverUrl: '__SERVER_URL__',
         apiKey: '__API_KEY__'
       }, main || null, function(error) {
         // on error

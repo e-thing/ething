@@ -7,7 +7,7 @@
 	
 	return {
 		
-		'bases': ['ZigateSerialGateway'],
+		'bases': ['ZigateGateway'],
 		
 		'name': 'Zigate Serial Gateway',
 		
