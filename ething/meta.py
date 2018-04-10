@@ -1,7 +1,9 @@
+# coding: utf-8
+
 import sys
 import inspect
 from collections import OrderedDict
-
+from future.utils import with_metaclass
 
 resource_classes = {}
 
@@ -51,7 +53,6 @@ class InterfaceDecorator(object):
         set the default metadata
         """
         if not getattr(cls, 'meta', None):
-            #print "new interface", cls.__name__
             setattr(cls, 'meta', self.__parse(cls))
             
             interface_name = cls.meta['name']
@@ -97,9 +98,7 @@ class InterfaceDecorator(object):
             return
         
         is_instance = not inspect.isclass(cls)
-        
-        #print "inherit interface", cls.__class__.__name__ if is_instance else cls.__name__, base.__name__, cls.meta if hasattr(cls, 'meta') else None
-        
+                
         
         if is_instance:
             # dynamic inheritance !
@@ -107,7 +106,6 @@ class InterfaceDecorator(object):
             object.__setattr__(cls, '__interfaces', list(set(ii)))
         
         
-        #print "check inheritance %s -> %s" % (base.__name__, cls.__name__ if hasattr(cls, '__name__') else type(cls).__name__)
         base_m = [i[1] for i in self.__list_methods_with_meta(base)]
         cls_m = [i[1] for i in self.__list_methods(cls)]
         for b_m in base_m:
@@ -125,11 +123,9 @@ class InterfaceDecorator(object):
                         break
                 if f_ovl is not None:
                     # this method has been overloaded by the class cls
-                    #print "%s overloaded" % b_m.__name__
                     method.inherit(f_ovl, b_m)
                 else:
                     if is_instance:
-                        #print "%s added" % b_m.__name__
                         method.bind_to(cls)(b_m)
         
         
@@ -141,9 +137,11 @@ class InterfaceDecorator(object):
             object.__setattr__(instance, '__interfaces', [])
         
         # remove any dynamic methods
+        dbs = getattr(instance, '__dynamic_bounds', [])
         for name, method in self.__list_methods_with_meta(instance):
-            if method.meta.get('dynamic_bound'):
+            if method in dbs:
                 delattr(instance, name)
+        object.__setattr__(instance, '__dynamic_bounds', [])
     
     # decorators
     
@@ -232,7 +230,6 @@ class MethodDecorator(object):
         set the default metadata
         """
         if not hasattr(func, 'meta'):
-            #print "new method", func.__name__
             setattr(func, 'meta', self.__parse(func))
     
     def __setdefaults(self,a,b):
@@ -249,7 +246,6 @@ class MethodDecorator(object):
         makes func defaults from orig (no overwritting)
         """
         self.init(func)
-        #print "inherit method",func,"from",orig
         self.__setdefaults(func.meta, orig.meta)
     
     
@@ -293,8 +289,13 @@ class MethodDecorator(object):
     def bind_to(self, instance):
         def d(func):
             self.init(func)
-            func.meta['dynamic_bound'] = True
+            
+            dbs = getattr(instance, '__dynamic_bounds', []) + [func]
+            
             object.__setattr__(instance, func.meta['name'], func.__get__(instance, instance.__class__))
+            
+            object.__setattr__(instance, '__dynamic_bounds', list(set(dbs)))
+            
             return func
         return d
     
@@ -337,7 +338,7 @@ class Method(object):
     def call(self, *args, **kwargs):
         
         if args:
-            arg_names = self.args.keys()
+            arg_names = list(self.args)
             
             for i in range(0,len(args)):
                 
@@ -460,6 +461,13 @@ class Interface(object):
     def bases(self):
         return self.__bases
     
+    def is_a(self, interface_name):
+        """
+        check wether the current interface inherit of the given interface name
+        """
+        return interface_name in self.bases_names
+        
+    
     def build(self):
         self.__methods = []
         
@@ -467,7 +475,8 @@ class Interface(object):
         interface.clear(self.device)
         
         # loads dynamic methods first
-        self.device.dynamic_interface()
+        if hasattr(self.device, 'dynamic_interface'):
+            self.device.dynamic_interface()
         
         # list all methods attached to this device
         for attr in dir(self.device):
@@ -523,13 +532,24 @@ class Interface(object):
             j['methods'].append(m.toJson())
         
         return j
-        
+
+
+
+interfaces_classes = {}
+
+def get_interface_class(name):
+    if name in interfaces_classes:
+        return interfaces_classes[name]
+    else:
+        return None
 
 class MetaInterface(type):
     
     """MetaInterface metaclass"""
     
     def __init__(cls, nom, bases, dict):
+        
+        interfaces_classes[nom] = cls
         
         # do not propagate the meta attributes
         if hasattr(cls, 'meta'):
@@ -548,8 +568,10 @@ class MetaDevice(MetaResource, MetaInterface):
         MetaInterface.__init__(cls, nom, bases, dict)
 
 
-class iface(object):
-    __metaclass__ = MetaInterface
+
+
+class iface(with_metaclass(MetaInterface,object)):
+    pass
     
 
 

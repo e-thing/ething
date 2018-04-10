@@ -1,11 +1,13 @@
+# coding: utf-8
 
 from .RuleItem import RuleItem
 from . import InvalidRuleException
 from ething.meta import MetaAction
+from future.utils import with_metaclass
 
-class Action(RuleItem):
+
+class Action(with_metaclass(MetaAction,RuleItem)):
     
-    __metaclass__ = MetaAction
     
     def execute(self, signal):
         if self.valid:

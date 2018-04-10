@@ -1,3 +1,4 @@
+# coding: utf-8
 
 
 
@@ -14,11 +15,13 @@ This class will parse a query string into a MongoDB query object used to filter 
 import unicodedata
 import re
 import sys
-from Value import Value
-from Field import Field
-from Operator import Operator,EqualOperator,NotEqualOperator,ExistOperator,IsOperator,LowerOperator,GreaterOperator,LowerOrEqualOperator,GreaterOrEqualOperator,StartWithOperator,EndWithOperator,ContainOperator,ContainWordOperator
-from Stream import Stream
-from InvalidQueryException import InvalidQueryException
+from .Value import Value
+from .Field import Field
+from .Operator import Operator,EqualOperator,NotEqualOperator,ExistOperator,IsOperator,LowerOperator,GreaterOperator,LowerOrEqualOperator,GreaterOrEqualOperator,StartWithOperator,EndWithOperator,ContainOperator,ContainWordOperator
+from .Stream import Stream
+from .InvalidQueryException import InvalidQueryException
+from future.utils import iteritems, listvalues
+import ast
 
 
 class Parser(object):
@@ -55,7 +58,7 @@ class Parser(object):
     
     def addConstant (self, name, value = None):
         if isinstance(name, dict):
-            for key, value in name.iteritems():
+            for key, value in iteritems(name):
                 self.constants[key] = value
         else:
             self.constants[name] = value
@@ -63,7 +66,7 @@ class Parser(object):
     
     def getConstant (self, name = None):
         if name is None:
-            return self.constants.values()
+            return listvalues(self.constants)
         if name in self.constants:
             return self.constants[name]
         return None
@@ -79,7 +82,7 @@ class Parser(object):
     
     def getField (self, name):
         if name is None:
-            return self.fields.values()
+            return listvalues(self.fields)
         if name in self.fields:
             return self.fields[name]
         return None
@@ -95,7 +98,7 @@ class Parser(object):
     
     def getOperator (self, syntax):
         if syntax is None:
-            return self.operators.values()
+            return listvalues(self.operators)
         if syntax in self.operators:
             return self.operators[syntax]
         return None    
@@ -154,11 +157,14 @@ class Parser(object):
         # try to get string (double quotes or simple quotes)
         if v:
             # quoted string
-            r = v[1:-1] # remove the quotes
-            if(v[0] == '"'):
-                r = r.decode('string_escape')
             
-            return Value(r)
+            return Value(ast.literal_eval(v))
+            
+            #r = v[1:-1] # remove the quotes
+            #if(v[0] == '"'):
+            #    r = r.decode('string_escape')
+            #
+            #return Value(r)
         
         else:
             v = stream.read('[a-zA-Z0-9\.\-_+]+')
@@ -307,14 +313,4 @@ class Parser(object):
         return stack[0]
         
     
-if __name__ == '__main__':
-    
-    parser = Parser([
-        Field('name', 'string')
-    ])
-    
-    print parser.parse("name == 'toto'")
-    print parser.parse("name != 'toto'")
-    #print parser.parse("name >= 'toto'")
-    print parser.parse("(name == 45)")
-    print parser.parse('(name ^= "to\tt") and (name $= "to")')
+

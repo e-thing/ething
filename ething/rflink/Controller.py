@@ -1,7 +1,8 @@
+# coding: utf-8
 
-
-import RFLink
-from RFLinkNode import RFLinkNode
+from future.utils import text_type, binary_type
+from .helpers import convertSwitchId, getSubType
+from .RFLinkNode import RFLinkNode
 import re
 import time
 
@@ -120,6 +121,9 @@ class Controller(object):
     
     def processLine (self, line):
         
+        if isinstance(line, binary_type):
+            line = line.decode('utf8')
+        
         self.log.debug("RFLink: message received = %s" % line)
         
         with self.gateway as gateway:
@@ -176,7 +180,7 @@ class Controller(object):
                 
                 if 'ID' in args:
                     
-                    switchId = RFLink.convertSwitchId(args['SWITCH']) if 'SWITCH' in args else None
+                    switchId = convertSwitchId(args['SWITCH']) if 'SWITCH' in args else None
                     
                     device = gateway.getNode({
                         'nodeId' : args['ID'],
@@ -188,7 +192,7 @@ class Controller(object):
                         if gateway.data.get('inclusion', False):
                             # the device does not exist !
                             
-                            subType = RFLink.getSubType(protocol, args)
+                            subType = getSubType(protocol, args)
                             
                             # find the best subType suited from the protocol and args
                             if subType:
@@ -240,7 +244,7 @@ class Controller(object):
             except Exception as e:
                 
                 if self._preventFailConnectLog % 20 == 0:
-                    self.log.warn("RFLink: unable to connect : %s" % e.message)
+                    self.log.warn("RFLink: unable to connect : %s" % str(e))
                 self._preventFailConnectLog += 1
         
         # check for timeout !
@@ -267,6 +271,9 @@ class Controller(object):
     # $waitResponse (optional) true|false wait for a response or not
     def send (self, message, callback = None, waitResponse = False):
         
+        if isinstance(message, text_type):
+            message = message.encode('utf-8')
+        
         self.log.debug("RFLink: send message '%s'" % message)
         
         if not self.isOpened:
@@ -275,7 +282,9 @@ class Controller(object):
                 callback('not connected', message, None)
             return 0
         
-        wb =  self.transport.write(message.encode('utf-8')+"\r\n")
+        
+        
+        wb =  self.transport.write(message+b"\r\n")
         
         if waitResponse:
             

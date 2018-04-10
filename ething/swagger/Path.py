@@ -1,6 +1,7 @@
+# coding: utf-8
 
 
-
+from future.utils import iteritems
 from .Parameter import instanciate as instanciate_parameter
 from .Operation import Operation
 
@@ -44,7 +45,7 @@ class Path(object):
         if self.__operations is None:
             self.__operations = []
             
-            for method, operationobj in self.data.iteritems():
+            for method, operationobj in iteritems(self.data):
                 if method.lower() in ['get','put','post','delete','options','head','patch']:
                     self.__operations.append(Operation(method, operationobj, self))
         

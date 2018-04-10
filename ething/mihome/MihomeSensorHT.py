@@ -1,7 +1,8 @@
+# coding: utf-8
 
 
 
-from MihomeDevice import MihomeDevice
+from .MihomeDevice import MihomeDevice
 from ething.interfaces import Thermometer
 
 class MihomeSensorHT(MihomeDevice, Thermometer):

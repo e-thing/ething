@@ -1,6 +1,7 @@
+# coding: utf-8
 
 
-import yeelight as Yeelight
+from . import yeelight as Yeelight
 import socket
 import time
 import json
@@ -32,7 +33,7 @@ class Controller (object):
         self._preventFailConnectLog = 0
         self._lastActivity = 0
         
-        self._buffer = ""
+        self._buffer = b""
         
         # response management
         self._responseListeners = []
@@ -90,7 +91,7 @@ class Controller (object):
         
         try:
             self._sock.connect((host, Yeelight.PORT))
-        except socket.error as e:
+        except Exception as e:
             raise Exception("Yeelight: unable to connect to the device %s : %s" % (host,str(e)))
         
         self._sock.setblocking(0)
@@ -98,7 +99,7 @@ class Controller (object):
         self.ething.socketManager.registerReadSocket(self._sock, self.onDataAvailable)
         
         self._lastActivity = time.time()
-        self._buffer = ''
+        self._buffer = b''
         
         self.log.info("Yeelight: connected to %s" % host)
         
@@ -107,7 +108,7 @@ class Controller (object):
         return True
     
     def readline(self):
-        p = self._buffer.find("\n")
+        p = self._buffer.find(b"\n")
         if p>=0 :
             line = self._buffer[0:p]
             self._buffer = self._buffer[p+1:]
@@ -138,7 +139,7 @@ class Controller (object):
                 try:
                     
                     # must be json
-                    message = json.loads(line)
+                    message = json.loads(line.decode('utf8'))
                     
                     self.processMessage(message)
                     
@@ -244,8 +245,11 @@ class Controller (object):
                 
                 # some formatting
                 for i in range(0, len(response)):
-                    if response[i].decode('utf8').isnumeric():
+                    v = response[i]
+                    try:
                         response[i] = int(response[i])
+                    except ValueError:
+                        pass
                 
                 params = dict(zip(requestedProperties, response))
                 
@@ -279,7 +283,7 @@ class Controller (object):
             except Exception as e:
                 
                 if self._preventFailConnectLog % 20 == 0:
-                    self.log.warn("Yeelight: unable to connect : %s" % e.message)
+                    self.log.warn("Yeelight: unable to connect : %s" % str(e))
                 self._preventFailConnectLog += 1
         
         # check for timeout !
@@ -315,7 +319,7 @@ class Controller (object):
             
             self._lastActivity = time.time()
             
-            wb = self._sock.send(json.dumps(message)+"\r\n")
+            wb = self._sock.send(json.dumps(message).encode('utf8')+b"\r\n")
             
             if waitResponse:
                 # wait for a response

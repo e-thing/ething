@@ -1,3 +1,5 @@
+# coding: utf-8
+from future.utils import string_types
 
 from .. import Action
 from .. import InvalidRuleException
@@ -21,7 +23,7 @@ class DeviceRequest(Action):
             
             if key == 'device':
                 
-                if not isinstance(value, basestring):
+                if not isinstance(value, string_types):
                     raise Exception("must be a device id.")
                 
                 dev = context['ething'].get(value)
@@ -32,7 +34,7 @@ class DeviceRequest(Action):
                 
             elif key == 'operation':
                 
-                if not( isinstance(value, basestring) and len(value)>0 ):
+                if not( isinstance(value, string_types) and len(value)>0 ):
                     raise Exception("must be a non empty string.")
             
             elif key == 'parameters':
@@ -41,7 +43,7 @@ class DeviceRequest(Action):
             
             elif key == 'output':
                 
-                if not isinstance(value, dict) or 'type' not in value or not isinstance(value['type'], basestring) or 'name' not in value or not isinstance(value['name'], basestring):
+                if not isinstance(value, dict) or 'type' not in value or not isinstance(value['type'], string_types) or 'name' not in value or not isinstance(value['name'], string_types):
                     raise Exception("%s: invalid" % key)
                 
                 o = {
@@ -127,7 +129,7 @@ class DeviceRequest(Action):
                 
                 if table:
                     
-                    if isinstance(result, int) or isinstance(result, float) or isinstance(result, basestring) or isinstance(result, bool) or result is None:
+                    if isinstance(result, int) or isinstance(result, float) or isinstance(result, string_types) or isinstance(result, bool) or result is None:
                         table.insert({
                             'value': result
                         })

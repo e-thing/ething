@@ -1,9 +1,11 @@
+# coding: utf-8
+from future.utils import string_types, bchr, bord
 
-from Controller import Controller
-from ZigateGateway import ZigateGateway, Device
-from ZigateSerialGateway import ZigateSerialGateway
-from ZigateAqaraTHP import ZigateAqaraTHP
-from Message import Message
+from .Controller import Controller
+from .ZigateGateway import ZigateGateway, Device
+from .ZigateSerialGateway import ZigateSerialGateway
+from .ZigateAqaraTHP import ZigateAqaraTHP
+from .Message import Message
 
 import serial
 import binascii
@@ -50,7 +52,7 @@ class Zigate(object):
         
     def start_controller (self, device):
         
-        if isinstance(device, basestring):
+        if isinstance(device, string_types):
             device = self.core.get(device)
         
         if not device or not isinstance(device, ZigateGateway):
@@ -81,7 +83,7 @@ class Zigate(object):
     
     
     def stop_all_controllers(self):
-        for id in self.controllers.keys():
+        for id in list(self.controllers):
             self.stop_controller(id)
         self.controllers = {}
     
@@ -102,7 +104,7 @@ class Zigate(object):
 class SerialTransport(object):
     
     def __init__ (self, controller):
-        self._buffer = ""
+        self._buffer = b""
         self._serial = None
         self._controller = controller
         self._socketManager = controller.ething.socketManager
@@ -111,7 +113,7 @@ class SerialTransport(object):
     
     def open(self):
         
-        self._buffer = ""
+        self._buffer = b""
         self._transcodage = False
         
         port = self._controller.gateway.port
@@ -157,12 +159,12 @@ class SerialTransport(object):
         if chunk:
             
             for b in chunk:
-                o = ord(b)
+                o = bord(b)
                 if o == 1:
-                    self._buffer = ''
+                    self._buffer = b''
                 elif o == 3:
                     try:
-                        message = Message.parse("01"+binascii.hexlify(self._buffer)+"03")
+                        message = Message.parse(b"01"+binascii.hexlify(self._buffer)+b"03")
                         self._controller.processMessage(message)
                     except Exception as e:
                         # skip the line
@@ -172,10 +174,10 @@ class SerialTransport(object):
                     self._transcodage = True
                 else:
                     if self._transcodage:
-                        b = b ** 0x10
+                        o = o ** 0x10
                         self._transcodage = False
                     
-                    self._buffer += b
+                    self._buffer += bchr(o)
             
 
 

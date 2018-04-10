@@ -1,5 +1,7 @@
+# coding: utf-8
+from future.utils import string_types
 
-from base import Validator
+from .base import Validator
 
 class Scope(object):
     
@@ -54,12 +56,6 @@ class Scope(object):
         'settings:write' : {
             'description' : 'modify the settings'
         },
-        'proxy:read' : {
-            'description' : 'send GET request through your local network'
-        },
-        'proxy:write' : {
-            'description' : 'send POST,PUT,PATCH,DELETE through your local network'
-        },
         'rule:read' : {
             'description' : 'read rules attributes'
         },
@@ -78,7 +74,7 @@ class Scope(object):
     
     @staticmethod
     def validate (scopes):
-        if isinstance(scopes, basestring):
+        if isinstance(scopes, string_types):
             for scope in scopes.split(' '):
                 if scope:
                     if scope not in Scope.list:
@@ -89,17 +85,12 @@ class Scope(object):
 
 class ScopeValidator(Validator):
     def validate(self, value):
-        if (not isinstance(value, basestring)) or (not Scope.validate(value)):
+        if (not isinstance(value, string_types)) or (not Scope.validate(value)):
             raise ValueError('not a valid scope')
         return value
     
     def schema(self):
         return {"type":"string"}
 
-
-if __name__ == '__main__':
-    
-    print Scope.validate('proxy:write  rule:admin ') # True
-    print Scope.validate('proxy:write  rule:invalide ') # False
 
 

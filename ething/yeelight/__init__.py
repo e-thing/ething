@@ -1,7 +1,9 @@
+# coding: utf-8
+from future.utils import string_types
 
-from Controller import Controller
-from YeelightDevice import YeelightDevice, Device
-from YeelightBulbRGBW import YeelightBulbRGBW
+from .Controller import Controller
+from .YeelightDevice import YeelightDevice, Device
+from .YeelightBulbRGBW import YeelightBulbRGBW
 
 
 
@@ -46,7 +48,7 @@ class Yeelight(object):
         
     def start_controller (self, device):
         
-        if isinstance(device, basestring):
+        if isinstance(device, string_types):
             device = self.core.get(device)
         
         if not device or not isinstance(device, YeelightDevice):
@@ -77,7 +79,7 @@ class Yeelight(object):
     
     
     def stop_all_controllers(self):
-        for id in self.controllers.keys():
+        for id in list(self.controllers):
             self.stop_controller(id)
         self.controllers = {}
     

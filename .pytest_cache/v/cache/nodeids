@@ -1,0 +1,5 @@
+[
+  "tests/server/test_files.py::test_get_files",
+  "tests/server/test_files.py::test_put_file",
+  "tests/server/test_files.py::test_post_multipart_file"
+]

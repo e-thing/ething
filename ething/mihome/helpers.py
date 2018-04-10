@@ -1,3 +1,4 @@
+# coding: utf-8
 
 
 import socket
@@ -11,6 +12,7 @@ SOCKET_BUFSIZE    = 1024
 
 IV = "\x17\x99\x6d\x09\x3d\x28\xdd\xb3\xba\x69\x5a\x2e\x6f\x58\x56\x2e"
 
+from future.utils import listvalues
 
 def scan ():
     
@@ -29,8 +31,6 @@ def scan ():
         while True:
             data, addr = sock.recvfrom(SOCKET_BUFSIZE)
             
-            #print data, addr
-            
             if data:
                 response = json.loads(data.decode("utf-8"))
                 
@@ -45,11 +45,7 @@ def scan ():
     finally:
         sock.close()
     
-    return gateways.values()
+    return listvalues(gateways)
     
     
-
-if __name__ == "__main__":
-    
-    print scan()
 

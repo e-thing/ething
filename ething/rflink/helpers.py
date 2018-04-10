@@ -1,6 +1,4 @@
-
-
-
+# coding: utf-8
 
 
 
@@ -156,7 +154,7 @@ def convertTemperature (value):
         value &= 0x7FFF
         value = -value
     
-    value /= 10
+    value /= 10.
     return value
 
 
@@ -183,21 +181,21 @@ def convertLux (value):
 
 def convertRain (value):
     value = int(value, 16)
-    value /= 10
+    value /= 10.
     return value # in mm
 
 
 
 def convertRainRate (value):
     value = int(value, 16)
-    value /= 10
+    value /= 10.
     return value # in mm/h
 
 
 
 def convertWindSpeed (value):
     value = int(value, 16)
-    value /= 10
+    value /= 10.
     return value # in km. p/h
 
 
@@ -214,22 +212,22 @@ def convertWindDirection (value):
 
 
 def convertWatt (value):
-    return int(value, 16) / 10 # watt
+    return int(value, 16) / 10. # watt
 
 
 
 def convertKWatt (value):
-    return convertWatt(value) * 1000 # watt
+    return convertWatt(value) * 1000. # watt
 
 
 
 def convertCurrent (value):
-    return int(value, 16) / 10 # A
+    return int(value, 16) / 10. # A
 
 
 
 def convertVoltage (value):
-    return int(value, 16) / 10 # V
+    return int(value, 16) / 10. # V
 
 
 
@@ -245,12 +243,12 @@ def convertPowerFactor (value):
         value &= 0x7FFF
         value = -value
     
-    return value / 100
+    return value / 100.
 
 
 
 def convertEnergy (value):
-    return int(value, 16) / 10 # units watt-hours
+    return int(value, 16) / 10. # units watt-hours
 
 
 

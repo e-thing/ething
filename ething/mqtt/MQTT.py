@@ -1,6 +1,7 @@
+# coding: utf-8
+from future.utils import string_types, integer_types, iteritems
 
-
-from ething.Device import Device, method, attr, isString, isInteger, isObject, isNone
+from ething.Device import Device, method, attr, isString, isInteger, isObject, isNone, PRIVATE
 from ething.rule.event.DeviceDataSet import DeviceDataSet
 
 from jsonpath_rw import jsonpath, parse
@@ -15,17 +16,13 @@ import re
 @attr('host', validator = isString(), description="The host of the MQTT broker to connect to.")
 @attr('port', validator = isInteger(min=0, max=65535), default=1883, description="The port number of the MQTT broker to connect to.")
 @attr('auth', validator = isNone() | isObject(user=isString(allow_empty=False), password=isString(allow_empty=False)), default=None, description="An object describing the credentials to use.")
+@attr('subscription', mode = PRIVATE, default = None)
 class MQTT(Device):
     """
     MQTT Device resource representation
     """
     
-    payloadContentTypes = ['application/json','text/plain','application/xml']
     
-    
-    def __init__(self, ething, doc):
-        super(MQTT, self).__init__(ething, doc)
-        self._subs = None
     
     
     @method.arg('topic', type='string', minLength = 1)
@@ -35,12 +32,8 @@ class MQTT(Device):
     
     
     def getSubscription (self):
-        if self._subs is not None:
-            return self.subs # cached
-        
         spec = self.ething.fs.retrieveFile(self._subscription)
-        self.subs = json.loads(spec) if spec else []
-        return self.subs
+        return json.loads(spec.decode('utf8')) if spec else []
     
     
     def setSubscription (self, subs):
@@ -51,42 +44,38 @@ class MQTT(Device):
                 if not isinstance(v, dict):
                     raise ValueError('sub item must be a dictionary')
                 
-                for k, vv in v.iteritems():
+                if 'topic' not in v:
+                    raise ValueError('the key "topic" is mandatory')
+                
+                for k, vv in iteritems(v):
                     
                     if k == 'topic':
-                        if not isinstance(vv, basestring) or len(vv)==0:
+                        if not isinstance(vv, string_types) or len(vv)==0:
                             raise Exception('topic: must be a non empty string')
-                    elif k == 'contentType':
-                        if vv is not None:
-                            if not isinstance(vv, basestring) or len(vv)==0:
-                                raise Exception('contentType: must be a non empty string')
-                            if vv not in MQTT.payloadContentTypes:
-                                raise Exception('contentType: only the following types are allowed: %s' % ','.join(MQTT.payloadContentTypes))
-                        
+                    
                     elif k == 'jsonPath':
-                        if not isinstance(vv, basestring) and vv is not None:
+                        if not isinstance(vv, string_types) and vv is not None:
                             raise Exception('jsonPath: must be a string')
                     
                     elif k == 'regexp':
-                        if not isinstance(vv, basestring) and vv is not None:
+                        if not isinstance(vv, string_types) and vv is not None:
                             raise Exception('regexp: must be a string')
                     elif k == 'xpath':
-                        if not isinstance(vv, basestring) and vv is not None:
+                        if not isinstance(vv, string_types) and vv is not None:
                             raise Exception('xpath: must be a string')
                     else:
                         raise Exception('unknown key \'%s\'' % k)
+        
         elif subs is not None:
             raise ValueError('subs must either be None or a list')
         
-        
-        self._subs = None # delete cache
         
         # remove that file if it exists
         self.ething.fs.removeFile(self._subscription)
         self._subscription = None
         
         if subs:
-            self._subscription = self.ething.fs.storeFile('Device/%s/subscription' % self.id, json.dumps(subs), {
+            self._subscription = self.ething.fs.storeFile('Device/%s/subscription' % self.id, json.dumps(subs).encode('utf8'), {
                 'parent' : self.id
             })
         
@@ -99,117 +88,84 @@ class MQTT(Device):
         
         for item in self.getSubscription():
             
-            if item['topic'] == topic:
+            if item.get('topic') == topic:
                 
-                data = None
-                storageType = None
-                storageName = os.path.basename(topic)
+                json_path = item.get('jsonPath')
                 
-                contentType = item['contentType']
+                if item.get('jsonPath'):
                     
-                if contentType == 'application/json':
+                    json_path = item.get('jsonPath')
                     
                     try:
-                        decoded = json.loads(payload)
-                    except ValueError:
-                        pass
-                    else:
+                        decoded = json.loads(payload.decode('utf8'))
                         
-                        if item['jsonPath']:
-                            try:
-                                jsonpath_expr = parse(item['jsonPath'])
-                            except Exception:
-                                pass
-                            else:
-                                results = [match.value for match in jsonpath_expr.find(decoded)]
-                                if len(results):
-                                    data = results[0]
-                        else:
-                            data = decoded
-                        
-                        if data:
-                            if not(isinstance(data, int) or isinstance(data, float) or isinstance(data, basestring) or isinstance(data, bool)):
-                                storageType = 'File'
-                                storageName += '.json'
-                                data = json.dumps(data, indent=4)
-                    
-                    
-                elif contentType == 'text/plain':
-                    
-                    if item['regexp']:
-                        
-                        rec = re.compile(item['regexp'])
-                        
-                        for line in payload.splitlines():
-                            matches = rec.search(line)
-                            if matches:
-                                data = matches.group(1) if (matches.groups())>0 else matches.group(0)
-                                if data:
-                                    
-                                    if data.isnumeric():
-                                        data = int(data)
-                                    break
-                    
-                    else:
-                        data = payload
-                        if data.isnumeric():
-                            data = int(data)
-                
-                elif contentType == 'application/xml':
-                    
-                    if not item['xpath']:
-                        storageType = 'File'
-                        storageName += '.xml'
-                        data = payload
-                    else:
-                        # xpath
                         try:
-                            tree = ET.fromstring(payload)
-                            elements = [r.text for r in tree.findall(item['xpath'])]
+                            jsonpath_expr = parse(json_path)
                         except Exception:
                             pass
                         else:
+                            results = [match.value for match in jsonpath_expr.find(decoded)]
+                            if len(results):
+                                data = results[0]
+                                
+                                if isinstance(data, integer_types) or isinstance(data, float) or isinstance(data, string_types) or isinstance(data, bool):
+                                    self.store(os.path.basename(topic), {'value': data})
+                                    continue
+                        
+                    except ValueError:
+                        pass
+                
+                
+                elif item.get('regexp'):
+                    
+                    regexp = item.get('regexp')
+                    
+                    rec = re.compile(regexp)
+                    data = None
+                    
+                    for line in payload.decode('utf8').splitlines():
+                        matches = rec.search(line)
+                        if matches:
+                            data = matches.group(1) if len(matches.groups())>0 else matches.group(0)
                             
-                            if len(elements)>0:
-                                data = elements[0]
-                                if data.isnumeric():
-                                    data = int(data)
+                            try:
+                                data = float(data)
+                            except ValueError:
+                                pass
+                            
+                            break
+                    
+                    if data is not None:
+                        self.store(os.path.basename(topic), {'value': data})
+                        continue
                 
                 
-                if data:
+                elif item.get('xpath'):
                     
-                    if not storageType:
-                        if isinstance(data, basestring) and len(data)>256:
-                            storageType = 'File'
-                        else :
-                            storageType = 'Table'
+                    xpath = item.get('xpath')
                     
-                                        
-                    storage = self.ething.findOne({
-                        'name' : storageName,
-                        'type' : storageType,
-                        'createdBy' : self.id
-                    })
-                    
-                    if not storage:
-                        # create it !
-                        storage = self.ething.create(storageType, {
-                            'name' : storageName
-                        }, self)
-                    
-                    
-                    if storage:
-                        if storageType == 'Table':
-                            storage.insert({
-                                'value' : data
-                            })
-                        elif storageType == 'File':
-                            storage.write(data)
-                    
-                    
-                    self.dispatchSignal(DeviceDataSet.emit(self, {
-                        'value' : data
-                    }))
+                    try:
+                        tree = ET.fromstring(payload.decode('utf8'))
+                        elements = [r.text for r in tree.findall(xpath)]
+                    except Exception:
+                        pass
+                    else:
+                        
+                        if len(elements)>0:
+                            data = elements[0]
+                            
+                            try:
+                                data = float(data)
+                            except ValueError:
+                                pass
+                            
+                            if isinstance(data, integer_types) or isinstance(data, float) or isinstance(data, string_types) or isinstance(data, bool):
+                                self.store(os.path.basename(topic), {'value': data})
+                                continue
+                
+                
+                
+                self.ething.log.warning('unable to handle the message from topic %s' % topic)
                     
 
 

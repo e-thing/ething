@@ -1,12 +1,13 @@
+# coding: utf-8
 
 
-from Resource import Resource
-from Scope import Scope, ScopeValidator
-from ApiKey import ApiKey
-import base64
-from Helpers import dict_recursive_update
+from future.utils import text_type
+from .Resource import Resource
+from .Scope import Scope, ScopeValidator
+from .ApiKey import ApiKey
+from .Helpers import dict_recursive_update
 import datetime
-from base import attr, isBool, isString, isNone, isInteger, READ_ONLY, PRIVATE, Validator
+from .base import attr, isBool, isString, isNone, isInteger, READ_ONLY, PRIVATE, Validator
 
 
 
@@ -56,13 +57,17 @@ class App(Resource):
         return True
     
     
-    def setScript (self, content):
+    def setScript (self, content, encoding = 'utf8'):
         
         # remove that file if it exists
         self.ething.fs.removeFile(self._content)
         self._content = None
         
         if content:
+            
+            if isinstance(content, text_type):
+                content = content.encode(encoding)
+            
             self._content = self.ething.fs.storeFile('App/%s/content' % self.id, content, {
                 'parent' : self.id
             })
@@ -83,9 +88,15 @@ class App(Resource):
     
     
     
-    def readScript (self):
+    def readScript (self, encoding = 'utf8'):
         contents = self.ething.fs.retrieveFile(self._content)
-        return contents if contents else ''
+        
+        if contents is None:
+            contents = b''
+        
+        contents = contents.decode(encoding)
+        
+        return contents
     
     
     def readIcon (self):
@@ -93,28 +104,4 @@ class App(Resource):
     
     
 
-if __name__ == '__main__':
-    
-    from ething.core import Core
-    
-    ething = Core({
-        'db':{
-            'database': 'test'
-        },
-        'log':{
-            'level': 'debug'
-        }
-    })
-    
-    f = ething.create('App', {
-        'name' : 'app1.txt'
-    })
-    
-    f.write('hello world')
-    
-    print f.toJson()
-    
-    print f.mime
-    
-    print f.readScript()
-    
+

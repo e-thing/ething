@@ -7,13 +7,14 @@
     "gulp-filelist": "^1.0.0",
     "csso": "^3.5.0",
     "del": "^3.0.0",
-    "requirejs": "^2.3.5"
+    "requirejs": "^2.3.5",
+    "q": "^1.5.1"
   },
   "scripts": {
     "build": "gulp"
   },
   "dependencies": {
-    "ething-js": "^0.1.0"
+    "ething-js": "^0.1.1"
   },
   "private": true
 }

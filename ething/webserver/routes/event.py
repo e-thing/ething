@@ -1,3 +1,4 @@
+# coding: utf-8
 from flask import Response
 from ething.Helpers import toJson
 

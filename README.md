@@ -10,7 +10,7 @@ Access remotely to your data and control your devices from anywhere.
 
 This project was developped on a Raspberry Pi but should work on any Linux computer.
 
-Written in Python 2.7.
+Written in Python.
 
 ## Overview
 
@@ -54,7 +54,7 @@ Create JavaScript script to execute custom tasks when an event occurs and under 
 
 Many APIs are provided to communicate with the e-Thing server :
 
-- [HTTP API](https://github.com/e-thing/ething/blob/master/doc/readme.md)
+- [HTTP API](https://github.com/e-thing/ething/blob/master/doc/http_api.md)
 - [Javascript API](https://github.com/e-thing/ething-js)
 
 Use these APIs to create your own device !
@@ -65,7 +65,7 @@ Use these APIs to create your own device !
 ### Requirements
 
  - [Node](//nodejs.org/en/download/package-manager/)
- - Python 2.7
+ - Python 2.7 or >= 3.4
  - [MongoDB](//www.mongodb.com)
 
 ### Installation

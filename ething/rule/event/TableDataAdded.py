@@ -1,3 +1,5 @@
+# coding: utf-8
+from future.utils import string_types
 
 from .ResourceEvent import ResourceEvent
 from ething.TableQueryParser import TableQueryParser
@@ -20,7 +22,7 @@ class TableDataAdded(ResourceEvent):
                 
                 if value is None:
                     pass
-                elif isinstance(value, basestring):
+                elif isinstance(value, string_types):
                     
                     ok, message = TableQueryParser.check(value)
                     

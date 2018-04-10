@@ -1,3 +1,5 @@
+# coding: utf-8
+from future.utils import string_types
 from .ResourceCondition import ResourceCondition
 from ething.ResourceQueryParser import ResourceQueryParser
 
@@ -18,7 +20,7 @@ class ResourceMatch(ResourceCondition):
                 
                 expr = attributes[key]
                 
-                if not( isinstance(expr, basestring) and len(expr)>0 ):
+                if not( isinstance(expr, string_types) and len(expr)>0 ):
                     raise Exception("must be a non empty string.")
                 
                 ok, message = ResourceQueryParser.check(value)

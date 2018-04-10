@@ -1,5 +1,7 @@
+# coding: utf-8
+from future.utils import string_types
 
-from InvalidQueryException import InvalidQueryException
+from .InvalidQueryException import InvalidQueryException
 
 class Operator(object):
     
@@ -14,9 +16,9 @@ class Operator(object):
         
         self.__acceptField = accept
         self.__acceptValue = acceptValue
-        if isinstance(self.__acceptField, basestring) and self.__acceptField != '*':
+        if isinstance(self.__acceptField, string_types) and self.__acceptField != '*':
             self.__acceptField = [self.__acceptField]
-        if isinstance(self.__acceptValue, basestring) and self.__acceptValue != '*':
+        if isinstance(self.__acceptValue, string_types) and self.__acceptValue != '*':
             self.__acceptValue = [self.__acceptValue]
         
         self.compilfn = compilfn
@@ -34,10 +36,10 @@ class Operator(object):
     
     
     def acceptField (self, field):
-        if isinstance(self.__acceptField, basestring) and self.__acceptField == '*':
+        if isinstance(self.__acceptField, string_types) and self.__acceptField == '*':
             return True
         ft = field.type
-        if isinstance(ft, basestring) and ft == '*':
+        if isinstance(ft, string_types) and ft == '*':
             return True
         if isinstance(self.__acceptField, list) and ft in self.__acceptField:
             return True
@@ -45,7 +47,7 @@ class Operator(object):
     
     
     def acceptValue (self, value):
-        if isinstance(self.__acceptValue, basestring) and self.__acceptValue == '*':
+        if isinstance(self.__acceptValue, string_types) and self.__acceptValue == '*':
             return True
         
         if not self.hasValue():

@@ -1,3 +1,4 @@
+# coding: utf-8
 
 import time
 import datetime
@@ -72,7 +73,7 @@ class Scheduler(object):
         try:
             task['callback']()
         except:
-            self.log.exception('[scheduler] exception in task')
+            self.log.exception('[scheduler] exception in task "%s"' % task['callback'].__name__)
     
     
     
@@ -114,34 +115,3 @@ class Scheduler(object):
             i+=1
 
 
-
-if __name__ == '__main__':
-    
-    def echo():
-        print 'hello'
-    
-    def bip():
-        print 'bip'
-    
-    def tot():
-        print 'tot', datetime.datetime.now()
-    
-    scheduler = Scheduler(None)
-    
-    scheduler.delay(1, echo)
-    
-    #scheduler.setInterval(1, bip, 1)
-    
-    scheduler.at(tot, '*', '*')
-    
-    tf = time.time() + 300
-    
-    print "start"
-    
-    while time.time() < tf:
-        
-        scheduler.update()
-        
-        time.sleep(1)
-
-    print "end"

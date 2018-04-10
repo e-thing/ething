@@ -1,5 +1,7 @@
+# coding: utf-8
+from future.utils import string_types
 
-from ResourceAction import ResourceAction
+from .ResourceAction import ResourceAction
 
 class Email(ResourceAction):
     
@@ -18,17 +20,17 @@ class Email(ResourceAction):
                 
             if key == 'subject':
                 
-                if not( isinstance(value, basestring) and len(value)>0 ):
+                if not( isinstance(value, string_types) and len(value)>0 ):
                     raise Exception("must be a non empty string.")
                 
             elif key == 'content':
                 
-                if not( isinstance(value, basestring) ):
+                if not( isinstance(value, string_types) ):
                     raise Exception("must be a string.")
             
             elif key == 'to':
                 
-                if not( isinstance(value, basestring) and len(value)>0 ):
+                if not( isinstance(value, string_types) and len(value)>0 ):
                     raise Exception("must be a non empty string.")
             
             else:

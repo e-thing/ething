@@ -1,14 +1,20 @@
+# coding: utf-8
+from future.utils import string_types
 
 
-
+from future.utils import iteritems
 from ething.Device import Device, method, attr, isString, isNone, isObject, READ_ONLY, PRIVATE, Validator
 from ething.utils import pingable
-import urlparse
 from ething.Scope import Scope, ScopeValidator
 from ething.ApiKey import ApiKey
 import json
 from ething.swagger import Reader
 import requests
+try:
+    from urllib.parse import urlparse, urlencode
+except ImportError:
+    from urlparse import urlparse
+    from urllib import urlencode
 
 
 
@@ -149,11 +155,11 @@ class Http(Device):
             query['password'] = [self.authPassword]
         
         q = []
-        for k,vv in query.iteritems():
+        for k,vv in iteritems(query):
             for v in vv:
                 q.append((k,v))
         
-        query = urllib.urlencode(q)
+        query = urlencode(q)
         
         url = urlparse.urlunparse((ref.scheme, ref.netloc, path, '', query, ''))
         
@@ -190,7 +196,7 @@ class Http(Device):
     def checkSpecification (ething, swagger):
         
         # sanitize the specification
-        if isinstance(swagger, basestring):
+        if isinstance(swagger, string_types):
             swagger = json.loads(swagger)
         
         
@@ -232,7 +238,7 @@ class Http(Device):
         if not self.isServer:
             raise Exception('this device has no URL set')
         
-        if isinstance(swagger, basestring):
+        if isinstance(swagger, string_types):
             # must be json !
             swagger = json.loads(swagger)
         
@@ -240,7 +246,7 @@ class Http(Device):
         self._specification = None
         
         if swagger is not None:
-            self._specification = self.ething.fs.storeFile('Device/%s/specification' % self.id, json.dumps(swagger), {
+            self._specification = self.ething.fs.storeFile('Device/%s/specification' % self.id, json.dumps(swagger).encode('utf8'), {
                 'parent' : self.id
             })
         
@@ -252,7 +258,7 @@ class Http(Device):
         if not self.isServer:
             raise Exception('this device has no API specification')
         spec = self.ething.fs.retrieveFile(self._specification)
-        return json.loads(spec) if spec else self.defaultSpecification()
+        return json.loads(spec.decode('utf8')) if spec else self.defaultSpecification()
     
     
     def defaultSpecification(self):
@@ -267,47 +273,6 @@ class Http(Device):
         }
     
     
-    
-if __name__ == '__main__':
-    
-    from ething.core import Core
-    
-    ething = Core({
-        'db':{
-            'database': 'test'
-        },
-        'log':{
-            'level': 'debug'
-        }
-    })
-    
-    name = 'http.device.test'
-    
-    device = ething.findOne({
-        'name': name
-    })
-    
-    #if device :
-    #    device.remove()
-    #    device = None
-    
-    if not device:
-        device = ething.create('Http', {
-            'name': name,
-            'url': 'http://localhost'
-        })
-        
-        import urllib2
-        contents = urllib2.urlopen("https://raw.githubusercontent.com/OAI/OpenAPI-Specification/master/examples/v2.0/json/petstore.json").read()
-        
-        device.setSpecification(contents)
-    
-    
-    print device
-    
-    print json.dumps(device.interface.toJson(), indent=4)
-    
-    #print Http.checkSpecification(None, {})
     
 
 

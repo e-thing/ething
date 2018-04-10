@@ -1,3 +1,4 @@
+# coding: utf-8
 
 
 from ething.Device import Device, method, attr, isString, isObject, isInteger, isNone
@@ -41,38 +42,6 @@ class SSH(Device):
 
 
 
-if __name__ == '__main__':
-    
-    from ething.core import Core
-    
-    ething = Core({
-        'db':{
-            'database': 'test'
-        },
-        'log':{
-            'level': 'debug'
-        }
-    })
-    
-    dev = ething.findOne({
-        "name": "sshdev"
-    })
-    
-    if not dev:
-        dev = ething.create("SSH", {
-            "name": "sshdev",
-            "host" : "localhost",
-            "auth": {
-                "user": "lebios",
-                "password": "amb1987"
-            }
-        })
-    
-    print dev
-    
-    print dev.execute("ls")
-    
-    
     
     
     

@@ -1,3 +1,5 @@
+# coding: utf-8
+from future.utils import string_types, integer_types
 
 
 
@@ -9,7 +11,7 @@ class Stream(object):
     def __init__ (self, content = None):
         self.index = 0
         self.index_last = 0
-        if isinstance(content, basestring):
+        if isinstance(content, string_types):
             self.content = content
         else:
             self.content = ''
@@ -39,13 +41,13 @@ class Stream(object):
     
     
     def read (self, a):
-        if isinstance(a, int) and a>0:
+        if isinstance(a, integer_types) and a>0:
             # read n characters
             o = self.content[:a]
             self.walk(len(o))
             return o
         
-        elif isinstance(a, basestring):
+        elif isinstance(a, string_types):
             # return the first match
             m = re.search(a, self.content)
             if m is not None:

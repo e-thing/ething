@@ -1,43 +1,46 @@
+# coding: utf-8
+
 """
  @author Adrien Mezerette <a.mezerette@gmail.com>
  @version 0.1.0
  @package ething
 """
 
-from webserver.WebServer import WebServer
+from future.utils import string_types
+from .webserver.WebServer import WebServer
 import pymongo
-from DbFs import DbFs
-from ResourceQueryParser import ResourceQueryParser
-from Config import Config
-from SignalManager import SignalManager
-from SocketManager import SocketManager
-from TaskManager import TaskManager
-from Scheduler import Scheduler
-from Mail import Mail
-from rpc import RPC
-from version import __version__
-import rule
+from .DbFs import DbFs
+from .ResourceQueryParser import ResourceQueryParser
+from .Config import Config
+from .SignalManager import SignalManager
+from .SocketManager import SocketManager
+from .TaskManager import TaskManager
+from .Scheduler import Scheduler
+from .Mail import Mail
+from .rpc import RPC
+from .version import __version__
+from . import rule
 import logging
 import sys
 import os
 import datetime
 import re
 
-from meta import get_resource_class
+from .meta import get_resource_class
 
-from File import File
-from Table import Table
-from App import App
+from .File import File
+from .Table import Table
+from .App import App
 
-from rflink import RFLink
-from mysensors import MySensors
-from mqtt import MQTT
-from yeelight import Yeelight
-from mihome import Mihome
-from zigate import Zigate
-from device.Http import Http
-from device.RTSP import RTSP
-from device.SSH import SSH
+from .rflink import RFLink
+from .mysensors import MySensors
+from .mqtt import MQTT
+from .yeelight import Yeelight
+from .mihome import Mihome
+from .zigate import Zigate
+from .device.Http import Http
+from .device.RTSP import RTSP
+from .device.SSH import SSH
 
 
 
@@ -172,7 +175,7 @@ class Core(object):
         self.log.info("Using home directory: %s" % os.getcwd())
         
         self.scheduler = Scheduler(self)
-        self.taskManager = TaskManager(self)
+        self.taskManager = TaskManager(self, initialize = self._init_database)
         self.signalManager = SignalManager(self)
         self.socketManager = SocketManager(self)
         self.ruleManager = rule.Manager(self)
@@ -268,7 +271,7 @@ class Core(object):
         if query is None:
             query = {}
         
-        if isinstance(query, basestring):
+        if isinstance(query, string_types):
             # parse the query string
             query = self.resourceQueryParser.parse(query)
         
@@ -284,7 +287,7 @@ class Core(object):
         if skip is None:
             skip = 0
         
-        if isinstance(sort, basestring):
+        if isinstance(sort, string_types):
             m = re.search('^([+-]?)(.+)$', sort)
             if m is not None:
                 sort = [(m.group(2), pymongo.ASCENDING if m.group(1)!='-' else pymongo.DESCENDING)]
@@ -311,7 +314,7 @@ class Core(object):
     
     
     def get (self, id):
-        if not isinstance(id, basestring):
+        if not isinstance(id, string_types):
             raise ValueError('id must be a string')
         return self.findOne({'_id' : id})
     
@@ -351,7 +354,7 @@ class Core(object):
         },{
             '$group' : {
                 "_id" : None,
-                "size" : {'$sum' : 'size'}
+                "size" : {'$sum' : '$size'}
             }
         }])
         
@@ -420,7 +423,7 @@ class Core(object):
     
     def dispatchSignal (self, signal, *args, **kwargs):
         try:
-            if isinstance(signal, basestring):
+            if isinstance(signal, string_types):
                 cls = get_event_class(signal)
                 if not cls:
                     return
@@ -454,22 +457,4 @@ class Core(object):
         
     
 
-        
-def test_db():
-    
-    core = Core({
-        'db':{
-            'database': 'test'
-        },
-        'log':{
-            'level': 'debug'
-        }
-    })
-    
-    print core.find()
-    print core.usage()
-    
 
-
-if __name__ == "__main__":
-    test_db()

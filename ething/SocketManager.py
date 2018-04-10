@@ -1,3 +1,4 @@
+# coding: utf-8
 import time
 import select
 
@@ -51,8 +52,8 @@ class SocketManager(object):
             
             t0 = time.time()
             
-            read = self.read_map.keys()
-            write = self.write_map.keys()
+            read = list(self.read_map)
+            write = list(self.write_map)
             excepts = []
             
             #self.log.debug("select %d %d" % (len(read), len(write)))
@@ -68,7 +69,7 @@ class SocketManager(object):
                     try:
                         it[0](*(it[2]))
                     except:
-                        self.log.exception('SocketManager read callback exception')
+                        self.log.exception('SocketManager read callback exception in %s' % it[0])
                     
                     if it[1]:
                         self.unregisterReadSocket(s)

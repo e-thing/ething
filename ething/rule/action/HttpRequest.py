@@ -1,3 +1,5 @@
+# coding: utf-8
+from future.utils import string_types
 from .. import Action
 from .. import InvalidRuleException
 import requests
@@ -22,12 +24,12 @@ class HttpRequest(Action):
             
             if key == 'url':
                 
-                if not( isinstance(value, basestring) and len(value)>0 ):
+                if not( isinstance(value, string_types) and len(value)>0 ):
                     raise Exception("%s: must be a non empty string." % key)
             
             elif key == 'method':
                 
-                if not( isinstance(value, basestring) and value.lower() in ['get', 'post', 'delete', 'put', 'patch'] ):
+                if not( isinstance(value, string_types) and value.lower() in ['get', 'post', 'delete', 'put', 'patch'] ):
                     raise Exception("%s: invalid" % key)
             
             elif key == 'headers':
@@ -36,7 +38,7 @@ class HttpRequest(Action):
                     
                     if isinstance(value, dict):
                         for k in value:
-                            if not isinstance(value[k], basestring):
+                            if not isinstance(value[k], string_types):
                                 raise Exception("%s: invalid" % key)
                     else :
                         raise Exception("%s: invalid" % key)
@@ -44,7 +46,7 @@ class HttpRequest(Action):
             elif key == 'auth':
                 
                 if value is not None:
-                    if not isinstance(value, dict) or 'type' not in value or not isinstance(value['type'], basestring) or 'user' not in value or not isinstance(value['user'], basestring) or 'password' not in value or not isinstance(value['password'], basestring) :
+                    if not isinstance(value, dict) or 'type' not in value or not isinstance(value['type'], string_types) or 'user' not in value or not isinstance(value['user'], string_types) or 'password' not in value or not isinstance(value['password'], string_types) :
                         raise Exception("%s: invalid" % key)
                     
                     if value['type'].lower() not in ['basic', 'digest']:
@@ -62,13 +64,13 @@ class HttpRequest(Action):
                 
                 if value is not None:
                     
-                    if isinstance(value, basestring):
+                    if isinstance(value, string_types):
                         value = {
                             'type' : 'plain',
                             'value' : value
                         }
                     
-                    if not isinstance(value, dict) or 'type' not in value or not isinstance(value['type'], basestring) or 'value' not in value or not isinstance(value['value'], basestring):
+                    if not isinstance(value, dict) or 'type' not in value or not isinstance(value['type'], string_types) or 'value' not in value or not isinstance(value['value'], string_types):
                         raise Exception("%s: invalid" % key)
                     
                     if value['type'].lower() not in ['plain','binary','resource']:
@@ -93,7 +95,7 @@ class HttpRequest(Action):
             elif key == 'output':
                 
                 if value is not None:
-                    if not( isinstance(value, basestring) and len(value)>0 ):
+                    if not( isinstance(value, string_types) and len(value)>0 ):
                         raise Exception("%s: must be resource filename." % key)
             
             else:
@@ -170,74 +172,3 @@ class HttpRequest(Action):
                 })
                 if outf:
                     outf.write(str(text))
-        
-
-if __name__ == '__main__':
-    
-    from ething.core import Core
-    from ..event import Custom
-    import os
-    
-    name = os.path.splitext(os.path.basename(__file__))[0]
-    
-    rule_name = 'test-rule-%s' % name
-    event_name = 'test-rule-%s-event' % name
-    out_name = 'test-rule-%s-out' % name
-    
-    core = Core({
-        'db':{
-            'database': 'test'
-        },
-        'log':{
-            'level': 'debug'
-        }
-    })
-    
-    rules = core.findRules({
-        'name' : rule_name
-    })
-    
-    for r in rules:
-        r.remove()
-    
-    files = core.find({
-        'name': out_name
-    })
-    
-    for r in files:
-        r.remove()
-    
-    rule = core.createRule({
-        'name' : rule_name,
-        'events':[{
-            'type': 'Custom',
-            'options':{
-                'name': event_name
-            }
-        }],
-        'actions':[{
-            'type': 'HttpRequest',
-            'options':{
-                'url': "https://jsonplaceholder.typicode.com/posts/1",
-                'output': out_name
-            }
-        }]
-    })
-    
-    print rule
-    
-    signal = Custom.emit(event_name)
-    
-    rule.trigger(signal)
-    
-    out_file = core.findOne({
-        'name': out_name
-    })
-    
-    print out_file
-    
-    if out_file:
-        print out_file.read()
-    else:
-        print "ERROR: no output !"
-    

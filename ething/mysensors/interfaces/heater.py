@@ -1,7 +1,8 @@
+# coding: utf-8
 
 from ething.meta import method, iface
-from temp import Temp
-from binary import Binary
+from .temp import Temp
+from .binary import Binary
 
 class Heater (Temp, Binary):
     

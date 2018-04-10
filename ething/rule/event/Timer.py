@@ -1,3 +1,5 @@
+# coding: utf-8
+from future.utils import string_types
 from .. import Event
 from .. import Signal
 
@@ -22,7 +24,7 @@ class Timer(Event):
                 
                 expr = attributes[key]
                 
-                if not( isinstance(expr, basestring) and croniter.is_valid(expr) ):
+                if not( isinstance(expr, string_types) and croniter.is_valid(expr) ):
                     raise Exception("not a valid cron expression.")
                 
             else:

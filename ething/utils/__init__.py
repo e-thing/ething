@@ -1,9 +1,10 @@
+# coding: utf-8
 
-from pingable import pingable
+from .pingable import pingable
 
-from nodejs import *
+from .nodejs import *
 
-from null_context_manager import NullContextManager
+from .null_context_manager import NullContextManager
 
 
 def print_info(core, printer):

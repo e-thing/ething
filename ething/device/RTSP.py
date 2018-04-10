@@ -1,11 +1,14 @@
+# coding: utf-8
 
 
 
 from ething.Device import Device, method, attr, isString, isObject, isInteger, isNone, READ_ONLY, Validator
 from ething.utils import pingable
-from urlparse import urlparse
 import subprocess
-
+try:
+    from urllib.parse import urlparse
+except ImportError:
+    from urlparse import urlparse
 
 
 

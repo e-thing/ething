@@ -1,3 +1,5 @@
+# coding: utf-8
+from future.utils import string_types
 
 
 from ething.Device import Device, method, attr, isString
@@ -5,7 +7,6 @@ from ething.utils import pingable
 from ething.rule.event.DeviceDataSet import DeviceDataSet
 from ething.interfaces import Light
 import json
-import base64
 
 
 
@@ -16,12 +17,12 @@ class YeelightDevice (Device, Light):
     def storeData (self, data):
         
         if "power" in data:
-            self.store('status', 'on' in data["power"].lower())
+            self.store('state', 'on' in data["power"].lower())
         
     
     
     def sendMessage (self, message):
-        if isinstance(message, basestring):
+        if isinstance(message, string_types):
             message = json.loads(message)
         return self.ething.rpc.request('device.yeelight.send', self.id, message)
     
@@ -29,7 +30,7 @@ class YeelightDevice (Device, Light):
     # send a message and wait for the response.
     # note: not all request has a response !
     def sendMessageWaitResponse (self, message):
-        if isinstance(message, basestring):
+        if isinstance(message, string_types):
             message = json.loads(message)
         return self.ething.rpc.request('device.yeelight.sendWaitResponse', self.id, message)
     

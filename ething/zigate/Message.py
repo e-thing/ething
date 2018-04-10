@@ -1,13 +1,13 @@
+# coding: utf-8
+from future.utils import string_types, integer_types
 
-from Zigate import clusterIdToName
+from .helpers import clusterIdToName
 import struct
+from builtins import bytes
 
 
 def hex2str (self, hex):
-    str = ''
-    for i in range(0, len(hex), 2):
-        str += chr(int(hex[i:i+2], 16))
-    return str
+    return bytearray.fromhex(hex).decode()
 
 def crc(str):
     crctmp = 0
@@ -176,7 +176,7 @@ class Message(object):
     
     @type.setter
     def type (self, type):
-        if isinstance(type, int):
+        if isinstance(type, integer_types):
             type = format('X', type)
         if len(type) > 4:
             raise Exception("invalid type")
@@ -222,7 +222,7 @@ class Message(object):
     
     
     def computeLength (self):
-        return len(self.payload)/2
+        return int(len(self.payload)/2)
     
     
     def computeCRC (self):
@@ -483,7 +483,7 @@ class Message(object):
     
     @staticmethod
     def decodeMacCapability (macCapability):
-        if isinstance(macCapability, basestring):
+        if isinstance(macCapability, string_types):
             macCapability = int(macCapability[0:2], 16)
         
         return {

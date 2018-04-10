@@ -1,6 +1,8 @@
+# coding: utf-8
+from future.utils import string_types, integer_types, binary_type, text_type
 
 
-import MySensors
+from .helpers import *
 
 class Message(object):
     
@@ -11,34 +13,53 @@ class Message(object):
         self.childSensorId = int(childSensorId)
         self.messageType = int(messageType)
         self.ack = int(ack)
+        self.payload = b''
         
-        if isinstance(subType, int):
+        if isinstance(subType, integer_types):
             self.subType = subType
-        elif isinstance(subType, basestring):
-            if subType.decode('utf8').isnumeric():
-                self.subType = int(subType)
-            elif MySensors.isSensorTypeStr(subType):
-                self.subType = MySensors.sensorTypeInt(subType)
-            elif MySensors.isValueTypeStr(subType):
-                self.subType = MySensors.valueTypeInt(subType)
+        else:
+            
+            if isinstance(subType, binary_type):
+                subType = subType.decode('utf8')
+            
+            if isinstance(subType, string_types):
+                
+                try:
+                    self.subType = int(subType)
+                except ValueError:
+                    if isSensorTypeStr(subType):
+                        self.subType = sensorTypeInt(subType)
+                    elif isValueTypeStr(subType):
+                        self.subType = valueTypeInt(subType)
+                    else:
+                        raise Exception('invalid subType value : %s' % str(subType))
+                
             else:
                 raise Exception('invalid subType value : %s' % str(subType))
-        else:
-            raise Exception('invalid subType value : %s' % str(subType))
         
         if value is not None:
             self.setValue(value)
-        else:
-            self.payload = str(payload) if payload else ''
+        elif payload is not None:
+            
+            if isinstance(payload, text_type):
+                payload = payload.encode('utf8')
+            
+            if isinstance(payload, binary_type):
+                self.payload = payload
+            else:
+                raise Exception('the payload must be a binary instance, got %s' % type(payload).__name__)
     
     
     @staticmethod
-    def parse (message):
+    def parse (message, encoding = 'utf8'):
+        
+        if isinstance(message, text_type):
+            message = message.encode(encoding)
         
         # remove newline char
         message = message.strip()
         
-        parts = message.split(';')
+        parts = message.split(b';')
         if len(parts)==6:
             return Message(
                 parts[0],
@@ -51,35 +72,40 @@ class Message(object):
         else:
             raise Exception('invalid message')
     
+    def raw (self):
+        p = u"%d;%d;%d;%d;%d;" % (self.nodeId, self.childSensorId, self.messageType, self.ack, self.subType)
+        p = p.encode('utf8')
+        p += self.payload
+        return p
     
     def stringify (self):
-        return "%d;%d;%d;%d;%d;%s" % (self.nodeId, self.childSensorId, self.messageType, self.ack, self.subType, self.payload)
+        return self.raw().decode('utf8')
     
     
     def toHumanReadable (self):
         
         messageTypeStr = None
-        for t in MySensors.messageTypes:
-            if MySensors.messageTypes[t] == self.messageType:
+        for t in messageTypes:
+            if messageTypes[t] == self.messageType:
                 messageTypeStr = t
                 break;
         if not messageTypeStr:
             messageTypeStr = str(self.messageType)
         
         subTypeStr = None
-        if self.messageType == MySensors.PRESENTATION :
-            subTypeStr = MySensors.sensorTypeStr(self.subType)
-        elif self.messageType == MySensors.SET or self.messageType == MySensors.REQ :
-            subTypeStr = MySensors.valueTypeStr(self.subType)
-        elif self.messageType == MySensors.INTERNAL :
-            for t in MySensors.internalTypes:
-                if MySensors.internalTypes[t] == self.subType:
+        if self.messageType == PRESENTATION :
+            subTypeStr = sensorTypeStr(self.subType)
+        elif self.messageType == SET or self.messageType == REQ :
+            subTypeStr = valueTypeStr(self.subType)
+        elif self.messageType == INTERNAL :
+            for t in internalTypes:
+                if internalTypes[t] == self.subType:
                     subTypeStr = t
                     break;
         if not subTypeStr:
             subTypeStr = str(self.subType)
         
-        return "%d;%d;%s;%d;%s;%s" % (self.nodeId, self.childSensorId, messageTypeStr, self.ack, subTypeStr, self.payload)
+        return u"%d;%d;%s;%d;%s;%s" % (self.nodeId, self.childSensorId, messageTypeStr, self.ack, subTypeStr, self.payload.decode('utf8'))
     
     
     def __str__ (self):
@@ -100,15 +126,12 @@ class Message(object):
         }
     
     
-    def fromHex (self):
-        return str(binascii.unhexlify(self.payload))
-    
     
     def getValue (self):
-        if self.messageType == MySensors.SET or self.messageType == MySensors.REQ:
+        if self.messageType == SET or self.messageType == REQ:
             
-            datatype = MySensors.valueTypeStr(self.subType)
-            meta = MySensors.valueTypes.get(datatype)
+            datatype = valueTypeStr(self.subType)
+            meta = valueTypes.get(datatype)
             
             if meta:
                 codec = meta[2]
@@ -121,16 +144,16 @@ class Message(object):
                     elif codec == 'int':
                         return int(self.payload)
                     elif codec == 'bool':
-                        return False if (self.payload == '0' or len(self.payload)==0) else True
+                        return False if (self.payload == b'0' or len(self.payload)==0) else True
         
-        return str(self.payload) if len(self.payload) else None
+        return self.payload.decode('utf8') if len(self.payload) else None
     
     
     def setValue(self, value):
-        if self.messageType == MySensors.SET or self.messageType == MySensors.REQ:
+        if self.messageType == SET or self.messageType == REQ:
             
-            datatype = MySensors.valueTypeStr(self.subType)
-            meta = MySensors.valueTypes.get(datatype)
+            datatype = valueTypeStr(self.subType)
+            meta = valueTypes.get(datatype)
             
             if meta:
                 codec = meta[2]
@@ -142,22 +165,9 @@ class Message(object):
                         value = bool(value)
         
         if isinstance(value, bool):
-            self.payload = '1' if value else '0'
+            self.payload = b'1' if value else b'0'
         else:
-            self.payload = str(value)
+            self.payload = str(value).encode('utf8')
         
-
-
-if __name__ == "__main__":
-    
-    m = Message(MySensors.GATEWAY_ADDRESS, MySensors.INTERNAL_CHILD, MySensors.INTERNAL, MySensors.NO_ACK, MySensors.I_VERSION)
-    
-    print str(m)
-    
-    print m.toHumanReadable()
-    
-    m = Message.parse(u'98;1;1;0;17;269')
-    print m.subType, type(m.subType)
-    print m.messageType, type(m.messageType)
 
 

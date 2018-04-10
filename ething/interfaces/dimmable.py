@@ -1,3 +1,4 @@
+# coding: utf-8
 
 
 from ething.meta import interface, method, iface

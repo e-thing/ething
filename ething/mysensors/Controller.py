@@ -1,7 +1,8 @@
+# coding: utf-8
 
-
-import MySensors
-from Message import Message
+from future.utils import string_types, bord, iteritems
+from .helpers import *
+from .Message import Message
 from ething.Helpers import dict_recursive_update
 from ething.utils import NullContextManager
 import time
@@ -11,11 +12,12 @@ import math
 import binascii
 
 
+
 def unpack(data, length = None):
     
     out = []
     
-    if isinstance(data, basestring):
+    if not isinstance(data, bytearray):
         data = bytearray(data, 'utf-8')
     
     l = length if length is not None else int(len(data)/2)
@@ -60,10 +62,8 @@ class Controller(object):
     
     reset_attr = ['port', 'baudrate', 'address']
     
-    def __init__ (self, gateway, transport, onMessage = None):
-        
-        self.onMessage = onMessage # fired on every message (except ack)
-        
+    def __init__ (self, gateway, transport):
+                
         self._gateway = gateway
         self._ething = gateway.ething
         self._isOpened = False
@@ -186,10 +186,10 @@ class Controller(object):
         return node
     
     
-    def createSensor(self, node, sensorId, sensorType = MySensors.S_UNK):
+    def createSensor(self, node, sensorId, sensorType = S_UNK):
         
         sensor = self.ething.create('MySensorsSensor', {
-            'name' : ('%s/sensor-%d' % (node.name, sensorId)) if sensorType == MySensors.S_UNK else MySensors.sensorTypeToName(sensorType),
+            'name' : ('%s/sensor-%d' % (node.name, sensorId)) if sensorType == S_UNK else sensorTypeToName(sensorType),
             'sensorId' : sensorId,
             'sensorType' : sensorType,
             'createdBy': node
@@ -204,7 +204,7 @@ class Controller(object):
     
     def processMessage (self, message):
         
-        if isinstance(message, basestring):
+        if not isinstance(message, Message):
             message = Message.parse(message)
         
         r = True
@@ -221,15 +221,15 @@ class Controller(object):
             sensor = None
             
             # automatically create unknown node and sensor
-            if nodeId > 0 and nodeId != MySensors.BROADCAST_ADDRESS:
+            if nodeId > 0 and nodeId != BROADCAST_ADDRESS:
                 node = gateway.getNode(nodeId)
                 if not node:
                     node = self.createNode(nodeId)
             
-            if node and sensorId >= 0 and sensorId != MySensors.INTERNAL_CHILD:
+            if node and sensorId >= 0 and sensorId != INTERNAL_CHILD:
                 sensor = node.getSensor(sensorId)
                 if not sensor:
-                    sensor = self.createSensor(node, sensorId, message.subType if  message.messageType==MySensors.PRESENTATION else MySensors.S_UNK)
+                    sensor = self.createSensor(node, sensorId, message.subType if  message.messageType==PRESENTATION else S_UNK)
             
             
             if not node:
@@ -245,37 +245,35 @@ class Controller(object):
                     sensor.setConnectState(True)
                 
                 # is ack ?
-                if message.ack == MySensors.NO_ACK:
+                if message.ack == NO_ACK:
 
                     try:
                         
-                        if message.messageType == MySensors.PRESENTATION:
+                        if message.messageType == PRESENTATION:
                             sensorType = message.subType
                             
                             # get sensor
                             if sensor:
                                 sensor.sensorType = sensorType # update type
+                                sensor.description = message.getValue()
                                 
-                                if message.payload: # description of the sensor
-                                    sensor.description = message.payload
-                                
-                            else:
+                            elif node:
                                 # node internal sensor (id=0xFF)
-                                if message.payload: # library version (node device)
-                                    node._libVersion = message.payload
+                                # library version (node device)
+                                node._libVersion = message.getValue()
                             
                         
-                        elif message.messageType == MySensors.SET:
+                        elif message.messageType == SET:
                             
                             if sensor:
                                 
                                 self.log.debug("MySensors: set value nodeId=%d sensorId=%d valueType=%d value=%s" % (nodeId,sensorId,message.subType,message.payload) )
                                 
-                                datatype = MySensors.valueTypeStr(message.subType)
+                                datatype = valueTypeStr(message.subType)
                                 
                                 if datatype:
                                     
-                                    sensor.setData(datatype, message.payload) # save the raw data payload. used internally for MySensors.REQ response (see below)
+                                    sensor.setData(datatype, message.payload) # save the raw data payload. used internally for REQ response (see below)
                                     
                                     sensor.storeData(datatype, message.getValue())
                                     
@@ -283,16 +281,16 @@ class Controller(object):
                                     self.log.warn("MySensors: unknown value subtype %d" % message.subType)
                                 
                         
-                        elif message.messageType == MySensors.REQ:
+                        elif message.messageType == REQ:
                             
                             if sensor:
                                 
-                                datatype = MySensors.valueTypeStr(message.subType)
+                                datatype = valueTypeStr(message.subType)
                                 
                                 if datatype:
                                     value = sensor.getData(datatype)
                                     if value is not None:
-                                        response = Message(nodeId, sensorId, MySensors.SET, MySensors.NO_ACK, message.subType, payload = value)
+                                        response = Message(nodeId, sensorId, SET, NO_ACK, message.subType, payload = value)
                                         self.send(response)
                                     else:
                                         # no value stored ! No response
@@ -302,28 +300,28 @@ class Controller(object):
                                     self.log.warn("MySensors: unknown value subtype %d" % message.subType)
                                 
                         
-                        elif message.messageType == MySensors.INTERNAL:
+                        elif message.messageType == INTERNAL:
                                 
-                            if message.subType == MySensors.I_GATEWAY_READY :
+                            if message.subType == I_GATEWAY_READY :
                                 self.gatewayReady = True
                                 self.log.info("info: gateway ready")
                             
-                            elif message.subType == MySensors.I_VERSION :
-                                self.gatewayLibVersion = message.payload
-                                gateway._libVersion = message.payload
+                            elif message.subType == I_VERSION :
+                                self.gatewayLibVersion = message.getValue()
+                                gateway._libVersion = message.getValue()
                                 self.log.info("MySensors: gateway version = %s" % self.gatewayLibVersion)
                             
-                            elif message.subType == MySensors.I_TIME :
+                            elif message.subType == I_TIME :
                                 # return current time
-                                response = Message(message.nodeId, message.childSensorId, MySensors.INTERNAL, MySensors.NO_ACK, MySensors.I_TIME, int(time.time()))
+                                response = Message(message.nodeId, message.childSensorId, INTERNAL, NO_ACK, I_TIME, int(time.time()))
                                 self.send(response)
                                 
-                            elif message.subType == MySensors.I_CONFIG :
+                            elif message.subType == I_CONFIG :
                                 # return M (metric) or I (Imperial)
-                                response = Message(message.nodeId, message.childSensorId, MySensors.INTERNAL, MySensors.NO_ACK, MySensors.I_CONFIG, 'M' if gateway.isMetric else 'I')
+                                response = Message(message.nodeId, message.childSensorId, INTERNAL, NO_ACK, I_CONFIG, 'M' if gateway.isMetric else 'I')
                                 self.send(response)
                                 
-                            elif message.subType == MySensors.I_ID_REQUEST :
+                            elif message.subType == I_ID_REQUEST :
                                 # get a free node id
                                 
                                 f = None
@@ -333,24 +331,25 @@ class Controller(object):
                                         break
                                 
                                 if f is not None:
-                                    response = Message(MySensors.BROADCAST_ADDRESS, MySensors.INTERNAL_CHILD, MySensors.INTERNAL, MySensors.NO_ACK, MySensors.I_ID_RESPONSE, f)
+                                    response = Message(BROADCAST_ADDRESS, INTERNAL_CHILD, INTERNAL, NO_ACK, I_ID_RESPONSE, f)
                                     self.send(response)
                                 else:
                                     raise Exception('No free id available')
                             
-                            elif message.subType == MySensors.I_SKETCH_NAME :
+                            elif message.subType == I_SKETCH_NAME :
                                 if node:
-                                    node._sketchName = message.payload
+                                    sketchName = message.getValue() or ''
+                                    node._sketchName = sketchName
                                     # if the default name has not been changed by the user, overwrite it with the sketch name
-                                    if re.search('^.+/node-[0-9]+$',node.name):
-                                        node.name = message.payload
+                                    if re.search('^.+/node-[0-9]+$',node.name) and sketchName:
+                                        node.name = sketchName
                             
-                            elif message.subType == MySensors.I_SKETCH_VERSION :
+                            elif message.subType == I_SKETCH_VERSION :
                                 if node :
-                                    node._sketchVersion = message.payload
+                                    node._sketchVersion = message.getValue()
                                 
                                 
-                            elif message.subType == MySensors.I_BATTERY_LEVEL :
+                            elif message.subType == I_BATTERY_LEVEL :
                                 if node :
                                     batteryLevel = int(message.payload)
                                     if batteryLevel<0:
@@ -361,7 +360,7 @@ class Controller(object):
                                 
                                 
                             
-                            elif message.subType == MySensors.I_HEARTBEAT_RESPONSE :
+                            elif message.subType == I_HEARTBEAT_RESPONSE :
                                 
                                 # check if there are some pending messages in queue (smartSleep)
                                 i=0
@@ -381,18 +380,18 @@ class Controller(object):
                                     i+=1
                                 
                                 
-                            elif message.subType == MySensors.I_LOG_MESSAGE :
-                                self.log.info("MySensors: nodeId=%d sensorId=%d %s" % (message.nodeId,message.childSensorId,message.payload))
+                            elif message.subType == I_LOG_MESSAGE :
+                                self.log.info("MySensors: nodeId=%d sensorId=%d %s" % (message.nodeId,message.childSensorId,message.getValue()))
                             
                             else:
                                 self.log.warn("MySensors: message not processed : %s" % str(message))
                             
                             
                         
-                        elif message.messageType == MySensors.STREAM:
+                        elif message.messageType == STREAM:
                             
                             
-                            if message.subType == MySensors.ST_FIRMWARE_CONFIG_REQUEST :
+                            if message.subType == ST_FIRMWARE_CONFIG_REQUEST :
                                 """
                                 the payload contains the folowing (encoded in hexadecimal):
                                     uint16_t type;                                //!< Type of config
@@ -443,9 +442,9 @@ class Controller(object):
                                     
                                 
                                 
-                            elif message.subType == MySensors.ST_FIRMWARE_CONFIG_RESPONSE :
+                            elif message.subType == ST_FIRMWARE_CONFIG_RESPONSE :
                                 pass
-                            elif message.subType == MySensors.ST_FIRMWARE_REQUEST :
+                            elif message.subType == ST_FIRMWARE_REQUEST :
                                 """
                                 return a peace of the FIRMWARE
                                 
@@ -470,7 +469,7 @@ class Controller(object):
                                     if nodeId in self._pendingFirmware:
                                         
                                         chunk = self._pendingFirmware[nodeId]['firmware'][iBlock*Controller.FIRMWARE_BLOCK_SIZE:(iBlock+1)*Controller.FIRMWARE_BLOCK_SIZE]
-                                        response = Message(message.nodeId, MySensors.INTERNAL_CHILD, MySensors.STREAM, MySensors.NO_ACK, MySensors.ST_FIRMWARE_CONFIG_RESPONSE, pack(type, version, iBlock) + chunk)
+                                        response = Message(message.nodeId, INTERNAL_CHILD, STREAM, NO_ACK, ST_FIRMWARE_CONFIG_RESPONSE, pack(type, version, iBlock) + chunk)
                                         
                                         if self._pendingFirmware[nodeId]['lastBlockSent'] != iBlock:
                                             self._pendingFirmware[nodeId]['blockSent']+=1
@@ -486,10 +485,10 @@ class Controller(object):
                                     
                                 
                                 
-                            elif message.subType == MySensors.ST_FIRMWARE_RESPONSE :
+                            elif message.subType == ST_FIRMWARE_RESPONSE :
                                 pass
                             
-                            elif message.subType == MySensors.ST_SOUND or message.subType == MySensors.ST_IMAGE:
+                            elif message.subType == ST_SOUND or message.subType == ST_IMAGE:
                                 
                                 """
                                 the payload contains a piece of an image or sound
@@ -501,9 +500,9 @@ class Controller(object):
                                 | index | data       |
                                 
                                 """
-                                payload = message.fromHex()
+                                payload = binascii.unhexlify(message.payload)
                                 if payload:
-                                    index = ord(payload[0])
+                                    index = bord(payload[0])
                                     
                                     if nodeId not in self._pendingStreams:
                                         if index==1:
@@ -590,10 +589,6 @@ class Controller(object):
                         i+=1
                     
                     
-                    
-                    if self.onMessage is not None:
-                        self.onMessage(message, this)
-                    
                 else:
                     # ack message
                     
@@ -663,7 +658,7 @@ class Controller(object):
         
         
         # check firmware update timeout
-        for nodeId, firmwareInfo in self._pendingFirmware.iteritems():
+        for nodeId, firmwareInfo in iteritems(self._pendingFirmware):
             if now - firmwareInfo['ts'] > Controller.FIRMWARE_UPDATE_TIMEOUT :
                 
                 # remove this item
@@ -676,7 +671,7 @@ class Controller(object):
         
         
         # check stream timeout
-        for nodeId, stream in self._pendingStreams.iteritems():
+        for nodeId, stream in iteritems(self._pendingStreams):
             if now - stream['ts'] > Controller.STREAM_TIMEOUT :
                 
                 # remove this item
@@ -719,7 +714,7 @@ class Controller(object):
             except Exception as e:
                 
                 if self._preventFailConnectLog % 20 == 0:
-                    self.log.warn("MySensors: unable to connect : %s" % e.message)
+                    self.log.warn("MySensors: unable to connect : %s" % str(e))
                 self._preventFailConnectLog += 1
         
         
@@ -739,7 +734,7 @@ class Controller(object):
         
         if smartSleep is None:
             smartSleep = False
-            if message.nodeId!=MySensors.GATEWAY_ADDRESS and message.nodeId!=MySensors.BROADCAST_ADDRESS:
+            if message.nodeId!=GATEWAY_ADDRESS and message.nodeId!=BROADCAST_ADDRESS:
                 destinationNode = self.gateway.getNode(message.nodeId)
                 if destinationNode:
                     smartSleep = destinationNode.smartSleep
@@ -750,32 +745,32 @@ class Controller(object):
                 
                 filter = {}
                     
-                if message.messageType == MySensors.REQ :
-                    filter['messageType'] = MySensors.SET
+                if message.messageType == REQ :
+                    filter['messageType'] = SET
                     
-                elif message.messageType == MySensors.INTERNAL :
+                elif message.messageType == INTERNAL :
                     
-                    if message.subType == MySensors.I_ID_REQUEST :
-                        filter['subType'] = MySensors.I_ID_RESPONSE
-                    elif message.subType == MySensors.I_NONCE_REQUEST :
-                        filter['subType'] = MySensors.I_NONCE_RESPONSE
-                    elif message.subType == MySensors.I_HEARTBEAT_REQUEST :
-                        filter['subType'] = MySensors.I_HEARTBEAT_RESPONSE
-                    elif message.subType == MySensors.I_DISCOVER_REQUEST :
-                        filter['subType'] = MySensors.I_DISCOVER_RESPONSE
-                    elif message.subType == MySensors.I_PING :
-                        filter['subType'] = MySensors.I_PONG
-                    elif message.subType == MySensors.I_REGISTRATION_REQUEST :
-                        filter['subType'] = MySensors.I_REGISTRATION_RESPONSE
-                    elif message.subType == MySensors.I_PRESENTATION :
+                    if message.subType == I_ID_REQUEST :
+                        filter['subType'] = I_ID_RESPONSE
+                    elif message.subType == I_NONCE_REQUEST :
+                        filter['subType'] = I_NONCE_RESPONSE
+                    elif message.subType == I_HEARTBEAT_REQUEST :
+                        filter['subType'] = I_HEARTBEAT_RESPONSE
+                    elif message.subType == I_DISCOVER_REQUEST :
+                        filter['subType'] = I_DISCOVER_RESPONSE
+                    elif message.subType == I_PING :
+                        filter['subType'] = I_PONG
+                    elif message.subType == I_REGISTRATION_REQUEST :
+                        filter['subType'] = I_REGISTRATION_RESPONSE
+                    elif message.subType == I_PRESENTATION :
                         # todo
                         # multiple response
                         pass
-                    elif message.subType == MySensors.I_DEBUG or message.subType == MySensors.I_VERSION :
+                    elif message.subType == I_DEBUG or message.subType == I_VERSION :
                         filter['subType'] = message.subType
                     
                     if filter:
-                        filter['messageType'] = MySensors.INTERNAL
+                        filter['messageType'] = INTERNAL
                 
                 
                 def waitresp_cb(error, messageSent):
@@ -832,7 +827,7 @@ class Controller(object):
             return 0
         else:
             
-            if message.ack == MySensors.REQUEST_ACK:
+            if message.ack == REQUEST_ACK:
                 # ack requested 
                 self._ackWaitingMessages.append({
                     'message' : message,
@@ -843,7 +838,7 @@ class Controller(object):
             
             wb =  self.transport.write(message)
             
-            if message.ack != MySensors.REQUEST_ACK and cb:
+            if message.ack != REQUEST_ACK and cb:
                 cb(False, message)
             
             
@@ -873,7 +868,7 @@ class Controller(object):
             'crc' : crc
         }
         
-        message = Message(node.nodeId, MySensors.INTERNAL_CHILD, MySensors.STREAM, MySensors.NO_ACK, MySensors.ST_FIRMWARE_CONFIG_RESPONSE, pack('nnnn',type, version, nbBlocks, crc))
+        message = Message(node.nodeId, INTERNAL_CHILD, STREAM, NO_ACK, ST_FIRMWARE_CONFIG_RESPONSE, pack('nnnn',type, version, nbBlocks, crc))
         
         def cb(error, messageSent, messageReceived):
             if error:

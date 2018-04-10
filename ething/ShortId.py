@@ -1,3 +1,5 @@
+# coding: utf-8
+from future.utils import string_types
 
 
 from shortid import ShortId as ShortIdlib
@@ -25,23 +27,9 @@ class ShortId(object):
     
     @staticmethod
     def validate (id):
-        if isinstance(id, basestring) and len(id)==ShortId.length:
+        if isinstance(id, string_types) and len(id)==ShortId.length:
             match = re.match("^["+ShortId.alphabet+"]*$", id)
             return match is not None
         return False
     
-    
-if __name__ == '__main__':
-    
-    print ShortId.validate('1234567')
-    print ShortId.validate('123456')
-    print ShortId.validate('123?f56')
-    
-    ids = []
-    for i in range(0,10000):
-        ids.append(ShortId.generate())
-    
-    
-    import collections
-    print [item for item, count in collections.Counter(ids).items() if count > 1]
     

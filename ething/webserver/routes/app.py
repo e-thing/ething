@@ -1,9 +1,12 @@
+# coding: utf-8
 
 
 
 from flask import request, Response
 from ..server_utils import *
 import base64
+from werkzeug.http import parse_options_header
+import json
 
 def install(core, app, auth, **kwargs):
 
@@ -146,20 +149,39 @@ def install(core, app, auth, **kwargs):
               schema:
                 $ref: '#/definitions/App'
         """
-        attr = request.get_json()
         
-        if isinstance(attr, dict):
+        attr = None
+        content = None
+        icon = None
+        
+        if request.mimetype == 'multipart/related':
             
-            content = None
-            icon = None
+            parts = list(parse_multipart_data(request.stream, request.mimetype_params['boundary']))
             
-            if 'content' in attr:
-                content = base64.b64decode(attr['content'])
-                attr.pop('content')
+            for headers, body in parts:
+                mimetype, params = parse_options_header(headers['Content-Type'])
+                
+                if mimetype == 'application/json':
+                    attr = json.loads(body.decode())
+                elif mimetype == 'text/html' or mimetype == 'text/plain':
+                    content = body
+                elif re.match('image', mimetype):
+                    icon = body
+        
+        else:
+            attr = request.get_json()
             
-            if 'icon' in attr:
-                icon = base64.b64decode(attr['icon'])
-                attr.pop('icon')
+            if isinstance(attr, dict):
+                
+                if 'content' in attr:
+                    content = base64.b64decode(attr['content'])
+                    attr.pop('content')
+                
+                if 'icon' in attr:
+                    icon = base64.b64decode(attr['icon'])
+                    attr.pop('icon')
+                
+        if attr is not None:
             
             attr.setdefault('createdBy', g.auth.resource)
             
@@ -183,7 +205,7 @@ def install(core, app, auth, **kwargs):
 
 
     app_get_args = {
-        'exec': fields.Bool(missing=False)
+        'exec': fields.Bool(missing=False, description="Set this parameter to '1' to get the HTML code ready to be executed in a browser (i.e. content-type set to 'text/html' and the preprocessor definitions set).")
     }
 
     app_put_args = {
@@ -200,12 +222,6 @@ def install(core, app, auth, **kwargs):
           tags:
             - app
           description: Retrieves the script of an application.
-          parameters:
-            - name: exec
-              in: query
-              description: Set this parameter to '1' to get the HTML code ready to be executed in a browser (i.e. content-type set to 'text/html' and the preprocessor definitions set).
-              required: false
-              type: integer
           produces:
             - text/html
           responses:

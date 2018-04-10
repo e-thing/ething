@@ -1,6 +1,7 @@
+# coding: utf-8
 
-from query.Parser import Parser
-from query.Field import Field
+from .query.Parser import Parser
+from .query.Field import Field
 import re
 import sys
 

@@ -1,7 +1,9 @@
+# coding: utf-8
+from future.utils import string_types
 
 
 
-from YeelightDevice import YeelightDevice, method
+from .YeelightDevice import YeelightDevice, method
 from ething.Helpers import dict_recursive_update
 from ething.interfaces import RGBWLight
 
@@ -65,7 +67,7 @@ class YeelightBulbRGBW (YeelightDevice, RGBWLight):
     #    """
     #    turn on the device with the specified color.
     #    """
-    #    if isinstance(color, basestring):
+    #    if isinstance(color, string_types):
     #        color = int(color.replace('0x','').replace('#',''), 16)
     #    
     #    return self.sendMessageWaitResponse('{"id":1,"method":"set_scene", "params":["color", %d, %d]}' % (color,brightness))
@@ -81,58 +83,7 @@ class YeelightBulbRGBW (YeelightDevice, RGBWLight):
     #
 
 
-if __name__ == "__main__":
-    
-    from ething.core import Core
-    from random import randint
-    import time
-    
-    core = Core({
-        'db':{
-            'database': 'test'
-        },
-        'log':{
-            'level': 'debug'
-        }
-    })
-    
-    device = None
-    
-    devices = core.find({
-        'type': 'YeelightBulbRGBW'
-    })
-    
-    if len(devices) > 1:
-    
-        for d in devices:
-            print 'remove previous device...', d
-            d.remove()
-    
-    elif len(devices) == 1:
-        device = devices[0]
-    
-    if not device:
-        device = core.create('YeelightBulbRGBW', {
-            'name': 'yeelight',
-            'host': '192.168.1.2'
-        })
-    
-    
-    print device
-    
-    print device.data
-    
-    print device.getState()
-    
-    if not device.getState():
-        device.toggle()
-    
-    tf = time.time() + 10
-    while time.time() < tf:
-        device.setLevel(randint(10, 100))
-        time.sleep(0.2)
-    
-    
+
     
     
 

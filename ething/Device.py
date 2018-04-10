@@ -1,12 +1,14 @@
+# coding: utf-8
+from future.utils import string_types, integer_types
 
-
+from future.utils import with_metaclass, listvalues
 from ething.Resource import Resource
 from ething.rule.event.LowBatteryDevice import LowBatteryDevice
 from ething.rule.event.DeviceConnected import DeviceConnected
 from ething.rule.event.DeviceDisconnected import DeviceDisconnected
 from ething.Helpers import dict_recursive_update
-from meta import MetaDevice, interface, method, Interface, Method
-from base import *
+from .meta import MetaDevice, interface, method, Interface, Method
+from .base import *
 import datetime
 
 
@@ -16,9 +18,7 @@ import datetime
 @attr('lastSeenDate', validator = isNone() | isInstance(datetime.datetime), default = None, description="Last time this device was reached or made a request.")
 @attr('methods', default = [], mode = READ_ONLY, description="The list of the methods available.")
 @attr('interfaces', default = [], mode = READ_ONLY, description="A list of intefaces this device inherit")
-class Device(Resource):
-    
-    __metaclass__ = MetaDevice
+class Device(with_metaclass(MetaDevice, Resource)):
     
     
     BATTERY_NONE = None
@@ -36,10 +36,6 @@ class Device(Resource):
     
     @property
     def interface(self):
-        #if self.__interface is None:
-        #    self.__interface = True # avoid some looping ... do not remove
-        #    #print "load interface for", self.__class__.__name__
-        #    self.__interface = Interface(self)
         return self.__interface
     
     
@@ -61,36 +57,6 @@ class Device(Resource):
         """
         
         pass
-    
-    
-    
-    # kwargs contains all the table attributes
-    def storeDataInTable (self, data, **kwargs):
-        
-        tableName = kwargs.get('name', 'data')
-        
-        if not isinstance(data, dict):
-            data = {'value' : data}
-        
-        
-        storage = self.ething.findOne({
-            'name' : tableName,
-            'type' : 'Table',
-            'createdBy' : self.id
-        })
-        
-        if not storage:
-            # create it !
-            storage = self.ething.create('Table', dict_recursive_update({
-                'name' : tableName,
-                'createdBy': self
-            }, kwargs))
-        
-        
-        if storage:
-            storage.insert(data)
-        
-        return storage
     
     
     def store( self, name, value, history = 5000, emit = True ):
@@ -125,16 +91,16 @@ class Device(Resource):
                 
                 t = []
                 
-                if isinstance(name, basestring):
+                if isinstance(name, string_types):
                     t.append( (name, dataset) )
                 elif name is None:
                     for k in dataset:
-                        t.append( (k, {k,dataset[k]}) )
+                        t.append( (k, {k: dataset[k]}) )
                 else:
-                    k = dataset.keys()
-                    v = dataset.values()
+                    k = list(dataset)
+                    v = listvalues(dataset)
                     for i in range(0, len(name)):
-                        t.append( (name[i], {k[i],v[i]}) )
+                        t.append( (name[i], {k[i]: v[i]}) )
                 
                 for table_name, table_data in t:
                     
@@ -148,7 +114,7 @@ class Device(Resource):
                         
                         maxLength = 5000
                         
-                        if isinstance(history, int):
+                        if isinstance(history, integer_types):
                             maxLength = history if history > 0 else None
                         
                         # create it !

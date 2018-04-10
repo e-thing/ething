@@ -1,10 +1,11 @@
+# coding: utf-8
 
 
-
+from future.utils import string_types
 from ething.Device import Device, method, attr, isString, isBool, isNone, READ_ONLY
 from ething.Helpers import dict_recursive_update
-import MySensors
-from Message import Message
+from .helpers import *
+from .Message import Message
 
 
 @attr('isMetric', validator = isBool(), default=True, description="Set the unit to Metric(default) instead of Imperial.")
@@ -20,7 +21,7 @@ class MySensorsGateway(Device):
         
         if filter is not None:
             q = {
-                'and' : [q, filter]
+                '$and' : [q, filter]
             }
         
         return self.ething.find(q)
@@ -66,6 +67,8 @@ class MySensorsGateway(Device):
         
         if isinstance(nodeId, Message):
             message = nodeId
+        elif isinstance(nodeId, string_types):
+            message = Message.parse(nodeId)
         else:
             message = Message(nodeId,sensorId,type,ack,subtype,payload)
         
@@ -83,7 +86,7 @@ class MySensorsGateway(Device):
         """
         request gateway version.
         """
-        error, _, resp = self.sendMessageWaitResponse(Message(MySensors.GATEWAY_ADDRESS, MySensors.INTERNAL_CHILD, MySensors.INTERNAL, MySensors.NO_ACK, MySensors.I_VERSION))
+        error, _, resp = self.sendMessageWaitResponse(Message(GATEWAY_ADDRESS, INTERNAL_CHILD, INTERNAL, NO_ACK, I_VERSION))
         if error:
             raise Exception(error)
         return resp.payload
@@ -94,7 +97,7 @@ class MySensorsGateway(Device):
         """
         Request gateway to reboot.
         """
-        self.sendMessage(Message(MySensors.GATEWAY_ADDRESS, MySensors.INTERNAL_CHILD, MySensors.INTERNAL, MySensors.NO_ACK, MySensors.I_REBOOT))
+        self.sendMessage(Message(GATEWAY_ADDRESS, INTERNAL_CHILD, INTERNAL, NO_ACK, I_REBOOT))
 
 
 

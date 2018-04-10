@@ -1,7 +1,8 @@
+# coding: utf-8
 
 from ething.meta import interface
-from rgbLight import RGBLight
-from dimmable import Dimmable
+from .rgbLight import RGBLight
+from .dimmable import Dimmable
 
 @interface
 class RGBWLight (RGBLight, Dimmable):

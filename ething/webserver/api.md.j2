@@ -53,7 +53,7 @@ items: {{ render_schema(schema["items"], indent + 2) }}
   {% elif "allOf" in property_data and property_data | length == 1 %}
 - {{ render_ref(property_data["allOf"][0]["$ref"]) }}{% if is_required %}\*{% endif %}
   {% else %}
-- **{{ property }}**{% if is_required %}\*{% endif %}{% if property_data.type%} *({{ property_data.type }})*{% endif %}{% if property_data.description %}: {{ property_data.description }}{% endif %}
+- **{{ property }}**{% if is_required %}\*{% endif %}{% if property_data.type%} *({{ property_data.type }})*{% endif %}{% if property_data.readOnly%} *(readonly)*{% endif %}{% if property_data.description %}: {{ property_data.description }}{% endif %}
   {% endif %}
 {% endmacro %}
 
@@ -70,7 +70,7 @@ items: {{ render_schema(schema["items"], indent + 2) }}
 
 {% macro render_definitions(definitions, indent = 0) %}
   {% for ref, definition in definitions | dictsort %}
-{{ "### " + ref + "{#" + ref + "}" | indent(indent, True) }}
+{{ "### " + ref | indent(indent, True) }}
 
 {% if definition.description %}
 {{ definition.description }}
@@ -156,7 +156,7 @@ items: {{ render_schema(schema["items"], indent + 2) }}
   {% for method, method_data in methods | dictsort %}
 {% set endpoint = method | upper + " " + path %}
 
-### {{ endpoint }} {{"{#"}}{{ endpoint | replace(" ", "-") | replace("/", "-") | replace("(", "") | replace(")", "") }}{{"}"}}
+### {{ endpoint }}
 
 
 {% if method_data.description %}
@@ -182,20 +182,20 @@ items: {{ render_schema(schema["items"], indent + 2) }}
   {% endfor %}
 {% endif %}
 
-{% if query_params %}
-#### Query Params:
-{% for param in query_params %}
-- **{{ param.name }}** [{{ param.type }}]{% if "description" in param %}: {{ ensure_full_stop(param.description) }}{% endif %}
-
-{% endfor %}
-{% endif %}
-
 {% if path_params %}
 #### Path Params:
   {% for param in path_params %}
 - **{{ param.name }}** [{{ param.type }}]{% if "description" in param %}: {{ ensure_full_stop(param.description) }}{% endif %}
 
   {% endfor %}
+{% endif %}
+
+{% if query_params %}
+#### Query Params:
+{% for param in query_params %}
+- **{{ param.name }}** [{{ param.type }}]{% if "description" in param %}: {{ ensure_full_stop(param.description) }}{% endif %}
+
+{% endfor %}
 {% endif %}
 
 {% if body_params %}

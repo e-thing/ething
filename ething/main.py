@@ -1,7 +1,8 @@
-
-from core import Core, Config
-from utils import print_info
-from version import __version__
+# coding: utf-8
+from __future__ import print_function
+from .core import Core, Config
+from .utils import print_info
+from .version import __version__
 
 import argparse
 import sys
@@ -37,7 +38,7 @@ def writePidFile():
     deletePidFile()
     pid = os.getpid()
     old_umask = os.umask(0o133)
-    f = open(PID_FILE, "wb")
+    f = open(PID_FILE, "wb", encoding='utf8')
     f.write(str(pid))
     f.close()
     os.umask(old_umask)
@@ -49,7 +50,7 @@ def deletePidFile():
 def checkPidFile():
     """ return pid as int or 0"""
     if os.path.isfile(PID_FILE):
-        f = open(PID_FILE, "rb")
+        f = open(PID_FILE, "rb", encoding='utf8')
         pid = f.read().strip()
         f.close()
         if pid:
@@ -71,32 +72,32 @@ def isAlreadyRunning():
 
 def quitInstance():
     if os.name == "nt":
-        print "Not supported on windows."
+        print("Not supported on windows.")
         return
 
     pid = isAlreadyRunning()
     if not pid:
-        print "No instance running."
+        print("No instance running.")
         return
 
     try:
         os.kill(pid, 3) #SIGUIT
 
         t = time.time()
-        print "waiting for ething to quit"
+        print("waiting for ething to quit")
 
         while os.path.exists(PID_FILE) and t + 10 > time.time():
             time.sleep(0.25)
 
         if not os.path.exists(PID_FILE):
-            print "ething successfully stopped"
+            print("ething successfully stopped")
         else:
             os.kill(pid, 9) #SIGKILL
-            print "ething did not respond"
-            print "Kill signal was send to process with id %s" % pid
+            print("ething did not respond")
+            print("Kill signal was send to process with id %s" % pid)
 
     except:
-        print "Error quitting ething"
+        print("Error quitting ething")
 
 
 def createDaemon():
@@ -130,7 +131,7 @@ def createDaemon():
         try:
             # Fork a second child and exit immediately to prevent zombies.
             pid = os.fork()
-        except OSError, e:
+        except OSError as e:
             raise Exception("%s [%d]" % (e.strerror, e.errno))
 
         if (pid == 0):    # The second child.
@@ -207,7 +208,7 @@ def main():
     
     
     if args.version :
-        print "v%s" % __version__
+        print("v%s" % __version__)
         sys.exit()
     
     if args.pidfile :
@@ -220,15 +221,15 @@ def main():
         if e.errno == errno.EACCES or e.errno == errno.EPERM:
             pid = True # pid file exists but access denied
     if pid:
-        print "ething already running with pid=%s" % (str(pid) if pid is not True else '<access_denied>')
-        print "if it is not true, delete manually the file '%s' and try again." % PID_FILE
+        print("ething already running with pid=%s" % (str(pid) if pid is not True else '<access_denied>'))
+        print("if it is not true, delete manually the file '%s' and try again." % PID_FILE)
         sys.exit(1)
     
     
     if not os.path.exists(USER_DIR):
         # first start
         # some settup can be done here !
-        print "first startup, initializing..."
+        print("first startup, initializing...")
         
         os.makedirs(USER_DIR)
     
@@ -241,11 +242,11 @@ def main():
         
         # copy default config
         old_umask = os.umask(0o177)
-        with open(CONFIG_FILE, 'w') as conf:
+        with open(CONFIG_FILE, 'w', encoding='utf8') as conf:
             json.dump({}, conf)
         os.umask(old_umask)
     
-    print "config : %s" % CONFIG_FILE
+    print("config : %s" % CONFIG_FILE)
     
     if args.daemon :
         createDaemon()

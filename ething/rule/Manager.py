@@ -1,5 +1,6 @@
+# coding: utf-8
 
-from Rule import Rule
+from .Rule import Rule
 
 
 class Manager(object):

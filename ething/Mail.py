@@ -1,11 +1,15 @@
+# coding: utf-8
+from future.utils import string_types
 
 import smtplib
-from email.MIMEMultipart import MIMEMultipart
-from email.MIMEText import MIMEText
-from email.MIMEBase import MIMEBase
 from email import encoders
-from Table import Table
-from File import File
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
+from email.mime.base import MIMEBase
+
+
+from .Table import Table
+from .File import File
 
 
 class Mail(object):
@@ -22,7 +26,7 @@ class Mail(object):
         self.password = core.config('notification.smtp.password')
         self.to = core.config('notification.emails')
         
-        if isinstance(self.to,basestring):
+        if isinstance(self.to,string_types):
             self.to = [self.to]
     
     def send (self, subject = 'notification',message = None, attachments = [], to = []):
@@ -30,7 +34,7 @@ class Mail(object):
         if not self.host or not self.port or not self.user or not self.password:
             return False
         
-        if isinstance(to,basestring):
+        if isinstance(to,string_types):
             to = [to]
         
         if not to and self.to:
@@ -51,7 +55,7 @@ class Mail(object):
         
         for attachment in attachments:
             
-            if isinstance(attachment, basestring): # id
+            if isinstance(attachment, string_types): # id
                 attachment = self.core.get(attachment)
             
             if isinstance(attachment, dict):
@@ -88,33 +92,7 @@ class Mail(object):
     
     
 
-if __name__ == '__main__':
-    
-    from ething.core import Core
-    
-    core = Core({
-        'db':{
-            'database': 'test'
-        },
-        'log': {
-            'level': 'DEBUG'
-        },
-        "notification": {
-            "emails": [
-                "a.mezerette@gmail.com"
-            ],
-            "smtp": {
-                "host": "smtp.gmail.com",
-                "port": 587,
-                "user": "LOGIN@gmail.com",
-                "password": "PASSWORD"
-            }
-        }
-    })
-    
-    mail = Mail(core)
-    
-    print mail.send('toto')
+
     
 
 

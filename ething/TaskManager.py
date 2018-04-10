@@ -1,3 +1,4 @@
+# coding: utf-8
 from multiprocessing import Process
 import time
 
@@ -58,9 +59,16 @@ class Task(object):
     def start(self):
         self.log.debug("start task '%s'" % self.name)
         self._start_time = time.time()
-        self._p = Process(target=self._func, args=self._args, kwargs=self._kwargs)
+        self._p = Process(target=self._wrapper, args=self._args, kwargs=self._kwargs)
         self._p.start()
     
+    def _wrapper(self, *args, **kwargs):
+        
+        if callable(self.manager.initialize):
+            self.manager.initialize()
+        
+        return self._func(*args, **kwargs)
+        
     
     def stop(self):
         if self.is_running:
@@ -83,11 +91,12 @@ class Task(object):
 class TaskManager(object):
     
     
-    def __init__(self, core, max_running_tasks = 12):
+    def __init__(self, core, max_running_tasks = 12, initialize = None):
         self.core = core
         self.log = core.log
         
         self._max_running_tasks = max_running_tasks
+        self.initialize = initialize
         self._tasks = []
     
     @property
@@ -98,6 +107,9 @@ class TaskManager(object):
     def tasks(self):
         return self._tasks
     
+    @property
+    def running_tasks(self):
+        return [t for t in self._tasks if t.is_running]
     
     def run(self, task, args = (), kwargs = {}, name = None):
         
@@ -126,10 +138,9 @@ class TaskManager(object):
         now = time.time()
         pending_tasks = []
         running_tasks_count = 0
-        i = len(self._tasks)
-        while i > 0:
-            i -= 1
-            
+        
+        i=0
+        while i < len(self._tasks):
             task = self._tasks[i]
             
             task.loop()
@@ -144,12 +155,16 @@ class TaskManager(object):
                     if now - task.end_time > 60:
                         # remove from the queue
                         self._tasks.pop(i)
-            
+                        i -= 1
+            i+= 1
+        
         for task in pending_tasks:
             if running_tasks_count < self.max_running_tasks:
                 running_tasks_count += 1
                 task.start()
             
+    
+    
     
     def print_info(self):
         
@@ -180,43 +195,6 @@ class TaskManager(object):
         return "\n".join(lines)
     
 
-if __name__ == '__main__':
-    
-    import logging
-    
-    logging.basicConfig(format='%(asctime)s :: %(levelname)s :: %(message)s')
-    logger = logging.getLogger()
-    logger.setLevel(logging.DEBUG)
-    
-    class Core(object):
-        log = logger
-    
-    
-    manager = TaskManager(Core(), max_running_tasks = 2)
-    
-    def sleep(sec):
-        print 'start sleeping for %d sec' % sec
-        time.sleep(sec)
-        print 'stop sleeping for %d sec' % sec
-    
-    for i in range(0,4):
-        manager.run(sleep, args = (i+1, ), name = ('task %d'%i))
-    
-    
-    try:
-        while True:
-            time.sleep(0.1)
-            manager.loop()
-    except KeyboardInterrupt:
-        manager.print_info()
-        manager.terminate()
-        manager.print_info()
-    
-    
-    
-    
-    
-    
-    
+
     
     

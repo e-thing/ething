@@ -1,6 +1,7 @@
+# coding: utf-8
 
-from query.Parser import Parser
-from query.Field import Field
+from .query.Parser import Parser
+from .query.Field import Field
 import re
 import sys
 
@@ -100,16 +101,3 @@ class ResourceQueryParser(Parser):
         
         return ok, message
 
-if __name__ == '__main__':
-    
-    parser = ResourceQueryParser()
-    
-    print parser.parse("name == 'toto'")
-    print parser.parse("hasIcon == true")
-    
-    ok, message = ResourceQueryParser.check("hasIcon = true")
-    print ok, str(message)
-    
-    ok, message = ResourceQueryParser.check("  ")
-    print ok, str(message)
-    

@@ -1,2043 +1,2048 @@
 {
+  "definitions": {
+    "SSH": {
+      "allOf": [
+        {
+          "$ref": "#/definitions/Device"
+        },
+        {
+          "type": "object",
+          "required": [
+            "host"
+          ],
+          "properties": {
+            "auth": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "password": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "user": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              },
+              "required": [
+                "password",
+                "user"
+              ],
+              "default": null,
+              "description": "An object describing the credentials to use."
+            },
+            "port": {
+              "maximum": 65535,
+              "type": "integer",
+              "minimum": 0,
+              "default": 22,
+              "description": "The port number of the device to connect to. The default port number is 22."
+            },
+            "host": {
+              "type": "string",
+              "minLength": 1,
+              "description": "The ip address or hostname of the device to connect to."
+            }
+          }
+        }
+      ],
+      "description": "SSH Device resource representation"
+    },
+    "MySensorsGateway": {
+      "allOf": [
+        {
+          "$ref": "#/definitions/Device"
+        },
+        {
+          "type": "object",
+          "properties": {
+            "libVersion": {
+              "readOnly": true,
+              "type": "null",
+              "description": "The version of the MySensors library used."
+            },
+            "isMetric": {
+              "type": "boolean",
+              "default": true,
+              "description": "Set the unit to Metric(default) instead of Imperial."
+            }
+          }
+        }
+      ]
+    },
+    "RFLinkNode": {
+      "allOf": [
+        {
+          "$ref": "#/definitions/Device"
+        },
+        {
+          "type": "object",
+          "required": [
+            "createdBy",
+            "subType",
+            "nodeId",
+            "protocol",
+            "switchId"
+          ],
+          "properties": {
+            "createdBy": {
+              "type": "null",
+              "description": "The id of the resource responsible of the creation of this resource, or null."
+            },
+            "protocol": {
+              "type": "string",
+              "minLength": 1,
+              "description": "The protocol name of the node."
+            },
+            "nodeId": {
+              "type": "string",
+              "minLength": 1,
+              "description": "The hardware id of the node."
+            },
+            "switchId": {
+              "type": "null",
+              "description": "The switch id of the node. Only available for switch/door/motion subtypes."
+            },
+            "subType": {
+              "type": "string",
+              "enum": [
+                "switch",
+                "light",
+                "door",
+                "motion",
+                "thermometer",
+                "weatherStation",
+                "multimeter"
+              ],
+              "description": "The subtype of the device, ie: thermometer, switch, ..."
+            }
+          }
+        }
+      ]
+    },
+    "Table": {
+      "allOf": [
+        {
+          "$ref": "#/definitions/Resource"
+        },
+        {
+          "type": "object",
+          "properties": {
+            "expireAfter": {
+              "type": "null",
+              "default": null,
+              "description": "The amount of time (in seconds) after which a records will be automatically removed. Set it to null or 0 to disable this feature."
+            },
+            "maxLength": {
+              "type": "null",
+              "default": 5000,
+              "description": "The maximum of records allowed in this table. When this number is reached, the oldest records will be removed to insert the new ones (first in, first out). Set it to null or 0 to disable this feature."
+            },
+            "keys": {
+              "readOnly": true,
+              "type": "object",
+              "additionalProperties": true,
+              "description": "A key/value object where the keys correspond to the fields available in this table, and the corresponding value is the number of rows where the field is set. __The default keys ('_id' and 'date' are not listed)__",
+              "properties": {}
+            },
+            "length": {
+              "readOnly": true,
+              "type": "integer",
+              "description": "The number of records in the table"
+            },
+            "contentModifiedDate": {
+              "readOnly": true,
+              "type": "string",
+              "format": "date-time",
+              "description": "Last time the conten of this resource was modified."
+            }
+          }
+        }
+      ]
+    },
+    "MySensorsNode": {
+      "allOf": [
+        {
+          "$ref": "#/definitions/Device"
+        },
+        {
+          "type": "object",
+          "required": [
+            "createdBy",
+            "nodeId"
+          ],
+          "properties": {
+            "createdBy": {
+              "type": "null",
+              "description": "The id of the resource responsible of the creation of this resource, or null."
+            },
+            "smartSleep": {
+              "type": "boolean",
+              "default": false,
+              "description": "SmartSleep feature enabled for this node."
+            },
+            "sketchVersion": {
+              "readOnly": true,
+              "type": "string",
+              "description": "The version of the sketch uploaded."
+            },
+            "libVersion": {
+              "readOnly": true,
+              "type": "null",
+              "description": "The version of the MySensors library used."
+            },
+            "sketchName": {
+              "readOnly": true,
+              "type": "string",
+              "description": "The name of the sketch uploaded."
+            },
+            "firmware": {
+              "readOnly": true,
+              "type": "null"
+            },
+            "nodeId": {
+              "maximum": 254,
+              "type": "integer",
+              "minimum": 1,
+              "description": "The id of the node."
+            }
+          }
+        }
+      ],
+      "description": "MySensorsNode Device resource representation. This device is normally automatically created by a MySensorsGateway instance."
+    },
+    "Error": {
+      "description": "An object describing an error",
+      "properties": {
+        "code": {
+          "readOnly": true,
+          "type": "integer",
+          "description": "The HTTP response status code"
+        },
+        "message": {
+          "readOnly": true,
+          "type": "string",
+          "description": "A description of the error"
+        }
+      }
+    },
+    "ZigateGateway": {
+      "allOf": [
+        {
+          "$ref": "#/definitions/Device"
+        },
+        {
+          "type": "object",
+          "properties": {
+            "appVersion": {
+              "type": "null",
+              "default": null,
+              "description": "The version of the Zigate firmware."
+            },
+            "sdkVersion": {
+              "type": "null",
+              "default": null,
+              "description": "The version of the Zigate SDK."
+            }
+          }
+        }
+      ]
+    },
+    "ZigateAqaraTHP": {
+      "allOf": [
+        {
+          "$ref": "#/definitions/ZigateDevice"
+        },
+        {
+          "type": "object",
+          "properties": {}
+        }
+      ],
+      "description": "Mihome temperatire/humidity/pressure Sensor Device class."
+    },
+    "YeelightDevice": {
+      "allOf": [
+        {
+          "$ref": "#/definitions/Device"
+        },
+        {
+          "type": "object",
+          "required": [
+            "host"
+          ],
+          "properties": {
+            "host": {
+              "type": "string",
+              "minLength": 1,
+              "description": "The ip address or hostname of the device to connect to."
+            }
+          }
+        }
+      ]
+    },
+    "App": {
+      "allOf": [
+        {
+          "$ref": "#/definitions/Resource"
+        },
+        {
+          "type": "object",
+          "properties": {
+            "contentModifiedDate": {
+              "readOnly": true,
+              "type": "string",
+              "format": "date-time",
+              "description": "Last time the conten of this resource was modified"
+            },
+            "apikey": {
+              "readOnly": true,
+              "type": "string",
+              "description": "The apikey for authenticating this app."
+            },
+            "scope": {
+              "type": "string",
+              "default": "",
+              "description": "The allowed scopes for this application (space separated list). No permissions by default."
+            },
+            "version": {
+              "type": "string",
+              "default": null,
+              "description": "The version of this application"
+            },
+            "size": {
+              "readOnly": true,
+              "type": "integer",
+              "description": "The size of the application in bytes"
+            },
+            "mime": {
+              "readOnly": true,
+              "type": "string",
+              "description": "The mime type of this app"
+            }
+          }
+        }
+      ],
+      "description": "Application resource representation"
+    },
+    "ZigateSerialGateway": {
+      "allOf": [
+        {
+          "$ref": "#/definitions/ZigateGateway"
+        },
+        {
+          "type": "object",
+          "required": [
+            "port"
+          ],
+          "properties": {
+            "port": {
+              "type": "string",
+              "description": "The serial port name."
+            }
+          }
+        }
+      ]
+    },
+    "MihomeGateway": {
+      "allOf": [
+        {
+          "$ref": "#/definitions/Device"
+        },
+        {
+          "type": "object",
+          "required": [
+            "ip",
+            "sid"
+          ],
+          "properties": {
+            "password": {
+              "type": "string",
+              "default": "",
+              "description": "The password of the gateway"
+            },
+            "ip": {
+              "type": "string",
+              "minLength": 1,
+              "description": "The IP address of the gateway"
+            },
+            "sid": {
+              "type": "string",
+              "minLength": 1,
+              "description": "The uniq sid of the gateway"
+            }
+          }
+        }
+      ]
+    },
+    "Device": {
+      "allOf": [
+        {
+          "$ref": "#/definitions/Resource"
+        },
+        {
+          "type": "object",
+          "properties": {
+            "connected": {
+              "type": "boolean",
+              "default": false,
+              "description": "Set to true when this device is connected."
+            },
+            "interfaces": {
+              "readOnly": true,
+              "type": "array",
+              "description": "A list of intefaces this device inherit",
+              "items": {}
+            },
+            "lastSeenDate": {
+              "type": "null",
+              "default": null,
+              "description": "Last time this device was reached or made a request."
+            },
+            "location": {
+              "type": "null",
+              "default": null,
+              "description": "The location of this device."
+            },
+            "battery": {
+              "type": "null",
+              "default": null,
+              "description": "The battery level of this device (must be between 0 (empty) and 100 (full) , or null if the device has no battery information)."
+            },
+            "methods": {
+              "readOnly": true,
+              "type": "array",
+              "description": "The list of the methods available.",
+              "items": {}
+            }
+          }
+        }
+      ]
+    },
+    "MihomeDevice": {
+      "allOf": [
+        {
+          "$ref": "#/definitions/Device"
+        },
+        {
+          "type": "object",
+          "required": [
+            "sid"
+          ],
+          "properties": {
+            "sid": {
+              "type": "string",
+              "minLength": 1,
+              "description": "The uniq sid of the device"
+            }
+          }
+        }
+      ],
+      "description": "Mihome Device base class"
+    },
+    "MySensorsSerialGateway": {
+      "allOf": [
+        {
+          "$ref": "#/definitions/MySensorsGateway"
+        },
+        {
+          "type": "object",
+          "required": [
+            "port"
+          ],
+          "properties": {
+            "port": {
+              "type": "string",
+              "description": "The serial port name."
+            },
+            "baudrate": {
+              "type": "integer",
+              "enum": [
+                110,
+                150,
+                300,
+                600,
+                1200,
+                2400,
+                4800,
+                9600,
+                19200,
+                38400,
+                57600,
+                115200
+              ],
+              "default": 57600,
+              "description": "The baudrate."
+            }
+          }
+        }
+      ]
+    },
+    "File": {
+      "allOf": [
+        {
+          "$ref": "#/definitions/Resource"
+        },
+        {
+          "type": "object",
+          "properties": {
+            "expireAfter": {
+              "type": "null",
+              "default": null,
+              "description": "The amount of time (in seconds) after which this resource will be removed."
+            },
+            "size": {
+              "readOnly": true,
+              "type": "integer",
+              "description": "The size of this resource in bytes"
+            },
+            "isText": {
+              "readOnly": true,
+              "type": "boolean",
+              "description": "True if this file has text based content."
+            },
+            "mime": {
+              "readOnly": true,
+              "type": "string",
+              "description": "The MIME type of the file (automatically detected from the content)."
+            },
+            "contentModifiedDate": {
+              "readOnly": true,
+              "type": "string",
+              "format": "date-time",
+              "description": "Last time the conten of this resource was modified (formatted RFC 3339 timestamp)."
+            }
+          }
+        }
+      ]
+    },
+    "MySensorsEthernetGateway": {
+      "allOf": [
+        {
+          "$ref": "#/definitions/MySensorsGateway"
+        },
+        {
+          "type": "object",
+          "required": [
+            "address"
+          ],
+          "properties": {
+            "address": {
+              "type": "string",
+              "pattern": "^([-\\w.]+)(:[0-9]{1,5})?$",
+              "description": "The ip address or hostname of the gateway."
+            }
+          }
+        }
+      ]
+    },
+    "RTSP": {
+      "allOf": [
+        {
+          "$ref": "#/definitions/Device"
+        },
+        {
+          "type": "object",
+          "required": [
+            "url"
+          ],
+          "properties": {
+            "url": {
+              "type": "string",
+              "pattern": "^rtsp://",
+              "minLength": 1,
+              "description": "The URL of the device rtsp://... ."
+            },
+            "transport": {
+              "type": "string",
+              "description": "Lower transport protocol. Allowed values are the ones defined for the flags for rtsp_transport (see https://libav.org/avconv.html).",
+              "default": "tcp",
+              "minLength": 1,
+              "enum": [
+                "udp",
+                "tcp",
+                "http"
+              ]
+            }
+          }
+        }
+      ],
+      "description": "RTSP Device resource representation, usually IP camera"
+    },
+    "MySensorsSensor": {
+      "allOf": [
+        {
+          "$ref": "#/definitions/Device"
+        },
+        {
+          "type": "object",
+          "required": [
+            "createdBy",
+            "sensorId",
+            "sensorType"
+          ],
+          "properties": {
+            "createdBy": {
+              "type": "null",
+              "description": "The id of the resource responsible of the creation of this resource, or null."
+            },
+            "sensorId": {
+              "maximum": 254,
+              "type": "integer",
+              "minimum": 0,
+              "description": "The id of the sensor."
+            },
+            "sensorType": {
+              "type": "string",
+              "minLength": 1,
+              "description": "The type of the sensor."
+            }
+          }
+        }
+      ],
+      "description": "MySensorsSensor Device resource representation. This device is normally automatically created by a MySensorsNode instance."
+    },
+    "RFLinkGateway": {
+      "allOf": [
+        {
+          "$ref": "#/definitions/Device"
+        },
+        {
+          "type": "object",
+          "properties": {
+            "revision": {
+              "readOnly": true,
+              "type": "null",
+              "description": "The revision number of the RFLink library used."
+            },
+            "build": {
+              "readOnly": true,
+              "type": "null",
+              "description": "The build number of the RFLink library used."
+            },
+            "version": {
+              "readOnly": true,
+              "type": "null",
+              "description": "The version of the RFLink library used."
+            }
+          }
+        }
+      ]
+    },
+    "Http": {
+      "allOf": [
+        {
+          "$ref": "#/definitions/Device"
+        },
+        {
+          "type": "object",
+          "properties": {
+            "auth": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "type": {
+                  "type": "string",
+                  "enum": [
+                    "basic",
+                    "digest"
+                  ]
+                },
+                "password": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "user": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              },
+              "required": [
+                "type",
+                "password",
+                "user"
+              ],
+              "default": null,
+              "description": "An object describing the authentication method to use on HTTP request."
+            },
+            "apikey": {
+              "readOnly": true,
+              "type": "string",
+              "description": "The apikey for authenticating this device."
+            },
+            "scope": {
+              "type": "string",
+              "default": "",
+              "description": "The allowed scopes for this device (space separated list). Restrict the Http api access. Default to an empty string (no access)."
+            },
+            "url": {
+              "type": "null",
+              "default": null,
+              "description": "The URL of the device, or null if there is none defined. No URL defined means that the device cannot be reached. Only device with an URL set has a Swagger specification (see /device/<id>/specification endpoint). The specification object define all the available HTTP requests this device accepts."
+            }
+          }
+        }
+      ],
+      "description": "Http Device resource representation"
+    },
+    "RFLinkSerialGateway": {
+      "allOf": [
+        {
+          "$ref": "#/definitions/RFLinkGateway"
+        },
+        {
+          "type": "object",
+          "required": [
+            "port"
+          ],
+          "properties": {
+            "port": {
+              "type": "string",
+              "description": "The serial port name."
+            },
+            "baudrate": {
+              "type": "integer",
+              "enum": [
+                110,
+                150,
+                300,
+                600,
+                1200,
+                2400,
+                4800,
+                9600,
+                19200,
+                38400,
+                57600,
+                115200
+              ],
+              "default": 57600,
+              "description": "The baudrate"
+            }
+          }
+        }
+      ]
+    },
+    "YeelightBulbRGBW": {
+      "allOf": [
+        {
+          "$ref": "#/definitions/YeelightDevice"
+        },
+        {
+          "type": "object",
+          "properties": {}
+        }
+      ]
+    },
+    "MQTT": {
+      "allOf": [
+        {
+          "$ref": "#/definitions/Device"
+        },
+        {
+          "type": "object",
+          "required": [
+            "host"
+          ],
+          "properties": {
+            "auth": {
+              "type": "null",
+              "default": null,
+              "description": "An object describing the credentials to use."
+            },
+            "port": {
+              "maximum": 65535,
+              "type": "integer",
+              "minimum": 0,
+              "default": 1883,
+              "description": "The port number of the MQTT broker to connect to."
+            },
+            "host": {
+              "type": "string",
+              "description": "The host of the MQTT broker to connect to."
+            }
+          }
+        }
+      ],
+      "description": "MQTT Device resource representation"
+    },
+    "MihomeSensorHT": {
+      "allOf": [
+        {
+          "$ref": "#/definitions/MihomeDevice"
+        },
+        {
+          "type": "object",
+          "properties": {}
+        }
+      ],
+      "description": "Mihome temperature/humidity/pressure Sensor Device class."
+    },
+    "ZigateDevice": {
+      "allOf": [
+        {
+          "$ref": "#/definitions/Device"
+        },
+        {
+          "type": "object",
+          "required": [
+            "model",
+            "address",
+            "manufacturer"
+          ],
+          "properties": {
+            "manufacturer": {
+              "type": "string",
+              "minLength": 1,
+              "description": "The manufacturer of this device"
+            },
+            "model": {
+              "type": "string",
+              "minLength": 1,
+              "description": "The model of this device"
+            },
+            "address": {
+              "type": "string",
+              "minLength": 1,
+              "description": "The short address of this device on the zigbee network"
+            }
+          }
+        }
+      ],
+      "description": "ZigateDevice Device base class representation"
+    },
+    "Resource": {
+      "type": "object",
+      "properties": {
+        "createdBy": {
+          "type": "null",
+          "default": null,
+          "description": "The id of the resource responsible of the creation of this resource, or null."
+        },
+        "id": {
+          "readOnly": true,
+          "type": "string",
+          "description": "The id of the resource"
+        },
+        "type": {
+          "readOnly": true,
+          "type": "string",
+          "description": "The type of the resource"
+        },
+        "public": {
+          "description": "False: this resource is not publicly accessible. 'readonly': this resource is accessible for reading by anyone. 'readwrite': this resource is accessible for reading and writing by anyone.",
+          "default": false,
+          "enum": [
+            false,
+            "readonly",
+            "readwrite"
+          ]
+        },
+        "modifiedDate": {
+          "type": "string",
+          "format": "date-time",
+          "default": "2018-04-10T19:19:04.757593",
+          "description": "Last time this resource was modified"
+        },
+        "data": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          },
+          "default": {},
+          "description": "A collection of arbitrary key-value pairs. Entries with null values are cleared in update. The keys must not be empty or longer than 64 characters, and must contain only the following characters : letters, digits, underscore and dash. Values must be either a string or a boolean or a number",
+          "properties": {}
+        },
+        "createdDate": {
+          "readOnly": true,
+          "type": "string",
+          "format": "date-time",
+          "description": "Create time for this resource"
+        },
+        "name": {
+          "type": "string",
+          "pattern": "^[a-zA-Z0-9 !#$%&'()+,\\-.;=@^_`{    ]+(\\/[a-zA-Z0-9 !#$%&'()+,\\-.;=@^_`{    ]+)*$",
+          "minLength": 1,
+          "description": "The name of the resource"
+        },
+        "extends": {
+          "readOnly": true,
+          "type": "array",
+          "description": "An array of classes this resource is based on.",
+          "items": {}
+        },
+        "description": {
+          "type": "string",
+          "default": "",
+          "description": "A description of this resource."
+        }
+      },
+      "required": [
+        "name"
+      ],
+      "discriminator": "type",
+      "description": "The base representation of a resource object"
+    }
+  },
+  "schemes": [
+    "http"
+  ],
   "info": {
-    "version": "0.1.0", 
-    "description": " \r\nThe eThing project is an 'Internet of Things' application. Store and retrieve data from devices using HTTP requests.\r\n\r\nAccess to your resources (file, table, device ...) through HTTP requests.\r\n\r\n-------------\r\n\r\n\r\n### Resource description\r\n\r\nThere are different types of resources. A resource can either be :\r\n\r\n - file : use this kind of objects to store text data or binary data (image, ...)\r\n - table : tables are used to store a collection of related data. Table consists of fields and rows.\r\n - device : this resource describes a device. You can send HTTP requests to your device through it.\r\n - app : this resource is used to store a HTML/JavaScript script. Use it to handle your data (for instance, you can create an interface to communicate with your device).\r\n\r\n\r\n\r\n### Error messages\r\n\r\nWhen the API returns error messages, it does so in JSON format. For example, an error might look like this:\r\n\r\n```json\r\n{\r\n  \"message\": \"The resource does not exist\",\r\n  \"code\" : 404\r\n}\r\n```\r\n\r\nThe code value correspond to the HTTP status code of the response.\r\n\r\n\r\n### Authorization\r\n\r\nThere are several options for authenticating with the API.\r\n\r\n#### Basic authentication\r\n\r\nHTTP Basic authentication is the simplest way of interacting with the API. \r\nSimply pass the username (always 'ething') and password with each request through the `Authorization` header.\r\nThis value should be encoded (using base64 encoding) as per the HTTP Basic specification.\r\n\r\n```bash\r\ncurl -u username:password ...\r\n```\r\n\r\n\r\n#### API key\r\n\r\nEvery device or app has an API key. API keys are listed on developer page [http://localhost:8000/client/developer.html](http://localhost:8000/client/developer.html).\r\n\r\nAPI calls authenticated with API key are made on behalf of the Application or Device that own this it ! The permissions can be modified in the resource settings.\r\n\r\nSend the following header below on every request :\r\n\r\n```\r\nGET /ething/api/resources HTTP/1.1\r\nHost: localhost:8000\r\nX-API-KEY: <YOUR_API_KEY>\r\n```\r\n\r\nHere is a cURL example of how to send this header :\r\n\r\n```bash\r\ncurl -H 'X-API-KEY: <YOUR_API_KEY>' ...\r\n```\r\n\r\nYou can also simply pass the key as a URL query parameter when making Web service requests. For example:\r\n\r\n```bash\r\ncurl http://localhost:8000/api/resources?api_key=<YOUR_API_KEY>\r\n```\r\n\r\n\r\n\r\n\r\n### Scopes\r\n\r\nScopes let you specify exactly what type of data access your application or device needs.\r\n\r\n| Scope          | Description                                                          |\r\n|----------------|----------------------------------------------------------------------|\r\n| resource:read  | read the content of any resource                                     |\r\n| resource:write | create resources of any kind and modify the content of any resource  |\r\n| resource:admin | modify resource properties, delete resource and access to apikeys    |\r\n| file:read      | read the content of any file                                         |\r\n| file:write     | create files and modify the content of any file                      |\r\n| table:read     | read the content of any table                                        |\r\n| table:write    | create tables and modify the content of any table                    |\r\n| table:append   | append data to any existing table                                    |\r\n| app:read       | execute apps                                                         |\r\n| app:write      | create and edit apps                                                 |\r\n| app:execute    | execute apps                                                         |\r\n| device:read    | send GET request to any device                                       |\r\n| device:write   | send POST,PUT,PATCH,DELETE request to any device                     |\r\n| notification   | send notification                                                    |\r\n| settings:read  | read the settings                                                |\r\n| settings:write | modify the settings                                              |\r\n| proxy:read     | send GET request through your local network                          |\r\n| proxy:write    | send POST,PUT,PATCH,DELETE through your local network                |\r\n| rule:read      | read rules attributes                                                |\r\n| rule:write     | create rules                                                         |\r\n| rule:execute   | execute rules                                                        |\r\n| rule:admin     | delete rules                                                         |\r\n\r\n### Partial response\r\n\r\nBy default, the server sends back the full representation of a resource after processing requests.\r\nFor better performance, you can ask the server to send only the fields you really need and get a partial response instead.\r\n\r\nTo request a partial response, use the fields request parameter to specify the fields you want returned.\r\nYou can use this parameter with any request that returns response data.\r\n\r\nexample:\r\n\r\nThis request will return the meta-data representation containing only the specified keys of a resource\r\n\r\n`/resource/56731_a?fields=id,name`\r\n\r\n\r\n### Filter resource or table data\r\n\r\nYou can search or filter resources or table's rows using a search query combining one or more search clauses. Each search clause is made up of three parts.\r\n\r\n - Field : in case of resource filtering, it corresponds to the attribute of the resource that is searched (e.g. 'name'). In case of table's rows filtering, it corresponds to the column's name.\r\n - Operator : test that is performed on the data to provide a match.\r\n - Value : The content of the field that is tested.\r\n \r\nCombine clauses with the conjunctions and or or.\r\n\r\n\r\nThe available fields for resource filtering :\r\n\r\n - 'type'\r\n - 'name'\r\n - 'mime'\r\n - 'id'\r\n - 'location.latitude'\r\n - 'location.longitude'\r\n - 'location.altitude'\r\n - 'createdDate'\r\n - 'modifiedDate'\r\n - 'createdBy'\r\n - 'description'\r\n - 'length' : only available for Table resources\r\n - 'size' : only available for File resources\r\n - 'hasThumbnail' : only available for File resources\r\n - 'hasIcon' : only available for App resources\r\n - 'battery' : only available for Device resources\r\n - 'lastSeenDate' : only available for Device resources\r\n\r\n\r\nThe available operators :\r\n\r\n - '==' : equal to ... This operator is compatible with any types of value.\r\n - '!=' : not equal to ... This operator is compatible with any types of value.\r\n - 'is' : is of type ... This operator is compatible with any types of value.\r\n - '>' : greater than ... This operator is only compatible with numbers or dates.\r\n - '<' : less than ... This operator is only compatible with numbers or dates.\r\n - '>=' : greater than or equal to ... This operator is only compatible with numbers.\r\n - '<=' : less than or equal to ... This operator is only compatible with numbers.\r\n - '^=' : start with ... This operator is only compatible with strings.\r\n - '$=' : end with ... This operator is only compatible with strings.\r\n - '*=' : contain ... This operator is only compatible with strings.\r\n - '~=' : contain the word ... This operator is only compatible with strings.\r\n \r\n \r\nValue types :\r\n\r\n - String : surround with single quotes ' or double quotes.\r\n - Number : either integer numbers or floating numbers.\r\n - Boolean : true or false.\r\n - Date : *RFC 3339* format,  e.g., *2015-03-24T12:00:00+02:00*.\r\n\r\nConstants :\r\n\r\n - 'me' : available only when using API key authentication method. It corresponds to the current Device or App.\r\n\r\n \r\nExamples:\r\n\r\nAll examples on this page show the unencoded q parameter, where name == 'foobar' is encoded as name+%3d%3d+%27foobar%27.\r\nClient libraries handle this encoding automatically.\r\n\r\nSearch for resources with the name \"foobar\"\r\n\r\n`name == 'foobar'`\r\n\r\nSearch for plain text files\r\n\r\n`mime == 'text/plain'`\r\n\r\nSearch for tables resources only\r\n\r\n`type == 'Table'`\r\n\r\nSearch for non empty files or tables\r\n\r\n`size > 0 OR length > 0`\r\n\r\nSearch for resources with the name starting with \"foo\"\r\n\r\n`name ^= 'foobar'`\r\n\r\nSearch for tables with the extension 'db' or files with the extension 'csv'\r\n\r\n`( type == 'Table' AND name $= '.db' ) OR ( type == 'File' AND name $= '.csv' )`\r\n\r\nSearch for resources modified after Mars 4th 2016\r\n\r\n`modifiedDate > '2016-03-04T00:00:00+01:00'`\r\n\r\nSearch for resources created by the current authenticated Device or App\r\n\r\n`createdBy > me`\r\n\r\n", 
+    "description": " \nThe eThing project is an 'Internet of Things' application. Store and retrieve data from devices using HTTP requests.\n\nAccess to your resources (file, table, device ...) through HTTP requests.\n\n-------------\n\n\n### Resource description\n\nThere are different types of resources. A resource can either be :\n\n - file : use this kind of objects to store text data or binary data (image, ...)\n - table : tables are used to store a collection of related data. Table consists of fields and rows.\n - device : this resource describes a device.\n - app : this resource is used to store a HTML/JavaScript script. Use it to handle your data/devices (for instance, you can create an interface to communicate with your device).\n\n\n\n### Error messages\n\nWhen the API returns error messages, it does so in JSON format. For example, an error might look like this:\n\n```json\n{\n  \"message\": \"The resource does not exist\",\n  \"code\" : 404\n}\n```\n\nThe code value correspond to the HTTP status code of the response.\n\n\n### Authorization\n\nThere are several options for authenticating with the API.\n\n#### Basic authentication\n\nHTTP Basic authentication is the simplest way of interacting with the API. \nSimply pass the username (default to 'ething') and password with each request through the `Authorization` header.\nThis value should be encoded (using base64 encoding) as per the HTTP Basic specification.\n\n```bash\ncurl -u username:password ...\n```\n\n\n#### API key\n\nEvery device or app has an API key. API keys are listed on developer page [http://localhost:8000/client/developer.html](http://localhost:8000/client/developer.html).\n\nAPI calls authenticated with API key are made on behalf of the Application or Device that own this it ! The permissions can be modified in the resource settings.\n\nSend the following header below on every request :\n\n```\nGET /ething/api/resources HTTP/1.1\nHost: localhost:8000\nX-API-KEY: <YOUR_API_KEY>\n```\n\nHere is a cURL example of how to send this header :\n\n```bash\ncurl -H 'X-API-KEY: <YOUR_API_KEY>' ...\n```\n\nYou can also simply pass the key as a URL query parameter when making Web service requests. For example:\n\n```bash\ncurl http://localhost:8000/api/resources?api_key=<YOUR_API_KEY>\n```\n\n\n\n\n### Scopes\n\nScopes let you specify exactly what type of data access your application or device needs.\n\n| Scope          | Description                                                          |\n|----------------|----------------------------------------------------------------------|\n| resource:read  | read the content of any resource                                     |\n| resource:write | create resources of any kind and modify the content of any resource  |\n| resource:admin | modify resource properties, delete resource and access to apikeys    |\n| file:read      | read the content of any file                                         |\n| file:write     | create files and modify the content of any file                      |\n| table:read     | read the content of any table                                        |\n| table:write    | create tables and modify the content of any table                    |\n| table:append   | append data to any existing table                                    |\n| app:read       | execute apps                                                         |\n| app:write      | create and edit apps                                                 |\n| app:execute    | execute apps                                                         |\n| device:read    | send GET request to any device                                       |\n| device:write   | send POST,PUT,PATCH,DELETE request to any device                     |\n| notification   | send notification                                                    |\n| settings:read  | read the settings                                                    |\n| settings:write | modify the settings                                                  |\n| rule:read      | read rules attributes                                                |\n| rule:write     | create rules                                                         |\n| rule:execute   | execute rules                                                        |\n| rule:admin     | delete rules                                                         |\n\n### Partial response\n\nBy default, the server sends back the full representation of a resource after processing requests.\nFor better performance, you can ask the server to send only the fields you really need and get a partial response instead.\n\nTo request a partial response, use the fields request parameter to specify the fields you want returned.\nYou can use this parameter with any request that returns response data.\n\nexample:\n\nThis request will return the meta-data representation containing only the specified keys of a resource\n\n`/resources/56731_a?fields=id,name`\n\n\n### Filter resource or table data\n\nYou can search or filter resources or table's rows using a search query combining one or more search clauses. Each search clause is made up of three parts.\n\n - Field : in case of resource filtering, it corresponds to the attribute of the resource that is searched (e.g. 'name'). In case of table's rows filtering, it corresponds to the column's name.\n - Operator : test that is performed on the data to provide a match.\n - Value : The content of the field that is tested.\n \nCombine clauses with the conjunctions and or or.\n\n\nThe available fields for resource filtering :\n\n - 'type'\n - 'name'\n - 'mime'\n - 'id'\n - 'location.latitude'\n - 'location.longitude'\n - 'location.altitude'\n - 'createdDate'\n - 'modifiedDate'\n - 'createdBy'\n - 'description'\n - 'length' : only available for Table resources\n - 'size' : only available for File resources\n - 'hasThumbnail' : only available for File resources\n - 'hasIcon' : only available for App resources\n - 'battery' : only available for Device resources\n - 'lastSeenDate' : only available for Device resources\n\n\nThe available operators :\n\n - '==' : equal to ... This operator is compatible with any types of value.\n - '!=' : not equal to ... This operator is compatible with any types of value.\n - 'is' : is of type ... This operator is compatible with any types of value.\n - '>' : greater than ... This operator is only compatible with numbers or dates.\n - '<' : less than ... This operator is only compatible with numbers or dates.\n - '>=' : greater than or equal to ... This operator is only compatible with numbers.\n - '<=' : less than or equal to ... This operator is only compatible with numbers.\n - '^=' : start with ... This operator is only compatible with strings.\n - '$=' : end with ... This operator is only compatible with strings.\n - '*=' : contain ... This operator is only compatible with strings.\n - '~=' : contain the word ... This operator is only compatible with strings.\n \n \nValue types :\n\n - String : surround with single quotes ' or double quotes.\n - Number : either integer numbers or floating numbers.\n - Boolean : true or false.\n - Date : *RFC 3339* format,  e.g., *2015-03-24T12:00:00+02:00*. Also accept the formats accepted by the [dateparser library](https://github.com/scrapinghub/dateparser).\n\nConstants :\n\n - 'me' : available only when using API key authentication method. It corresponds to the current Device or App.\n\n \nExamples:\n\nAll examples on this page show the unencoded q parameter, where name == 'foobar' is encoded as name+%3d%3d+%27foobar%27.\nClient libraries handle this encoding automatically.\n\nSearch for resources with the name \"foobar\"\n\n`name == 'foobar'`\n\nSearch for plain text files\n\n`mime == 'text/plain'`\n\nSearch for tables resources only\n\n`type == 'Table'`\n\nSearch for non empty files or tables\n\n`size > 0 OR length > 0`\n\nSearch for resources with the name starting with \"foo\"\n\n`name ^= 'foobar'`\n\nSearch for tables with the extension 'db' or files with the extension 'csv'\n\n`( type == 'Table' AND name $= '.db' ) OR ( type == 'File' AND name $= '.csv' )`\n\nSearch for resources modified after Mars 4th 2016\n\n`modifiedDate > '2016-03-04T00:00:00+01:00'`\n\nSearch for resources created by the current authenticated Device or App\n\n`createdBy > me`\n\n",
+    "version": "0.1.1",
     "title": "EThing HTTP API"
-  }, 
+  },
   "paths": {
     "/api/notification": {
       "post": {
-        "description": "Send a notification to the registered email addresses (cf. settings).", 
         "parameters": [
           {
-            "required": true, 
-            "in": "body", 
-            "description": "the data of the notification to be sent", 
-            "name": "notification data", 
+            "in": "body",
+            "description": "the data of the notification to be sent",
+            "required": true,
+            "name": "notification data",
             "schema": {
-              "type": "object", 
+              "type": "object",
               "properties": {
                 "body": {
-                  "type": "string", 
+                  "type": "string",
                   "description": "the content of the notification"
-                }, 
+                },
                 "subject": {
-                  "type": "string", 
+                  "type": "string",
                   "description": "the subject of the notification (default to 'notification')"
                 }
               }
             }
-          }, 
+          },
           {
-            "required": false, 
-            "type": "string", 
-            "name": "body", 
-            "in": "query"
-          }, 
-          {
-            "required": true, 
-            "type": "string", 
-            "name": "subject", 
-            "in": "query"
+            "required": false,
+            "in": "body",
+            "name": "body",
+            "schema": {
+              "type": "object",
+              "required": [
+                "subject"
+              ],
+              "properties": {
+                "body": {
+                  "type": "string"
+                },
+                "subject": {
+                  "type": "string"
+                }
+              }
+            }
           }
-        ], 
+        ],
         "responses": {
           "200": {
             "description": "The notification was successfully sent"
           }
-        }
+        },
+        "description": "Send a notification to the registered email addresses (cf. settings)."
       }
-    }, 
+    },
     "/api/resources": {
       "get": {
-        "tags": [
-          "resource"
-        ], 
-        "responses": {
-          "200": {
-            "description": "A list of resources", 
-            "schema": {
-              "items": {
-                "$ref": "#/definitions/Resource"
-              }, 
-              "type": "array"
-            }
-          }
-        }, 
         "parameters": [
           {
-            "x-nullable": true, 
-            "name": "q", 
-            "in": "query", 
-            "default": null, 
-            "required": false, 
-            "type": "string", 
-            "description": "Query string for searching resources"
-          }, 
-          {
-            "minimum": 0, 
-            "name": "skip", 
-            "in": "query", 
-            "format": "int32", 
-            "required": false, 
-            "type": "integer", 
+            "type": "integer",
+            "in": "query",
+            "name": "skip",
+            "minimum": 0,
+            "format": "int32",
+            "required": false,
             "description": "Skips a number of resources"
-          }, 
+          },
           {
-            "minimum": 0, 
-            "name": "limit", 
-            "in": "query", 
-            "format": "int32", 
-            "required": false, 
-            "type": "integer", 
-            "description": "Limits the number of resources returned"
-          }, 
-          {
-            "name": "fields", 
-            "in": "query", 
+            "type": "string",
+            "collectionFormat": "multi",
+            "name": "fields",
+            "in": "query",
+            "required": false,
             "items": {
               "type": "string"
-            }, 
-            "required": false, 
-            "type": "string", 
-            "collectionFormat": "multi"
-          }, 
+            }
+          },
           {
-            "description": "The key on which to do the sorting, by default the sort is made by modifiedDate descending. To make the sort descending, prepend the field name by minus \"-\". For instance, \"-createdDate\" will sort by createdDate descending", 
-            "required": false, 
-            "type": "string", 
-            "name": "sort", 
-            "in": "query"
+            "required": false,
+            "type": "string",
+            "in": "query",
+            "name": "sort",
+            "description": "The key on which to do the sorting, by default the sort is made by modifiedDate descending. To make the sort descending, prepend the field name by minus \"-\". For instance, \"-createdDate\" will sort by createdDate descending"
+          },
+          {
+            "type": "integer",
+            "in": "query",
+            "name": "limit",
+            "minimum": 0,
+            "format": "int32",
+            "required": false,
+            "description": "Limits the number of resources returned"
+          },
+          {
+            "type": "string",
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "default": null,
+            "x-nullable": true,
+            "description": "Query string for searching resources"
           }
-        ], 
+        ],
+        "tags": [
+          "resource"
+        ],
+        "responses": {
+          "200": {
+            "description": "A list of resources",
+            "schema": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/Resource"
+              }
+            }
+          }
+        },
         "description": "Lists the resources.\n\n#### cURL example\n\n```bash\ncurl -H 'X-API-KEY: <YOUR_API_KEY>' http://localhost:8000/api/resources\n```"
       }
-    }, 
+    },
     "/api/settings": {
-      "patch": {
+      "get": {
+        "parameters": [],
         "tags": [
           "settings"
-        ], 
+        ],
         "responses": {
           "200": {
-            "description": "settings successfully updated", 
+            "description": "The settings",
             "schema": {
               "type": "object"
             }
           }
-        }, 
+        },
+        "description": "Returns the settings"
+      },
+      "patch": {
         "parameters": [
           {
-            "required": true, 
-            "in": "body", 
-            "description": "the attributes to modify", 
-            "name": "data", 
+            "in": "body",
+            "description": "the attributes to modify",
+            "required": true,
+            "name": "data",
             "schema": {
               "type": "object"
             }
           }
-        ], 
-        "description": "update your settings."
-      }, 
-      "get": {
+        ],
         "tags": [
           "settings"
-        ], 
+        ],
         "responses": {
           "200": {
-            "description": "The settings", 
+            "description": "settings successfully updated",
             "schema": {
               "type": "object"
             }
           }
-        }, 
-        "parameters": [], 
-        "description": "Returns the settings"
+        },
+        "description": "update your settings."
       }
-    }, 
+    },
     "/api/devices": {
       "post": {
+        "parameters": [
+          {
+            "in": "body",
+            "description": "\nThe metadata of the device to be created.\n\nexample:\n\n```json\n{\n   \"name\": \"mydevice.txt\",\n   \"location\": \"room 1\",\n   \"scope\": \"resource:read notification\",\n}\n```\n",
+            "required": true,
+            "name": "metadata",
+            "schema": {
+              "$ref": "#/definitions/Device"
+            }
+          },
+          {
+            "type": "string",
+            "collectionFormat": "multi",
+            "name": "fields",
+            "in": "query",
+            "required": false,
+            "items": {
+              "type": "string"
+            }
+          }
+        ],
         "tags": [
           "device"
-        ], 
+        ],
         "responses": {
           "200": {
-            "description": "The device was successfully created", 
+            "description": "The device was successfully created",
             "schema": {
               "allOf": [
                 {
+                  "type": "object",
                   "required": [
                     "type"
-                  ], 
-                  "type": "object", 
+                  ],
                   "properties": {
                     "type": {
-                      "type": "string", 
+                      "type": "string",
                       "description": "The type of the device to create (eg: \"Http\" or \"MySensorsEthernetGateway\")."
                     }
                   }
-                }, 
+                },
                 {
                   "$ref": "#/definitions/Device"
                 }
               ]
             }
           }
-        }, 
-        "parameters": [
-          {
-            "required": true, 
-            "in": "body", 
-            "description": "\nThe metadata of the device to be created.\n\nexample:\n\n```json\n{\n   \"name\": \"mydevice.txt\",\n   \"location\":{\n      \"latitude\": 5.12,\n      \"longitude\": -45.78\n   },\n   \"scope\": \"resource:read notification\",\n}\n```\n", 
-            "name": "metadata", 
-            "schema": {
-              "$ref": "#/definitions/Device"
-            }
-          }, 
-          {
-            "name": "fields", 
-            "in": "query", 
-            "items": {
-              "type": "string"
-            }, 
-            "required": false, 
-            "type": "string", 
-            "collectionFormat": "multi"
-          }
-        ], 
+        },
         "description": "Creates a new device."
       }
-    }, 
+    },
     "/api/tables": {
       "post": {
+        "parameters": [
+          {
+            "in": "body",
+            "description": "\n\nThe metadata of the table to be created.\n\nexample:\n\n```json\n{\n    \"name\":\"mytable.db\"\n}\n```",
+            "required": true,
+            "name": "metadata",
+            "schema": {
+              "$ref": "#/definitions/Table"
+            }
+          },
+          {
+            "type": "string",
+            "collectionFormat": "multi",
+            "name": "fields",
+            "in": "query",
+            "required": false,
+            "items": {
+              "type": "string"
+            }
+          }
+        ],
         "tags": [
           "table"
-        ], 
+        ],
         "responses": {
           "200": {
-            "description": "The table was successfully created", 
+            "description": "The table was successfully created",
             "schema": {
               "$ref": "#/definitions/Table"
             }
           }
-        }, 
-        "parameters": [
-          {
-            "required": true, 
-            "in": "body", 
-            "description": "\n\nThe metadata of the table to be created.\n\nexample:\n\n```json\n{\n    \"name\":\"mytable.db\"\n}\n```", 
-            "name": "metadata", 
-            "schema": {
-              "$ref": "#/definitions/Table"
-            }
-          }, 
-          {
-            "name": "fields", 
-            "in": "query", 
-            "items": {
-              "type": "string"
-            }, 
-            "required": false, 
-            "type": "string", 
-            "collectionFormat": "multi"
-          }
-        ], 
-        "description": "Creates a new table.\n\nYou may want to pass directly the content of the table in the same request. To do so, just pass the data through the key 'content' of the metadata object;\n\nexample:\n\n```json\n{\n   \"name\": \"matable.db\",\n   \"content\": [\n        {\n            \"temperature\": 12.5,\n            \"pressure\": 101325\n        }\n   ]\n}\n```\n\n#### cURL example\n\nThe next command will create a new table 'mytable.db'.\n\n```bash\ncurl\n    -H 'X-API-KEY: <YOUR_API_KEY>'\n    -H \"Content-Type: application/json\"\n    -X POST\n    -d '{\"name\":\"mytable.db\"}'\n    http://localhost:8000/api/tables\n```\n\nIf the command was successful, a response containing the meta data of the created table will be given back.\nYou will find in it the id of that table.\nThis id is a unique string identifying this table and is necessary to make any operation on it.\n\n```json\n{\n  \"id\":\"56_df0f\",\n  \"name\":\"mytable.db\",\n  \"data\":null,\n  \"description\":null,\n  \"maxLength\":null,\n  \"expireAfter\":null,\n  \"type\":\"Table\",\n  \"createdBy\":null,\n  \"createdDate\":\"2016-02-12T14:49:30+00:00\",\n  \"modifiedDate\":\"2016-02-15T13:03:20+00:00\",\n  \"length\":421,\n  \"keys\":{\n     \"temp1\":421,\n     \"temp2\":421\n  },\n  \"location\":null\n}\n```"
+        },
+        "description": "Creates a new table.\n\nYou may want to pass directly the content of the table in the same request. To do so, just pass the data through the key 'content' of the metadata object;\n\nexample:\n\n```json\n{\n   \"name\": \"foobar.db\",\n   \"content\": [\n        {\n            \"temperature\": 12.5,\n            \"pressure\": 101325\n        }\n   ]\n}\n```\n\n#### cURL example\n\nThe next command will create a new table 'mytable.db'.\n\n```bash\ncurl\n    -H 'X-API-KEY: <YOUR_API_KEY>'\n    -H \"Content-Type: application/json\"\n    -X POST\n    -d '{\"name\":\"mytable.db\"}'\n    http://localhost:8000/api/tables\n```\n\nIf the command was successful, a response containing the meta data of the created table will be given back.\nYou will find in it the id of that table.\nThis id is a unique string identifying this table and is necessary to make any operation on it.\n\n```json\n{\n  \"id\":\"56_df0f\",\n  \"name\":\"mytable.db\",\n  \"data\":null,\n  \"description\":null,\n  \"maxLength\":null,\n  \"expireAfter\":null,\n  \"type\":\"Table\",\n  \"createdBy\":null,\n  \"createdDate\":\"2016-02-12T14:49:30+00:00\",\n  \"modifiedDate\":\"2016-02-15T13:03:20+00:00\",\n  \"length\":421,\n  \"keys\":{\n     \"temp1\":421,\n     \"temp2\":421\n  },\n  \"location\":null\n}\n```"
       }
-    }, 
+    },
     "/api/files": {
       "post": {
+        "parameters": [
+          {
+            "in": "body",
+            "description": "\nthe metadata of the file to be created\n\nexample:\n\n```json\n{\n   \"name\": \"myfile.txt\",\n   \"description\": \"an optional description\"\n}\n```",
+            "required": true,
+            "name": "metadata",
+            "schema": {
+              "$ref": "#/definitions/File"
+            }
+          },
+          {
+            "in": "query",
+            "name": "fields",
+            "required": false,
+            "x-nullable": true,
+            "items": {
+              "type": "string"
+            },
+            "type": "string",
+            "collectionFormat": "multi",
+            "default": null
+          }
+        ],
         "tags": [
           "file"
-        ], 
+        ],
         "responses": {
           "200": {
-            "description": "The file was successfully created", 
+            "description": "The file was successfully created",
             "schema": {
               "$ref": "#/definitions/File"
             }
           }
-        }, 
-        "parameters": [
-          {
-            "required": true, 
-            "in": "body", 
-            "description": "\nthe metadata of the file to be created\n\nexample:\n\n```json\n{\n   \"name\": \"myfile.txt\",\n   \"description\": \"an optional description\"\n}\n```", 
-            "name": "metadata", 
-            "schema": {
-              "$ref": "#/definitions/File"
-            }
-          }, 
-          {
-            "name": "fields", 
-            "in": "query", 
-            "items": {
-              "type": "string"
-            }, 
-            "required": false, 
-            "type": "string", 
-            "collectionFormat": "multi"
-          }
-        ], 
+        },
         "description": "Creates a new file.\n\nThere are 2 ways to pass directly the content of the file on the same request :\n\n - pass the content as a base-64 encoded ASCII string through the key 'content' of the metadata object.\n\n example:\n\n```json\n{\n   \"name\": \"myfile.txt\",\n   \"content\": \"SGVsbG8gd29ybGQgIQ==\" // 'Hello world !' in base-64\n}\n```\n\n - multipart/related request: transfers the content along with metadata that describes it. *The metadata part must come first*.\n\n example:\n\n```\nPOST /ething/api/files HTTP/1.1\nHost: <YOUR_HOST>\nContent-Type: multipart/related; boundary=foo_bar_baz\n\n--foo_bar_baz\nContent-Type: application/json; charset=UTF-8\n\n{\n  \"name\": \"image.jpg\"\n}\n\n--foo_bar_baz\nContent-Type: image/jpeg\n\n<JPEG DATA>\n--foo_bar_baz--\n```\n\n#### cURL example\n\nThe next command will create a new file 'myfile.txt'.\n\n```bash\ncurl\n    -H 'X-API-KEY: <YOUR_API_KEY>'\n    -H \"Content-Type: application/json\"\n    -X POST\n    -d '{\"name\":\"myfile.txt\"}'\n    http://localhost:8000/api/files\n```\n\nIf the command was successful, a response containing the meta data of the created file will be given back.\nYou will find in it the id of that file.\nThis id is a unique string identifying this file and is necessary to make any operation on it.\n\n```json\n{\n  \"id\":\"73c66-4\",\n  \"name\":\"myfile.txt\",\n  \"data\":null,\n  \"description\":null,\n  \"expireAfter\":null,\n  \"type\":\"File\",\n  \"createdBy\":{\n   \"id\":\"56a7B-5\",\n   \"type\":\"Device\"\n  },\n  \"createdDate\":\"2016-01-27T07:46:43+00:00\",\n  \"modifiedDate\":\"2016-02-13T10:34:31+00:00\",\n  \"mime\":\"text/plain\",\n  \"size\":0,\n  \"location\":null,\n  \"hasThumbnail\":false,\n  \"isText\": true\n}\n```"
       }
-    }, 
+    },
     "/api/apps": {
       "post": {
-        "tags": [
-          "app"
-        ], 
-        "responses": {
-          "200": {
-            "description": "The application was successfully created", 
-            "schema": {
-              "$ref": "#/definitions/App"
-            }
-          }
-        }, 
         "parameters": [
           {
-            "required": true, 
-            "in": "body", 
-            "description": "The metadata of the application to be created.", 
-            "name": "metadata", 
+            "in": "body",
+            "description": "The metadata of the application to be created.",
+            "required": true,
+            "name": "metadata",
             "schema": {
               "$ref": "#/definitions/App"
             }
-          }, 
+          },
           {
-            "name": "fields", 
-            "in": "query", 
+            "type": "string",
+            "collectionFormat": "multi",
+            "name": "fields",
+            "in": "query",
+            "required": false,
             "items": {
               "type": "string"
-            }, 
-            "required": false, 
-            "type": "string", 
-            "collectionFormat": "multi"
+            }
           }
-        ], 
+        ],
+        "tags": [
+          "app"
+        ],
+        "responses": {
+          "200": {
+            "description": "The application was successfully created",
+            "schema": {
+              "$ref": "#/definitions/App"
+            }
+          }
+        },
         "description": "Creates a new application.\n\nAn application consists of a single HTML page. Use the Javascript SDK to easily build an application.\n\n example:\n\n```html\n<!DOCTYPE html>\n<html>\n\n  <head>\n\n    <!-- CORE -->\n    <script src=\"__JS_URL__\"></script>\n\n  </head>\n\n  <body>\n\n    <!-- your content goes here -->\n\n    <!-- APP -->\n    <script type=\"text/javascript\">\n      var main = function() {\n        var app = EThing.auth.getApp();\n\n        var textnode = document.createTextNode('application : ' + app.name());\n        document.body.appendChild(textnode);\n\n      };\n\n      EThing.initialize({\n        serverUrl: '__SERVER_URL__',\n        apiKey: '__API_KEY__'\n      }, main || null, function(error) {\n        // on error\n        alert(error.message);\n      });\n\n    </script>\n\n  </body>\n</html>\n```\n\n#### Preprocessor definitions\n\n\nThe following string are automatically replaced in the HTML code :\n\n| Definition     | Value                                                                |\n|----------------|----------------------------------------------------------------------|\n| __API_KEY__    | the API key of this application                                      |\n| __ID__         | the ID of this application                                           |\n| __NAME__       | the name of this application                                         |\n| __SERVER_URL__ | the url of the server                                                |\n| __JS_URL__     | the url of Javascript API                                            |\n\n\n\nThere are 2 ways to pass directly the code and the icon data of the application on the same request :\n\n - pass the code or/and the icon data as a base-64 encoded ASCII string through the key 'content' and 'icon' respectively of the metadata object.\n\n example:\n\n```json\n{\n   \"name\": \"myapp\",\n   \"content\": \"SGVsb...GQgIQ==\", // your code in base-64\n   \"icon\": \"bXkga...biBkYXRh\" // your icon data in base-64\n}\n```\n\n - multipart/related request: transfers the code and/or the icon binary data along with metadata. The order of the different part does not matter. The code part must have the Content-Type header set to 'text/html' or 'text/plain'.\n   The icon part must have the Content-Type header set to a compatible image MIME type.\n\n example:\n\n```\nPOST /ething/api/apps HTTP/1.1\nHost: <YOUR_HOST>\nContent-Type: multipart/related; boundary=foo_bar_baz\n\n--foo_bar_baz\nContent-Type: application/json; charset=UTF-8\n\n{\n  \"name\": \"myapp\"\n}\n\n--foo_bar_baz\nContent-Type: image/jpeg\n\n<JPEG DATA>\n\n--foo_bar_baz\nContent-Type: text/html\n\n<!doctype html>\n<html lang=\"en\">\n<head>\n  <meta charset=\"utf-8\">\n  <title>myapp</title>\n</head>\n<body>\n  Hello World !\n</body>\n</html>\n--foo_bar_baz--\n```"
       }
-    }, 
-    "/api/auth": {}, 
+    },
+    "/api/auth": {},
     "/api/devices/{r}/call/{operationId}": {
-      "post": {
+      "get": {
+        "parameters": [
+          {
+            "in": "path",
+            "name": "operationId",
+            "required": true,
+            "description": "id of the operation.",
+            "type": "string"
+          },
+          {
+            "required": true,
+            "type": "string",
+            "in": "path",
+            "name": "r",
+            "description": "An id representing a Resource"
+          }
+        ],
         "tags": [
           "device"
-        ], 
+        ],
         "responses": {
           "200": {
             "description": "The response of the device."
           }
-        }, 
+        },
+        "description": "Execute an operation identified by operationId. The parameters must be passed in the query string."
+      },
+      "post": {
         "parameters": [
           {
-            "required": true, 
-            "type": "string", 
-            "description": "id of the resource. Devices or Apps using the api key authentication may use the word 'me' to replace their id.", 
-            "in": "path", 
-            "name": "id"
-          }, 
+            "in": "path",
+            "name": "operationId",
+            "required": true,
+            "description": "id of the operation.",
+            "type": "string"
+          },
           {
-            "description": "id of the operation.", 
-            "required": true, 
-            "in": "path", 
-            "type": "string", 
-            "name": "operationId"
-          }, 
-          {
-            "required": false, 
-            "in": "body", 
-            "description": "required parameters for this operation.", 
-            "name": "data", 
+            "in": "body",
+            "description": "required parameters for this operation.",
+            "required": false,
+            "name": "data",
             "schema": {
               "type": "object"
             }
-          }, 
+          },
           {
-            "description": "An id representing a Resource", 
-            "required": true, 
-            "type": "string", 
-            "name": "r", 
-            "in": "path"
+            "required": true,
+            "type": "string",
+            "in": "path",
+            "name": "r",
+            "description": "An id representing a Resource"
           }
-        ], 
-        "description": "Execute an operation identified by operationId. The parameters can either be passed in the query string or in the body as a JSON object or a x-www-form-urlencoded string."
-      }, 
-      "get": {
+        ],
         "tags": [
           "device"
-        ], 
+        ],
         "responses": {
           "200": {
             "description": "The response of the device."
           }
-        }, 
-        "parameters": [
-          {
-            "description": "id of the operation.", 
-            "required": true, 
-            "in": "path", 
-            "type": "string", 
-            "name": "operationId"
-          }, 
-          {
-            "description": "An id representing a Resource", 
-            "required": true, 
-            "type": "string", 
-            "name": "r", 
-            "in": "path"
-          }
-        ], 
-        "description": "Execute an operation identified by operationId. The parameters must be passed in the query string."
+        },
+        "description": "Execute an operation identified by operationId. The parameters can either be passed in the query string or in the body as a JSON object or a x-www-form-urlencoded string."
       }
-    }, 
+    },
     "/api/devices/{r}/api/{operationId}": {
       "get": {
+        "parameters": [
+          {
+            "in": "path",
+            "name": "operationId",
+            "required": true,
+            "description": "id of the operation.",
+            "type": "string"
+          },
+          {
+            "required": true,
+            "type": "string",
+            "in": "path",
+            "name": "r",
+            "description": "An id representing a Resource"
+          }
+        ],
         "tags": [
           "device"
-        ], 
+        ],
         "responses": {
           "200": {
             "description": "object describing the operation."
           }
-        }, 
-        "parameters": [
-          {
-            "description": "id of the operation.", 
-            "required": true, 
-            "in": "path", 
-            "type": "string", 
-            "name": "operationId"
-          }, 
-          {
-            "description": "An id representing a Resource", 
-            "required": true, 
-            "type": "string", 
-            "name": "r", 
-            "in": "path"
-          }
-        ], 
+        },
         "description": "Retrieves an object describing the operation identified by operationId."
       }
-    }, 
+    },
     "/api/devices/{r}/api": {
       "get": {
+        "parameters": [
+          {
+            "required": true,
+            "type": "string",
+            "in": "path",
+            "name": "r",
+            "description": "An id representing a Resource"
+          }
+        ],
         "tags": [
           "device"
-        ], 
+        ],
         "responses": {
           "200": {
             "description": "object describing the operations available for this device."
           }
-        }, 
-        "parameters": [
-          {
-            "description": "An id representing a Resource", 
-            "required": true, 
-            "type": "string", 
-            "name": "r", 
-            "in": "path"
-          }
-        ], 
+        },
         "description": "Retrieves an object describing the operations available for this device."
       }
-    }, 
+    },
     "/api/tables/{r}/statistics": {
       "get": {
+        "parameters": [
+          {
+            "required": true,
+            "type": "string",
+            "in": "path",
+            "name": "r",
+            "description": "An id representing a Resource"
+          },
+          {
+            "required": true,
+            "type": "string",
+            "in": "query",
+            "name": "key",
+            "description": "the name of the key. Statistics can only be computed for a single key."
+          },
+          {
+            "required": false,
+            "type": "string",
+            "in": "query",
+            "name": "q",
+            "description": "A query string to select the rows used for the statistics computation"
+          }
+        ],
         "tags": [
           "table"
-        ], 
+        ],
         "responses": {
           "200": {
-            "description": "The records was successfully updated", 
+            "description": "The records was successfully updated",
             "schema": {
-              "type": "object", 
+              "type": "object",
               "description": "The statistics object."
             }
           }
-        }, 
-        "parameters": [
-          {
-            "description": "An id representing a Resource", 
-            "required": true, 
-            "type": "string", 
-            "name": "r", 
-            "in": "path"
-          }, 
-          {
-            "description": "A query string to select the rows used for the statistics computation", 
-            "required": false, 
-            "type": "string", 
-            "name": "q", 
-            "in": "query"
-          }, 
-          {
-            "description": "the name of the key. Statistics can only be computed for a single key.", 
-            "required": true, 
-            "type": "string", 
-            "name": "key", 
-            "in": "query"
-          }
-        ], 
+        },
         "description": "Compute statistics of a column (=key)"
       }
-    }, 
+    },
     "/api/tables/{r}/replace": {
       "post": {
+        "parameters": [
+          {
+            "required": true,
+            "type": "string",
+            "in": "path",
+            "name": "r",
+            "description": "An id representing a Resource"
+          },
+          {
+            "type": "string",
+            "in": "query",
+            "name": "invalid_field",
+            "enum": [
+              "rename",
+              "stop",
+              "skip",
+              "none"
+            ],
+            "required": false,
+            "default": "rename",
+            "description": "The behaviour to adopt when an invalid field name appears."
+          },
+          {
+            "type": "string",
+            "collectionFormat": "multi",
+            "name": "fields",
+            "in": "query",
+            "required": false,
+            "items": {
+              "type": "string"
+            }
+          },
+          {
+            "type": "boolean",
+            "in": "query",
+            "name": "upsert",
+            "required": false,
+            "default": false,
+            "description": "If true and no records was found, the data will be added to the table as a new record."
+          },
+          {
+            "required": true,
+            "type": "string",
+            "in": "query",
+            "name": "q",
+            "description": "A query that select the rows to update"
+          }
+        ],
         "tags": [
           "table"
-        ], 
+        ],
         "responses": {
           "200": {
-            "description": "The records was successfully updated", 
+            "description": "The records was successfully updated",
             "schema": {
               "$ref": "#/definitions/Table"
             }
           }
-        }, 
-        "parameters": [
-          {
-            "description": "An id representing a Resource", 
-            "required": true, 
-            "type": "string", 
-            "name": "r", 
-            "in": "path"
-          }, 
-          {
-            "description": "A query that select the rows to update", 
-            "required": true, 
-            "type": "string", 
-            "name": "q", 
-            "in": "query"
-          }, 
-          {
-            "name": "fields", 
-            "in": "query", 
-            "items": {
-              "type": "string"
-            }, 
-            "required": false, 
-            "type": "string", 
-            "collectionFormat": "multi"
-          }, 
-          {
-            "enum": [
-              "rename", 
-              "stop", 
-              "skip", 
-              "none"
-            ], 
-            "name": "invalid_field", 
-            "in": "query", 
-            "default": "rename", 
-            "required": false, 
-            "type": "string", 
-            "description": "The behaviour to adopt when an invalid field name appears."
-          }, 
-          {
-            "name": "upsert", 
-            "in": "query", 
-            "default": false, 
-            "required": false, 
-            "type": "boolean", 
-            "description": "If true and no records was found, the data will be added to the table as a new record."
-          }
-        ], 
+        },
         "description": "Update records in a table"
       }
-    }, 
+    },
     "/api/tables/{r}/remove": {
       "post": {
+        "parameters": [
+          {
+            "required": true,
+            "type": "string",
+            "in": "path",
+            "name": "r",
+            "description": "An id representing a Resource"
+          },
+          {
+            "type": "string",
+            "collectionFormat": "multi",
+            "name": "fields",
+            "in": "query",
+            "required": false,
+            "items": {
+              "type": "string"
+            }
+          },
+          {
+            "type": "string",
+            "collectionFormat": "multi",
+            "name": "ids",
+            "in": "query",
+            "items": {
+              "type": "string"
+            },
+            "required": false,
+            "description": "The records id to be removed as a comma separated list."
+          }
+        ],
         "tags": [
           "table"
-        ], 
+        ],
         "responses": {
           "200": {
-            "description": "The records was successfully deleted", 
+            "description": "The records was successfully deleted",
             "schema": {
               "$ref": "#/definitions/Table"
             }
           }
-        }, 
-        "parameters": [
-          {
-            "description": "An id representing a Resource", 
-            "required": true, 
-            "type": "string", 
-            "name": "r", 
-            "in": "path"
-          }, 
-          {
-            "name": "fields", 
-            "in": "query", 
-            "items": {
-              "type": "string"
-            }, 
-            "required": false, 
-            "type": "string", 
-            "collectionFormat": "multi"
-          }, 
-          {
-            "name": "ids", 
-            "in": "query", 
-            "items": {
-              "type": "string"
-            }, 
-            "description": "The records to be removed.", 
-            "required": false, 
-            "type": "string", 
-            "collectionFormat": "multi"
-          }
-        ], 
+        },
         "description": "Remove one or more records in a table"
       }
-    }, 
+    },
     "/api/files/{r}/icon": {
       "get": {
-        "description": "Retrieves the icon of an application if there is one defined.", 
+        "parameters": [
+          {
+            "required": true,
+            "type": "string",
+            "in": "path",
+            "name": "r",
+            "description": "An id representing a Resource"
+          }
+        ],
         "tags": [
           "app"
-        ], 
+        ],
+        "produces": [
+          "image/jpeg",
+          "image/png"
+        ],
         "responses": {
           "200": {
-            "description": "The icon of this application.", 
+            "description": "The icon of this application.",
             "schema": {
               "type": "file"
             }
           }
-        }, 
-        "parameters": [
-          {
-            "description": "An id representing a Resource", 
-            "required": true, 
-            "type": "string", 
-            "name": "r", 
-            "in": "path"
-          }
-        ], 
-        "produces": [
-          "image/jpeg", 
-          "image/png"
-        ]
+        },
+        "description": "Retrieves the icon of an application if there is one defined."
       }
-    }, 
+    },
     "/api/resources/{r}": {
       "get": {
+        "parameters": [
+          {
+            "required": true,
+            "type": "string",
+            "in": "path",
+            "name": "r",
+            "description": "An id representing a Resource"
+          },
+          {
+            "type": "string",
+            "collectionFormat": "multi",
+            "name": "fields",
+            "in": "query",
+            "required": false,
+            "items": {
+              "type": "string"
+            }
+          }
+        ],
         "tags": [
           "resource"
-        ], 
+        ],
         "responses": {
           "200": {
-            "description": "resource object", 
+            "description": "resource object",
             "schema": {
               "$ref": "#/definitions/Resource"
             }
           }
-        }, 
+        },
+        "description": "Returns the meta-data of a resource in JSON."
+      },
+      "delete": {
         "parameters": [
           {
-            "description": "An id representing a Resource", 
-            "required": true, 
-            "type": "string", 
-            "name": "r", 
-            "in": "path"
-          }, 
+            "required": true,
+            "type": "string",
+            "in": "path",
+            "name": "r",
+            "description": "An id representing a Resource"
+          },
           {
-            "name": "fields", 
-            "in": "query", 
-            "items": {
-              "type": "string"
-            }, 
-            "required": false, 
-            "type": "string", 
-            "collectionFormat": "multi"
+            "required": false,
+            "type": "boolean",
+            "in": "query",
+            "default": false,
+            "name": "children"
           }
-        ], 
-        "description": "Returns the meta-data of a resource in JSON."
-      }, 
-      "delete": {
+        ],
         "tags": [
           "resource"
-        ], 
+        ],
         "responses": {
           "200": {
             "description": "the resource has been deleted successfully"
           }
-        }, 
+        },
+        "description": "deletes a resource"
+      },
+      "patch": {
         "parameters": [
           {
-            "description": "An id representing a Resource", 
-            "required": true, 
-            "type": "string", 
-            "name": "r", 
-            "in": "path"
-          }, 
+            "in": "body",
+            "description": "the attributes to modify",
+            "required": true,
+            "name": "modification",
+            "schema": {
+              "$ref": "#/definitions/Resource"
+            }
+          },
           {
-            "default": false, 
-            "required": false, 
-            "type": "boolean", 
-            "name": "children", 
-            "in": "query"
+            "required": true,
+            "type": "string",
+            "in": "path",
+            "name": "r",
+            "description": "An id representing a Resource"
+          },
+          {
+            "type": "string",
+            "collectionFormat": "multi",
+            "name": "fields",
+            "in": "query",
+            "required": false,
+            "items": {
+              "type": "string"
+            }
           }
-        ], 
-        "description": "deletes a resource"
-      }, 
-      "patch": {
+        ],
         "tags": [
           "resource"
-        ], 
+        ],
         "responses": {
           "200": {
-            "description": "resource successfully updated", 
+            "description": "resource successfully updated",
             "schema": {
               "$ref": "#/definitions/Resource"
             }
           }
-        }, 
-        "parameters": [
-          {
-            "required": true, 
-            "in": "body", 
-            "description": "the attributes to modify", 
-            "name": "modification", 
-            "schema": {
-              "$ref": "#/definitions/Resource"
-            }
-          }, 
-          {
-            "description": "An id representing a Resource", 
-            "required": true, 
-            "type": "string", 
-            "name": "r", 
-            "in": "path"
-          }, 
-          {
-            "name": "fields", 
-            "in": "query", 
-            "items": {
-              "type": "string"
-            }, 
-            "required": false, 
-            "type": "string", 
-            "collectionFormat": "multi"
-          }
-        ], 
+        },
         "description": "update a resource. Only properties which are not readonly can be modified.\n\nRename a resource :\n\n```json\n{\n   \"name\":\"myFileRenamed.txt\"\n}\n```\n\nClear a description :\n\n```json\n{\n   \"description\":null\n}\n```"
       }
-    }, 
+    },
     "/api/tables/{r}": {
       "get": {
-        "description": "Retrieves the content of a table.\n\n#### cURL examples\n\n```bash\n# get all the data of a table :\ncurl -H 'X-API-KEY: <YOUR_API_KEY>' http://localhost:8000/api/tables/<TABLE_ID>\n\n# only the first 20 rows :\ncurl -H 'X-API-KEY: <YOUR_API_KEY>' http://localhost:8000/api/tables/<TABLE_ID>?start=0&length=20\n\n# only the last 20 rows :\ncurl -H 'X-API-KEY: <YOUR_API_KEY>' http://localhost:8000/api/tables/<TABLE_ID>?start=-20\n\n# only the last 10 rows sorted by the field \"temperature\" in ascending order\n# (put a minus before the name of the field if you want to sort in descending order)\ncurl -H 'X-API-KEY: <YOUR_API_KEY>' http://localhost:8000/api/tables/<TABLE_ID>?start=-10&sort=temperature\n```", 
-        "tags": [
-          "table"
-        ], 
-        "responses": {
-          "200": {
-            "description": "The records of this table", 
-            "schema": {
-              "items": {
-                "type": "object", 
-                "description": "record's object. Every record has at least the 'id' and 'date' keys.", 
-                "properties": {
-                  "date": {
-                    "type": "string", 
-                    "description": "the create date of this record", 
-                    "format": "date-time"
-                  }, 
-                  "id": {
-                    "type": "string", 
-                    "description": "an unique id to identify a record"
-                  }
-                }
-              }, 
-              "type": "array"
-            }
-          }
-        }, 
         "parameters": [
           {
-            "description": "An id representing a Resource", 
-            "required": true, 
-            "type": "string", 
-            "name": "r", 
-            "in": "path"
-          }, 
+            "required": true,
+            "type": "string",
+            "in": "path",
+            "name": "r",
+            "description": "An id representing a Resource"
+          },
           {
-            "description": "the key on which to do the sorting, by default the sort is made by date ascending. To make the sort descending, prepend the field name by minus \"-\". For instance, \"-date\" will sort by date descending", 
-            "required": false, 
-            "type": "string", 
-            "name": "sort", 
-            "in": "query"
-          }, 
+            "required": false,
+            "type": "string",
+            "in": "query",
+            "name": "sort",
+            "description": "the key on which to do the sorting, by default the sort is made by date ascending. To make the sort descending, prepend the field name by minus \"-\". For instance, \"-date\" will sort by date descending"
+          },
           {
-            "name": "datefmt", 
-            "in": "query", 
-            "default": "rfc3339", 
-            "required": false, 
-            "type": "string", 
-            "description": "the format of the date field (default to RFC3339)"
-          }, 
+            "type": "integer",
+            "in": "query",
+            "name": "length",
+            "minimum": 0,
+            "format": "int32",
+            "required": false,
+            "description": "Maximum number of rows to return. If not set, returns until the end"
+          },
           {
-            "name": "fields", 
-            "in": "query", 
+            "type": "integer",
+            "in": "query",
+            "name": "start",
+            "format": "int32",
+            "required": false,
+            "default": 0,
+            "description": "Position of the first rows to return. If start is negative, the position will start from the end. (default to 0)"
+          },
+          {
+            "type": "string",
+            "collectionFormat": "multi",
+            "name": "fields",
+            "in": "query",
             "items": {
               "type": "string"
-            }, 
-            "description": "", 
-            "required": false, 
-            "type": "string", 
-            "collectionFormat": "multi"
-          }, 
+            },
+            "required": false,
+            "description": ""
+          },
           {
+            "required": false,
+            "type": "string",
+            "in": "query",
+            "name": "query",
+            "description": "Query string for filtering results"
+          },
+          {
+            "type": "string",
+            "in": "query",
+            "name": "date_format",
+            "required": false,
+            "default": "rfc3339",
+            "description": "the format of the date field (default to RFC3339) : timestamp,timestamp_ms,rfc3339"
+          },
+          {
+            "type": "string",
+            "in": "query",
+            "name": "fmt",
             "enum": [
-              "json", 
-              "json_pretty", 
-              "csv", 
+              "json",
+              "json_pretty",
+              "csv",
               "csv_no_header"
-            ], 
-            "name": "fmt", 
-            "in": "query", 
-            "default": "json", 
-            "required": false, 
-            "type": "string", 
-            "description": "the output format (default to JSON)"
-          }, 
-          {
-            "name": "start", 
-            "in": "query", 
-            "default": 0, 
-            "format": "int32", 
-            "required": false, 
-            "type": "integer", 
-            "description": "Position of the first rows to return. If start is negative, the position will start from the end. (default to 0)"
-          }, 
-          {
-            "minimum": 0, 
-            "name": "length", 
-            "in": "query", 
-            "format": "int32", 
-            "required": false, 
-            "type": "integer", 
-            "description": "Maximum number of rows to return. If not set, returns until the end"
-          }, 
-          {
-            "description": "Query string for filtering results", 
-            "required": false, 
-            "type": "string", 
-            "name": "q", 
-            "in": "query"
+            ],
+            "required": false,
+            "default": "json",
+            "description": "the output format (default to JSON) : json,json_pretty,csv,csv_no_header"
           }
-        ], 
-        "produces": [
-          "application/json", 
-          "text/plain"
-        ]
-      }, 
-      "put": {
-        "description": "Set the content of a table. The new data will erase the previous one.", 
+        ],
         "tags": [
           "table"
-        ], 
+        ],
+        "produces": [
+          "application/json",
+          "text/plain"
+        ],
         "responses": {
           "200": {
-            "description": "The content was successfully set. The table metadata is returned.", 
+            "description": "The records of this table",
             "schema": {
-              "$ref": "#/definitions/Table"
+              "type": "array",
+              "items": {
+                "type": "object",
+                "description": "record's object. Every record has at least the 'id' and 'date' keys.",
+                "properties": {
+                  "id": {
+                    "type": "string",
+                    "description": "an unique id to identify a record"
+                  },
+                  "date": {
+                    "type": "string",
+                    "format": "date-time",
+                    "description": "the create date of this record"
+                  }
+                }
+              }
             }
           }
-        }, 
+        },
+        "description": "Retrieves the content of a table.\n\n#### cURL examples\n\n```bash\n# get all the data of a table :\ncurl -H 'X-API-KEY: <YOUR_API_KEY>' http://localhost:8000/api/tables/<TABLE_ID>\n\n# only the first 20 rows :\ncurl -H 'X-API-KEY: <YOUR_API_KEY>' http://localhost:8000/api/tables/<TABLE_ID>?start=0&length=20\n\n# only the last 20 rows :\ncurl -H 'X-API-KEY: <YOUR_API_KEY>' http://localhost:8000/api/tables/<TABLE_ID>?start=-20\n\n# only the last 10 rows sorted by the field \"temperature\" in ascending order\n# (put a minus before the name of the field if you want to sort in descending order)\ncurl -H 'X-API-KEY: <YOUR_API_KEY>' http://localhost:8000/api/tables/<TABLE_ID>?start=-10&sort=temperature\n```"
+      },
+      "put": {
         "parameters": [
           {
-            "required": true, 
-            "in": "body", 
-            "description": "The content to be inserted as an array of object.\n\nThe data must be sent in a JSON formatted object :\n\n```json\n[{\n    \"<KEY>\":<VALUE>\n}]\n```\n\nexample:\n\n```json\n[\n    {\n      \"date\": \"2016-02-06T15:03:07+01:00\",\n      \"temperature\": 12.5,\n      \"pressure\": 101325\n    },\n    {\n      \"date\": \"2016-02-06T16:03:07+01:00\",\n      \"temperature\": 13.5,\n      \"pressure\": 101212\n    }\n]\n```\n\nIf the 'date' field is not present, the current date will be set automatically.\nIf an 'id' field is present, it will be automatically be resetted to a new value.", 
-            "name": "content", 
+            "in": "body",
+            "description": "The content to be inserted as an array of object.\n\nThe data must be sent in a JSON formatted object :\n\n```json\n[{\n    \"<KEY>\":<VALUE>\n}]\n```\n\nexample:\n\n```json\n[\n    {\n      \"date\": \"2016-02-06T15:03:07+01:00\",\n      \"temperature\": 12.5,\n      \"pressure\": 101325\n    },\n    {\n      \"date\": \"2016-02-06T16:03:07+01:00\",\n      \"temperature\": 13.5,\n      \"pressure\": 101212\n    }\n]\n```\n\nIf the 'date' field is not present, the current date will be set automatically.\nIf an 'id' field is present, it will be automatically be resetted to a new value.",
+            "required": true,
+            "name": "content",
             "schema": {
+              "type": "array",
               "items": {
                 "type": "object"
-              }, 
-              "type": "array"
+              }
             }
-          }, 
+          },
           {
-            "description": "An id representing a Resource", 
-            "required": true, 
-            "type": "string", 
-            "name": "r", 
-            "in": "path"
-          }, 
+            "required": true,
+            "type": "string",
+            "in": "path",
+            "name": "r",
+            "description": "An id representing a Resource"
+          },
           {
-            "name": "skip_error", 
-            "in": "query", 
-            "default": true, 
-            "required": false, 
-            "type": "boolean", 
-            "description": "Whether to skip data on error or not."
-          }, 
-          {
+            "type": "string",
+            "in": "query",
+            "name": "invalid_field",
             "enum": [
-              "rename", 
-              "stop", 
-              "skip", 
+              "rename",
+              "stop",
+              "skip",
               "none"
-            ], 
-            "name": "invalid_field", 
-            "in": "query", 
-            "default": "rename", 
-            "required": false, 
-            "type": "string", 
+            ],
+            "required": false,
+            "default": "rename",
             "description": "The behaviour to adopt when an invalid field name appears."
+          },
+          {
+            "type": "boolean",
+            "in": "query",
+            "name": "skip_error",
+            "required": false,
+            "default": true,
+            "description": "Whether to skip data on error or not."
           }
-        ], 
-        "consumes": [
-          "application/json"
-        ]
-      }, 
-      "post": {
+        ],
         "tags": [
           "table"
-        ], 
+        ],
+        "consumes": [
+          "application/json"
+        ],
         "responses": {
           "200": {
-            "description": "The record was successfully inserted. The table metadata is returned.", 
+            "description": "The content was successfully set. The table metadata is returned.",
             "schema": {
               "$ref": "#/definitions/Table"
             }
           }
-        }, 
+        },
+        "description": "Set the content of a table. The new data will erase the previous one."
+      },
+      "post": {
         "parameters": [
           {
-            "required": true, 
-            "in": "body", 
-            "description": "The record to be inserted.\n\nThe data must be sent in a JSON formatted object :\n\n```json\n{\n    \"<KEY>\":<VALUE>\n}\n```\n\ncURL example :\n\n```bash\ncurl\n    -H 'X-API-KEY: <YOUR_API_KEY>'\n    -H \"Content-Type: application/json\"\n    -X POST\n    -d '{\"temperature\":15.2, \"comment\":\"outdoor\"}'\n    http://localhost:8000/api/tables/<TABLE_ID>\n```", 
-            "name": "record", 
+            "in": "body",
+            "description": "The record to be inserted.\n\nThe data must be sent in a JSON formatted object :\n\n```json\n{\n    \"<KEY>\":<VALUE>\n}\n```\n\ncURL example :\n\n```bash\ncurl\n    -H 'X-API-KEY: <YOUR_API_KEY>'\n    -H \"Content-Type: application/json\"\n    -X POST\n    -d '{\"temperature\":15.2, \"comment\":\"outdoor\"}'\n    http://localhost:8000/api/tables/<TABLE_ID>\n```",
+            "required": true,
+            "name": "record",
             "schema": {
               "type": "object"
             }
-          }, 
+          },
           {
-            "description": "An id representing a Resource", 
-            "required": true, 
-            "type": "string", 
-            "name": "r", 
-            "in": "path"
-          }, 
+            "required": true,
+            "type": "string",
+            "in": "path",
+            "name": "r",
+            "description": "An id representing a Resource"
+          },
           {
-            "name": "fields", 
-            "in": "query", 
+            "type": "string",
+            "in": "query",
+            "name": "invalid_field",
+            "enum": [
+              "rename",
+              "stop",
+              "skip",
+              "none"
+            ],
+            "required": false,
+            "default": "rename",
+            "description": "The behaviour to adopt when an invalid field name appears."
+          },
+          {
+            "type": "string",
+            "collectionFormat": "multi",
+            "name": "fields",
+            "in": "query",
+            "required": false,
             "items": {
               "type": "string"
-            }, 
-            "required": false, 
-            "type": "string", 
-            "collectionFormat": "multi"
-          }, 
-          {
-            "enum": [
-              "rename", 
-              "stop", 
-              "skip", 
-              "none"
-            ], 
-            "name": "invalid_field", 
-            "in": "query", 
-            "default": "rename", 
-            "required": false, 
-            "type": "string", 
-            "description": "The behaviour to adopt when an invalid field name appears."
+            }
           }
-        ], 
-        "description": "Insert a new record in a table"
-      }
-    }, 
-    "/api/files/{r}": {
-      "put": {
-        "description": "Upload the content of a file.\n\n#### cURL example\n\nThe next command show you how to send the content of the local file 'data.txt' into a file.\n\n```bash\ncurl\n    -H 'X-API-KEY: <YOUR_API_KEY>'\n    -X PUT\n    --data @data.txt\n    http://localhost:8000/api/files/<FILE_ID>\n```", 
+        ],
         "tags": [
-          "file"
-        ], 
+          "table"
+        ],
         "responses": {
           "200": {
-            "description": "The file's metadata", 
+            "description": "The record was successfully inserted. The table metadata is returned.",
+            "schema": {
+              "$ref": "#/definitions/Table"
+            }
+          }
+        },
+        "description": "Insert a new record in a table"
+      }
+    },
+    "/api/files/{r}": {
+      "get": {
+        "parameters": [
+          {
+            "required": true,
+            "type": "string",
+            "in": "path",
+            "name": "r",
+            "description": "An id representing a Resource"
+          }
+        ],
+        "tags": [
+          "file"
+        ],
+        "produces": [
+          "*/*"
+        ],
+        "responses": {
+          "200": {
+            "description": "The content of this file",
+            "schema": {
+              "type": "file"
+            }
+          }
+        },
+        "description": "Retrieves the content of a file.\n\n#### cURL example\n\nThe next command show you how to read the content of a file identified by its id.\n\n```bash\ncurl -H 'X-API-KEY: <YOUR_API_KEY>' http://localhost:8000/api/files/<FILE_ID>\n```"
+      },
+      "put": {
+        "parameters": [
+          {
+            "in": "body",
+            "description": "The new content. Could be of any type.",
+            "required": true,
+            "name": "content",
+            "schema": {
+              "type": "string",
+              "format": "binary"
+            }
+          },
+          {
+            "required": true,
+            "type": "string",
+            "in": "path",
+            "name": "r",
+            "description": "An id representing a Resource"
+          },
+          {
+            "in": "query",
+            "name": "fields",
+            "required": false,
+            "x-nullable": true,
+            "items": {
+              "type": "string"
+            },
+            "type": "string",
+            "collectionFormat": "multi",
+            "default": null
+          },
+          {
+            "type": "boolean",
+            "in": "query",
+            "name": "append",
+            "required": false,
+            "default": false,
+            "description": "If true, the content will be appended."
+          }
+        ],
+        "tags": [
+          "file"
+        ],
+        "consumes": [
+          "*/*"
+        ],
+        "responses": {
+          "200": {
+            "description": "The file's metadata",
             "schema": {
               "$ref": "#/definitions/File"
             }
           }
-        }, 
+        },
+        "description": "Upload the content of a file.\n\n#### cURL example\n\nThe next command show you how to send the content of the local file 'data.txt' into a file.\n\n```bash\ncurl\n    -H 'X-API-KEY: <YOUR_API_KEY>'\n    -X PUT\n    --data @data.txt\n    http://localhost:8000/api/files/<FILE_ID>\n```"
+      }
+    },
+    "/api/apps/{r}": {
+      "get": {
         "parameters": [
           {
-            "required": true, 
-            "in": "body", 
-            "description": "The new content. Could be of any type.", 
-            "name": "content", 
-            "schema": {
-              "type": "string", 
-              "format": "binary"
-            }
-          }, 
+            "required": true,
+            "type": "string",
+            "in": "path",
+            "name": "r",
+            "description": "An id representing a Resource"
+          },
           {
-            "description": "An id representing a Resource", 
-            "required": true, 
-            "type": "string", 
-            "name": "r", 
-            "in": "path"
-          }, 
-          {
-            "name": "fields", 
-            "in": "query", 
-            "items": {
-              "type": "string"
-            }, 
-            "required": false, 
-            "type": "string", 
-            "collectionFormat": "multi"
-          }, 
-          {
-            "default": false, 
-            "required": false, 
-            "type": "boolean", 
-            "name": "append", 
-            "in": "query"
+            "type": "boolean",
+            "in": "query",
+            "name": "exec",
+            "required": false,
+            "default": false,
+            "description": "Set this parameter to '1' to get the HTML code ready to be executed in a browser (i.e. content-type set to 'text/html' and the preprocessor definitions set)."
           }
-        ], 
-        "consumes": [
-          "*/*"
-        ]
-      }, 
-      "get": {
-        "description": "Retrieves the content of a file.\n\n#### cURL example\n\nThe next command show you how to read the content of a file identified by its id.\n\n```bash\ncurl -H 'X-API-KEY: <YOUR_API_KEY>' http://localhost:8000/api/files/<FILE_ID>\n```", 
+        ],
         "tags": [
-          "file"
-        ], 
+          "app"
+        ],
+        "produces": [
+          "text/html"
+        ],
         "responses": {
           "200": {
-            "description": "The content of this file", 
+            "description": "The source code",
             "schema": {
               "type": "file"
             }
           }
-        }, 
+        },
+        "description": "Retrieves the script of an application."
+      },
+      "put": {
         "parameters": [
           {
-            "description": "An id representing a Resource", 
-            "required": true, 
-            "type": "string", 
-            "name": "r", 
-            "in": "path"
+            "in": "body",
+            "description": "The script as a HTML page.",
+            "required": true,
+            "name": "script",
+            "schema": {
+              "type": "string",
+              "format": "binary"
+            }
+          },
+          {
+            "required": true,
+            "type": "string",
+            "in": "path",
+            "name": "r",
+            "description": "An id representing a Resource"
+          },
+          {
+            "type": "string",
+            "collectionFormat": "multi",
+            "name": "fields",
+            "in": "query",
+            "required": false,
+            "items": {
+              "type": "string"
+            }
           }
-        ], 
-        "produces": [
-          "*/*"
-        ]
-      }
-    }, 
-    "/api/apps/{r}": {
-      "put": {
-        "description": "Set the script for this application. The script must be a single HTML page.", 
+        ],
         "tags": [
           "app"
-        ], 
+        ],
+        "consumes": [
+          "text/plain",
+          "text/html"
+        ],
         "responses": {
           "200": {
-            "description": "The script was set successfully. It returns back the meta data of this application.", 
+            "description": "The script was set successfully. It returns back the meta data of this application.",
             "schema": {
               "$ref": "#/definitions/App"
             }
           }
-        }, 
-        "parameters": [
-          {
-            "required": true, 
-            "in": "body", 
-            "description": "The script as a HTML page.", 
-            "name": "script", 
-            "schema": {
-              "type": "string", 
-              "format": "binary"
-            }
-          }, 
-          {
-            "description": "An id representing a Resource", 
-            "required": true, 
-            "type": "string", 
-            "name": "r", 
-            "in": "path"
-          }, 
-          {
-            "name": "fields", 
-            "in": "query", 
-            "items": {
-              "type": "string"
-            }, 
-            "required": false, 
-            "type": "string", 
-            "collectionFormat": "multi"
-          }
-        ], 
-        "consumes": [
-          "text/plain", 
-          "text/html"
-        ]
-      }, 
-      "get": {
-        "description": "Retrieves the script of an application.", 
-        "tags": [
-          "app"
-        ], 
-        "responses": {
-          "200": {
-            "description": "The source code", 
-            "schema": {
-              "type": "file"
-            }
-          }
-        }, 
-        "parameters": [
-          {
-            "description": "Set this parameter to '1' to get the HTML code ready to be executed in a browser (i.e. content-type set to 'text/html' and the preprocessor definitions set).", 
-            "default": false, 
-            "required": false, 
-            "in": "query", 
-            "type": "integer", 
-            "name": "exec"
-          }, 
-          {
-            "description": "An id representing a Resource", 
-            "required": true, 
-            "type": "string", 
-            "name": "r", 
-            "in": "path"
-          }
-        ], 
-        "produces": [
-          "text/html"
-        ]
+        },
+        "description": "Set the script for this application. The script must be a single HTML page."
       }
     }
-  }, 
-  "schemes": [
-    "http"
-  ], 
-  "parameters": {}, 
-  "tags": [], 
+  },
   "produces": [
     "application/json"
-  ], 
-  "securityDefinitions": {
-    "api_key_query": {
-      "in": "query", 
-      "type": "apiKey", 
-      "description": "authentication through an API key, used only by devices or apps.", 
-      "name": "api_key"
-    }, 
-    "api_key": {
-      "in": "header", 
-      "type": "apiKey", 
-      "description": "authentication through an API key, used only by devices or apps.", 
-      "name": "X-API-KEY"
-    }, 
-    "basic_auth": {
-      "type": "basic", 
-      "description": "basic authentication."
-    }
-  }, 
-  "definitions": {
-    "ZigateGateway": {
-      "allOf": [
-        {
-          "$ref": "#/definitions/Device"
-        }, 
-        {
-          "type": "object", 
-          "properties": {
-            "sdkVersion": {
-              "default": null, 
-              "type": "null", 
-              "description": "The version of the Zigate SDK."
-            }, 
-            "appVersion": {
-              "default": null, 
-              "type": "null", 
-              "description": "The version of the Zigate firmware."
-            }
-          }
-        }
-      ]
-    }, 
-    "RTSP": {
-      "description": "RTSP Device resource representation, usually IP camera", 
-      "allOf": [
-        {
-          "$ref": "#/definitions/Device"
-        }, 
-        {
-          "required": [
-            "url"
-          ], 
-          "type": "object", 
-          "properties": {
-            "url": {
-              "minLength": 1, 
-              "type": "string", 
-              "description": "The URL of the device rtsp://... .", 
-              "pattern": "^rtsp://"
-            }, 
-            "transport": {
-              "default": "tcp", 
-              "minLength": 1, 
-              "enum": [
-                "udp", 
-                "tcp", 
-                "http"
-              ], 
-              "type": "string", 
-              "description": "Lower transport protocol. Allowed values are the ones defined for the flags for rtsp_transport (see https://libav.org/avconv.html)."
-            }
-          }
-        }
-      ]
-    }, 
-    "RFLinkNode": {
-      "allOf": [
-        {
-          "$ref": "#/definitions/Device"
-        }, 
-        {
-          "required": [
-            "protocol", 
-            "createdBy", 
-            "nodeId", 
-            "subType", 
-            "switchId"
-          ], 
-          "type": "object", 
-          "properties": {
-            "subType": {
-              "enum": [
-                "switch", 
-                "light", 
-                "door", 
-                "motion", 
-                "thermometer", 
-                "weatherStation", 
-                "multimeter"
-              ], 
-              "type": "string", 
-              "description": "The subtype of the device, ie: thermometer, switch, ..."
-            }, 
-            "switchId": {
-              "type": "null", 
-              "description": "The switch id of the node. Only available for switch/door/motion subtypes."
-            }, 
-            "protocol": {
-              "minLength": 1, 
-              "type": "string", 
-              "description": "The protocol name of the node."
-            }, 
-            "nodeId": {
-              "minLength": 1, 
-              "type": "string", 
-              "description": "The hardware id of the node."
-            }, 
-            "createdBy": {
-              "type": "null", 
-              "description": "The id of the resource responsible of the creation of this resource, or null."
-            }
-          }
-        }
-      ]
-    }, 
-    "MihomeSensorHT": {
-      "description": "Mihome temperature/humidity/pressure Sensor Device class.", 
-      "allOf": [
-        {
-          "$ref": "#/definitions/MihomeDevice"
-        }, 
-        {
-          "type": "object", 
-          "properties": {}
-        }
-      ]
-    }, 
-    "MySensorsSerialGateway": {
-      "allOf": [
-        {
-          "$ref": "#/definitions/MySensorsGateway"
-        }, 
-        {
-          "required": [
-            "port"
-          ], 
-          "type": "object", 
-          "properties": {
-            "baudrate": {
-              "default": 57600, 
-              "enum": [
-                110, 
-                150, 
-                300, 
-                600, 
-                1200, 
-                2400, 
-                4800, 
-                9600, 
-                19200, 
-                38400, 
-                57600, 
-                115200
-              ], 
-              "type": "integer", 
-              "description": "The baudrate."
-            }, 
-            "port": {
-              "type": "string", 
-              "description": "The serial port name."
-            }
-          }
-        }
-      ]
-    }, 
-    "YeelightDevice": {
-      "allOf": [
-        {
-          "$ref": "#/definitions/Device"
-        }, 
-        {
-          "required": [
-            "host"
-          ], 
-          "type": "object", 
-          "properties": {
-            "host": {
-              "minLength": 1, 
-              "type": "string", 
-              "description": "The ip address or hostname of the device to connect to."
-            }
-          }
-        }
-      ]
-    }, 
-    "Http": {
-      "description": "Http Device resource representation", 
-      "allOf": [
-        {
-          "$ref": "#/definitions/Device"
-        }, 
-        {
-          "type": "object", 
-          "properties": {
-            "url": {
-              "default": null, 
-              "type": "null", 
-              "description": "The URL of the device, or null if there is none defined. No URL defined means that the device cannot be reached. Only device with an URL set has a Swagger specification (see /device/<id>/specification endpoint). The specification object define all the available HTTP requests this device accepts."
-            }, 
-            "scope": {
-              "default": "", 
-              "type": "string", 
-              "description": "The allowed scopes for this device (space separated list). Restrict the Http api access. Default to an empty string (no access)."
-            }, 
-            "apikey": {
-              "readOnly": true, 
-              "type": "string", 
-              "description": "The apikey for authenticating this device."
-            }, 
-            "auth": {
-              "additionalProperties": false, 
-              "description": "An object describing the authentication method to use on HTTP request.", 
-              "default": null, 
-              "required": [
-                "password", 
-                "type", 
-                "user"
-              ], 
-              "type": "object", 
-              "properties": {
-                "password": {
-                  "minLength": 1, 
-                  "type": "string"
-                }, 
-                "type": {
-                  "enum": [
-                    "basic", 
-                    "digest"
-                  ], 
-                  "type": "string"
-                }, 
-                "user": {
-                  "minLength": 1, 
-                  "type": "string"
-                }
-              }
-            }
-          }
-        }
-      ]
-    }, 
-    "MySensorsSensor": {
-      "description": "MySensorsSensor Device resource representation. This device is normally automatically created by a MySensorsNode instance.", 
-      "allOf": [
-        {
-          "$ref": "#/definitions/Device"
-        }, 
-        {
-          "required": [
-            "createdBy", 
-            "sensorType", 
-            "sensorId"
-          ], 
-          "type": "object", 
-          "properties": {
-            "sensorType": {
-              "description": "The type of the sensor.", 
-              "minLength": 1, 
-              "type": "string"
-            }, 
-            "sensorId": {
-              "minimum": 0, 
-              "type": "integer", 
-              "maximum": 254, 
-              "description": "The id of the sensor."
-            }, 
-            "createdBy": {
-              "type": "null", 
-              "description": "The id of the resource responsible of the creation of this resource, or null."
-            }
-          }
-        }
-      ]
-    }, 
-    "Error": {
-      "properties": {
-        "message": {
-          "readOnly": true, 
-          "type": "string", 
-          "description": "A description of the error"
-        }, 
-        "code": {
-          "readOnly": true, 
-          "type": "integer", 
-          "description": "The HTTP response status code"
-        }
-      }, 
-      "description": "An object describing an error"
-    }, 
-    "Device": {
-      "allOf": [
-        {
-          "$ref": "#/definitions/Resource"
-        }, 
-        {
-          "type": "object", 
-          "properties": {
-            "methods": {
-              "items": {}, 
-              "readOnly": true, 
-              "type": "array", 
-              "description": "The list of the methods available."
-            }, 
-            "battery": {
-              "default": null, 
-              "type": "null", 
-              "description": "The battery level of this device (must be between 0 (empty) and 100 (full) , or null if the device has no battery information)."
-            }, 
-            "interfaces": {
-              "items": {}, 
-              "readOnly": true, 
-              "type": "array", 
-              "description": "A list of intefaces this device inherit"
-            }, 
-            "connected": {
-              "default": false, 
-              "type": "boolean", 
-              "description": "Set to true when this device is connected."
-            }, 
-            "location": {
-              "default": null, 
-              "type": "null", 
-              "description": "The location of this device."
-            }, 
-            "lastSeenDate": {
-              "default": null, 
-              "type": "null", 
-              "description": "Last time this device was reached or made a request."
-            }
-          }
-        }
-      ]
-    }, 
-    "MySensorsGateway": {
-      "allOf": [
-        {
-          "$ref": "#/definitions/Device"
-        }, 
-        {
-          "type": "object", 
-          "properties": {
-            "libVersion": {
-              "readOnly": true, 
-              "type": "null", 
-              "description": "The version of the MySensors library used."
-            }, 
-            "isMetric": {
-              "default": true, 
-              "type": "boolean", 
-              "description": "Set the unit to Metric(default) instead of Imperial."
-            }
-          }
-        }
-      ]
-    }, 
-    "Resource": {
-      "discriminator": "type", 
-      "required": [
-        "name"
-      ], 
-      "type": "object", 
-      "properties": {
-        "description": {
-          "default": "", 
-          "type": "string", 
-          "description": "A description of this resource."
-        }, 
-        "data": {
-          "additionalProperties": {
-            "type": "string"
-          }, 
-          "default": {}, 
-          "type": "object", 
-          "properties": {}, 
-          "description": "A collection of arbitrary key-value pairs. Entries with null values are cleared in update. The keys must not be empty or longer than 64 characters, and must contain only the following characters : letters, digits, underscore and dash. Values must be either a string or a boolean or a number"
-        }, 
-        "public": {
-          "default": false, 
-          "enum": [
-            false, 
-            "readonly", 
-            "readwrite"
-          ], 
-          "description": "False: this resource is not publicly accessible. 'readonly': this resource is accessible for reading by anyone. 'readwrite': this resource is accessible for reading and writing by anyone."
-        }, 
-        "extends": {
-          "items": {}, 
-          "readOnly": true, 
-          "type": "array", 
-          "description": "An array of classes this resource is based on."
-        }, 
-        "modifiedDate": {
-          "default": "2018-04-03T15:04:13.953939", 
-          "type": "string", 
-          "description": "Last time this resource was modified", 
-          "format": "date-time"
-        }, 
-        "createdBy": {
-          "default": null, 
-          "type": "null", 
-          "description": "The id of the resource responsible of the creation of this resource, or null."
-        }, 
-        "createdDate": {
-          "readOnly": true, 
-          "type": "string", 
-          "description": "Create time for this resource", 
-          "format": "date-time"
-        }, 
-        "type": {
-          "readOnly": true, 
-          "type": "string", 
-          "description": "The type of the resource"
-        }, 
-        "id": {
-          "readOnly": true, 
-          "type": "string", 
-          "description": "The id of the resource"
-        }, 
-        "name": {
-          "minLength": 1, 
-          "type": "string", 
-          "description": "The name of the resource", 
-          "pattern": "^[a-zA-Z0-9 !#$%&'()+,\\-.;=@^_`{    ]+(\\/[a-zA-Z0-9 !#$%&'()+,\\-.;=@^_`{    ]+)*$"
-        }
-      }, 
-      "description": "The base representation of a resource object"
-    }, 
-    "MihomeGateway": {
-      "allOf": [
-        {
-          "$ref": "#/definitions/Device"
-        }, 
-        {
-          "required": [
-            "ip", 
-            "sid"
-          ], 
-          "type": "object", 
-          "properties": {
-            "ip": {
-              "minLength": 1, 
-              "type": "string", 
-              "description": "The IP address of the gateway"
-            }, 
-            "password": {
-              "default": "", 
-              "type": "string", 
-              "description": "The password of the gateway"
-            }, 
-            "sid": {
-              "minLength": 1, 
-              "type": "string", 
-              "description": "The uniq sid of the gateway"
-            }
-          }
-        }
-      ]
-    }, 
-    "RFLinkGateway": {
-      "allOf": [
-        {
-          "$ref": "#/definitions/Device"
-        }, 
-        {
-          "type": "object", 
-          "properties": {
-            "version": {
-              "readOnly": true, 
-              "type": "null", 
-              "description": "The version of the RFLink library used."
-            }, 
-            "build": {
-              "readOnly": true, 
-              "type": "null", 
-              "description": "The build number of the RFLink library used."
-            }, 
-            "revision": {
-              "readOnly": true, 
-              "type": "null", 
-              "description": "The revision number of the RFLink library used."
-            }
-          }
-        }
-      ]
-    }, 
-    "MySensorsEthernetGateway": {
-      "allOf": [
-        {
-          "$ref": "#/definitions/MySensorsGateway"
-        }, 
-        {
-          "required": [
-            "address"
-          ], 
-          "type": "object", 
-          "properties": {
-            "address": {
-              "pattern": "^([-\\w.]+)(:[0-9]{1,5})?$", 
-              "type": "string", 
-              "description": "The ip address or hostname of the gateway."
-            }
-          }
-        }
-      ]
-    }, 
-    "ZigateSerialGateway": {
-      "allOf": [
-        {
-          "$ref": "#/definitions/ZigateGateway"
-        }, 
-        {
-          "required": [
-            "port"
-          ], 
-          "type": "object", 
-          "properties": {
-            "port": {
-              "type": "string", 
-              "description": "The serial port name."
-            }
-          }
-        }
-      ]
-    }, 
-    "YeelightBulbRGBW": {
-      "allOf": [
-        {
-          "$ref": "#/definitions/YeelightDevice"
-        }, 
-        {
-          "type": "object", 
-          "properties": {}
-        }
-      ]
-    }, 
-    "MySensorsNode": {
-      "description": "MySensorsNode Device resource representation. This device is normally automatically created by a MySensorsGateway instance.", 
-      "allOf": [
-        {
-          "$ref": "#/definitions/Device"
-        }, 
-        {
-          "required": [
-            "nodeId", 
-            "createdBy"
-          ], 
-          "type": "object", 
-          "properties": {
-            "smartSleep": {
-              "default": false, 
-              "type": "boolean", 
-              "description": "SmartSleep feature enabled for this node."
-            }, 
-            "sketchName": {
-              "readOnly": true, 
-              "type": "string", 
-              "description": "The name of the sketch uploaded."
-            }, 
-            "firmware": {
-              "readOnly": true, 
-              "type": "null"
-            }, 
-            "nodeId": {
-              "minimum": 1, 
-              "type": "integer", 
-              "maximum": 254, 
-              "description": "The id of the node."
-            }, 
-            "libVersion": {
-              "readOnly": true, 
-              "type": "null", 
-              "description": "The version of the MySensors library used."
-            }, 
-            "createdBy": {
-              "type": "null", 
-              "description": "The id of the resource responsible of the creation of this resource, or null."
-            }, 
-            "sketchVersion": {
-              "readOnly": true, 
-              "type": "string", 
-              "description": "The version of the sketch uploaded."
-            }
-          }
-        }
-      ]
-    }, 
-    "ZigateAqaraTHP": {
-      "description": "Mihome temperatire/humidity/pressure Sensor Device class.", 
-      "allOf": [
-        {
-          "$ref": "#/definitions/ZigateDevice"
-        }, 
-        {
-          "type": "object", 
-          "properties": {}
-        }
-      ]
-    }, 
-    "RFLinkSerialGateway": {
-      "allOf": [
-        {
-          "$ref": "#/definitions/RFLinkGateway"
-        }, 
-        {
-          "required": [
-            "port"
-          ], 
-          "type": "object", 
-          "properties": {
-            "baudrate": {
-              "default": 57600, 
-              "enum": [
-                110, 
-                150, 
-                300, 
-                600, 
-                1200, 
-                2400, 
-                4800, 
-                9600, 
-                19200, 
-                38400, 
-                57600, 
-                115200
-              ], 
-              "type": "integer", 
-              "description": "The baudrate"
-            }, 
-            "port": {
-              "type": "string", 
-              "description": "The serial port name."
-            }
-          }
-        }
-      ]
-    }, 
-    "MihomeDevice": {
-      "description": "Mihome Device base class", 
-      "allOf": [
-        {
-          "$ref": "#/definitions/Device"
-        }, 
-        {
-          "required": [
-            "sid"
-          ], 
-          "type": "object", 
-          "properties": {
-            "sid": {
-              "minLength": 1, 
-              "type": "string", 
-              "description": "The uniq sid of the device"
-            }
-          }
-        }
-      ]
-    }, 
-    "ZigateDevice": {
-      "description": "ZigateDevice Device base class representation", 
-      "allOf": [
-        {
-          "$ref": "#/definitions/Device"
-        }, 
-        {
-          "required": [
-            "address", 
-            "model", 
-            "manufacturer"
-          ], 
-          "type": "object", 
-          "properties": {
-            "model": {
-              "minLength": 1, 
-              "type": "string", 
-              "description": "The model of this device"
-            }, 
-            "manufacturer": {
-              "minLength": 1, 
-              "type": "string", 
-              "description": "The manufacturer of this device"
-            }, 
-            "address": {
-              "minLength": 1, 
-              "type": "string", 
-              "description": "The short address of this device on the zigbee network"
-            }
-          }
-        }
-      ]
-    }, 
-    "MQTT": {
-      "description": "MQTT Device resource representation", 
-      "allOf": [
-        {
-          "$ref": "#/definitions/Device"
-        }, 
-        {
-          "required": [
-            "host"
-          ], 
-          "type": "object", 
-          "properties": {
-            "host": {
-              "type": "string", 
-              "description": "The host of the MQTT broker to connect to."
-            }, 
-            "port": {
-              "default": 1883, 
-              "minimum": 0, 
-              "type": "integer", 
-              "maximum": 65535, 
-              "description": "The port number of the MQTT broker to connect to."
-            }, 
-            "auth": {
-              "default": null, 
-              "type": "null", 
-              "description": "An object describing the credentials to use."
-            }
-          }
-        }
-      ]
-    }, 
-    "SSH": {
-      "description": "SSH Device resource representation", 
-      "allOf": [
-        {
-          "$ref": "#/definitions/Device"
-        }, 
-        {
-          "required": [
-            "host"
-          ], 
-          "type": "object", 
-          "properties": {
-            "host": {
-              "minLength": 1, 
-              "type": "string", 
-              "description": "The ip address or hostname of the device to connect to."
-            }, 
-            "port": {
-              "default": 22, 
-              "minimum": 0, 
-              "type": "integer", 
-              "maximum": 65535, 
-              "description": "The port number of the device to connect to. The default port number is 22."
-            }, 
-            "auth": {
-              "additionalProperties": false, 
-              "description": "An object describing the credentials to use.", 
-              "default": null, 
-              "required": [
-                "password", 
-                "user"
-              ], 
-              "type": "object", 
-              "properties": {
-                "password": {
-                  "minLength": 1, 
-                  "type": "string"
-                }, 
-                "user": {
-                  "minLength": 1, 
-                  "type": "string"
-                }
-              }
-            }
-          }
-        }
-      ]
-    }, 
-    "File": {
-      "allOf": [
-        {
-          "$ref": "#/definitions/Resource"
-        }, 
-        {
-          "type": "object", 
-          "properties": {
-            "contentModifiedDate": {
-              "readOnly": true, 
-              "type": "string", 
-              "description": "Last time the conten of this resource was modified (formatted RFC 3339 timestamp).", 
-              "format": "date-time"
-            }, 
-            "isText": {
-              "readOnly": true, 
-              "type": "boolean", 
-              "description": "True if this file has text based content."
-            }, 
-            "mime": {
-              "readOnly": true, 
-              "type": "string", 
-              "description": "The MIME type of the file (automatically detected from the content)."
-            }, 
-            "expireAfter": {
-              "default": null, 
-              "type": "null", 
-              "description": "The amount of time (in seconds) after which this resource will be removed."
-            }, 
-            "size": {
-              "readOnly": true, 
-              "type": "integer", 
-              "description": "The size of this resource in bytes"
-            }
-          }
-        }
-      ]
-    }, 
-    "Table": {
-      "allOf": [
-        {
-          "$ref": "#/definitions/Resource"
-        }, 
-        {
-          "type": "object", 
-          "properties": {
-            "keys": {
-              "additionalProperties": true, 
-              "readOnly": true, 
-              "type": "object", 
-              "properties": {}, 
-              "description": "A key/value object where the keys correspond to the fields available in this table, and the corresponding value is the number of rows where the field is set. __The default keys ('_id' and 'date' are not listed)__"
-            }, 
-            "contentModifiedDate": {
-              "readOnly": true, 
-              "type": "string", 
-              "description": "Last time the conten of this resource was modified.", 
-              "format": "date-time"
-            }, 
-            "length": {
-              "readOnly": true, 
-              "type": "integer", 
-              "description": "The number of records in the table"
-            }, 
-            "expireAfter": {
-              "default": null, 
-              "type": "null", 
-              "description": "The amount of time (in seconds) after which a records will be automatically removed. Set it to null or 0 to disable this feature."
-            }, 
-            "maxLength": {
-              "default": 5000, 
-              "type": "null", 
-              "description": "The maximum of records allowed in this table. When this number is reached, the oldest records will be removed to insert the new ones (first in, first out). Set it to null or 0 to disable this feature."
-            }
-          }
-        }
-      ]
-    }, 
-    "App": {
-      "description": "Application resource representation", 
-      "allOf": [
-        {
-          "$ref": "#/definitions/Resource"
-        }, 
-        {
-          "type": "object", 
-          "properties": {
-            "apikey": {
-              "readOnly": true, 
-              "type": "string", 
-              "description": "The apikey for authenticating this app."
-            }, 
-            "contentModifiedDate": {
-              "readOnly": true, 
-              "type": "string", 
-              "description": "Last time the conten of this resource was modified", 
-              "format": "date-time"
-            }, 
-            "version": {
-              "default": null, 
-              "type": "string", 
-              "description": "The version of this application"
-            }, 
-            "mime": {
-              "readOnly": true, 
-              "type": "string", 
-              "description": "The mime type of this app"
-            }, 
-            "scope": {
-              "default": "", 
-              "type": "string", 
-              "description": "The allowed scopes for this application (space separated list). No permissions by default."
-            }, 
-            "size": {
-              "readOnly": true, 
-              "type": "integer", 
-              "description": "The size of the application in bytes"
-            }
-          }
-        }
-      ]
-    }
-  }, 
+  ],
   "security": [
     {
       "api_key": []
-    }, 
+    },
     {
       "api_key_query": []
-    }, 
+    },
     {
       "basic_auth": []
     }
-  ], 
-  "swagger": "2.0", 
+  ],
+  "parameters": {},
+  "swagger": "2.0",
+  "tags": [],
+  "securityDefinitions": {
+    "api_key": {
+      "type": "apiKey",
+      "in": "header",
+      "name": "X-API-KEY",
+      "description": "authentication through an API key, used only by devices or apps."
+    },
+    "basic_auth": {
+      "type": "basic",
+      "description": "basic authentication."
+    },
+    "api_key_query": {
+      "type": "apiKey",
+      "in": "query",
+      "name": "api_key",
+      "description": "authentication through an API key, used only by devices or apps."
+    }
+  },
   "consumes": [
     "application/json"
   ]

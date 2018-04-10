@@ -1,3 +1,4 @@
+# coding: utf-8
 
 import random
 
@@ -21,9 +22,3 @@ class ApiKey(object):
             random.randint(0, 0xffff), random.randint(0, 0xffff), random.randint(0, 0xffff)
         )
     
-
-if __name__ == '__main__':
-    
-    print ApiKey.generate()
-
-

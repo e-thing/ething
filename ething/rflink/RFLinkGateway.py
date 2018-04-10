@@ -1,3 +1,4 @@
+# coding: utf-8
 
 
 
@@ -20,7 +21,7 @@ class RFLinkGateway(Device):
         
         if filter is not None:
             q = {
-                'and' : [q, filter]
+                '$and' : [q, filter]
             }
         
         return self.ething.find(q)
@@ -28,7 +29,7 @@ class RFLinkGateway(Device):
     
     def getNode (self, filter):
         return self.ething.findOne({
-            'and' : [
+            '$and' : [
                 {
                     'type' : 'RFLinkNode',
                     'createdBy' : self.id
@@ -73,7 +74,7 @@ class RFLinkGateway(Device):
         """
         reboot the gateway.
         """
-        device.sendMessage("10;REBOOT;")
+        self.sendMessage("10;REBOOT;")
     
     @method.return_type('text/plain')
     def getVersion (self):
@@ -89,13 +90,13 @@ class RFLinkGateway(Device):
         """
         Put this gateway into inclusion mode. Unknown devices will be added automatically.
         """
-        device.setData("inclusion", True)
+        self.setData("inclusion", True)
     
     def stopInclusion(self):
         """
         Quit the inclusion mode for this gateway.
         """
-        device.setData("inclusion", False)
+        self.setData("inclusion", False)
     
     
     

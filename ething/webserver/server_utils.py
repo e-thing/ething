@@ -1,3 +1,4 @@
+# coding: utf-8
 from flask import request, Response, g
 from ething.ShortId import ShortId
 from ething.Table import Table
@@ -5,6 +6,8 @@ from ething.Helpers import toJson
 import json as js
 import re
 import datetime
+import traceback
+import sys
 
 from webargs.flaskparser import use_args as webargs_use_args
 from marshmallow.fields import Field
@@ -207,21 +210,64 @@ def jsonEncodeFilterByFields(resources,fields = None):
     return jsonify(out)
 
 
+class ServerException(Exception):
+    def __init__(self, message, status_code = 400):
+        
+        super(ServerException, self).__init__(message)
+        
+        self.status_code = status_code
 
-if __name__ == '__main__':
+
+
+_re_tb_extract = re.compile('File "(.*)", line (\d+)')
+
+def tb_extract_info():
     
-    from ething.core import Core
+    for l in reversed(traceback.format_exception(*sys.exc_info())):
+        matches = _re_tb_extract.search(l)
+        if matches:
+            return (matches.group(1), int(matches.group(2)))
     
-    ething = Core({
-        'db':{
-            'database': 'test'
-        },
-        'log':{
-            'level': 'debug'
-        }
-    })
-    
-    resp = jsonEncodeFilterByFields(ething.find(), ['id'])
-    print resp.response
-    
-    
+    return (None, None)
+
+
+def parse_multipart_data(stream, boundary):
+    boundary = boundary.encode()
+    next_boundary = boundary and b'--' + boundary or None
+    last_boundary = boundary and b'--' + boundary + b'--' or None
+ 
+    stack = []
+ 
+    state = 'boundary'
+    line = next(stream).rstrip()
+    assert line == next_boundary
+    for line in stream:
+        
+        if line.rstrip() == last_boundary:
+            break
+ 
+        if state == 'boundary':
+            state = 'headers'
+            if stack:
+                headers, body = stack.pop()
+                yield headers, b''.join(body)
+            stack.append(({}, []))
+ 
+        if state == 'headers':
+            if line == b'\r\n':
+                state = 'body'
+                continue
+            headers = stack[-1][0]
+            line = line.decode()
+            key, value = map(lambda i: i.strip(), line.split(':'))
+            headers[key] = value
+ 
+        if state == 'body':
+            if line.rstrip() == next_boundary:
+                state = 'boundary'
+                continue
+            stack[-1][1].append(line)
+ 
+    if stack:
+        headers, body = stack.pop()
+        yield headers, b''.join(body)

@@ -1,19 +1,22 @@
+# coding: utf-8
+from future.utils import string_types, integer_types
 
 
-from Resource import Resource
-from TableQueryParser import TableQueryParser
+from .Resource import Resource
+from .TableQueryParser import TableQueryParser
 import datetime
 import time
 import re
 from dateutil.parser import parse
-from ShortId import ShortId
+from .ShortId import ShortId
 import bson
 import os, sys
 import pymongo
-from Helpers import dict_recursive_update
-import csv, cStringIO
-from rule.event import TableDataAdded
-from base import attr, isBool, isString, isNone, isInteger, READ_ONLY, PRIVATE
+from .Helpers import dict_recursive_update
+import csv
+from io import StringIO
+from .rule.event import TableDataAdded
+from .base import attr, isBool, isString, isNone, isInteger, READ_ONLY, PRIVATE
 
 
 @attr('maxLength', validator = isNone() | isInteger(min=1), default = 5000, description="The maximum of records allowed in this table. When this number is reached, the oldest records will be removed to insert the new ones (first in, first out). Set it to null or 0 to disable this feature.")
@@ -189,7 +192,7 @@ class Table(Resource):
     @staticmethod
     def sanitizeData (dataArray, keys = None, invalidFields = INVALID_FIELD_RENAME, skipError = True, setDate = True):
         
-        if isinstance(invalidFields, basestring):
+        if isinstance(invalidFields, string_types):
             if invalidFields == "stop":
                 invalidFields = Table.INVALID_FIELD_STOP
             elif invalidFields == "none":
@@ -214,7 +217,7 @@ class Table(Resource):
             try:
                 
                 if not isinstance(data, dict):
-                    raise Exception('invalid data')
+                    raise Exception('invalid data: [%s] %s' % (type(data).__name__, str(data)))
                                 
                 # key/field validation
                 if 'id' in data:
@@ -223,7 +226,7 @@ class Table(Resource):
                 for k in data:
                     v = data[k]
                     
-                    if not(isinstance(v,int) or isinstance(v,float) or isinstance(v,basestring) or isinstance(v,bool) or v is None):
+                    if not(isinstance(v,integer_types) or isinstance(v,float) or isinstance(v,string_types) or isinstance(v,bool) or v is None):
                         raise Exception('The value must either be a string or a number or a boolean or null.')
                     
                     
@@ -284,7 +287,7 @@ class Table(Resource):
                     del dataArray[i]
                     i -= 1
                 else:
-                    raise Exception(sys.exc_info()[1])
+                    raise
                 
             i += 1
         
@@ -473,12 +476,16 @@ class Table(Resource):
     
     
     # replace only one row
-    def replaceRow (self, query, data, invalidFields = INVALID_FIELD_RENAME, upsert = False):
+    def replaceRow (self, query, data, invalidFields = INVALID_FIELD_RENAME, upsert = False, parser = None):
         if data:
             
-            if isinstance(query, basestring):
+            if isinstance(query, string_types):
+                
+                if parser is None:
+                    parser = self.parser
+                
                 # parse the query string
-                q = self.parser.parse(query)
+                q = parser.parse(query)
             
             elif isinstance(query, dict):
                 q = query
@@ -533,7 +540,7 @@ class Table(Resource):
         return self.select(query = query)
     
     
-    def select (self, start = 0, length = None, fields = None, sort = None, query = None, date_format = None):
+    def select (self, start = 0, length = None, fields = None, sort = None, query = None, date_format = None, parser = None):
     # If start is non-negative, the returned selection will start at the start'th position in the table, counting from zero.
     # If start is negative, the returned selection will start at the start'th position from the end of the table.
     # If length is given and is positive, the selection returned will contain at most length lines beginning from start.
@@ -542,7 +549,7 @@ class Table(Resource):
         
         c = self.collection
         
-        if isinstance(date_format, basestring):
+        if isinstance(date_format, string_types):
             date_format = date_format.lower()
             if date_format == "timestamp":
                 date_format = Table.TIMESTAMP
@@ -552,9 +559,13 @@ class Table(Resource):
                 date_format = None
         
         
-        if isinstance(query, basestring):
+        if isinstance(query, string_types):
+            
+            if parser is None:
+                parser = self.parser
+            
             # parse the query string
-            q = self.parser.parse(query)
+            q = parser.parse(query)
         
         elif isinstance(query, dict):
             q = query
@@ -569,7 +580,7 @@ class Table(Resource):
         }
         
         # sort
-        if isinstance(sort, basestring):
+        if isinstance(sort, string_types):
             opt['sort'] = []
             parts = sort.split(',')
             for p in parts:
@@ -634,7 +645,7 @@ class Table(Resource):
             key : {'$exists' : True}
         })
         
-        if isinstance(query, basestring):
+        if isinstance(query, string_types):
             # parse the query string
             queries.append(self.parser.parse(query))
         
@@ -661,8 +672,8 @@ class Table(Resource):
         selection = self.select(**kwargs)
         
         if len(selection)>0:
-            keys = ['id', 'date'] + self.keys.keys()
-            buffer = cStringIO.StringIO()
+            keys = ['id', 'date'] + list(self.keys)
+            buffer = StringIO()
             csvw = csv.DictWriter(buffer, keys, delimiter=',',quotechar='"', quoting=csv.QUOTE_MINIMAL)
             if show_header:
                 csvw.writeheader()
@@ -674,93 +685,4 @@ class Table(Resource):
     
     
 
-    
-if __name__ == '__main__':
-    
-    from ething.core import Core
-    
-    ething = Core({
-        'db':{
-            'database': 'test'
-        },
-        'log':{
-            'level': 'debug'
-        }
-    })
-    
-    def testCreate():
-        f = ething.create('Table', {
-            'name' : 'file1.txt'
-        })
-        
-        f.importData([{
-            "a":1,
-            "b": False,
-            "c": 4.5,
-            "d": "string"
-        },{
-            "a":2
-        },{
-            "a":3
-        }])
-        
-        print f.toJson()
-        
-        print f.length
-        
-        print f.select()
-        
-        print f.computeStatistics('a')
-    
-    def testPrint():
-        f = ething.findOne({ 'type': 'Table' })
-        
-        print f.name
-        
-        print f.length
-        
-        print f.select()
-        
-        print f.writeCSV()
-    
-    def testQuery():
-        
-        name = 'table_test_query.bd'
-        
-        f = ething.findOne({"name": name})
-        
-        #if f:
-        #    f.insert({"a": 6})
-        #    return
-        
-        if not f:
-            f = ething.create('Table', {
-                'name' : name
-            })
-            
-            f.importData([{
-                "a":1
-            },{
-                "a":2
-            },{
-                "a":3
-            },{
-                "a":4
-            },{
-                "a":5
-            }])
-        
-        print len(f.select())
-        print len(f.select( query = u'a>3'))
-        print len(f.select( query = u'date> "30 minutes ago" '))
-        
-        
-        
-    
-    #testCreate()
-    #testPrint()
-    testQuery()
-    
-
-
-
+ 

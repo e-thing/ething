@@ -1,3 +1,4 @@
+# coding: utf-8
 
 from flask import request, Response
 from ..server_utils import *
@@ -6,8 +7,8 @@ def install(core, app, auth, **kwargs):
 
 
     notify_args = {
-        'subject': fields.Str(required=True),
-        'body': fields.Str(),
+        'subject': fields.Str(required=True, location="json"),
+        'body': fields.Str(location="json"),
     }
 
     @app.route('/api/notification', methods=['POST'])

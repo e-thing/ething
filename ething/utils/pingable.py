@@ -1,3 +1,4 @@
+# coding: utf-8
 from scapy.sendrecv import sr1
 from scapy.layers.inet import IP, ICMP
 
@@ -30,21 +31,3 @@ def ping(host, timeout = 1):
     return bool(result)
 
 
-
-
-
-if __name__ == '__main__':
-    
-    
-    @pingable
-    class Test(object):
-        
-        def __init__(self):
-            self.host = 'example.com'
-        
-        def setConnectState(self, online):
-            print 'set online =', online
-    
-    t = Test()
-    t.ping()
-    

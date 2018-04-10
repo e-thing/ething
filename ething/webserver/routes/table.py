@@ -1,8 +1,11 @@
+# coding: utf-8
+from future.utils import string_types
 
 from flask import request, Response
 from ..server_utils import *
 import csv
 from ething.ShortId import ShortId
+from ething.TableQueryParser import TableQueryParser
 
 
 def install(core, app, auth, **kwargs):
@@ -29,7 +32,7 @@ def install(core, app, auth, **kwargs):
 
             ```json
             {
-               "name": "matable.db",
+               "name": "foobar.db",
                "content": [
                     {
                         "temperature": 12.5,
@@ -128,15 +131,17 @@ def install(core, app, auth, **kwargs):
         
         raise Exception('Invalid request');
 
-
+    
+    table_fmts = ["json","json_pretty","csv","csv_no_header"]
+    date_fmts = ['timestamp', 'timestamp_ms', 'rfc3339']
     table_get_args = {
         'start': fields.Int(missing=0, description="Position of the first rows to return. If start is negative, the position will start from the end. (default to 0)"),
         'length': fields.Int(validate=validate.Range(min=0), description="Maximum number of rows to return. If not set, returns until the end"),
         'fields': fields.DelimitedList(fields.Str(), description=""),
         'sort': fields.Str(description='the key on which to do the sorting, by default the sort is made by date ascending. To make the sort descending, prepend the field name by minus "-". For instance, "-date" will sort by date descending'),
         'query': fields.Str(load_from="q", description="Query string for filtering results"),
-        'date_format': fields.Str(load_from="datefmt", validate=lambda val: val.lower() in ['timestamp', 'timestamp_ms', 'rfc3339'], missing = 'rfc3339', description="the format of the date field (default to RFC3339)"),
-        'fmt': fields.Str(validate=validate.OneOf(["json","json_pretty","csv","csv_no_header"]), missing = 'json', description="the output format (default to JSON)"),
+        'date_format': fields.Str(load_from="datefmt", validate=lambda val: val.lower() in date_fmts, missing = 'rfc3339', description="the format of the date field (default to RFC3339) : %s" % ','.join(date_fmts)),
+        'fmt': fields.Str(validate=validate.OneOf(table_fmts), missing = 'json', description="the output format (default to JSON) : %s" % ','.join(table_fmts)),
     }
 
     table_put_args = {
@@ -292,6 +297,11 @@ def install(core, app, auth, **kwargs):
             
             fmt = args.pop('fmt').lower()
             
+            if g.auth.resource and args['query']:
+                parser = TableQueryParser()
+                parser.addConstant('me', g.auth.resource.id)
+                args['parser'] = parser
+            
             if fmt == "json":
                 return jsonify(r.select(**args))
             elif fmt == "json_pretty":
@@ -324,7 +334,7 @@ def install(core, app, auth, **kwargs):
 
 
     table_action_remove_args = {
-        'ids': fields.DelimitedList(fields.Str(), description="The records to be removed."),
+        'ids': fields.DelimitedList(fields.Str(), description="The records id to be removed as a comma separated list."),
         'fields': fields.DelimitedList(fields.Str()),
     }
     
@@ -349,7 +359,7 @@ def install(core, app, auth, **kwargs):
         if request.json:
             more_ids = request.json
             
-            if isinstance(more_ids, basestring):
+            if isinstance(more_ids, string_types):
                 more_ids = [more_ids]
             
             if not isinstance(more_ids, list):
@@ -400,7 +410,15 @@ def install(core, app, auth, **kwargs):
         data = request.get_json()
         
         if data:
-            r.replaceRow(args['q'], data, args['invalid_field'], args['upsert'])
+            
+            parser = None
+            
+            if g.auth.resource:
+                parser = TableQueryParser()
+                parser.addConstant('me', g.auth.resource.id)
+                args['parser'] = parser
+            
+            r.replaceRow(args['q'], data, args['invalid_field'], args['upsert'], parser = parser)
             return jsonEncodeFilterByFields(r, args['fields'])
         else:
             raise Exception('No data.');

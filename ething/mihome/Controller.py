@@ -1,10 +1,12 @@
+# coding: utf-8
 
 
 
-from Mihome import *
+from .helpers import *
 import socket
 import time
 import json
+from future.utils import iteritems
 
 
 class Controller(object):
@@ -74,7 +76,7 @@ class Controller(object):
             
             self._sock = sock
             
-            self._socketManager.registerReadSocket(self._sock, self.process)
+            self._socketManager.registerReadSocket(self._sock, self.on_read)
             
             self.log.info("[Mihome]: connection opened, host: %s , port: %d" % (str(MULTICAST_ADDRESS), MULTICAST_PORT))
         except Exception as e:
@@ -121,9 +123,7 @@ class Controller(object):
             ret[k] = arr.get(k)
         return ret
     
-    
-    def process (self):
-        
+    def on_read(self):
         data, addr = self._sock.recvfrom(SOCKET_BUFSIZE)
         
         if not data:
@@ -137,7 +137,15 @@ class Controller(object):
         
         self.log.debug("Mihome: receive data from %s : %s" % (str(addr), data))
         
-        response = json.loads(data.decode("utf-8"))
+        try:
+            self.process(data.decode("utf-8"), addr[0])
+        except:
+            self.exception('unable to process : %s' % data)
+    
+    
+    def process (self, data, ip = None):
+        
+        response = json.loads(data)
         response_data = json.loads(response.get('data', '{}'))
         
         if isinstance(response, dict):
@@ -166,7 +174,7 @@ class Controller(object):
                     })
                     
                     if not gatewayDevice:
-                        ip = response_data.get('ip')
+                        ip = ip or response_data.get('ip')
                         
                         if ip:
                             gatewayDevice = self.ething.create('MihomeGateway', {
@@ -309,7 +317,7 @@ class Controller(object):
             except Exception as e:
                 
                 if self._preventFailConnectLog % 20 == 0:
-                    self.log.warn("Mihome: unable to connect : %s" % e.message)
+                    self.log.warn("Mihome: unable to connect : %s" % str(e))
                 self._preventFailConnectLog += 1
         
         # check for timeout !
@@ -328,7 +336,7 @@ class Controller(object):
             i += 1
         
         # _activities check
-        for sid, lastActivity in self._activities.iteritems():
+        for sid, lastActivity in iteritems(self._activities):
             if now - lastActivity > Controller.ACTIVITY_TIMEOUT :
                 
                 # remove this item

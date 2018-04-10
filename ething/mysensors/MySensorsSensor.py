@@ -1,11 +1,12 @@
+# coding: utf-8
 
 
-
+from future.utils import integer_types
 from ething.Device import Device, attr, Validator, isInteger, isString, ModelAdapter
 from ething.meta import interface, method, iface
-import interfaces
+from . import interfaces
 from ething.Helpers import dict_recursive_update
-import MySensors
+from .helpers import *
 from ething.rule.event.DeviceDataSet import DeviceDataSet
 import inspect
 
@@ -23,7 +24,7 @@ for iname, iclass in inspect.getmembers(interfaces, inspect.isclass):
 
 class isSensorType(Validator):
     def validate(self, value):
-        if MySensors.sensorTypeStr(value) is None:
+        if sensorTypeStr(value) is None:
             raise ValueError('must be a valid integer or a string describing a sensor type')
         return value
     
@@ -33,10 +34,10 @@ class isSensorType(Validator):
 class SensorTypeAdapter(ModelAdapter):
     
     def set(self, data_object, data, name, value):
-        data[name] = MySensors.sensorTypeInt(value)
+        data[name] = sensorTypeInt(value)
     
     def get(self, data_object, data, name):
-        return MySensors.sensorTypeStr(data[name])
+        return sensorTypeStr(data[name])
 
 @attr('sensorId', validator = isInteger(min=0, max=254), description="The id of the sensor.")
 @attr('sensorType', validator = (isString(allow_empty=False) | isInteger(min=0)) & isSensorType(), model_adapter = SensorTypeAdapter(), description="The type of the sensor.")
@@ -67,7 +68,7 @@ class MySensorsSensor (Device):
     
     def storeData (self, datatype, value):
         
-        meta = MySensors.valueTypes.get(datatype)
+        meta = valueTypes.get(datatype)
         
         if meta:
             
@@ -89,7 +90,7 @@ class MySensorsSensor (Device):
                 else:
                     values = [value for _ in range(0,len(keys))]
                 
-                name = None # a table will be created for every values, the name of the table will correspond to the associated key
+                name = None # a table will be created for every field, the name of the table will correspond to the associated key
                 value = dict(zip(keys, values))
             
             self.store(name, value, history)
@@ -98,8 +99,8 @@ class MySensorsSensor (Device):
     
     
     def storeStream (self, streamtype, data):
-        if isinstance(streamtype, int):
-            streamtype = MySensors.streamTypeStr(streamtype)
+        if isinstance(streamtype, integer_types):
+            streamtype = streamTypeStr(streamtype)
         
         if data and streamtype:
             
@@ -146,12 +147,12 @@ class MySensorsSensor (Device):
     
     
     def set_value(self, type, value, store = True):
-        res = self.sendMessage(MySensors.SET, MySensors.NO_ACK, type, value)
+        res = self.sendMessage(SET, NO_ACK, type, value)
         if res and store:
             self.storeData(type, value)
     
     def get_value(self, type, default = None):
-        return self.getData(MySensors.valueTypeToName(type), default)
+        return self.getData(valueTypeToName(type), default)
     
     
     
@@ -159,64 +160,12 @@ class MySensorsSensor (Device):
         sensorType = self.sensorType
         
         if sensorType in type_to_interface:
-            interface.inherit(self, type_to_interface[sensorType], filter = lambda func: ('optional' not in func.meta) or self.hasData(MySensors.valueTypeToName(func.meta['optional'])))
+            interface.inherit(self, type_to_interface[sensorType], filter = lambda func: ('optional' not in func.meta) or self.hasData(valueTypeToName(func.meta['optional'])))
             
     
     
     
     
-    
-if __name__ == '__main__':
-    import json
-    
-    print "start"
-    
-    cover = MySensorsSensor(None, {
-        '_id': '456huij',
-        'name': 'toto.dev',
-        'type': 'RFLinkNode',
-        'sensorId': 4,
-        'sensorType' : 'S_COVER',
-        'data':{
-            'temperature': 45,
-            'humidity': 23,
-            'percentage': 10.5
-        }
-    })
-    
-    print "start"
-    
-    #print node.type
-    #print cover.interface.method_names
-    #print json.dumps(cover.interface.toJson(), indent = 4)
-    print cover.getLevel()
-    
-    print cover.interface.method_names
-    print cover.interface.bases_names
-    
-    
-    cover.sensorType = 'S_TEMP'
-    
-    try:
-        cover.update_interface()
-    except:
-        pass
-    
-    print cover.interface.method_names
-    print cover.interface.bases_names
-    
-    cover.sensorType = 'S_RGBW_LIGHT'
-    
-    try:
-        cover.update_interface()
-    except:
-        pass
-    
-    print cover.interface.method_names
-    print cover.interface.bases_names
-    print cover.interface.decompose()
-    
-    #print json.dumps(cover.interface.toJson(), indent = 4)
-    
+
 
 

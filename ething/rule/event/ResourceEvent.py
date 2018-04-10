@@ -1,3 +1,5 @@
+# coding: utf-8
+from future.utils import string_types
 
 from .. import Event
 from .. import Signal
@@ -36,7 +38,7 @@ class ResourceEvent(Event):
                 
                 if resourceFilter is None: # this event will be fired on every resource
                     pass
-                elif isinstance(resourceFilter, basestring):
+                elif isinstance(resourceFilter, string_types):
                     # can either be an id or an expression
                     
                     if ShortId.validate(resourceFilter):
@@ -81,7 +83,7 @@ class ResourceEvent(Event):
             
             if resourceFilter is None: # no filtering
                 return True
-            elif isinstance(resourceFilter, basestring): # can either be an id or an expression
+            elif isinstance(resourceFilter, string_types): # can either be an id or an expression
                 
                 if ShortId.validate(resourceFilter):
                     return resourceFilter == resourceIdFromSignal

@@ -1,12 +1,14 @@
+# coding: utf-8
 
 from . import Signal
 from .RuleItem import RuleItem
 from . import InvalidRuleException
 from ething.meta import MetaEvent
+from future.utils import with_metaclass
 
-class Event(RuleItem):
+
+class Event(with_metaclass(MetaEvent,RuleItem)):
     
-    __metaclass__ = MetaEvent
     
     def match(self, signal):
         if self.valid:

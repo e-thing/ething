@@ -1,7 +1,8 @@
+# coding: utf-8
 
 from flask import request, Response
 from ..server_utils import *
-
+from future.utils import iteritems
 
 def install(core, app, auth, **kwargs):
     
@@ -162,7 +163,7 @@ def install(core, app, auth, **kwargs):
                 elif r.type == 'MQTT':
                     content = attr.pop('subscription', None)
                 
-                for key, value in data.iteritems():
+                for key, value in iteritems(data):
                     setattr(r, key, value)
                 
                 r.save()

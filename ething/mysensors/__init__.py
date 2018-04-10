@@ -1,15 +1,20 @@
+# coding: utf-8
+from future.utils import string_types
 
-from Controller import Controller
-from MySensorsGateway import MySensorsGateway, Device
-from MySensorsSerialGateway import MySensorsSerialGateway
-from MySensorsEthernetGateway import MySensorsEthernetGateway
-from MySensorsNode import MySensorsNode
-from MySensorsSensor import MySensorsSensor
+from .Controller import Controller
+from .MySensorsGateway import MySensorsGateway, Device
+from .MySensorsSerialGateway import MySensorsSerialGateway
+from .MySensorsEthernetGateway import MySensorsEthernetGateway
+from .MySensorsNode import MySensorsNode
+from .MySensorsSensor import MySensorsSensor
+from .helpers import *
 
 import serial
 import socket
-from urlparse import urlparse
-
+try:
+    from urllib.parse import urlparse
+except ImportError:
+    from urlparse import urlparse
 
 
 
@@ -56,7 +61,7 @@ class MySensors(object):
         
     def start_controller (self, device):
         
-        if isinstance(device, basestring):
+        if isinstance(device, string_types):
             device = self.core.get(device)
         
         if not device or not isinstance(device, MySensorsGateway):
@@ -96,7 +101,7 @@ class MySensors(object):
     
     
     def stop_all_controllers(self):
-        for id in self.controllers.keys():
+        for id in list(self.controllers):
             self.stop_controller(id)
         self.controllers = {}
     
@@ -146,7 +151,7 @@ class MySensors(object):
 class SerialTransport(object):
     
     def __init__ (self, controller):
-        self._buffer = ""
+        self._buffer = b""
         self._serial = None
         self._controller = controller
         self._socketManager = controller.ething.socketManager
@@ -154,7 +159,7 @@ class SerialTransport(object):
     
     def open(self):
         
-        self._buffer = ""
+        self._buffer = b""
         
         port = self._controller.gateway.port
         baudrate = self._controller.gateway.baudrate
@@ -177,7 +182,7 @@ class SerialTransport(object):
     
     def write(self, message):
         if self._serial:
-            return self._serial.write(message.stringify() + "\n")
+            return self._serial.write(message.raw() + b"\n")
         else:
             return 0
     
@@ -198,10 +203,10 @@ class SerialTransport(object):
         l = []
         chunk = self.read()
         if chunk:
-            self._buffer += chunk.decode("utf-8")
+            self._buffer += chunk
             
             while True:
-                p = self._buffer.find("\n")
+                p = self._buffer.find(b"\n")
                 if p>=0 :
                     line = self._buffer[0:p]
                     self._buffer = self._buffer[p+1:]
@@ -217,14 +222,14 @@ class SerialTransport(object):
                 self._controller.processMessage(line)
             except Exception as e:
                 # skip the line
-                self.log.exception("[serial]: unable to handle the message")
+                self.log.exception("[serial]: unable to handle the message %s" % line)
 
 
 
 class EthernetTransport(object):
     
     def __init__ (self, controller):
-        self._buffer = ""
+        self._buffer = b""
         self._sock = None
         self._controller = controller
         self._socketManager = controller.ething.socketManager
@@ -232,7 +237,7 @@ class EthernetTransport(object):
     
     def open(self):
         
-        self._buffer = ""
+        self._buffer = b""
         
         o = urlparse('tcp://'+self._controller.gateway.address)
         
@@ -257,7 +262,7 @@ class EthernetTransport(object):
     
     def write(self, message):
         if self._sock:
-            return self._sock.send(message.stringify() + "\n")
+            return self._sock.send(message.raw() + b"\n")
         else:
             return 0
     
@@ -278,10 +283,10 @@ class EthernetTransport(object):
         l = []
         chunk = self.read()
         if chunk:
-            self._buffer += chunk.decode("utf-8")
+            self._buffer += chunk
             
             while True:
-                p = self._buffer.find("\n")
+                p = self._buffer.find(b"\n")
                 if p>=0 :
                     line = self._buffer[0:p]
                     self._buffer = self._buffer[p+1:]
@@ -297,5 +302,5 @@ class EthernetTransport(object):
                 self._controller.processMessage(line)
             except Exception as e:
                 # skip the line
-                self.log.exception("[Ethernet]: unable to handle the message")
+                self.log.exception("[Ethernet]: unable to handle the message %s" % line)
 

@@ -1,7 +1,8 @@
+# coding: utf-8
 
 from ething.meta import method
 from ething.interfaces import DimmableSwitch
-from .. import MySensors
+from ..helpers import valueTypeToName
 
 class Dimmer (DimmableSwitch):
     
@@ -15,7 +16,7 @@ class Dimmer (DimmableSwitch):
     
     def getState(self):
         
-        statusAttrName = MySensors.valueTypeToName('V_STATUS')
+        statusAttrName = valueTypeToName('V_STATUS')
         
         if self.hasData(statusAttrName):
             return self.get_value('V_STATUS')
@@ -25,7 +26,7 @@ class Dimmer (DimmableSwitch):
     
     def setState(self, state):
         
-        statusAttrName = MySensors.valueTypeToName('V_STATUS')
+        statusAttrName = valueTypeToName('V_STATUS')
         
         if self.hasData(statusAttrName):
             self.set_value( 'V_STATUS', state )

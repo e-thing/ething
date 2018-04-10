@@ -1,9 +1,11 @@
+# coding: utf-8
+from future.utils import string_types, integer_types
 
 
 #from dateutil.parser import parse
 from dateparser import parse
 import datetime
-from InvalidQueryException import InvalidQueryException
+from .InvalidQueryException import InvalidQueryException
 
 class Value(object):
     
@@ -16,11 +18,11 @@ class Value(object):
     def type (self):
         if isinstance(self.__value, bool):
             return 'boolean'
-        elif isinstance(self.__value, int) or isinstance(self.__value, long):
+        elif isinstance(self.__value, integer_types):
             return 'integer'
         elif isinstance(self.__value, float):
             return 'double'
-        elif isinstance(self.__value, basestring):
+        elif isinstance(self.__value, string_types):
             return 'string'
         else:
             return 'NULL'

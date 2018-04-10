@@ -1,3 +1,5 @@
+# coding: utf-8
+from future.utils import string_types
 
 from .. import Action
 from .. import Signal
@@ -35,7 +37,7 @@ class ResourceAction(Action):
                         if not passed:
                             raise Exception("the resource %s must be one of the following types : %s" % (str(resource), ', '.join(onlyTypes)))
                 
-                if isinstance(resourceFilter, basestring):
+                if isinstance(resourceFilter, string_types):
                     # can either be an id or an expression or #emitter
                     
                     if resourceFilter == '#emitter':
@@ -77,7 +79,7 @@ class ResourceAction(Action):
         
         resourceFilter = self['resource']
         
-        if isinstance(resourceFilter, basestring): # can either be an id or an expression or #emitter
+        if isinstance(resourceFilter, string_types): # can either be an id or an expression or #emitter
             
             if resourceFilter == '#emitter':
                 

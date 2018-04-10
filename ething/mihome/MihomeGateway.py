@@ -1,9 +1,11 @@
+# coding: utf-8
+from future.utils import string_types
 
 
 
 from ething.Device import Device, method, attr, isString, isInteger, isNone, PRIVATE
 from ething.interfaces import RGBWLight
-from Mihome import IV
+from .helpers import IV
 import pyaes
 import binascii
 import math
@@ -54,21 +56,8 @@ class MihomeGateway(Device, RGBWLight):
                 attr['illumination'] = int(data['illumination']) - 300 # lm
             
         
-        
-        self.storeData(attr)
-        
-        
-        
-    
-    
-    def storeData (self, attr):
         if attr :
-            
-            self.setData(attr)
-            
-            self.storeDataInTable(attr)
-            
-            self.dispatchSignal('DeviceDataSet', self, attr)
+            self.store(None, attr)
         
     
     
@@ -99,7 +88,7 @@ class MihomeGateway(Device, RGBWLight):
     
     def setColor(self, color):
         
-        hrgb = int(color.replace('#','').replace('0x', ''), 16) if isinstance(color, basestring) else color
+        hrgb = int(color.replace('#','').replace('0x', ''), 16) if isinstance(color, string_types) else color
         
         hrgb = hrgb | (self.data.get('brightness', 100) << 24)
         
@@ -120,7 +109,7 @@ class MihomeGateway(Device, RGBWLight):
         start some music
         """
         
-        if isinstance(music, basestring):
+        if isinstance(music, string_types):
             music = str(music)
             if music in musicMap:
                 music = musicMap.index(music)

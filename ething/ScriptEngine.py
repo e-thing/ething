@@ -1,7 +1,9 @@
+# coding: utf-8
+from future.utils import string_types, text_type
 
     
 
-from Helpers import dict_recursive_update, toJson
+from .Helpers import dict_recursive_update, toJson
 
 import os
 import tempfile
@@ -24,25 +26,21 @@ class ScriptEngine(object):
     PROG = os.path.abspath(os.path.join(os.path.dirname(__file__), './nodejs/vm.js'))
     
     @staticmethod
-    def run (ething, script, **options):
+    def run (ething, script, scriptName = 'anonymous', apiKey = None, globals = None):
         
-        nodejs_exe = core.config.get('nodejs.executable', None)
+        nodejs_exe = ething.config.get('nodejs.executable', None)
         
         if not nodejs_exe:
             raise Exception('execution of nodejs is disabled in the configuration')
-        
-        
-        options = dict_recursive_update({
-            'scriptName' : 'anonymous',
-            'apiKey' : None,
-            'globals' : None
-        }, options)
         
         
         prog = ScriptEngine.PROG
         
         if not os.path.isfile(prog):
             raise Exception("unable to execute '%s'" % prog)
+        
+        if isinstance(script, text_type):
+            script = script.encode('utf8')
         
         # temporary files
         scriptHdl = tempfile.NamedTemporaryFile()
@@ -62,26 +60,26 @@ class ScriptEngine(object):
             stdoutHdl.name,
             "--stderr",
             stderrHdl.name,
-            "--apiUrl",
+            "--serverUrl",
             addslashes('http://localhost:%d/api' % ething.config.get('webserver.port', 8000)),
             "-t",
             str(ething.config('script.timeout')),
             "--filename",
-            options['scriptName']
+            scriptName
         ]
         
-        if options['apiKey']:
+        if apiKey:
             cmd.append('--apikey')
-            cmd.append(options['apiKey'])
+            cmd.append(apiKey)
         else:
             cmd.append('--user')
-            cmd.append('ething')
+            cmd.append('"%s"' % addslashes(ething.config('auth.username')))
             cmd.append('--password')
             cmd.append('"%s"' % addslashes(ething.config('auth.password')))
         
-        if isinstance(options['globals'], dict):
+        if isinstance(globals, dict):
             cmd.append('--globals')
-            cmd.append('"%s"' % addslashes(toJson(options['globals'])))
+            cmd.append('"%s"' % addslashes(toJson(globals)))
         
         cmd.append('2>&1');
         
@@ -131,7 +129,7 @@ class ScriptEngine(object):
         #    options['apiKey'] = script.apikey
         
         
-        if isinstance(arguments, basestring) and len(arguments)>0:
+        if isinstance(arguments, string_types) and len(arguments)>0:
             try:
                 argv = shlex.split(arguments)
             except:
@@ -146,22 +144,4 @@ class ScriptEngine(object):
         return ScriptEngine.run(script.ething, scriptcontent, scriptName = os.path.basename(script.name), globals = globals)
         
     
-if __name__ == '__main__':
-    
-    from ething.core import Core
-    
-    core = Core({
-        'db':{
-            'database': 'test'
-        },
-        'log':{
-            'level': 'debug'
-        }
-    })
-    
-    result = ScriptEngine.run(core, 'console.log("toto")');
-    
-    print result
-
-
 

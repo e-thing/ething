@@ -2,7 +2,7 @@
 
 # EThing HTTP API
 
-**Version**: 0.1.0
+**Version**: 0.1.1
 
 The eThing project is an 'Internet of Things' application. Store and retrieve data from devices using HTTP requests.
 
@@ -16,8 +16,8 @@ There are different types of resources. A resource can either be :
 
  - file : use this kind of objects to store text data or binary data (image, ...)
  - table : tables are used to store a collection of related data. Table consists of fields and rows.
- - device : this resource describes a device. You can send HTTP requests to your device through it.
- - app : this resource is used to store a HTML/JavaScript script. Use it to handle your data (for instance, you can create an interface to communicate with your device).
+ - device : this resource describes a device.
+ - app : this resource is used to store a HTML/JavaScript script. Use it to handle your data/devices (for instance, you can create an interface to communicate with your device).
 
 ### Error messages
 
@@ -39,7 +39,7 @@ There are several options for authenticating with the API.
 #### Basic authentication
 
 HTTP Basic authentication is the simplest way of interacting with the API. 
-Simply pass the username (always 'ething') and password with each request through the `Authorization` header.
+Simply pass the username (default to 'ething') and password with each request through the `Authorization` header.
 This value should be encoded (using base64 encoding) as per the HTTP Basic specification.
 
 ```bash
@@ -92,10 +92,8 @@ Scopes let you specify exactly what type of data access your application or devi
 | device:read    | send GET request to any device                                       |
 | device:write   | send POST,PUT,PATCH,DELETE request to any device                     |
 | notification   | send notification                                                    |
-| settings:read  | read the settings                                                |
-| settings:write | modify the settings                                              |
-| proxy:read     | send GET request through your local network                          |
-| proxy:write    | send POST,PUT,PATCH,DELETE through your local network                |
+| settings:read  | read the settings                                                    |
+| settings:write | modify the settings                                                  |
 | rule:read      | read rules attributes                                                |
 | rule:write     | create rules                                                         |
 | rule:execute   | execute rules                                                        |
@@ -113,7 +111,7 @@ example:
 
 This request will return the meta-data representation containing only the specified keys of a resource
 
-`/resource/56731_a?fields=id,name`
+`/resources/56731_a?fields=id,name`
 
 ### Filter resource or table data
 
@@ -164,7 +162,7 @@ Value types :
  - String : surround with single quotes ' or double quotes.
  - Number : either integer numbers or floating numbers.
  - Boolean : true or false.
- - Date : *RFC 3339* format,  e.g., *2015-03-24T12:00:00+02:00*.
+ - Date : *RFC 3339* format,  e.g., *2015-03-24T12:00:00+02:00*. Also accept the formats accepted by the [dateparser library](https://github.com/scrapinghub/dateparser).
 
 Constants :
 
@@ -215,7 +213,7 @@ Search for resources created by the current authenticated Device or App
 
 ## Paths
 
-### POST /api/apps {#POST--api-apps}
+### POST /api/apps
 
 Creates a new application.
 
@@ -341,29 +339,29 @@ Content-Type: text/html
   - 200: The application was successfully created
     [App](#App)
 
-### GET /api/apps/{r} {#GET--api-apps-{r}}
+### GET /api/apps/{r}
 
 Retrieves the script of an application.
 
-#### Query Params:
-- **exec** [integer]: Set this parameter to '1' to get the HTML code ready to be executed in a browser (i.e. content-type set to 'text/html' and the preprocessor definitions set).
-
 #### Path Params:
 - **r** [string]: An id representing a Resource.
+
+#### Query Params:
+- **exec** [boolean]: Set this parameter to '1' to get the HTML code ready to be executed in a browser (i.e. content-type set to 'text/html' and the preprocessor definitions set).
 
 #### Responses:
   - 200: The source code
     *(file)*
 
-### PUT /api/apps/{r} {#PUT--api-apps-{r}}
+### PUT /api/apps/{r}
 
 Set the script for this application. The script must be a single HTML page.
 
-#### Query Params:
-- **fields** [string]
-
 #### Path Params:
 - **r** [string]: An id representing a Resource.
+
+#### Query Params:
+- **fields** [string]
 
 #### Request body:
 
@@ -377,7 +375,7 @@ Set the script for this application. The script must be a single HTML page.
   - 200: The script was set successfully. It returns back the meta data of this application.
     [App](#App)
 
-### POST /api/devices {#POST--api-devices}
+### POST /api/devices
 
 Creates a new device.
 
@@ -395,10 +393,7 @@ Creates a new device.
   ```json
   {
      "name": "mydevice.txt",
-     "location":{
-        "latitude": 5.12,
-        "longitude": -45.78
-     },
+     "location": "room 1",
      "scope": "resource:read notification",
   }
   ```
@@ -409,7 +404,7 @@ Creates a new device.
 #### Responses:
   - 200: The device was successfully created
 
-### GET /api/devices/{r}/api {#GET--api-devices-{r}-api}
+### GET /api/devices/{r}/api
 
 Retrieves an object describing the operations available for this device.
 
@@ -419,7 +414,7 @@ Retrieves an object describing the operations available for this device.
 #### Responses:
   - 200: object describing the operations available for this device.
 
-### GET /api/devices/{r}/api/{operationId} {#GET--api-devices-{r}-api-{operationId}}
+### GET /api/devices/{r}/api/{operationId}
 
 Retrieves an object describing the operation identified by operationId.
 
@@ -430,7 +425,7 @@ Retrieves an object describing the operation identified by operationId.
 #### Responses:
   - 200: object describing the operation.
 
-### GET /api/devices/{r}/call/{operationId} {#GET--api-devices-{r}-call-{operationId}}
+### GET /api/devices/{r}/call/{operationId}
 
 Execute an operation identified by operationId. The parameters must be passed in the query string.
 
@@ -441,12 +436,11 @@ Execute an operation identified by operationId. The parameters must be passed in
 #### Responses:
   - 200: The response of the device.
 
-### POST /api/devices/{r}/call/{operationId} {#POST--api-devices-{r}-call-{operationId}}
+### POST /api/devices/{r}/call/{operationId}
 
 Execute an operation identified by operationId. The parameters can either be passed in the query string or in the body as a JSON object or a x-www-form-urlencoded string.
 
 #### Path Params:
-- **id** [string]: id of the resource. Devices or Apps using the api key authentication may use the word 'me' to replace their id.
 - **operationId** [string]: id of the operation.
 - **r** [string]: An id representing a Resource.
 
@@ -461,7 +455,7 @@ Execute an operation identified by operationId. The parameters can either be pas
 #### Responses:
   - 200: The response of the device.
 
-### POST /api/files {#POST--api-files}
+### POST /api/files
 
 Creates a new file.
 
@@ -565,7 +559,7 @@ This id is a unique string identifying this file and is necessary to make any op
   - 200: The file was successfully created
     [File](#File)
 
-### GET /api/files/{r} {#GET--api-files-{r}}
+### GET /api/files/{r}
 
 Retrieves the content of a file.
 
@@ -584,7 +578,7 @@ curl -H 'X-API-KEY: <YOUR_API_KEY>' http://localhost:8000/api/files/<FILE_ID>
   - 200: The content of this file
     *(file)*
 
-### PUT /api/files/{r} {#PUT--api-files-{r}}
+### PUT /api/files/{r}
 
 Upload the content of a file.
 
@@ -600,12 +594,12 @@ curl
     http://localhost:8000/api/files/<FILE_ID>
 ```
 
-#### Query Params:
-- **fields** [string]
-- **append** [boolean]
-
 #### Path Params:
 - **r** [string]: An id representing a Resource.
+
+#### Query Params:
+- **fields** [string]
+- **append** [boolean]: If true, the content will be appended.
 
 #### Request body:
 
@@ -619,7 +613,7 @@ curl
   - 200: The file's metadata
     [File](#File)
 
-### GET /api/files/{r}/icon {#GET--api-files-{r}-icon}
+### GET /api/files/{r}/icon
 
 Retrieves the icon of an application if there is one defined.
 
@@ -630,13 +624,9 @@ Retrieves the icon of an application if there is one defined.
   - 200: The icon of this application.
     *(file)*
 
-### POST /api/notification {#POST--api-notification}
+### POST /api/notification
 
 Send a notification to the registered email addresses (cf. settings).
-
-#### Query Params:
-- **body** [string]
-- **subject** [string]
 
 #### Request body:
 
@@ -648,10 +638,15 @@ Send a notification to the registered email addresses (cf. settings).
   - **body** *(string)*: the content of the notification
   - **subject** *(string)*: the subject of the notification (default to 'notification')
 
+##### Data:
+*(object)*
+  - **body** *(string)*
+  - **subject** *(string)*
+
 #### Responses:
   - 200: The notification was successfully sent
 
-### GET /api/resources {#GET--api-resources}
+### GET /api/resources
 
 Lists the resources.
 
@@ -662,45 +657,45 @@ curl -H 'X-API-KEY: <YOUR_API_KEY>' http://localhost:8000/api/resources
 ```
 
 #### Query Params:
-- **q** [string]: Query string for searching resources.
 - **skip** [integer]: Skips a number of resources.
-- **limit** [integer]: Limits the number of resources returned.
 - **fields** [string]
 - **sort** [string]: The key on which to do the sorting, by default the sort is made by modifiedDate descending. To make the sort descending, prepend the field name by minus "-". For instance, "-createdDate" will sort by createdDate descending.
+- **limit** [integer]: Limits the number of resources returned.
+- **q** [string]: Query string for searching resources.
 
 #### Responses:
   - 200: A list of resources
     *Array*
     items: [Resource](#Resource)
 
-### DELETE /api/resources/{r} {#DELETE--api-resources-{r}}
+### DELETE /api/resources/{r}
 
 deletes a resource
+
+#### Path Params:
+- **r** [string]: An id representing a Resource.
 
 #### Query Params:
 - **children** [boolean]
 
-#### Path Params:
-- **r** [string]: An id representing a Resource.
-
 #### Responses:
   - 200: the resource has been deleted successfully
 
-### GET /api/resources/{r} {#GET--api-resources-{r}}
+### GET /api/resources/{r}
 
 Returns the meta-data of a resource in JSON.
 
-#### Query Params:
-- **fields** [string]
-
 #### Path Params:
 - **r** [string]: An id representing a Resource.
+
+#### Query Params:
+- **fields** [string]
 
 #### Responses:
   - 200: resource object
     [Resource](#Resource)
 
-### PATCH /api/resources/{r} {#PATCH--api-resources-{r}}
+### PATCH /api/resources/{r}
 
 update a resource. Only properties which are not readonly can be modified.
 
@@ -720,11 +715,11 @@ Clear a description :
 }
 ```
 
-#### Query Params:
-- **fields** [string]
-
 #### Path Params:
 - **r** [string]: An id representing a Resource.
+
+#### Query Params:
+- **fields** [string]
 
 #### Request body:
 
@@ -738,7 +733,7 @@ Clear a description :
   - 200: resource successfully updated
     [Resource](#Resource)
 
-### GET /api/settings {#GET--api-settings}
+### GET /api/settings
 
 Returns the settings
 
@@ -746,7 +741,7 @@ Returns the settings
   - 200: The settings
     *(object)*
 
-### PATCH /api/settings {#PATCH--api-settings}
+### PATCH /api/settings
 
 update your settings.
 
@@ -762,7 +757,7 @@ update your settings.
   - 200: settings successfully updated
     *(object)*
 
-### POST /api/tables {#POST--api-tables}
+### POST /api/tables
 
 Creates a new table.
 
@@ -772,7 +767,7 @@ example:
 
 ```json
 {
-   "name": "matable.db",
+   "name": "foobar.db",
    "content": [
         {
             "temperature": 12.5,
@@ -844,7 +839,7 @@ This id is a unique string identifying this table and is necessary to make any o
   - 200: The table was successfully created
     [Table](#Table)
 
-### GET /api/tables/{r} {#GET--api-tables-{r}}
+### GET /api/tables/{r}
 
 Retrieves the content of a table.
 
@@ -865,17 +860,17 @@ curl -H 'X-API-KEY: <YOUR_API_KEY>' http://localhost:8000/api/tables/<TABLE_ID>?
 curl -H 'X-API-KEY: <YOUR_API_KEY>' http://localhost:8000/api/tables/<TABLE_ID>?start=-10&sort=temperature
 ```
 
-#### Query Params:
-- **sort** [string]: the key on which to do the sorting, by default the sort is made by date ascending. To make the sort descending, prepend the field name by minus "-". For instance, "-date" will sort by date descending.
-- **datefmt** [string]: the format of the date field (default to RFC3339).
-- **fields** [string]: .
-- **fmt** [string]: the output format (default to JSON).
-- **start** [integer]: Position of the first rows to return. If start is negative, the position will start from the end. (default to 0).
-- **length** [integer]: Maximum number of rows to return. If not set, returns until the end.
-- **q** [string]: Query string for filtering results.
-
 #### Path Params:
 - **r** [string]: An id representing a Resource.
+
+#### Query Params:
+- **sort** [string]: the key on which to do the sorting, by default the sort is made by date ascending. To make the sort descending, prepend the field name by minus "-". For instance, "-date" will sort by date descending.
+- **length** [integer]: Maximum number of rows to return. If not set, returns until the end.
+- **start** [integer]: Position of the first rows to return. If start is negative, the position will start from the end. (default to 0).
+- **fields** [string]: .
+- **query** [string]: Query string for filtering results.
+- **date_format** [string]: the format of the date field (default to RFC3339) : timestamp,timestamp_ms,rfc3339.
+- **fmt** [string]: the output format (default to JSON) : json,json_pretty,csv,csv_no_header.
 
 #### Responses:
   - 200: The records of this table
@@ -885,16 +880,16 @@ curl -H 'X-API-KEY: <YOUR_API_KEY>' http://localhost:8000/api/tables/<TABLE_ID>?
       - **date** *(string)*: the create date of this record
       - **id** *(string)*: an unique id to identify a record
 
-### POST /api/tables/{r} {#POST--api-tables-{r}}
+### POST /api/tables/{r}
 
 Insert a new record in a table
 
-#### Query Params:
-- **fields** [string]
-- **invalid_field** [string]: The behaviour to adopt when an invalid field name appears.
-
 #### Path Params:
 - **r** [string]: An id representing a Resource.
+
+#### Query Params:
+- **invalid_field** [string]: The behaviour to adopt when an invalid field name appears.
+- **fields** [string]
 
 #### Request body:
 
@@ -927,16 +922,16 @@ Insert a new record in a table
   - 200: The record was successfully inserted. The table metadata is returned.
     [Table](#Table)
 
-### PUT /api/tables/{r} {#PUT--api-tables-{r}}
+### PUT /api/tables/{r}
 
 Set the content of a table. The new data will erase the previous one.
 
-#### Query Params:
-- **skip_error** [boolean]: Whether to skip data on error or not.
-- **invalid_field** [string]: The behaviour to adopt when an invalid field name appears.
-
 #### Path Params:
 - **r** [string]: An id representing a Resource.
+
+#### Query Params:
+- **invalid_field** [string]: The behaviour to adopt when an invalid field name appears.
+- **skip_error** [boolean]: Whether to skip data on error or not.
 
 #### Request body:
 
@@ -979,48 +974,48 @@ items: *(object)*
   - 200: The content was successfully set. The table metadata is returned.
     [Table](#Table)
 
-### POST /api/tables/{r}/remove {#POST--api-tables-{r}-remove}
+### POST /api/tables/{r}/remove
 
 Remove one or more records in a table
 
-#### Query Params:
-- **fields** [string]
-- **ids** [string]: The records to be removed.
-
 #### Path Params:
 - **r** [string]: An id representing a Resource.
+
+#### Query Params:
+- **fields** [string]
+- **ids** [string]: The records id to be removed as a comma separated list.
 
 #### Responses:
   - 200: The records was successfully deleted
     [Table](#Table)
 
-### POST /api/tables/{r}/replace {#POST--api-tables-{r}-replace}
+### POST /api/tables/{r}/replace
 
 Update records in a table
 
-#### Query Params:
-- **q** [string]: A query that select the rows to update.
-- **fields** [string]
-- **invalid_field** [string]: The behaviour to adopt when an invalid field name appears.
-- **upsert** [boolean]: If true and no records was found, the data will be added to the table as a new record.
-
 #### Path Params:
 - **r** [string]: An id representing a Resource.
+
+#### Query Params:
+- **invalid_field** [string]: The behaviour to adopt when an invalid field name appears.
+- **fields** [string]
+- **upsert** [boolean]: If true and no records was found, the data will be added to the table as a new record.
+- **q** [string]: A query that select the rows to update.
 
 #### Responses:
   - 200: The records was successfully updated
     [Table](#Table)
 
-### GET /api/tables/{r}/statistics {#GET--api-tables-{r}-statistics}
+### GET /api/tables/{r}/statistics
 
 Compute statistics of a column (=key)
 
-#### Query Params:
-- **q** [string]: A query string to select the rows used for the statistics computation.
-- **key** [string]: the name of the key. Statistics can only be computed for a single key.
-
 #### Path Params:
 - **r** [string]: An id representing a Resource.
+
+#### Query Params:
+- **key** [string]: the name of the key. Statistics can only be computed for a single key.
+- **q** [string]: A query string to select the rows used for the statistics computation.
 
 #### Responses:
   - 200: The records was successfully updated
@@ -1029,7 +1024,7 @@ Compute statistics of a column (=key)
 
 ## Definitions
 
-### App{#App}
+### App
 
 Application resource representation
 
@@ -1039,14 +1034,14 @@ Application resource representation
 
 #### PROPERTIES
 
-  - **apikey** *(string)*: The apikey for authenticating this app.
-  - **contentModifiedDate** *(string)*: Last time the conten of this resource was modified
-  - **mime** *(string)*: The mime type of this app
+  - **apikey** *(string)* *(readonly)*: The apikey for authenticating this app.
+  - **contentModifiedDate** *(string)* *(readonly)*: Last time the conten of this resource was modified
+  - **mime** *(string)* *(readonly)*: The mime type of this app
   - **scope** *(string)*: The allowed scopes for this application (space separated list). No permissions by default.
-  - **size** *(integer)*: The size of the application in bytes
+  - **size** *(integer)* *(readonly)*: The size of the application in bytes
   - **version** *(string)*: The version of this application
 
-### Device{#Device}
+### Device
 
 #### INHERITED
 
@@ -1056,22 +1051,22 @@ Application resource representation
 
   - **battery** *(null)*: The battery level of this device (must be between 0 (empty) and 100 (full) , or null if the device has no battery information).
   - **connected** *(boolean)*: Set to true when this device is connected.
-  - **interfaces** *(array)*: A list of intefaces this device inherit
+  - **interfaces** *(array)* *(readonly)*: A list of intefaces this device inherit
 
   - **lastSeenDate** *(null)*: Last time this device was reached or made a request.
   - **location** *(null)*: The location of this device.
-  - **methods** *(array)*: The list of the methods available.
+  - **methods** *(array)* *(readonly)*: The list of the methods available.
 
-### Error{#Error}
+### Error
 
 An object describing an error
 
 #### PROPERTIES
 
-  - **code** *(integer)*: The HTTP response status code
-  - **message** *(string)*: A description of the error
+  - **code** *(integer)* *(readonly)*: The HTTP response status code
+  - **message** *(string)* *(readonly)*: A description of the error
 
-### File{#File}
+### File
 
 #### INHERITED
 
@@ -1079,13 +1074,13 @@ An object describing an error
 
 #### PROPERTIES
 
-  - **contentModifiedDate** *(string)*: Last time the conten of this resource was modified (formatted RFC 3339 timestamp).
+  - **contentModifiedDate** *(string)* *(readonly)*: Last time the conten of this resource was modified (formatted RFC 3339 timestamp).
   - **expireAfter** *(null)*: The amount of time (in seconds) after which this resource will be removed.
-  - **isText** *(boolean)*: True if this file has text based content.
-  - **mime** *(string)*: The MIME type of the file (automatically detected from the content).
-  - **size** *(integer)*: The size of this resource in bytes
+  - **isText** *(boolean)* *(readonly)*: True if this file has text based content.
+  - **mime** *(string)* *(readonly)*: The MIME type of the file (automatically detected from the content).
+  - **size** *(integer)* *(readonly)*: The size of this resource in bytes
 
-### Http{#Http}
+### Http
 
 Http Device resource representation
 
@@ -1095,7 +1090,7 @@ Http Device resource representation
 
 #### PROPERTIES
 
-  - **apikey** *(string)*: The apikey for authenticating this device.
+  - **apikey** *(string)* *(readonly)*: The apikey for authenticating this device.
   - **auth** *(object)*: An object describing the authentication method to use on HTTP request.
     - **password** *(string)*
     - **type** *(string)*
@@ -1104,7 +1099,7 @@ Http Device resource representation
   - **scope** *(string)*: The allowed scopes for this device (space separated list). Restrict the Http api access. Default to an empty string (no access).
   - **url** *(null)*: The URL of the device, or null if there is none defined. No URL defined means that the device cannot be reached. Only device with an URL set has a Swagger specification (see /device/<id>/specification endpoint). The specification object define all the available HTTP requests this device accepts.
 
-### MihomeDevice{#MihomeDevice}
+### MihomeDevice
 
 Mihome Device base class
 
@@ -1116,7 +1111,7 @@ Mihome Device base class
 
   - **sid**\* *(string)*: The uniq sid of the device
 
-### MihomeGateway{#MihomeGateway}
+### MihomeGateway
 
 #### INHERITED
 
@@ -1128,7 +1123,7 @@ Mihome Device base class
   - **password** *(string)*: The password of the gateway
   - **sid**\* *(string)*: The uniq sid of the gateway
 
-### MihomeSensorHT{#MihomeSensorHT}
+### MihomeSensorHT
 
 Mihome temperature/humidity/pressure Sensor Device class.
 
@@ -1136,7 +1131,7 @@ Mihome temperature/humidity/pressure Sensor Device class.
 
 [MihomeDevice](#MihomeDevice)
 
-### MQTT{#MQTT}
+### MQTT
 
 MQTT Device resource representation
 
@@ -1150,7 +1145,7 @@ MQTT Device resource representation
   - **host**\* *(string)*: The host of the MQTT broker to connect to.
   - **port** *(integer)*: The port number of the MQTT broker to connect to.
 
-### MySensorsEthernetGateway{#MySensorsEthernetGateway}
+### MySensorsEthernetGateway
 
 #### INHERITED
 
@@ -1160,7 +1155,7 @@ MQTT Device resource representation
 
   - **address**\* *(string)*: The ip address or hostname of the gateway.
 
-### MySensorsGateway{#MySensorsGateway}
+### MySensorsGateway
 
 #### INHERITED
 
@@ -1169,9 +1164,9 @@ MQTT Device resource representation
 #### PROPERTIES
 
   - **isMetric** *(boolean)*: Set the unit to Metric(default) instead of Imperial.
-  - **libVersion** *(null)*: The version of the MySensors library used.
+  - **libVersion** *(null)* *(readonly)*: The version of the MySensors library used.
 
-### MySensorsNode{#MySensorsNode}
+### MySensorsNode
 
 MySensorsNode Device resource representation. This device is normally automatically created by a MySensorsGateway instance.
 
@@ -1182,14 +1177,14 @@ MySensorsNode Device resource representation. This device is normally automatica
 #### PROPERTIES
 
   - **createdBy**\* *(null)*: The id of the resource responsible of the creation of this resource, or null.
-  - **firmware** *(null)*
-  - **libVersion** *(null)*: The version of the MySensors library used.
+  - **firmware** *(null)* *(readonly)*
+  - **libVersion** *(null)* *(readonly)*: The version of the MySensors library used.
   - **nodeId**\* *(integer)*: The id of the node.
-  - **sketchName** *(string)*: The name of the sketch uploaded.
-  - **sketchVersion** *(string)*: The version of the sketch uploaded.
+  - **sketchName** *(string)* *(readonly)*: The name of the sketch uploaded.
+  - **sketchVersion** *(string)* *(readonly)*: The version of the sketch uploaded.
   - **smartSleep** *(boolean)*: SmartSleep feature enabled for this node.
 
-### MySensorsSensor{#MySensorsSensor}
+### MySensorsSensor
 
 MySensorsSensor Device resource representation. This device is normally automatically created by a MySensorsNode instance.
 
@@ -1203,7 +1198,7 @@ MySensorsSensor Device resource representation. This device is normally automati
   - **sensorId**\* *(integer)*: The id of the sensor.
   - **sensorType**\* *(string)*: The type of the sensor.
 
-### MySensorsSerialGateway{#MySensorsSerialGateway}
+### MySensorsSerialGateway
 
 #### INHERITED
 
@@ -1214,26 +1209,26 @@ MySensorsSensor Device resource representation. This device is normally automati
   - **baudrate** *(integer)*: The baudrate.
   - **port**\* *(string)*: The serial port name.
 
-### Resource{#Resource}
+### Resource
 
 The base representation of a resource object
 
 #### PROPERTIES
 
   - **createdBy** *(null)*: The id of the resource responsible of the creation of this resource, or null.
-  - **createdDate** *(string)*: Create time for this resource
+  - **createdDate** *(string)* *(readonly)*: Create time for this resource
   - **data** *(object)*: A collection of arbitrary key-value pairs. Entries with null values are cleared in update. The keys must not be empty or longer than 64 characters, and must contain only the following characters : letters, digits, underscore and dash. Values must be either a string or a boolean or a number
 
   - **description** *(string)*: A description of this resource.
-  - **extends** *(array)*: An array of classes this resource is based on.
+  - **extends** *(array)* *(readonly)*: An array of classes this resource is based on.
 
-  - **id** *(string)*: The id of the resource
+  - **id** *(string)* *(readonly)*: The id of the resource
   - **modifiedDate** *(string)*: Last time this resource was modified
   - **name**\* *(string)*: The name of the resource
   - **public**: False: this resource is not publicly accessible. 'readonly': this resource is accessible for reading by anyone. 'readwrite': this resource is accessible for reading and writing by anyone.
-  - **type** *(string)*: The type of the resource
+  - **type** *(string)* *(readonly)*: The type of the resource
 
-### RFLinkGateway{#RFLinkGateway}
+### RFLinkGateway
 
 #### INHERITED
 
@@ -1241,11 +1236,11 @@ The base representation of a resource object
 
 #### PROPERTIES
 
-  - **build** *(null)*: The build number of the RFLink library used.
-  - **revision** *(null)*: The revision number of the RFLink library used.
-  - **version** *(null)*: The version of the RFLink library used.
+  - **build** *(null)* *(readonly)*: The build number of the RFLink library used.
+  - **revision** *(null)* *(readonly)*: The revision number of the RFLink library used.
+  - **version** *(null)* *(readonly)*: The version of the RFLink library used.
 
-### RFLinkNode{#RFLinkNode}
+### RFLinkNode
 
 #### INHERITED
 
@@ -1259,7 +1254,7 @@ The base representation of a resource object
   - **subType**\* *(string)*: The subtype of the device, ie: thermometer, switch, ...
   - **switchId**\* *(null)*: The switch id of the node. Only available for switch/door/motion subtypes.
 
-### RFLinkSerialGateway{#RFLinkSerialGateway}
+### RFLinkSerialGateway
 
 #### INHERITED
 
@@ -1270,7 +1265,7 @@ The base representation of a resource object
   - **baudrate** *(integer)*: The baudrate
   - **port**\* *(string)*: The serial port name.
 
-### RTSP{#RTSP}
+### RTSP
 
 RTSP Device resource representation, usually IP camera
 
@@ -1283,7 +1278,7 @@ RTSP Device resource representation, usually IP camera
   - **transport** *(string)*: Lower transport protocol. Allowed values are the ones defined for the flags for rtsp_transport (see https://libav.org/avconv.html).
   - **url**\* *(string)*: The URL of the device rtsp://... .
 
-### SSH{#SSH}
+### SSH
 
 SSH Device resource representation
 
@@ -1300,7 +1295,7 @@ SSH Device resource representation
   - **host**\* *(string)*: The ip address or hostname of the device to connect to.
   - **port** *(integer)*: The port number of the device to connect to. The default port number is 22.
 
-### Table{#Table}
+### Table
 
 #### INHERITED
 
@@ -1308,20 +1303,20 @@ SSH Device resource representation
 
 #### PROPERTIES
 
-  - **contentModifiedDate** *(string)*: Last time the conten of this resource was modified.
+  - **contentModifiedDate** *(string)* *(readonly)*: Last time the conten of this resource was modified.
   - **expireAfter** *(null)*: The amount of time (in seconds) after which a records will be automatically removed. Set it to null or 0 to disable this feature.
-  - **keys** *(object)*: A key/value object where the keys correspond to the fields available in this table, and the corresponding value is the number of rows where the field is set. __The default keys ('_id' and 'date' are not listed)__
+  - **keys** *(object)* *(readonly)*: A key/value object where the keys correspond to the fields available in this table, and the corresponding value is the number of rows where the field is set. __The default keys ('_id' and 'date' are not listed)__
 
-  - **length** *(integer)*: The number of records in the table
+  - **length** *(integer)* *(readonly)*: The number of records in the table
   - **maxLength** *(null)*: The maximum of records allowed in this table. When this number is reached, the oldest records will be removed to insert the new ones (first in, first out). Set it to null or 0 to disable this feature.
 
-### YeelightBulbRGBW{#YeelightBulbRGBW}
+### YeelightBulbRGBW
 
 #### INHERITED
 
 [YeelightDevice](#YeelightDevice)
 
-### YeelightDevice{#YeelightDevice}
+### YeelightDevice
 
 #### INHERITED
 
@@ -1331,7 +1326,7 @@ SSH Device resource representation
 
   - **host**\* *(string)*: The ip address or hostname of the device to connect to.
 
-### ZigateAqaraTHP{#ZigateAqaraTHP}
+### ZigateAqaraTHP
 
 Mihome temperatire/humidity/pressure Sensor Device class.
 
@@ -1339,7 +1334,7 @@ Mihome temperatire/humidity/pressure Sensor Device class.
 
 [ZigateDevice](#ZigateDevice)
 
-### ZigateDevice{#ZigateDevice}
+### ZigateDevice
 
 ZigateDevice Device base class representation
 
@@ -1353,7 +1348,7 @@ ZigateDevice Device base class representation
   - **manufacturer**\* *(string)*: The manufacturer of this device
   - **model**\* *(string)*: The model of this device
 
-### ZigateGateway{#ZigateGateway}
+### ZigateGateway
 
 #### INHERITED
 
@@ -1364,7 +1359,7 @@ ZigateDevice Device base class representation
   - **appVersion** *(null)*: The version of the Zigate firmware.
   - **sdkVersion** *(null)*: The version of the Zigate SDK.
 
-### ZigateSerialGateway{#ZigateSerialGateway}
+### ZigateSerialGateway
 
 #### INHERITED
 

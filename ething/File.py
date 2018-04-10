@@ -1,7 +1,7 @@
+# coding: utf-8
 
-
-from Resource import Resource
-import base64
+from future.utils import text_type, bord
+from .Resource import Resource
 import datetime
 import os
 import magic
@@ -10,10 +10,10 @@ try:
     from PIL import Image, ImageOps
 except ImportError:
     Image = None
-import cStringIO
-from Helpers import dict_recursive_update
-from rule.event import FileDataModified
-from base import attr, isBool, isString, isNone, isInteger, READ_ONLY, PRIVATE
+from io import BytesIO
+from .Helpers import dict_recursive_update
+from .rule.event import FileDataModified
+from .base import attr, isBool, isString, isNone, isInteger, READ_ONLY, PRIVATE
 
 
 @attr('expireAfter', validator = isNone() | isInteger(min=1), default = None, description="The amount of time (in seconds) after which this resource will be removed.")
@@ -65,12 +65,24 @@ class File(Resource):
         return False
     
     
-    def read (self):
+    def read (self, encoding = None):
         contents = self.ething.fs.retrieveFile(self._content)
-        return contents if contents else ''
+        
+        if contents is None:
+            contents = b''
+        
+        if encoding is not None:
+            contents = contents.decode(encoding)
+        
+        return contents
     
     
-    def write (self, bytes):
+    def write (self, bytes, encoding = None):
+        
+        if isinstance(bytes, text_type):
+            if encoding is None:
+                raise Exception('No encoding specified')
+            bytes = bytes.encode(encoding)
         
         # remove that file if it exists
         self.ething.fs.removeFile(self._content)
@@ -96,7 +108,12 @@ class File(Resource):
         return True
     
     
-    def append (self, bytes):
+    def append (self, bytes, encoding = None):
+        if isinstance(bytes, text_type):
+            if encoding is None:
+                raise Exception('No encoding specified')
+            bytes = bytes.encode(encoding)
+        
         d = self.read()
         d += bytes
         return self.write(d)
@@ -331,7 +348,7 @@ class File(Resource):
         l = min(limit,len(content))
         
         for i in range(0,l):
-            code = ord(content[i])
+            code = bord(content[i])
             
             if((code<32 or code>126) and code!=9 and code!=10 and code!=13 and (code<128 or code>254)):
                 return False
@@ -349,73 +366,14 @@ class File(Resource):
     def createThumb (imagedata, thumbWidth ):
         if Image is None:
             return None
-        inBuffer = cStringIO.StringIO(imagedata)
+        inBuffer = BytesIO(imagedata)
         im = Image.open(inBuffer)
         #im.thumbnail((thumbWidth, thumbWidth), Image.ANTIALIAS)
         thumb = ImageOps.fit(im, (thumbWidth, thumbWidth), Image.ANTIALIAS)
-        buffer = cStringIO.StringIO()
+        buffer = BytesIO()
         thumb.save(buffer,'PNG')
         thumbdata = buffer.getvalue()
         buffer.close()
         inBuffer.close()
         return thumbdata
     
-    
-if __name__ == '__main__':
-    
-    import ething.core
-    
-    ething = ething.core.Core({
-        'db':{
-            'database': 'test'
-        },
-        'log':{
-            'level': 'debug'
-        }
-    })
-    
-    def testTextFile():
-        f = ething.create('File', {
-            'name' : 'file1.txt'
-        })
-        
-        f.write('hello world')
-        
-        print f.toJson()
-        
-        print f.mime
-        
-        print f.read()
-    
-    def testImageFile():
-        import requests
-        
-        r = requests.get('https://www.w3schools.com/w3css/img_fjords.jpg', stream=True)
-        if r.status_code == 200:
-            r.raw.decode_content = True
-            
-            print 'create...'
-            
-            f = ething.create('File', {
-                'name' : 'image.jpg'
-            })
-            
-            print 'write...'
-            
-            f.write(r.content)
-            
-            print f.mime, f.size
-            
-            print 'end...'
-            textfile = open('/tmp/thumb.png', 'w')
-            textfile.write(f.readThumbnail())
-            textfile.close()
-            textfile = open('/tmp/image.png', 'w')
-            textfile.write(f.read())
-            textfile.close()
-            
-            
-        
-        return
-    
-    testTextFile()

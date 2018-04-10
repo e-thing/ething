@@ -1,8 +1,9 @@
+# coding: utf-8
 
 
 from ething.Device import Device, method, interface, attr, isString, isNone, isEnum
 from ething.interfaces import Switch, Light
-import RFLink
+from .helpers import *
 
 
 
@@ -37,7 +38,7 @@ meta = [
 
 
 @attr('nodeId', validator = isString(allow_empty=False), description="The hardware id of the node.")
-@attr('subType', validator = isString() & isEnum(RFLink.subTypes), description="The subtype of the device, ie: thermometer, switch, ...")
+@attr('subType', validator = isString() & isEnum(subTypes), description="The subtype of the device, ie: thermometer, switch, ...")
 @attr('protocol', validator = isString(allow_empty=False), description="The protocol name of the node.")
 @attr('switchId', validator = isNone() | isString(allow_empty=False), description="The switch id of the node. Only available for switch/door/motion subtypes.")
 @attr('createdBy', required = True)
@@ -83,18 +84,18 @@ class RFLinkNode(Device):
             
             for m in meta:
                 if subType in m[1]:
-                    attr_name = RFLink.getAttrName(m[0])
+                    attr_name = getAttrName(m[0])
                     if self.hasData(attr_name):
                         create_get_method(attr_name, m[2], m[3], m[4])
     
     
     # functions used by controller
     @staticmethod
-    def createDeviceFromMessage (self, subType, protocol, args, gateway):
+    def createDeviceFromMessage (subType, protocol, args, gateway):
         
         return RFLinkNode.create(gateway.ething, {
             'nodeId' : args['ID'],
-            'switchId' : RFLink.convertSwitchId(args['SWITCH']) if 'SWITCH' in args else None,
+            'switchId' : convertSwitchId(args['SWITCH']) if 'SWITCH' in args else None,
             'protocol' : protocol,
             'subType' : subType,
             'name' : subType+'-'+args['ID'],
@@ -108,17 +109,17 @@ class RFLinkNode(Device):
         decoded = {}
         
         for attr in args:
-            if attr in RFLink.attrMap:
+            if attr in attrMap:
                 
-                name, converter, store = RFLink.attrMap[attr]
+                name, converter, store = attrMap[attr]
                 value = converter(args[attr]) if converter else args[attr]
                 
                 if name == 'battery':
                     self.battery = value
                 
-                if store == RFLink.STORE_SEPARATE:
+                if store == STORE_SEPARATE:
                     self.store(name, value)
-                elif store == RFLink.STORE:
+                elif store == STORE:
                     decoded[name] = value
         
         if decoded:
@@ -133,63 +134,13 @@ class RFLinkNode(Device):
         d = {}
         
         for attr in args:
-            if attr in RFLink.attrMap:
-                d[RFLink.getAttrName(attr)] = RFLink.convertAttrValue(attr, args[attr])
+            if attr in attrMap:
+                d[getAttrName(attr)] = convertAttrValue(attr, args[attr])
         
         if d:
-            self.setData(d)
-            self.storeDataInTable(d)
-            
-            self.dispatchSignal(DeviceDataSet.emit(self, d))
+            self.store(None, d)
     
 
 
-if __name__ == '__main__':
-    
-    thermometer = RFLinkNode(None, {
-        '_id': '456huij',
-        'name': 'toto.dev',
-        'type': 'RFLinkNode',
-        'subType' : 'thermometer',
-        'data':{
-            'temperature': 45,
-            'humidity': 23
-        },
-        'nodeId' : None,
-        'protocol' : None,
-        'switchId' : None
-    })
-    
-    #print node.type
-    print thermometer.interface.toJson()
-    
-    print thermometer.getTemperature()
-    print thermometer.getHumidity()
-    
-    
-    
-    switch = RFLinkNode(None, {
-        '_id': '456huij',
-        'name': 'toto.dev',
-        'type': 'RFLinkNode',
-        'subType' : 'switch',
-        'data':{
-            'state': True
-        },
-        'nodeId' : 'ff',
-        'protocol' : 'ff',
-        'switchId' : None
-    })
-    
-    
-    #print node.type
-    print switch.interface.toJson()
-    
-    print switch.getState()
-    
-    
-    
-    
-    
-    
+
 

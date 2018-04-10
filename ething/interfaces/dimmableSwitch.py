@@ -1,7 +1,8 @@
+# coding: utf-8
 
 from ething.meta import interface
-from switch import Switch
-from dimmable import Dimmable
+from .switch import Switch
+from .dimmable import Dimmable
 
 @interface
 class DimmableSwitch(Switch, Dimmable):

@@ -1,3 +1,5 @@
+# coding: utf-8
+from future.utils import string_types, integer_types
 
 
 
@@ -13,7 +15,6 @@ format
 
 """
 
-import urllib
 
 
 def instanciate(paramobj, parent):
@@ -87,7 +88,7 @@ class StandardParameter(Parameter):
     def __init__ (self, data, parent):
         super(StandardParameter, self).__init__(data, parent)
         
-        if self.collectionFormat not in StandardParameter.collectionFormatList.keys():
+        if self.collectionFormat not in list(StandardParameter.collectionFormatList):
             raise Exception("invalid collectionFormat %s" % str(self.collectionFormat))
     
     @property
@@ -157,16 +158,16 @@ class StandardParameter(Parameter):
     def validateType (options, value):
         type = options['type']
         
-        if ( value is None or (isinstance(value, basestring) and value=='')) and options.get('allowEmptyValue', False) :
+        if ( value is None or (isinstance(value, string_types) and value=='')) and options.get('allowEmptyValue', False) :
             return value
         
             
         if type == "string":
             
-            if isinstance(value, int) or isinstance(value, float) or isinstance(value, bool):
+            if isinstance(value, integer_types) or isinstance(value, float) or isinstance(value, bool):
                 value = str(value)
             
-            if not isinstance(value, basestring):
+            if not isinstance(value, string_types):
                 raise Exception("must be a string '%s'" % str(value))
             
         elif type == "number":
@@ -189,7 +190,7 @@ class StandardParameter(Parameter):
             
         elif type == "boolean":
             
-            if isinstance(value, basestring):
+            if isinstance(value, string_types):
                 if value.lower() == 'true':
                     value = True
                 elif value.lower() == 'false':
@@ -198,7 +199,7 @@ class StandardParameter(Parameter):
                     value = True
                 elif value == '0':
                     value = False
-            if isinstance(value, int):
+            if isinstance(value, integer_types):
                 if value == 0:
                     value = False
                 else:
@@ -229,14 +230,14 @@ class StandardParameter(Parameter):
             
             collectionFormat = options.get('collectionFormat','csv')
             
-            if collectionFormat in StandardParameter.collectionFormatList.keys():
+            if collectionFormat in list(StandardParameter.collectionFormatList):
                 
                 if collectionFormat != "multi":
                     value = StandardParameter.collectionFormatList[collectionFormat].join(value)
         
         elif type == "file":
             
-            if not isinstance(value, basestring):
+            if not isinstance(value, string_types):
                 raise Exception("must be a string '%s'" % str(value))
         
         

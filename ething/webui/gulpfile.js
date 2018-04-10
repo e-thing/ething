@@ -3,6 +3,7 @@ var gulp = require('gulp');
 var filelist = require('gulp-filelist');
 var fs = require("fs");
 var del = require('del');
+var Q = require('q');
 
 
 // Path
@@ -21,24 +22,39 @@ gulp.task('clean', function (done) {
 });
 
 gulp.task('list', function (done) {
-	
+    
+    var deferreds = [];
+    
 	dyn_folders.forEach(function(folder){
 		
+        
+        var deferred = Q.defer();
 		var dir = source+'/'+folder;
 		
 		gulp
 			.src('*.js', {cwd: dir})
 			.pipe(filelist('list.json', { removeExtensions: true }))
 			.pipe(gulp.dest(dir))
+            .on('end', function(){
+                deferred.resolve();
+            })
 		
+        deferreds.push(deferred.promise);
+        
 	});
-	
-	done();
+    
+    if(deferreds.length){
+        Q.all(deferreds).done(function(){
+            done();
+        })
+    } else {
+        done();
+    }
 	
 });
 
 gulp.task('configure', function (done) {
-	
+    
 	var includes = [];
 	
 	dyn_folders.forEach(function(folder){
@@ -60,13 +76,13 @@ gulp.task('configure', function (done) {
 	
 	var build_contents = fs.readFileSync("build_tmpl.js", 'utf8');
 	fs.writeFileSync("build.js", build_contents.replace('//INCLUDE//', str) );
-	
+    
 	done();
 });
 
 
-gulp.task('build', function (cb) {
-	
+gulp.task('build', ['list', 'configure'], function (cb) {
+    
 	var rjs = require("requirejs");
 	var fs = require('fs');
 	var path = require('path');
@@ -74,7 +90,12 @@ gulp.task('build', function (cb) {
 	
 	var config_contents = fs.readFileSync("build.js", 'utf8');
 	
-	var config = eval(config_contents);
+    try{
+        var config = eval(config_contents);
+    } catch(err){
+        console.error('unable to read the build config file: build.js')
+        throw err
+    }
 	
 	console.log(config);
 	

@@ -1,6 +1,7 @@
+# coding: utf-8
 
 from ething.meta import method, iface
-from heater import Heater
+from .heater import Heater
 
 class HVAC (Heater):
     

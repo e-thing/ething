@@ -1,13 +1,16 @@
+# coding: utf-8
 
 
 from flask import request, Response
 from ..server_utils import *
 import base64
+from werkzeug.http import parse_options_header
+import json
 
 def install(core, app, auth, **kwargs):
 
     files_args = {
-        'fields': fields.DelimitedList(fields.Str())
+        'fields': fields.DelimitedList(fields.Str(), missing=None)
     }
 
     @app.route('/api/files', methods=['POST'])
@@ -121,16 +124,32 @@ def install(core, app, auth, **kwargs):
               schema:
                 $ref: '#/definitions/File'
         """
-        attr = request.get_json()
         
-        if isinstance(attr, dict):
+        attr = None
+        content = None
+        
+        if request.mimetype == 'multipart/related':
             
-            content = None
+            parts = list(parse_multipart_data(request.stream, request.mimetype_params['boundary']))
             
-            if 'content' in attr:
-                content = base64.b64decode(attr['content'])
-                attr.pop('content')
+            for headers, body in parts:
+                mimetype, params = parse_options_header(headers['Content-Type'])
+                
+                if mimetype == 'application/json':
+                    attr = json.loads(body.decode())
+                else:
+                    content = body
             
+        else:
+            attr = request.get_json()
+            
+            if isinstance(attr, dict):
+                
+                if 'content' in attr:
+                    content = base64.b64decode(attr['content'])
+                    attr.pop('content')
+                
+        if attr is not None:
             attr.setdefault('createdBy', g.auth.resource)
             
             r = core.create('File', attr)
@@ -144,14 +163,14 @@ def install(core, app, auth, **kwargs):
                 response.status_code = 201
                 return response
             else:
-                raise Exception('Unable to create the file');
+                raise Exception('Unable to create the file')
         
-        raise Exception('Invalid request');
+        raise Exception('Invalid request')
 
 
     file_put_args = {
-        'append': fields.Bool(missing=False),
-        'fields': fields.DelimitedList(fields.Str())
+        'append': fields.Bool(missing=False, description="If true, the content will be appended."),
+        'fields': fields.DelimitedList(fields.Str(), missing=None)
     }
 
     @app.route('/api/files/<File:r>', methods=['GET', 'PUT'])
@@ -241,7 +260,7 @@ def install(core, app, auth, **kwargs):
     
     
     file_action_execute_args = {
-        'args': fields.Str()
+        'args': fields.Str(description="A string representing the arguments to be passed to the script.")
     }
 
     @app.route('/api/files/<File:r>/execute')

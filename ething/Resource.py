@@ -1,15 +1,17 @@
+# coding: utf-8
 
-
+from future.utils import with_metaclass
 import string
 import re
 import sys
 import copy
 import datetime
-from ShortId import ShortId
-from Helpers import dict_recursive_update
-from rule.event import ResourceCreated, ResourceDeleted, ResourceMetaUpdated
-from meta import MetaResource
-from base import attr, DataObject, isBool, isString, isNone, isNumber, isObject, isEnum, READ_ONLY, PRIVATE, ModelAdapter, Validator
+from .ShortId import ShortId
+from .Helpers import dict_recursive_update
+from .rule.event import ResourceCreated, ResourceDeleted, ResourceMetaUpdated
+from .meta import MetaResource
+from .base import attr, DataObject, isBool, isString, isNone, isNumber, isObject, isEnum, READ_ONLY, PRIVATE, ModelAdapter, Validator
+from future.utils import iteritems
 
 
 class isResource(Validator):
@@ -50,7 +52,7 @@ class CreatedByModelAdapter(ModelAdapter):
 class DataModelAdapter(ModelAdapter):
     
     def set(self, data_object, data, name, value):
-        for k in value.keys():
+        for k in list(value):
             if value[k] is None:
                 value.pop(k)
         data[name] = value
@@ -66,12 +68,10 @@ class DataModelAdapter(ModelAdapter):
 @attr('data', validator = isObject(allow_extra = isString() | isNumber() | isNone() | isBool()), default = {}, model_adapter = DataModelAdapter(), description="A collection of arbitrary key-value pairs. Entries with null values are cleared in update. The keys must not be empty or longer than 64 characters, and must contain only the following characters : letters, digits, underscore and dash. Values must be either a string or a boolean or a number")
 @attr('description', validator = isString(), default = '', description = "A description of this resource.")
 @attr('public', validator = isEnum([False, 'readonly', 'readwrite']), default = False, description = "False: this resource is not publicly accessible. 'readonly': this resource is accessible for reading by anyone. 'readwrite': this resource is accessible for reading and writing by anyone.")
-class Resource(DataObject):
+class Resource(with_metaclass(MetaResource, DataObject)):
     """
     The base representation of a resource object
     """
-    
-    __metaclass__ = MetaResource
     
     
     def __init__ (self, ething, data = None):
@@ -134,7 +134,17 @@ class Resource(DataObject):
             self.setDirtyAttr('data')
             self.save()
     
-    
+    def children(self, filter = None):
+        q = {
+            'createdBy' : self.id
+        }
+        
+        if filter is not None:
+            q = {
+                '$and' : [q, filter]
+            }
+        
+        return self.ething.find(q)
     
     
     def removeParent (self):
@@ -146,6 +156,7 @@ class Resource(DataObject):
     def remove (self, removeChildren = False):
         
         id = self.id
+        children = self.children()
         
         c = self.ething.db["resources"]
         c.delete_one({'_id' : id})
@@ -153,10 +164,6 @@ class Resource(DataObject):
         self.ething.log.debug("Resource deleted : %s" % str(self))
         
         self.ething.dispatchSignal(ResourceDeleted.emit(self))
-        
-        children = self.ething.find({
-            'createdBy' : id
-        })
         
         for child in children:
             if removeChildren:
@@ -201,7 +208,7 @@ class Resource(DataObject):
         
         r = cls(ething)
         
-        for k, v in attr.iteritems():
+        for k, v in iteritems(attr):
             setattr(r, k, v)
         
         r.save()

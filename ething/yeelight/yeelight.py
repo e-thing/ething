@@ -1,4 +1,6 @@
+# coding: utf-8
 
+from future.utils import listvalues
 import socket
 import struct
 import re
@@ -80,8 +82,10 @@ def scan ():
                                 
                                 value = matches.group(2)
                                 
-                                if value.decode('utf8').isnumeric():
+                                try:
                                     value = int(value)
+                                except ValueError:
+                                    pass
                                 
                                 bulb[matches.group(1)] = value
                         
@@ -93,14 +97,8 @@ def scan ():
         if s:
             s.close()
     
-    return bulbs.values()
+    return listvalues(bulbs)
 
-
-
-if __name__ == '__main__':
-    
-    print scan ()
-    
 
 
 

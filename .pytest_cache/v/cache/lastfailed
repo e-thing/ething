@@ -1,0 +1,5 @@
+{
+  "tests/server/test_files.py::test_get_resources": true, 
+  "tests/test_ping.py::test_ping": true, 
+  "tests/test_ping.py::test_pingable": true
+}

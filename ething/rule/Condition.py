@@ -1,13 +1,13 @@
+# coding: utf-8
 
 from .RuleItem import RuleItem
 from . import InvalidRuleException
 from ething.meta import MetaCondition
+from future.utils import with_metaclass
 
 
-
-class Condition(RuleItem):
+class Condition(with_metaclass(MetaCondition,RuleItem)):
     
-    __metaclass__ = MetaCondition
     
     def evaluate(self, signal):
         if self.valid:

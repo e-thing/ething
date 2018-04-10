@@ -1,7 +1,9 @@
+# coding: utf-8
+from future.utils import string_types
 
-import Zigate
+from .helpers import model_info
+from .Message import Message
 import time
-from Message import Message
 
 
 class Controller(object):
@@ -120,7 +122,7 @@ class Controller(object):
         
         self.log.info("Zigate: create device addr: %s, model: %s" % (addr, model))
         
-        info = Zigate.model_info(model)
+        info = model_info(model)
         
         if info:
             
@@ -497,7 +499,7 @@ class Controller(object):
         self.write(message.build())
         
         if waitResponse:
-            if isinstance(waitResponse, basestring):
+            if isinstance(waitResponse, string_types):
                 responseId = waitResponse.rjust(4, "0").upper()
             else:
                 responseId = format("04X",(int(message.type, 16) | 0x8000))

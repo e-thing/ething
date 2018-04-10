@@ -1,3 +1,4 @@
+# coding: utf-8
 
 
 class SignalManager(object):
@@ -48,7 +49,7 @@ class SignalManager(object):
         if event_type in self.handlers:
             try:
                 self.handlers[event_type].remove(handler)
-            except KeyError:
+            except (ValueError, KeyError):
                 pass
         
     def addDispatcher(self, dispatcher):

@@ -1,3 +1,5 @@
+# coding: utf-8
+from future.utils import string_types
 from .. import Event
 from .. import Signal
 
@@ -17,7 +19,7 @@ class Custom(Event):
                 
                 name = attributes[key]
                 
-                if not(isinstance(name, basestring) and name ):
+                if not(isinstance(name, string_types) and name ):
                     raise Exception("name must be a non empty string.");
                 
             else:
@@ -36,11 +38,3 @@ class Custom(Event):
         })
         
         
-
-if __name__ == '__main__':
-    
-    
-    from .Custom import Custom
-    
-    print Custom.emit('toto')
-    

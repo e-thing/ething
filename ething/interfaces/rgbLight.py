@@ -1,5 +1,6 @@
+# coding: utf-8
 
-from light import Light
+from .light import Light
 from ething.meta import method, interface
 
 

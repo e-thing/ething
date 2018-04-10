@@ -12,8 +12,8 @@ There are different types of resources. A resource can either be :
 
  - file : use this kind of objects to store text data or binary data (image, ...)
  - table : tables are used to store a collection of related data. Table consists of fields and rows.
- - device : this resource describes a device. You can send HTTP requests to your device through it.
- - app : this resource is used to store a HTML/JavaScript script. Use it to handle your data (for instance, you can create an interface to communicate with your device).
+ - device : this resource describes a device.
+ - app : this resource is used to store a HTML/JavaScript script. Use it to handle your data/devices (for instance, you can create an interface to communicate with your device).
 
 
 
@@ -38,7 +38,7 @@ There are several options for authenticating with the API.
 #### Basic authentication
 
 HTTP Basic authentication is the simplest way of interacting with the API. 
-Simply pass the username (always 'ething') and password with each request through the `Authorization` header.
+Simply pass the username (default to 'ething') and password with each request through the `Authorization` header.
 This value should be encoded (using base64 encoding) as per the HTTP Basic specification.
 
 ```bash
@@ -95,10 +95,8 @@ Scopes let you specify exactly what type of data access your application or devi
 | device:read    | send GET request to any device                                       |
 | device:write   | send POST,PUT,PATCH,DELETE request to any device                     |
 | notification   | send notification                                                    |
-| settings:read  | read the settings                                                |
-| settings:write | modify the settings                                              |
-| proxy:read     | send GET request through your local network                          |
-| proxy:write    | send POST,PUT,PATCH,DELETE through your local network                |
+| settings:read  | read the settings                                                    |
+| settings:write | modify the settings                                                  |
 | rule:read      | read rules attributes                                                |
 | rule:write     | create rules                                                         |
 | rule:execute   | execute rules                                                        |
@@ -116,7 +114,7 @@ example:
 
 This request will return the meta-data representation containing only the specified keys of a resource
 
-`/resource/56731_a?fields=id,name`
+`/resources/56731_a?fields=id,name`
 
 
 ### Filter resource or table data
@@ -171,7 +169,7 @@ Value types :
  - String : surround with single quotes ' or double quotes.
  - Number : either integer numbers or floating numbers.
  - Boolean : true or false.
- - Date : *RFC 3339* format,  e.g., *2015-03-24T12:00:00+02:00*.
+ - Date : *RFC 3339* format,  e.g., *2015-03-24T12:00:00+02:00*. Also accept the formats accepted by the [dateparser library](https://github.com/scrapinghub/dateparser).
 
 Constants :
 

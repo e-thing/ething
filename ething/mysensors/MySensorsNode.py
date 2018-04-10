@@ -1,9 +1,8 @@
+# coding: utf-8
 
 
 from ething.Device import Device, method, attr, isInteger, isString, isNone, isBool, READ_ONLY
-import MySensors
-import base64
-import binascii
+from .helpers import *
 
 
 @attr('nodeId', validator = isInteger(min=1, max=254), description="The id of the node.")
@@ -39,7 +38,7 @@ class MySensorsNode(Device):
         
         if filter is not None:
             q = {
-                'and' : [q, filter]
+                '$and' : [q, filter]
             }
         
         return self.ething.find(q)
@@ -68,17 +67,12 @@ class MySensorsNode(Device):
     
     
     
-    @method.arg('firmware', type='string', format='binary', minLength=1, description='only *.hex files must be uploaded !')
+    #@method.arg('firmware', type='string', format='binary', minLength=1, description='only *.hex files must be uploaded !')
     def updateFirmware (self, firmware):
         """
         OTA (on the air) firmware update.
         """
         
-        # may be base64 encoded ?
-        try:
-            firmware = base64.decodestring(firmware)
-        except binascii.Error:
-            pass
         return self.ething.rpc.request('device.mysensors.updateFirmware',self.id, firmware)
     
     
@@ -99,7 +93,7 @@ class MySensorsNode(Device):
         """
         Request this node to reboot
         """
-        self.sendMessage(MySensors.INTERNAL_CHILD, MySensors.INTERNAL, MySensors.NO_ACK, MySensors.I_REBOOT)
+        self.sendMessage(INTERNAL_CHILD, INTERNAL, NO_ACK, I_REBOOT)
 
 
 

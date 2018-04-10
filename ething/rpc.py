@@ -1,3 +1,5 @@
+# coding: utf-8
+from future.utils import string_types
 import socket
 import struct
 import pickle
@@ -49,12 +51,12 @@ class RPC(object):
     
     _cmds = {}
     
-    def __init__(self, core, address = default_address):
+    def __init__(self, core, address = None):
         self.core = core
         self.log = core.log
-        self._address = address
+        self._address = address or core.config.get('rpc.address', default_address)
         
-        self.log.debug("RPC initiated, address = %s" % str(address))
+        self.log.debug("RPC initiated, address = %s" % str(self._address))
     
     @property
     def address (self):
@@ -63,7 +65,7 @@ class RPC(object):
     
     def start_server(self, manager):
         
-        if isinstance(self._address, basestring):
+        if isinstance(self._address, string_types):
             
             # Make sure the socket does not already exist
             try:
@@ -101,7 +103,7 @@ class RPC(object):
         return pickle.loads(data)
     
     def _create_socket(self):
-        if isinstance(self._address, basestring):
+        if isinstance(self._address, string_types):
             address_family = socket.AF_UNIX
         else:
             address_family = socket.AF_INET
@@ -140,7 +142,7 @@ class RPC(object):
         
         if resp.exception is not None:
             if resp.traceback:
-                raise type(resp.exception)(resp.exception.message + ' , traceback: %s' % resp.traceback)
+                raise type(resp.exception)(str(resp.exception) + ' , traceback: %s' % resp.traceback)
             else:
                 raise resp.exception
         
@@ -360,111 +362,3 @@ class RPC_Server(object):
         
     
 
-if __name__ == '__main__':
-    
-    import sys
-    import logging
-    import time
-    from SocketManager import SocketManager
-    
-    logging.basicConfig(format='%(asctime)s :: %(levelname)s :: %(message)s')
-    logger = logging.getLogger()
-    logger.setLevel(logging.DEBUG)
-    
-    class Core(object):
-        log = logger
-    
-    
-    core = Core()
-    manager = SocketManager(core)
-    rpc = RPC(core)
-    
-    
-    def test0():
-        
-        if len(sys.argv)>1 and sys.argv[1] == 'server':
-            
-            def hello():
-                print "execute hello()"
-                return 'world'
-            
-            def delayed(callback):
-                import threading
-                print "execute delayed()"
-                
-                def cb():
-                    callback('async result')
-                
-                t = threading.Timer(1.0, cb)
-                t.start()
-                
-                return
-            
-            rpc.register('hello', hello)
-            rpc.register('delayed', delayed, callback_name = 'callback')
-            
-            rpc.start_server(manager)
-            manager.loop_forever()
-        
-        else:
-            
-            t0 = time.time()
-            print rpc.request('hello')
-            tf = time.time()
-            print tf-t0
-            
-            t0 = time.time()
-            print rpc.send('hello')
-            tf = time.time()
-            print tf-t0
-            
-            t0 = time.time()
-            print rpc.request('delayed')
-            tf = time.time()
-            print tf-t0
-            
-            t0 = time.time()
-            print rpc.send('delayed')
-            tf = time.time()
-            print tf-t0
-        
-    
-    def test1():
-        
-        if len(sys.argv)>1 and sys.argv[1] == 'server':
-            
-            tf = time.time() + 10
-            
-            rpc.start_server(manager)
-            
-            while time.time() < tf:
-                manager.loop(1)
-                rpc.publish('mytopic', 'message or object %s' % str(time.time()))
-        
-        
-        else:
-            
-            client = rpc.subscribe('mytopic')
-            
-            while True:
-                message = client.get()
-                if message is None:
-                    break
-                print message
-    
-    def test2():
-            
-        tf = time.time() + 30
-        
-        rpc.start_server(manager)
-        
-        i=0
-        while time.time() < tf:
-            time.sleep(0.5)
-            i+=1
-            print "send", i
-            rpc.send('mytopic', 'message or object %s' % str(time.time()))
-        
-            
-    
-    test2()

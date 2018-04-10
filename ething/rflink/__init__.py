@@ -1,8 +1,10 @@
+# coding: utf-8
+from future.utils import string_types
 
-from Controller import Controller
-from RFLinkGateway import RFLinkGateway, Device
-from RFLinkSerialGateway import RFLinkSerialGateway
-from RFLinkNode import RFLinkNode
+from .Controller import Controller
+from .RFLinkGateway import RFLinkGateway, Device
+from .RFLinkSerialGateway import RFLinkSerialGateway
+from .RFLinkNode import RFLinkNode
 
 
 import serial
@@ -54,7 +56,7 @@ class RFLink(object):
         
     def start_controller (self, device):
         
-        if isinstance(device, basestring):
+        if isinstance(device, string_types):
             device = self.core.get(device)
         
         if not device or not isinstance(device, RFLinkGateway):
@@ -85,7 +87,7 @@ class RFLink(object):
     
     
     def stop_all_controllers(self):
-        for id in self.controllers.keys():
+        for id in list(self.controllers):
             self.stop_controller(id)
         self.controllers = {}
     
@@ -118,7 +120,7 @@ class RFLink(object):
 class SerialTransport(object):
     
     def __init__ (self, controller):
-        self._buffer = ""
+        self._buffer = b""
         self._serial = None
         self._controller = controller
         self._socketManager = controller.ething.socketManager
@@ -126,7 +128,7 @@ class SerialTransport(object):
     
     def open(self):
         
-        self._buffer = ""
+        self._buffer = b""
         
         port = self._controller.gateway.port
         baudrate = self._controller.gateway.baudrate
@@ -170,10 +172,10 @@ class SerialTransport(object):
         l = []
         chunk = self.read()
         if chunk:
-            self._buffer += chunk.decode("utf-8")
+            self._buffer += chunk
             
             while True:
-                p = self._buffer.find("\n")
+                p = self._buffer.find(b"\n")
                 if p>=0 :
                     line = self._buffer[0:p]
                     self._buffer = self._buffer[p+1:]

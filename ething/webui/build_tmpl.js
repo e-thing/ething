@@ -5,7 +5,7 @@
 	
 	dir: "./dist",
 	
-	optimize: "none"//"uglify",
+	optimize: "none",//"uglify",
 	
 	modules: [{
 		name: '../main',

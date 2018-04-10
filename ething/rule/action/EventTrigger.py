@@ -1,3 +1,5 @@
+# coding: utf-8
+from future.utils import string_types
 from .. import Action
 from ething.rule.event import Custom
 
@@ -14,7 +16,7 @@ class EventTrigger(Action):
             
             if key == 'name':
                 
-                if not( isinstance(value, basestring) and len(value)>0 ):
+                if not( isinstance(value, string_types) and len(value)>0 ):
                     raise Exception("must be a non empty string.")
             
             else:

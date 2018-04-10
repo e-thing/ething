@@ -1,8 +1,13 @@
+# coding: utf-8
+from future.utils import string_types, integer_types
 
 import re
 import sys
 from dateparser import parse
 import datetime
+from .Helpers import reraise
+from future.utils import iteritems
+import copy
 
 
 class Validator(object):
@@ -144,7 +149,7 @@ class isNumber(Validator):
         self.max = max
     
     def validate(self, value):
-        if not isinstance(value, int) and not isinstance(value, float):
+        if not isinstance(value, integer_types) and not isinstance(value, float):
             raise ValueError('not a number')
         if self.min is not None:
             if value < self.min:
@@ -165,7 +170,7 @@ class isNumber(Validator):
 class isInteger(isNumber):
     
     def validate(self, value):
-        if not isinstance(value, int):
+        if not isinstance(value, integer_types):
             raise ValueError('not an integer')
         return super(isInteger, self).validate(value)
     
@@ -190,7 +195,7 @@ class isDate(Validator):
         """
         return a Datetime
         """
-        if isinstance(value, basestring):
+        if isinstance(value, string_types):
             try:
                 value = parse(value, languages=['en'])
             except:
@@ -216,14 +221,14 @@ class isString(Validator):
         self.enum = enum
         self.regex = None
         if regex:
-            if isinstance(regex, basestring):
+            if isinstance(regex, string_types):
                 self.regex = regex
                 pattern = regex
                 flags = 0
             else: # tupple
                 pattern, flags = regex
                 self.regex = str(regex)
-                if isinstance(flags, basestring):
+                if isinstance(flags, string_types):
                     f = 0
                     for c in flags:
                         f = f | getattr(re, c.upper())
@@ -232,7 +237,7 @@ class isString(Validator):
             self.regex_c = re.compile(pattern, flags)
     
     def validate(self, value):
-        if not isinstance(value, basestring):
+        if not isinstance(value, string_types):
             raise ValueError('not a string')
         
         if not self.allow_empty and len(value)==0:
@@ -326,7 +331,7 @@ class isObject(Validator):
         
         checked = []
         sanitized_value = {}
-        for k, v in value.iteritems():
+        for k, v in iteritems(value):
             
             validator = None
             
@@ -342,11 +347,11 @@ class isObject(Validator):
                 try:
                     sanitized_value[k] = validator.validate(v)
                 except Exception as e:
-                    raise type(e), type(e)(("key '%s': " % k) + e.message), sys.exc_info()[2]
+                    reraise( type(e), type(e)(("key '%s': " % k) + str(e)), sys.exc_info()[2] )
             
             checked.append(k)
         
-        for k, v in self.dict.iteritems():
+        for k, v in iteritems(self.dict):
             if k not in checked:
                 if k not in self.optionals:
                     raise ValueError("the key '%s' is not present" % k)
@@ -358,7 +363,7 @@ class isObject(Validator):
         schema['additionalProperties'] = self.allow_extra if isinstance(self.allow_extra, bool) else self.allow_extra.schema()
         required = []
         schema['properties'] = {}
-        for k, v in self.dict.iteritems():
+        for k, v in iteritems(self.dict):
             if k not in self.optionals:
                 required.append(k)
             schema['properties'][k] = v.schema()
@@ -394,7 +399,7 @@ class isArray(Validator):
                 try:
                     sanitized_values.append(self.item.validate(value[i]))
                 except Exception as e:
-                    raise type(e), type(e)(("the array item at index %d is invalid: " % i) + e.message), sys.exc_info()[2]
+                    reraise( type(e), type(e)(("the array item at index %d is invalid: " % i) + str(e)), sys.exc_info()[2] )
             value = sanitized_values
         
         return value
@@ -492,7 +497,9 @@ def attr(name, validator = None, mode = None, **kwargs):
     return d
 
 def _make_default_fct(v):
-    return v if callable(v) else lambda _: v
+    if callable(v):
+        return v
+    return lambda _: copy.deepcopy(v)
 
 
 
@@ -596,7 +603,7 @@ class DataObject(object):
     
     def save(self):
         
-        if len(self.__dirtyFields) == 0:
+        if len(self.__dirtyFields) == 0 and not self.__new:
             return # nothing to save
         
         if self.__no_save > 0:
@@ -679,7 +686,7 @@ class DataObject(object):
         description = description.strip()
         
         attributes = getattr(cls, '__attributes', {})
-        for attr_name in attributes.keys():
+        for attr_name in list(attributes):
             attribute = attributes.get(attr_name)
             mode = attribute.get('mode')
             
@@ -754,99 +761,5 @@ class DataObject(object):
         return schema
     
 
-
-
-if __name__ == "__main__":
-    import datetime
-
-    class isResource(Validator):
-        
-        def validate(self, value):
-            if not isinstance(value, Resource):
-                raise ValueError('not a Resource')
-
-    class isId(Validator):
-        def validate(self, value):
-            if not isinstance(value, basestring) or not re.search('^[-_a-zA-Z0-9]{7}$', value):
-                raise ValueError('not an id')
-
-
-    class IdModelAdapter(ModelAdapter):
-        
-        def set(self, data_object, data, name, value):
-            data['_id'] = value
-        
-        def get(self, data_object, data, name):
-            return data['_id']
-        
-        def has(self, data_object, data, name):
-            return '_id' in data
-
-    class CreatedByModelAdapter(ModelAdapter):
-        
-        def set(self, data_object, data, name, value):
-            data[name] = value.id if isinstance(value, Resource) else value
-        
-    class DataModelAdapter(ModelAdapter):
-        
-        def set(self, data_object, data, name, value):
-            if name in data:
-                data[name].update(value)
-            else:
-                data[name] = {}
-            
-            # remove keys with None value
-            for k in data[name].keys():
-                if data[name][k] is None:
-                    data[name].pop(k)
-
-    @attr('name', validator = isString(allow_empty = False))
-    @attr('id', default = 'myid', mode = READ_ONLY, model_adapter = IdModelAdapter())
-    @attr('createdDate', default = lambda _: datetime.datetime.utcnow(), mode = READ_ONLY)
-    @attr('createdBy', validator = isResource() | isNone() | isId(), default = None, model_adapter = CreatedByModelAdapter())
-    @attr('private', mode = PRIVATE, default = None)
-    @attr('data', validator = isObject(allow_extra = isString() | isNumber | isNone() | isBool()), default = {}, model_adapter = DataModelAdapter())
-    class Resource(DataObject):
-        
-        def _insert(self, data):
-            print "insert =>", data
-        
-        def _save(self, data):
-            print "save =>", data
-            
-        
-        def __getattr__ (self,    name ):
-            
-            value = super(Resource, self).__getattr__(name)
-            
-            if name == 'createdBy':
-                #return data_object.ething.get(value)
-                return 'yyo'
-            else:
-                return value
-    
-    
-    @attr('id', default = 'gtY')
-    class S(Resource):
-        pass
-    
-    print getattr(Resource, '__attributes', {})
-    print getattr(S, '__attributes', {})
-    r = S()
-    r.name = "tata"
-    r.createdBy = r
-    r._private = 'toto'
-    print r.id
-    print r.createdBy
-    r.data = {
-        'aa': 'AA',
-        'fd': None
-    }
-    r.data = {
-        'bb': 'BBB'
-    }
-    r.save()
-
-    print r.toJson()
 
 

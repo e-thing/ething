@@ -4,7 +4,7 @@ function usage(){
 	console.error();
 	console.error("usage:");
 	console.error("  "+process.argv.slice(0,2).join(' ')+" [--stdout file] [--stderr file] [--result file]");
-	console.error("      [--globals json] [-t timeout] [--user user] [--password password] [--apiUrl url]");
+	console.error("      [--globals json] [-t timeout] [--user user] [--password password] [--serverUrl url]");
 	console.error("      [--apikey key] [--filename name] script");
 	console.error();
 }
@@ -26,7 +26,7 @@ var timeout = 300000; // in ms
 var user = 'ething';
 var password = null;
 var apiKey = null;
-var apiUrl = 'http://localhost:8000/api';
+var serverUrl = 'http://localhost:8000';
 var verbose = false;
 
 // arguments
@@ -120,7 +120,7 @@ while(arguments.length){
 			}
 			apiKey = arguments[0];
 			break;
-		case '--apiUrl':
+		case '--serverUrl':
 			arguments.shift();
 			if(!arguments.length){
 				usage();
@@ -129,9 +129,9 @@ while(arguments.length){
 			
 			// parse url
 			var url = require('url');
-			var tmpurl = extend(url.parse('http://localhost'), url.parse(arguments[0]));
+			var tmpurl = extend(url.parse(serverUrl), url.parse(arguments[0]));
 			tmpurl.pathname = tmpurl.pathname.replace(/\/?$/,'/api');
-			apiUrl = url.format(tmpurl);
+			serverUrl = url.format(tmpurl);
 			
 			break;
 		default:
@@ -151,7 +151,7 @@ while(arguments.length){
 
 if(verbose){
 	console.log('command:',process.argv.join(' '));
-	console.log('apiUrl:',apiUrl);
+	console.log('serverUrl:',serverUrl);
 }
 
 if(scriptFile===null){
@@ -169,7 +169,7 @@ var script = fs.readFileSync(scriptFile).toString('utf8');
 
 if(verbose) console.log('script file:',scriptFile);
 
-var EThing = require("./../../js/ething.min.js").EThing;
+var EThing = require("./../webui/node_modules/ething-js");
 
 
 if(!filename){
@@ -177,8 +177,8 @@ if(!filename){
 }
 
 
-if(apiUrl)
-	EThing.config.apiUrl = apiUrl;
+if(serverUrl)
+	EThing.config.serverUrl = serverUrl;
 
 if(apiKey)
 	EThing.auth.setApiKey(apiKey);

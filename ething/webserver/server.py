@@ -1,15 +1,17 @@
+# coding: utf-8
 
 from flask import Flask, Response
 from flask_cors import CORS
 from werkzeug.exceptions import HTTPException
-from auth import install_auth
-from routes import install_routes
-import converters
+from .auth import install_auth
+from .routes import install_routes
+from . import converters
 import json as js
 import os, sys
 import traceback
 import logging
-from method_override import HTTPMethodOverrideMiddleware
+from .method_override import HTTPMethodOverrideMiddleware
+from .server_utils import ServerException, tb_extract_info
 
 root_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
@@ -24,18 +26,20 @@ def error_handler(e):
     
     if isinstance(e, HTTPException):
         error['code'] = e.get_response().status_code
+    elif isinstance(e, ServerException):
+        error['code'] = e.status_code
     
     if debug :
-        exc_type, exc_obj, exc_tb = sys.exc_info()
+        file, line = tb_extract_info()
         error['stack'] = traceback.format_exc()
-        error['file'] = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
-        error['line'] = exc_tb.tb_lineno
+        error['file'] = file
+        error['line'] = line
         
     
-    return Response(js.dumps(error), status=400, mimetype='application/json')
+    return Response(js.dumps(error), status=error['code'], mimetype='application/json')
 
 
-def init(core):
+def create(core):
     global debug
     
     app = Flask(__name__, static_url_path='', root_path=root_path)
@@ -71,8 +75,12 @@ def init(core):
     
     return app
 
+
+def toto():
+    return 2
+
 def run(core):
-    app = init(core)
+    app = create(core)
     app.run(host='0.0.0.0', port=core.config['webserver']['port'], threaded=True)
     return app
 
@@ -94,10 +102,6 @@ if __name__ == "__main__":
         'debug': True
     })
     
-    
-    #with app.test_client() as c:
-    #    response = c.get('/test/monid?a=toto&b=1')
-    #    print response.get_data()
     
     run(core)
 

@@ -1,3 +1,5 @@
+# coding: utf-8
+from future.utils import string_types
 
 from .ResourceEvent import ResourceEvent
 
@@ -28,7 +30,7 @@ class ResourceMetaUpdated(ResourceEvent):
                     pass
                 elif isinstance(value, list):
                     for v in value:
-                        if not isinstance(v, basestring):
+                        if not isinstance(v, string_types):
                             raise Exception("the key '%s' must be an array of string" % key)
                 else:
                     raise Exception("the key '%s' must be an array of string" % key)
@@ -57,19 +59,3 @@ class ResourceMetaUpdated(ResourceEvent):
     
 
 
-if __name__ == '__main__':
-    
-    
-    from ething.core import Core
-    
-    ething = Core({
-        'db':{
-            'database': 'test'
-        }
-    })
-    
-    r = ething.findOne()
-    
-    print r
-    
-    print ResourceMetaUpdated.emit(r, ['key1'])

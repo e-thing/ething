@@ -1,13 +1,19 @@
+# coding: utf-8
+from future.utils import string_types
 
-
+from ething.Helpers import reraise
 import re
 from .Parameter import instanciate as instanciate_parameter, StandardParameter
 import sys
 import magic
-import urllib
 import string
 import random
 import json
+from future.utils import iteritems
+try:
+    from urllib.parse import quote, urlencode
+except ImportError:
+    from urllib import quote, urlencode
 
 
 class Operation(object):
@@ -135,7 +141,7 @@ class Operation(object):
             try:
                 v = param.validate(value)
             except Exception as e:
-                raise type(e), type(e)("invalid param: '%s' : %s" % (param.name, e.message)), sys.exc_info()[2]
+                reraise(type(e), type(e)("invalid param: '%s' : %s" % (param.name, str(e))), sys.exc_info()[2])
             else:
                 value = v
             
@@ -165,9 +171,9 @@ class Operation(object):
                 
                 if param.collectionFormat == 'multi':
                     for v in value:
-                        query.append(urllib.quote(param.name.encode("utf-8"))+'='+urllib.quote(str(v).encode("utf-8")))
+                        query.append(quote(param.name.encode("utf-8"))+'='+quote(str(v).encode("utf-8")))
                 else:
-                    query.append( urllib.quote(param.name.encode("utf-8"))+'='+urllib.quote(str(value).encode("utf-8")) )
+                    query.append( quote(param.name.encode("utf-8"))+'='+quote(str(value).encode("utf-8")) )
             
             elif where == 'header' : 
                 
@@ -179,7 +185,7 @@ class Operation(object):
                 headers[param.name] = value;
                 
             elif where == 'path' :
-                url = re.sub('\{%s\}' % param.name, urllib.urlencode(value), url)
+                url = re.sub('\{%s\}' % param.name, urlencode(value), url)
                 
             elif where == 'body' : 
                 
@@ -229,8 +235,8 @@ class Operation(object):
             else:
                 
                 p = []
-                for k, v in formData.iteritems():
-                    p.append( urllib.quote(k.encode("utf-8"))+'='+urllib.quote(str(v).encode("utf-8")) )
+                for k, v in iteritems(formData):
+                    p.append( quote(k.encode("utf-8"))+'='+quote(str(v).encode("utf-8")) )
                 
                 body = '&'.join(p)
             
@@ -244,10 +250,10 @@ class Operation(object):
                 if not body :
                     body = '{}'
                 
-                if not isinstance(body, basestring):
+                if not isinstance(body, string_types):
                     body = json.dumps(body, indent=4)
                 
-            elif isinstance(body, basestring):
+            elif isinstance(body, string_types):
                 pass
             else :
                 raise Exception("unable to encode the body data into '%s'" % contentType)
@@ -277,7 +283,7 @@ class Operation(object):
         body = ''
         eol = "\r\n"
         
-        for name, d in data.iteritems():
+        for name, d in iteritems(data):
             
             body += '--' + boundary + eol
             

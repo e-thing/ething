@@ -1,9 +1,12 @@
+# coding: utf-8
+from future.utils import string_types
 from flask import g, request
-from session import Session
+from .session import Session
 import os
 from functools import wraps
 import re
 from netaddr import IPAddress
+from .server_utils import ServerException
 
 
 class AuthContext(object):
@@ -30,7 +33,7 @@ class AuthContext(object):
         if self.scope is None:
             return True
         
-        if isinstance(self.scope, basestring): # check permissions
+        if isinstance(self.scope, string_types): # check permissions
             
             permissions = filter(None, permissions.split(" "))
             scopes = filter(None, self.scope.split(" "))
@@ -75,11 +78,11 @@ class Auth(object):
             
             if permissions:
                 if not authctx.check_permissions(permissions):
-                    raise Exception('not authorized')
+                    raise ServerException('not authorized', 403)
             
             return
         
-        raise Exception('not authenticated')
+        raise ServerException('not authenticated', 401)
     
     
     
@@ -94,13 +97,13 @@ class Auth(object):
         if apikey:
             
             authenticated_resource = self.core.findOne({
-                '#apikey' : apikey
+                'apikey' : apikey
             })
             
             if authenticated_resource:
                 return AuthContext('apikey', scope = authenticated_resource.scope, resource = authenticated_resource)
             else:
-                raise Exception('invalid apikey')
+                raise ServerException('invalid apikey', 401)
     
     
     def check_basic(self):
@@ -108,10 +111,10 @@ class Auth(object):
         auth = request.authorization
         
         if auth :
-            if auth.username == 'ething' and auth.password == self.core.config['auth']['password']:
+            if auth.username == self.core.config('auth.username') and auth.password == self.core.config('auth.password'):
                 return AuthContext('basic')
             else:
-                raise Exception('invalid credentials')
+                raise ServerException('invalid credentials', 401)
             
     
     def check_public(self):
@@ -145,7 +148,7 @@ def install_auth(core, app, **kwargs):
             ip = IPAddress(request.remote_addr)
             
             if not (ip.is_private() or ip.is_loopback()):
-                raise Exception('not allowed')
+                raise ServerException('not allowed', 403)
     
     return auth
 

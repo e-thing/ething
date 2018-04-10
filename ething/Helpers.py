@@ -1,10 +1,14 @@
+# coding: utf-8
 
 import json
 import datetime
+import sys
+from future.utils import iteritems
+
 
 def dict_recursive_update(a, *more):
     for b in more:
-        for k, v in b.iteritems():
+        for k, v in iteritems(b):
             if isinstance(v, dict) and k in a and isinstance(a[k], dict):
                 a[k] = dict_recursive_update(a.get(k, {}), v)
             else:
@@ -26,28 +30,34 @@ def toJson(obj, **kwargs):
 
 
 
-if __name__ == '__main__':
+# cf. https://stackoverflow.com/questions/6062576/adding-information-to-an-exception/6062799
+if sys.version_info.major < 3:  # Python 2?
+    # Using exec avoids a SyntaxError in Python 3.
+    exec("""def reraise(exc_type, exc_value, exc_traceback=None):
+                raise exc_type, exc_value, exc_traceback""")
+else:
+    def reraise(exc_type, exc_value, exc_traceback=None):
+        if exc_value is None:
+            exc_value = exc_type()
+        if exc_value.__traceback__ is not exc_traceback:
+            raise exc_value.with_traceback(exc_traceback)
+        raise exc_value
+
+def is_number(s):
+    try:
+        float(s)
+        return True
+    except ValueError:
+        pass
+ 
+    try:
+        import unicodedata
+        unicodedata.numeric(s)
+        return True
+    except (TypeError, ValueError):
+        pass
     
-    
-    a = {
-        'a': {
-            'a.a':1
-        },
-        'b': [1,2],
-        'd': 4
-    }
-    
-    b = {
-        'a': {
-            'a.a':45,
-            'a.b':49
-        },
-        'b': [3,4],
-        'c': 3
-    }
-    
-    print dict_recursive_update({}, a, b)
-    
-    print a
-    
-    
+    return False
+
+
+

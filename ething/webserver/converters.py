@@ -1,6 +1,7 @@
+# coding: utf-8
 
 from werkzeug.routing import BaseConverter
-from server_utils import getResource
+from .server_utils import getResource
 
 
 def install(core, app, **kwargs):

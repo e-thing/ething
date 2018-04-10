@@ -1,3 +1,4 @@
+# coding: utf-8
 
 
 from flask import request, Response
@@ -35,10 +36,7 @@ def install(core, app, auth, **kwargs):
                 ```json
                 {
                    "name": "mydevice.txt",
-                   "location":{
-                      "latitude": 5.12,
-                      "longitude": -45.78
-                   },
+                   "location": "room 1",
                    "scope": "resource:read notification",
                 }
                 ```
@@ -157,11 +155,6 @@ def install(core, app, auth, **kwargs):
             - device
           description: Execute an operation identified by operationId. The parameters can either be passed in the query string or in the body as a JSON object or a x-www-form-urlencoded string.
           parameters:
-            - name: id
-              in: path
-              description: id of the resource. Devices or Apps using the api key authentication may use the word 'me' to replace their id.
-              required: true
-              type: string
             - name: operationId
               in: path
               description: id of the operation.
@@ -185,7 +178,7 @@ def install(core, app, auth, **kwargs):
         
         if request.method == 'GET':
             
-            for arg_name in list(set(request.args.keys()).intersection(method.args.keys())):
+            for arg_name in list(set(list(request.args)).intersection(list(method.args))):
                 kwargs[arg_name] = method.args[arg_name]
             
         elif request.method == 'POST':

@@ -1,3 +1,5 @@
+# coding: utf-8
+from future.utils import string_types, integer_types
 
 
 
@@ -34,7 +36,7 @@ clusterNames = {
 
 
 def clusterIdToName (cluster):
-    if isinstance(cluster, int):
+    if isinstance(cluster, integer_types):
         cluster = format('X', cluster)
     return clusterNames.get(cluster.rjust(4,'0').upper(), '')
 
@@ -42,7 +44,7 @@ def clusterIdToName (cluster):
 # decorator: register a model
 def model(models_, name):
     
-    if isinstance(models_, basestring):
+    if isinstance(models_, string_types):
         models_ = [models_]
     
     def d(cls):

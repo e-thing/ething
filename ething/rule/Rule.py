@@ -1,3 +1,5 @@
+# coding: utf-8
+from future.utils import string_types, integer_types
 
 
 """
@@ -165,9 +167,9 @@ from . import Action
 
 from ething.meta import get_event_class, get_condition_class, get_action_class
 
-import event
-import condition
-import action
+from . import event
+from . import condition
+from . import action
 
 
 
@@ -365,7 +367,7 @@ class Rule(object):
             
             for key in data:
                 if key == 'type':
-                    if not isinstance(data[key], basestring) or not data[key]:
+                    if not isinstance(data[key], string_types) or not data[key]:
                         raise Exception("Rule.%s[%d]: type must be a non empty string." % (kind, index))
                 elif key == 'options':
                     if data[key] is None:
@@ -411,13 +413,13 @@ class Rule(object):
         
         for key in attr:
             if key == 'name':
-                if not isinstance(attr[key], basestring) or not attr[key]:
+                if not isinstance(attr[key], string_types) or not attr[key]:
                     raise Exception("Rule: Invalid field '%s'. Must be a non empty string." % (key))
             elif key == 'enabled' or key == 'repeat':
                 if not isinstance(attr[key], bool):
                     raise Exception("Rule: Invalid field '%s'. Must be a boolean." % (key))
             elif key == 'priority':
-                if not isinstance(attr[key], int):
+                if not isinstance(attr[key], integer_types):
                     raise Exception("Rule: Invalid field '%s'. Must be an integer." % (key))
             elif key == 'actions' or key == 'events' or key == 'conditions':
                 if not isinstance(attr[key], list):
@@ -521,44 +523,6 @@ class Rule(object):
         
         return False
     
-    
-    
-if __name__ == '__main__':
-    
-    from ething.core import Core
-    
-    ething = Core({
-        'db':{
-            'database': 'test'
-        },
-        'log':{
-            'level': 'debug'
-        }
-    })
-    
-    #rule = ething.createRule({
-    #    'name' : 'myrule',
-    #    'events':[{
-    #        'type': 'Custom',
-    #        'options':{
-    #            'name': 'toto'
-    #        }
-    #    }],
-    #    'actions':[{
-    #        'type': 'Sleep',
-    #        'options':{
-    #            'duration': 1
-    #        }
-    #    }]
-    #})
-    
-    from .event import Custom
-    
-    signal = Custom.emit('toto')
-    
-    ething.dispatchSignal(signal, False)
-    
-    #print ething.findRules()[0]
 
 
 

@@ -1,3 +1,4 @@
+# coding: utf-8
 
 
 import paho.mqtt.client as _mqttClient
@@ -10,7 +11,7 @@ class Controller(object):
     AUTOCONNECT_PERIOD = 15; # seconds
     KEEPALIVE = 60; # seconds
     
-    reset_attr = ['port', 'host', 'auth', '_subscription']
+    reset_attr = ['port', 'host', 'auth', 'subscription']
     
     
     def __init__ (self, device):

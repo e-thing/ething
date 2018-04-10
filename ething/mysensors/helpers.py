@@ -1,3 +1,5 @@
+# coding: utf-8
+from future.utils import string_types, integer_types
 
 
 
@@ -413,11 +415,11 @@ def isValueTypeStr (valueType):
 
 
 def sensorTypeStr (sensorType):
-    if isinstance(sensorType, int):
+    if isinstance(sensorType, integer_types):
         for t in sensorTypes:
             if sensorTypes[t][0] == sensorType:
                 return t
-    elif isinstance(sensorType, basestring) and sensorType in sensorTypes:
+    elif isinstance(sensorType, string_types) and sensorType in sensorTypes:
         return sensorType
     
 
@@ -434,7 +436,7 @@ def sensorTypeToName (sensorType):
 
 
 def valueTypeStr (valueType):
-    if isinstance(valueType, int):
+    if isinstance(valueType, integer_types):
         for t in valueTypes:
             if valueTypes[t][0] == valueType:
                 return t
@@ -455,28 +457,28 @@ def valueTypeToName (valueType):
 
 
 def streamTypeStr (streamType):
-    if isinstance(streamType, int):
+    if isinstance(streamType, integer_types):
         for t in streamTypes:
             if streamTypes[t] == streamType:
                 return t
-    elif isinstance(streamType, basestring) and streamType in streamTypes:
+    elif isinstance(streamType, string_types) and streamType in streamTypes:
         return streamType
     
 
 
 
 def sensorTypeInt (sensorType):
-    if isinstance(sensorType, int):
+    if isinstance(sensorType, integer_types):
         return sensorType
-    if isinstance(sensorType, basestring) and sensorType in sensorTypes:
+    if isinstance(sensorType, string_types) and sensorType in sensorTypes:
         return sensorTypes[sensorType][0]
 
 
 
 def valueTypeInt (valueType):
-    if isinstance(valueType, int):
+    if isinstance(valueType, integer_types):
         return valueType
-    if isinstance(valueType, basestring) and valueType in valueTypes:
+    if isinstance(valueType, string_types) and valueType in valueTypes:
         return valueTypes[valueType][0]
     
 

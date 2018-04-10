@@ -1,9 +1,11 @@
+# coding: utf-8
+from future.utils import string_types
 
 
 import json
 from .Path import Path
 from jsonderef import JsonDeref
-
+from future.utils import iteritems
 
 dereferencer = JsonDeref(raise_on_not_found=True, not_found=None,requests_timeout=10)
 
@@ -17,7 +19,7 @@ class Reader(object):
         self.__paths = None
         self.data = None # hold the specification
         
-        if isinstance(specification, basestring):
+        if isinstance(specification, string_types):
             self.data = json.loads(specification)
         
         
@@ -92,51 +94,10 @@ class Reader(object):
         
         if self.__paths is None:
             self.__paths = []
-            for pathname, pathobj in self.data.get('paths', {}).iteritems():
+            for pathname, pathobj in iteritems(self.data.get('paths', {})):
                 self.__paths.append(Path(pathname, pathobj, self))
         
         return self.__paths
     
     
     
-
-
-if __name__ == '__main__':
-    
-    def get(url):
-        import urllib, json
-        response = urllib.urlopen(url)
-        return json.loads(response.read())
-    
-    reader = Reader(get('https://raw.githubusercontent.com/OAI/OpenAPI-Specification/master/examples/v2.0/json/petstore.json'))
-    
-    for op in reader.operations:
-        
-        schema = None
-        
-        if op.parameters:
-            schema = {
-                'type': 'object',
-                'required': [],
-                'additionalProperties': False,
-                'properties': {}
-            }
-            
-            for param in op.parameters:
-                schema['properties'][param.name] = param.toJsonSchema()
-                if param.isRequired:
-                    schema['required'].append(param.name)
-            
-                
-            
-            
-            response = None
-            produces = op.produces
-            if produces:
-                response = produces[0]
-            
-            print param.name
-            print schema
-    
-    
-

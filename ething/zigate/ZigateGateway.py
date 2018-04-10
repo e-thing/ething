@@ -1,10 +1,11 @@
+# coding: utf-8
 
 
 
      
 
 from ething.Device import Device, method, attr, isString, isBool, isNone, READ_ONLY
-from Message import Message
+from .Message import Message
 
 
 
@@ -22,7 +23,7 @@ class ZigateGateway(Device):
         
         if filter is not None:
             q = {
-                'and' : [q, filter]
+                '$and' : [q, filter]
             }
         
         return self.ething.find(q)

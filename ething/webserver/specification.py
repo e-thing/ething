@@ -1,5 +1,8 @@
-# used to build the HTTP API documentation
+# coding: utf-8
 
+# used to build the HTTP API documentation
+from __future__ import print_function
+from future.utils import string_types
 import apispec
 from ething.version import __version__
 from ething.meta import resource_classes
@@ -50,7 +53,7 @@ def rule_to_params(rule, overrides=None):
         argument_to_param(argument, rule, overrides.get(argument, {}))
         for argument in rule.arguments
     ]
-    for key in overrides.keys():
+    for key in list(overrides):
         if overrides[key].get('in') in ('header', 'query'):
             overrides[key]['name'] = overrides[key].get('name', key)
             result.append(overrides[key])
@@ -140,7 +143,7 @@ def generate(app, core, specification = 'stdout', documentation = None):
         path = path_from_view(spec, view, **kwargs)
         
         if parameters:
-            for method in path.operations.keys():
+            for method in list(path.operations):
                 
                 method_uppercase = method.upper()
                 
@@ -213,7 +216,7 @@ def generate(app, core, specification = 'stdout', documentation = None):
     
     
     
-    for name in resource_classes.keys():
+    for name in list(resource_classes):
         resource_cls = resource_classes[name]
         
         schema = resource_cls.schema(flatted = False, helper = resource_attr_helper)
@@ -285,21 +288,16 @@ def generate(app, core, specification = 'stdout', documentation = None):
                             extra_params = converter(schema, **options)
                             
                             method_params = method_params + extra_params
-                        
-                        #print json.dumps(method_params, indent = 2)
                     
                     parameters[method] = method_params
                 
                 spec.add_path(view=view, parameters=parameters)
     
-    #print json.dumps(spec.to_dict(), indent = 2)
-    #print spec.to_yaml()
-    
     if callable(specification):
         specification(spec)
     elif specification == 'stdout':
-        print json.dumps(spec.to_dict(), indent = 2)
-    elif isinstance(specification, basestring):
+        print(json.dumps(spec.to_dict(), indent = 2))
+    elif isinstance(specification, string_types):
         extension = os.path.splitext(specification)[1]
         f = open(specification,'w')
         if extension == '.json':
@@ -317,8 +315,8 @@ def generate(app, core, specification = 'stdout', documentation = None):
     if callable(documentation):
         documentation(content)
     elif documentation == 'stdout':
-        print content
-    elif isinstance(documentation, basestring):
+        print(content)
+    elif isinstance(documentation, string_types):
         f = open(documentation,'w')
         f.write(content)
         f.close()
@@ -328,8 +326,7 @@ def generate(app, core, specification = 'stdout', documentation = None):
 
 if __name__ == "__main__": 
     
-    import server
-    
+    from ething.webserver import server
     from ething.core import Core
     
     core = Core({
@@ -345,10 +342,10 @@ if __name__ == "__main__":
     })
     
     
-    app = server.init(core)
+    app = server.create(core)
     
     
     docpath = os.path.abspath(os.path.join(os.path.dirname(__file__), '../../doc'))
     
-    generate(app, core, specification = os.path.join(docpath, 'openapi.json'), documentation = os.path.join(docpath, 'readme.md'))
+    generate(app, core, specification = os.path.join(docpath, 'openapi.json'), documentation = os.path.join(docpath, 'http_api.md'))
     

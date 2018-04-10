@@ -1,3 +1,5 @@
+# coding: utf-8
+from future.utils import string_types
 
 class RuleItem(object):
 
@@ -52,7 +54,7 @@ class RuleItem(object):
     
     @error.setter
     def error(self, value):
-        if isinstance(value, basestring):
+        if isinstance(value, string_types):
             error = value if value else 'unspecified error'
         elif isinstance(value, Exception):
             error = repr(value)

@@ -1,7 +1,8 @@
+# coding: utf-8
 
-from Controller import Controller
-from MihomeGateway import MihomeGateway, Device
-from MihomeSensorHT import MihomeSensorHT
+from .Controller import Controller
+from .MihomeGateway import MihomeGateway, Device
+from .MihomeSensorHT import MihomeSensorHT
 
 
 

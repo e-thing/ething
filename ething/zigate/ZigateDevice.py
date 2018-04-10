@@ -1,3 +1,4 @@
+# coding: utf-8
 
 
 from ething.Device import Device, method, interface, attr, isString, isNone, isEnum

@@ -1,3 +1,4 @@
+# coding: utf-8
 #cf. https://github.com/bwaldvogel/neighbourhood/blob/master/neighbourhood.py
 
 from __future__ import absolute_import, division, print_function
@@ -106,7 +107,5 @@ def scan():
     
     return results
 
-if __name__ == "__main__":
-    
-    print(scan())
+
     

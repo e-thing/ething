@@ -1,16 +1,17 @@
+# coding: utf-8
 
-import static
-import file
-import table
-import app
-import device
-import rule
-import utils
-import event
-import auth
-import notify
-import settings
-import resource
+from . import static
+from . import file
+from . import table
+from . import app
+from . import device
+from . import rule
+from . import utils
+from . import event
+from . import auth
+from . import notify
+from . import settings
+from . import resource
 
 
 

@@ -1,5 +1,7 @@
+# coding: utf-8
 
 import subprocess
+import sys
 
 def is_nodejs_installed(core = None):
     
@@ -11,7 +13,7 @@ def is_nodejs_installed(core = None):
     
     if exe:
         try:
-            res = subprocess.check_output([exe, "--version"]).strip()
+            res = subprocess.check_output([exe, "--version"]).decode(sys.stdout.encoding).strip()
         except OSError as e:
             pass
     
@@ -20,8 +22,4 @@ def is_nodejs_installed(core = None):
 
 
 
-if __name__ == '__main__':
-    
-    
-    print is_nodejs_installed()
 
