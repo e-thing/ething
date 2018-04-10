@@ -147,7 +147,7 @@ items: {{ render_schema(schema["items"], indent + 2) }}
 {% endif %}
 
 
-{% macro render_ref(ref) %}{% set ref_name = ref.replace("#/definitions/", "") %}[{{ ref_name }}](#{{ ref_name }}){% endmacro %}
+{% macro render_ref(ref) %}{% set ref_name = ref.replace("#/definitions/", "") %}[{{ ref_name }}](#{{ ref_name|lower }}){% endmacro %}
 
 
 ## Paths

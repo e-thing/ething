@@ -333,11 +333,11 @@ Content-Type: text/html
   The metadata of the application to be created.
 
 ##### Data:
-[App](#App)
+[App](#app)
 
 #### Responses:
   - 200: The application was successfully created
-    [App](#App)
+    [App](#app)
 
 ### GET /api/apps/{r}
 
@@ -373,7 +373,7 @@ Set the script for this application. The script must be a single HTML page.
 
 #### Responses:
   - 200: The script was set successfully. It returns back the meta data of this application.
-    [App](#App)
+    [App](#app)
 
 ### POST /api/devices
 
@@ -399,7 +399,7 @@ Creates a new device.
   ```
 
 ##### Data:
-[Device](#Device)
+[Device](#device)
 
 #### Responses:
   - 200: The device was successfully created
@@ -553,11 +553,11 @@ This id is a unique string identifying this file and is necessary to make any op
   ```
 
 ##### Data:
-[File](#File)
+[File](#file)
 
 #### Responses:
   - 200: The file was successfully created
-    [File](#File)
+    [File](#file)
 
 ### GET /api/files/{r}
 
@@ -598,8 +598,8 @@ curl
 - **r** [string]: An id representing a Resource.
 
 #### Query Params:
-- **fields** [string]
 - **append** [boolean]: If true, the content will be appended.
+- **fields** [string]
 
 #### Request body:
 
@@ -611,7 +611,7 @@ curl
 
 #### Responses:
   - 200: The file's metadata
-    [File](#File)
+    [File](#file)
 
 ### GET /api/files/{r}/icon
 
@@ -657,16 +657,16 @@ curl -H 'X-API-KEY: <YOUR_API_KEY>' http://localhost:8000/api/resources
 ```
 
 #### Query Params:
-- **skip** [integer]: Skips a number of resources.
-- **fields** [string]
-- **sort** [string]: The key on which to do the sorting, by default the sort is made by modifiedDate descending. To make the sort descending, prepend the field name by minus "-". For instance, "-createdDate" will sort by createdDate descending.
 - **limit** [integer]: Limits the number of resources returned.
+- **fields** [string]
 - **q** [string]: Query string for searching resources.
+- **sort** [string]: The key on which to do the sorting, by default the sort is made by modifiedDate descending. To make the sort descending, prepend the field name by minus "-". For instance, "-createdDate" will sort by createdDate descending.
+- **skip** [integer]: Skips a number of resources.
 
 #### Responses:
   - 200: A list of resources
     *Array*
-    items: [Resource](#Resource)
+    items: [Resource](#resource)
 
 ### DELETE /api/resources/{r}
 
@@ -693,7 +693,7 @@ Returns the meta-data of a resource in JSON.
 
 #### Responses:
   - 200: resource object
-    [Resource](#Resource)
+    [Resource](#resource)
 
 ### PATCH /api/resources/{r}
 
@@ -727,11 +727,11 @@ Clear a description :
   the attributes to modify
 
 ##### Data:
-[Resource](#Resource)
+[Resource](#resource)
 
 #### Responses:
   - 200: resource successfully updated
-    [Resource](#Resource)
+    [Resource](#resource)
 
 ### GET /api/settings
 
@@ -833,11 +833,11 @@ This id is a unique string identifying this table and is necessary to make any o
   ```
 
 ##### Data:
-[Table](#Table)
+[Table](#table)
 
 #### Responses:
   - 200: The table was successfully created
-    [Table](#Table)
+    [Table](#table)
 
 ### GET /api/tables/{r}
 
@@ -864,13 +864,13 @@ curl -H 'X-API-KEY: <YOUR_API_KEY>' http://localhost:8000/api/tables/<TABLE_ID>?
 - **r** [string]: An id representing a Resource.
 
 #### Query Params:
-- **sort** [string]: the key on which to do the sorting, by default the sort is made by date ascending. To make the sort descending, prepend the field name by minus "-". For instance, "-date" will sort by date descending.
-- **length** [integer]: Maximum number of rows to return. If not set, returns until the end.
 - **start** [integer]: Position of the first rows to return. If start is negative, the position will start from the end. (default to 0).
 - **fields** [string]: .
 - **query** [string]: Query string for filtering results.
-- **date_format** [string]: the format of the date field (default to RFC3339) : timestamp,timestamp_ms,rfc3339.
+- **sort** [string]: the key on which to do the sorting, by default the sort is made by date ascending. To make the sort descending, prepend the field name by minus "-". For instance, "-date" will sort by date descending.
 - **fmt** [string]: the output format (default to JSON) : json,json_pretty,csv,csv_no_header.
+- **length** [integer]: Maximum number of rows to return. If not set, returns until the end.
+- **date_format** [string]: the format of the date field (default to RFC3339) : timestamp,timestamp_ms,rfc3339.
 
 #### Responses:
   - 200: The records of this table
@@ -888,8 +888,8 @@ Insert a new record in a table
 - **r** [string]: An id representing a Resource.
 
 #### Query Params:
-- **invalid_field** [string]: The behaviour to adopt when an invalid field name appears.
 - **fields** [string]
+- **invalid_field** [string]: The behaviour to adopt when an invalid field name appears.
 
 #### Request body:
 
@@ -920,7 +920,7 @@ Insert a new record in a table
 
 #### Responses:
   - 200: The record was successfully inserted. The table metadata is returned.
-    [Table](#Table)
+    [Table](#table)
 
 ### PUT /api/tables/{r}
 
@@ -930,8 +930,8 @@ Set the content of a table. The new data will erase the previous one.
 - **r** [string]: An id representing a Resource.
 
 #### Query Params:
-- **invalid_field** [string]: The behaviour to adopt when an invalid field name appears.
 - **skip_error** [boolean]: Whether to skip data on error or not.
+- **invalid_field** [string]: The behaviour to adopt when an invalid field name appears.
 
 #### Request body:
 
@@ -972,7 +972,7 @@ items: *(object)*
 
 #### Responses:
   - 200: The content was successfully set. The table metadata is returned.
-    [Table](#Table)
+    [Table](#table)
 
 ### POST /api/tables/{r}/remove
 
@@ -987,7 +987,7 @@ Remove one or more records in a table
 
 #### Responses:
   - 200: The records was successfully deleted
-    [Table](#Table)
+    [Table](#table)
 
 ### POST /api/tables/{r}/replace
 
@@ -997,14 +997,14 @@ Update records in a table
 - **r** [string]: An id representing a Resource.
 
 #### Query Params:
-- **invalid_field** [string]: The behaviour to adopt when an invalid field name appears.
 - **fields** [string]
-- **upsert** [boolean]: If true and no records was found, the data will be added to the table as a new record.
 - **q** [string]: A query that select the rows to update.
+- **invalid_field** [string]: The behaviour to adopt when an invalid field name appears.
+- **upsert** [boolean]: If true and no records was found, the data will be added to the table as a new record.
 
 #### Responses:
   - 200: The records was successfully updated
-    [Table](#Table)
+    [Table](#table)
 
 ### GET /api/tables/{r}/statistics
 
@@ -1014,8 +1014,8 @@ Compute statistics of a column (=key)
 - **r** [string]: An id representing a Resource.
 
 #### Query Params:
-- **key** [string]: the name of the key. Statistics can only be computed for a single key.
 - **q** [string]: A query string to select the rows used for the statistics computation.
+- **key** [string]: the name of the key. Statistics can only be computed for a single key.
 
 #### Responses:
   - 200: The records was successfully updated
@@ -1030,7 +1030,7 @@ Application resource representation
 
 #### INHERITED
 
-[Resource](#Resource)
+[Resource](#resource)
 
 #### PROPERTIES
 
@@ -1045,7 +1045,7 @@ Application resource representation
 
 #### INHERITED
 
-[Resource](#Resource)
+[Resource](#resource)
 
 #### PROPERTIES
 
@@ -1070,7 +1070,7 @@ An object describing an error
 
 #### INHERITED
 
-[Resource](#Resource)
+[Resource](#resource)
 
 #### PROPERTIES
 
@@ -1086,7 +1086,7 @@ Http Device resource representation
 
 #### INHERITED
 
-[Device](#Device)
+[Device](#device)
 
 #### PROPERTIES
 
@@ -1105,7 +1105,7 @@ Mihome Device base class
 
 #### INHERITED
 
-[Device](#Device)
+[Device](#device)
 
 #### PROPERTIES
 
@@ -1115,7 +1115,7 @@ Mihome Device base class
 
 #### INHERITED
 
-[Device](#Device)
+[Device](#device)
 
 #### PROPERTIES
 
@@ -1129,7 +1129,7 @@ Mihome temperature/humidity/pressure Sensor Device class.
 
 #### INHERITED
 
-[MihomeDevice](#MihomeDevice)
+[MihomeDevice](#mihomedevice)
 
 ### MQTT
 
@@ -1137,7 +1137,7 @@ MQTT Device resource representation
 
 #### INHERITED
 
-[Device](#Device)
+[Device](#device)
 
 #### PROPERTIES
 
@@ -1149,7 +1149,7 @@ MQTT Device resource representation
 
 #### INHERITED
 
-[MySensorsGateway](#MySensorsGateway)
+[MySensorsGateway](#mysensorsgateway)
 
 #### PROPERTIES
 
@@ -1159,7 +1159,7 @@ MQTT Device resource representation
 
 #### INHERITED
 
-[Device](#Device)
+[Device](#device)
 
 #### PROPERTIES
 
@@ -1172,7 +1172,7 @@ MySensorsNode Device resource representation. This device is normally automatica
 
 #### INHERITED
 
-[Device](#Device)
+[Device](#device)
 
 #### PROPERTIES
 
@@ -1190,7 +1190,7 @@ MySensorsSensor Device resource representation. This device is normally automati
 
 #### INHERITED
 
-[Device](#Device)
+[Device](#device)
 
 #### PROPERTIES
 
@@ -1202,7 +1202,7 @@ MySensorsSensor Device resource representation. This device is normally automati
 
 #### INHERITED
 
-[MySensorsGateway](#MySensorsGateway)
+[MySensorsGateway](#mysensorsgateway)
 
 #### PROPERTIES
 
@@ -1232,7 +1232,7 @@ The base representation of a resource object
 
 #### INHERITED
 
-[Device](#Device)
+[Device](#device)
 
 #### PROPERTIES
 
@@ -1244,7 +1244,7 @@ The base representation of a resource object
 
 #### INHERITED
 
-[Device](#Device)
+[Device](#device)
 
 #### PROPERTIES
 
@@ -1258,7 +1258,7 @@ The base representation of a resource object
 
 #### INHERITED
 
-[RFLinkGateway](#RFLinkGateway)
+[RFLinkGateway](#rflinkgateway)
 
 #### PROPERTIES
 
@@ -1271,7 +1271,7 @@ RTSP Device resource representation, usually IP camera
 
 #### INHERITED
 
-[Device](#Device)
+[Device](#device)
 
 #### PROPERTIES
 
@@ -1284,7 +1284,7 @@ SSH Device resource representation
 
 #### INHERITED
 
-[Device](#Device)
+[Device](#device)
 
 #### PROPERTIES
 
@@ -1299,7 +1299,7 @@ SSH Device resource representation
 
 #### INHERITED
 
-[Resource](#Resource)
+[Resource](#resource)
 
 #### PROPERTIES
 
@@ -1314,13 +1314,13 @@ SSH Device resource representation
 
 #### INHERITED
 
-[YeelightDevice](#YeelightDevice)
+[YeelightDevice](#yeelightdevice)
 
 ### YeelightDevice
 
 #### INHERITED
 
-[Device](#Device)
+[Device](#device)
 
 #### PROPERTIES
 
@@ -1332,7 +1332,7 @@ Mihome temperatire/humidity/pressure Sensor Device class.
 
 #### INHERITED
 
-[ZigateDevice](#ZigateDevice)
+[ZigateDevice](#zigatedevice)
 
 ### ZigateDevice
 
@@ -1340,7 +1340,7 @@ ZigateDevice Device base class representation
 
 #### INHERITED
 
-[Device](#Device)
+[Device](#device)
 
 #### PROPERTIES
 
@@ -1352,7 +1352,7 @@ ZigateDevice Device base class representation
 
 #### INHERITED
 
-[Device](#Device)
+[Device](#device)
 
 #### PROPERTIES
 
@@ -1363,7 +1363,7 @@ ZigateDevice Device base class representation
 
 #### INHERITED
 
-[ZigateGateway](#ZigateGateway)
+[ZigateGateway](#zigategateway)
 
 #### PROPERTIES
 
