@@ -35,7 +35,7 @@ class Session(object):
                 'exp' : expireAt
             }
             
-            csrf_token = hmac.new(self.core.config['session']['secret'], sessionData['sessionId'], hashlib.md5).hexdigest()
+            csrf_token = hmac.new(self.core.config['session']['secret'].encode('utf8'), sessionData['sessionId'].encode('utf8'), hashlib.md5).hexdigest()
             
             token = jwt.encode(sessionData, self.core.config['session']['secret'])
             

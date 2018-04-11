@@ -10,14 +10,9 @@ from ething.TableQueryParser import TableQueryParser
 
 def install(core, app, auth, **kwargs):
 
-    tables_args = {
-        'fields': fields.DelimitedList(fields.Str())
-    }
-
     @app.route('/api/tables', methods=['POST'])
     @auth.required('table:write resource:write')
-    @use_args(tables_args)
-    def tables(args):
+    def tables():
         """
         ---
         post:
@@ -123,7 +118,7 @@ def install(core, app, auth, **kwargs):
                 if content:
                     r.importData(content)
                 
-                response = jsonEncodeFilterByFields(r, args['fields'])
+                response = jsonify(r)
                 response.status_code = 201
                 return response
             else:
@@ -137,7 +132,6 @@ def install(core, app, auth, **kwargs):
     table_get_args = {
         'start': fields.Int(missing=0, description="Position of the first rows to return. If start is negative, the position will start from the end. (default to 0)"),
         'length': fields.Int(validate=validate.Range(min=0), description="Maximum number of rows to return. If not set, returns until the end"),
-        'fields': fields.DelimitedList(fields.Str(), description=""),
         'sort': fields.Str(description='the key on which to do the sorting, by default the sort is made by date ascending. To make the sort descending, prepend the field name by minus "-". For instance, "-date" will sort by date descending'),
         'query': fields.Str(load_from="q", description="Query string for filtering results"),
         'date_format': fields.Str(load_from="datefmt", validate=lambda val: val.lower() in date_fmts, missing = 'rfc3339', description="the format of the date field (default to RFC3339) : %s" % ','.join(date_fmts)),
@@ -151,13 +145,12 @@ def install(core, app, auth, **kwargs):
 
     table_post_args = {
         'invalid_field': fields.Str(validate=validate.OneOf(['rename', 'stop', 'skip', 'none']), missing = 'rename', description="The behaviour to adopt when an invalid field name appears."),
-        'fields': fields.DelimitedList(fields.Str()),
     }
 
-    @app.route('/api/tables/<Table:r>', methods=['GET', 'PUT', 'POST'])
+    @app.route('/api/tables/<id>', methods=['GET', 'PUT', 'POST'])
     @use_multi_args(GET = table_get_args, PUT = (table_put_args, ('query',)), POST = (table_post_args, ('query',)))
     @auth.required(GET = 'table:read resource:read', PUT = 'table:write resource:write', POST = 'table:write table:append resource:write')
-    def table(args, r):
+    def table(args, id):
         """
         ---
         get:
@@ -293,6 +286,8 @@ def install(core, app, auth, **kwargs):
                 $ref: '#/definitions/Table'
         """
         
+        r = getResource(core, id, ['Table'])
+        
         if request.method == 'GET':
             
             fmt = args.pop('fmt').lower()
@@ -308,6 +303,12 @@ def install(core, app, auth, **kwargs):
                 return jsonify(r.select(**args), indent=4)
             elif fmt == "csv" or fmt == "csv_no_header":
                 args['show_header'] = (fmt == "csv")
+                
+                fields = request.args.get('fields')
+                if isinstance(fields, text_types):
+                    fields = fields.replace(' ',',').replace(';',',').replace('|',',').split(',')
+                    args['fields'] = fields
+                
                 return Response(r.writeCSV(**args), mimetype='text/csv')
             
             raise Exception('Invalid request');
@@ -318,7 +319,7 @@ def install(core, app, auth, **kwargs):
             
             if data:
                 r.importData(data,args['invalid_field'],args['skip_error'])
-                return jsonEncodeFilterByFields(r, args['fields'])
+                return jsonify(r)
             else:
                 raise Exception('No data.');
         
@@ -328,20 +329,19 @@ def install(core, app, auth, **kwargs):
             
             if data:
                 r.insert(data,args['invalid_field'])
-                return jsonEncodeFilterByFields(r, args['fields'])
+                return jsonify(r)
             else:
                 raise Exception('No data.');
 
 
     table_action_remove_args = {
         'ids': fields.DelimitedList(fields.Str(), description="The records id to be removed as a comma separated list."),
-        'fields': fields.DelimitedList(fields.Str()),
     }
     
-    @app.route('/api/tables/<Table:r>/remove', methods=['POST'])
+    @app.route('/api/tables/<id>/remove', methods=['POST'])
     @use_args(table_action_remove_args, locations=('query','form'))
     @auth.required('table:write resource:write')
-    def table_delete_rows(args, r):
+    def table_delete_rows(args, id):
         """
         ---
         post:
@@ -354,6 +354,7 @@ def install(core, app, auth, **kwargs):
               schema:
                 $ref: '#/definitions/Table'
         """
+        r = getResource(core, id, ['Table'])
         ids = args['ids'] or []
         
         if request.json:
@@ -377,7 +378,7 @@ def install(core, app, auth, **kwargs):
         
             if nb == len(ids):
                 # all the specified documents/rows were removed
-                return jsonEncodeFilterByFields(r, args['fields'])
+                return jsonify(r)
             else:
                 # all or only certain documents/rows could not have been removed
                 raise Exception('Some or all documents could not have been removed.')
@@ -387,13 +388,12 @@ def install(core, app, auth, **kwargs):
         'q': fields.Str(required=True, description="A query that select the rows to update"),
         'invalid_field': fields.Str(validate=validate.OneOf(['rename', 'stop', 'skip', 'none']), missing = 'rename', description="The behaviour to adopt when an invalid field name appears."),
         'upsert': fields.Bool(missing=False, description="If true and no records was found, the data will be added to the table as a new record."),
-        'fields': fields.DelimitedList(fields.Str()),
     }
 
-    @app.route('/api/tables/<Table:r>/replace', methods=['POST'])
+    @app.route('/api/tables/<id>/replace', methods=['POST'])
     @use_args(table_action_replace_args, locations=('query',))
     @auth.required('table:write resource:write')
-    def table_replace_rows(args, r):
+    def table_replace_rows(args, id):
         """
         ---
         post:
@@ -407,6 +407,7 @@ def install(core, app, auth, **kwargs):
                 $ref: '#/definitions/Table'
         """
         
+        r = getResource(core, id, ['Table'])
         data = request.get_json()
         
         if data:
@@ -419,7 +420,7 @@ def install(core, app, auth, **kwargs):
                 args['parser'] = parser
             
             r.replaceRow(args['q'], data, args['invalid_field'], args['upsert'], parser = parser)
-            return jsonEncodeFilterByFields(r, args['fields'])
+            return jsonify(r)
         else:
             raise Exception('No data.');
     
@@ -429,10 +430,10 @@ def install(core, app, auth, **kwargs):
         'key': fields.Str(required=True, description="the name of the key. Statistics can only be computed for a single key."),
     }
 
-    @app.route('/api/tables/<Table:r>/statistics')
+    @app.route('/api/tables/<id>/statistics')
     @auth.required('table:read resource:read')
     @use_args(table_statistics_args)
-    def table_statistics(args, r):
+    def table_statistics(args, id):
         """
         ---
         get:
@@ -446,22 +447,21 @@ def install(core, app, auth, **kwargs):
                 type: object
                 description: The statistics object.
         """
+        r = getResource(core, id, ['Table'])
         return jsonify(r.computeStatistics(args['key'], args['q']))
 
 
-    table_cell_id_get_args = {
-        'fields': fields.DelimitedList(fields.Str()),
-    }
 
     table_cell_id_patch_args = {
-        'fields': fields.DelimitedList(fields.Str()),
         'invalid_field': fields.Str(validate=validate.OneOf(['rename', 'stop', 'skip', 'none']), missing = 'rename'),
     }
 
-    @app.route('/api/tables/<Table:r>/id/<doc_id>', methods=['GET', 'DELETE', 'PATCH'])
-    @use_multi_args(GET = table_cell_id_get_args, PATCH = (table_cell_id_patch_args, ('query',)))
+    @app.route('/api/tables/<id>/id/<doc_id>', methods=['GET', 'DELETE', 'PATCH'])
+    @use_multi_args(PATCH = (table_cell_id_patch_args, ('query',)))
     @auth.required(GET = 'table:read resource:read', DELETE = 'table:write resource:write', PATCH = 'table:write resource:write')
-    def table_cell_id(args, r, doc_id):
+    def table_cell_id(args, id, doc_id):
+        
+        r = getResource(core, id, ['Table'])
         
         if request.method == 'GET':
             
@@ -470,7 +470,7 @@ def install(core, app, auth, **kwargs):
             if doc is None:
                 raise Exception('The document with id=%s does not exist.' % doc_id)
             
-            return jsonEncodeFilterByFields(doc, args['fields'])
+            return jsonify(doc)
         
         elif request.method == 'DELETE':
             r.remove_row(doc_id)
@@ -483,7 +483,7 @@ def install(core, app, auth, **kwargs):
             if data:
                 doc = r.replaceRowById(doc_id, data, args['invalid_field'])
                 if doc:
-                    return jsonEncodeFilterByFields(doc, args['fields'])
+                    return jsonify(doc)
                 else:
                     raise Exception('The document with id=%s does not exist.' % doc_id)
             else:

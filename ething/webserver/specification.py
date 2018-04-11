@@ -39,6 +39,11 @@ def rule_to_path(rule):
     return PATH_RE.sub(r'{\1}', rule.rule)
 
 
+path_arguments = {
+    'id': "An id representing a Resource",
+    'operationId': "id of the operation",
+}
+
 CONVERTER_MAPPING = {
     werkzeug.routing.UnicodeConverter: ('string', None),
     werkzeug.routing.IntegerConverter: ('integer', 'int32'),
@@ -68,7 +73,7 @@ def argument_to_param(argument, rule, override=None):
     
     cls = type(rule._converters[argument])
     
-    description = getattr(cls, 'description', None)
+    description = path_arguments.get(argument)
     if description:
         param['description'] = description
     
@@ -135,7 +140,6 @@ def generate(app, core, specification = 'stdout', documentation = None):
             }
         ],
     )
-    
     
     
     def my_path_from_view(spec, view, parameters = None, **kwargs):
@@ -213,6 +217,12 @@ def generate(app, core, specification = 'stdout', documentation = None):
         
         if 'additionalProperties' in schema:
             remove_kinfOf_attribute(schema['additionalProperties'])
+        
+        if schema.get('type') == "null":
+            schema.pop('type')
+        
+        if name == 'modifiedDate' and 'default' in schema:
+            schema['default'] = "<current date>"
     
     
     
@@ -307,6 +317,7 @@ def generate(app, core, specification = 'stdout', documentation = None):
         f.close()
     
     env = jinja2.Environment(extensions=["jinja2.ext.do"], trim_blocks=True, lstrip_blocks=True)
+    env.filters['get_headers'] = get_headers
     template = env.from_string(open(template_file, 'r', encoding="utf8").read())
     
     content = template.render(swagger_data=spec.to_dict())
@@ -323,6 +334,17 @@ def generate(app, core, specification = 'stdout', documentation = None):
     
     
 
+def get_headers(input):
+    
+    headers = []
+    rec = re.compile('^#+ *(.+) *$')
+    for l in input.splitlines():
+      m = rec.search(l)
+      if m:
+        headers.append(m.group(1))
+    
+    return headers
+    
 
 if __name__ == "__main__": 
     

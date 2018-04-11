@@ -18,7 +18,6 @@ def install(core, app, auth, **kwargs):
         'limit': fields.Int(validate=validate.Range(min=0), description='Limits the number of resources returned'),
         'skip': fields.Int(validate=validate.Range(min=0), description='Skips a number of resources'),
         'sort': fields.Str(description='The key on which to do the sorting, by default the sort is made by modifiedDate descending. To make the sort descending, prepend the field name by minus "-". For instance, "-createdDate" will sort by createdDate descending'),
-        'fields': fields.DelimitedList(fields.Str())
     }
 
     @app.route('/api/resources', methods=['GET'])
@@ -75,25 +74,18 @@ def install(core, app, auth, **kwargs):
                 else:
                     query = typeQuery
         
-        return jsonEncodeFilterByFields(core.find(query = query, **args))
+        return jsonify(core.find(query = query, **args))
 
-
-    resource_get_args = {
-        'fields': fields.DelimitedList(fields.Str())
-    }
-
-    resource_patch_args = {
-        'fields': fields.DelimitedList(fields.Str())
-    }
-
+    
+    
     resource_delete_args = {
         'children': fields.Bool(missing=False)
     }
 
-    @app.route('/api/resources/<Resource:r>', methods=['GET', 'DELETE', 'PATCH'])
-    @use_multi_args(GET = resource_get_args, PATCH = (resource_patch_args, ('query',)), DELETE = resource_delete_args)
+    @app.route('/api/resources/<id>', methods=['GET', 'DELETE', 'PATCH'])
+    @use_multi_args(DELETE = resource_delete_args)
     @auth.required(GET = 'resource:read resource:write file:read file:write table:read table:write table:append device:read device:write app:read app:write', DELETE = 'resource:admin', PATCH = 'resource:admin')
-    def resource(args, r):
+    def resource(args, id):
         """Get a resource by its id
         ---
         get:
@@ -147,8 +139,10 @@ def install(core, app, auth, **kwargs):
                 $ref: '#/definitions/Resource'
         """
         
+        r = getResource(core, id)
+        
         if request.method == 'GET':
-            return jsonEncodeFilterByFields(r, args['fields'])
+            return jsonify(r)
         
         elif request.method == 'PATCH':
             
@@ -174,7 +168,7 @@ def install(core, app, auth, **kwargs):
                     elif r.type == 'MQTT':
                         r.setSubscription(content)
                 
-                return jsonEncodeFilterByFields(r, args['fields'])
+                return jsonify(r)
             
             raise Exception('Invalid request');
         

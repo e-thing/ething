@@ -33,17 +33,6 @@ class isId(isString):
             raise ValueError('not an id')
 
 
-class IdModelAdapter(ModelAdapter):
-    
-    def set(self, data_object, data, name, value):
-        data['_id'] = value
-    
-    def get(self, data_object, data, name):
-        return data['_id']
-    
-    def has(self, data_object, data, name):
-        return '_id' in data
-
 class CreatedByModelAdapter(ModelAdapter):
     
     def set(self, data_object, data, name, value):
@@ -59,7 +48,7 @@ class DataModelAdapter(ModelAdapter):
     
 
 @attr('name', validator = isString(allow_empty = False, regex = '^[a-zA-Z0-9 !#$%&\'()+,\-.;=@^_`{    ]+(\\/[a-zA-Z0-9 !#$%&\'()+,\-.;=@^_`{    ]+)*$'), description="The name of the resource")
-@attr('id', default = lambda _: ShortId.generate(), mode = READ_ONLY, model_adapter = IdModelAdapter(), description="The id of the resource")
+@attr('id', default = lambda _: ShortId.generate(), mode = READ_ONLY, model_key = '_id', description="The id of the resource")
 @attr('type', mode = READ_ONLY, default = lambda cls: str(cls.__name__), description = "The type of the resource")
 @attr('extends', mode = READ_ONLY, default = lambda cls: [c.__name__ for c in cls.__mro__ if issubclass(c,Resource) and (c is not Resource)], description="An array of classes this resource is based on.")
 @attr('createdDate', default = lambda _: datetime.datetime.utcnow(), mode = READ_ONLY, description="Create time for this resource")

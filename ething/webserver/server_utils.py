@@ -8,6 +8,7 @@ import re
 import datetime
 import traceback
 import sys
+import os
 
 from webargs.flaskparser import use_args as webargs_use_args
 from marshmallow.fields import Field
@@ -16,6 +17,7 @@ from webargs import fields, validate
 
 from functools import wraps
 
+root_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 VALID_METHODS = [
     'GET',
@@ -123,6 +125,12 @@ def use_multi_args(**kwargs):
 
 
 def jsonify(obj, **kwargs):
+    
+    fields = request.args.get('fields')
+    
+    if fields is not None:
+        fields = fields.replace(' ',',').replace(';',',').replace('|',',').split(',')
+    
     return Response(toJson(obj, **kwargs), mimetype='application/json')
 
 
@@ -196,19 +204,6 @@ def dict_intersect_keys(dict1, *dicts):
     return {k: dict1[k] for k in keys}
 
 
-def jsonEncodeFilterByFields(resources,fields = None):
-    if isinstance(fields, list):
-        fields = dict(zip(fields, range(len(fields))))
-        if isinstance(resources, list):
-            out = [];
-            for resource in resources:
-                out.append(dict_intersect_keys(resource.toJson(), fields))
-        else:
-            out = dict_intersect_keys(resources.toJson(), fields)
-    else:
-        out = resources
-    return jsonify(out)
-
 
 class ServerException(Exception):
     def __init__(self, message, status_code = 400):
@@ -223,12 +218,19 @@ _re_tb_extract = re.compile('File "(.*)", line (\d+)')
 
 def tb_extract_info():
     
+    file = None
+    lineno = None
+    
     for l in reversed(traceback.format_exception(*sys.exc_info())):
         matches = _re_tb_extract.search(l)
         if matches:
-            return (matches.group(1), int(matches.group(2)))
+            file = matches.group(1)
+            lineno = int(matches.group(2))
+            
+            if file.startswith(root_path):
+                break
     
-    return (None, None)
+    return (file, lineno)
 
 
 def parse_multipart_data(stream, boundary):

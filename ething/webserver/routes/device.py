@@ -10,14 +10,9 @@ def install(core, app, auth, **kwargs):
 
 
 
-    devices_args = {
-        'fields': fields.DelimitedList(fields.Str()),
-    }
-
     @app.route('/api/devices', methods=['POST'])
     @auth.required('device:write resource:write')
-    @use_args(devices_args)
-    def devices(args):
+    def devices():
         """
         ---
         post:
@@ -84,7 +79,7 @@ def install(core, app, auth, **kwargs):
                     elif r.type == 'MQTT':
                         r.setSubscription(content)
                 
-                response = jsonEncodeFilterByFields(r, args['fields'])
+                response = jsonify(r)
                 response.status_code = 201
                 return response
             else:
@@ -94,9 +89,9 @@ def install(core, app, auth, **kwargs):
 
 
 
-    @app.route('/api/devices/<Device:r>/api')
+    @app.route('/api/devices/<id>/api')
     @auth.required('device:read resource:read')
-    def device_apis(r):
+    def device_apis(id):
         """
         ---
         get:
@@ -107,46 +102,36 @@ def install(core, app, auth, **kwargs):
             '200':
               description: object describing the operations available for this device.
         """
+        r = getResource(core, id, ['Device'])
         return jsonify(r.interface)
 
 
-    @app.route('/api/devices/<Device:r>/api/<operationId>')
+    @app.route('/api/devices/<id>/api/<operationId>')
     @auth.required('device:read resource:read')
-    def device_api(r, operationId):
+    def device_api(id, operationId):
         """
         ---
         get:
           tags:
             - device
           description: Retrieves an object describing the operation identified by operationId.
-          parameters:
-            - name: operationId
-              in: path
-              description: id of the operation.
-              required: true
-              type: string
           responses:
             '200':
               description: object describing the operation.
         """
+        r = getResource(core, id, ['Device'])
         return jsonify(r.interface.get_method(operationId))
 
 
-    @app.route('/api/devices/<Device:r>/call/<operationId>', methods=['GET', 'POST'])
+    @app.route('/api/devices/<id>/call/<operationId>', methods=['GET', 'POST'])
     @auth.required('device:write resource:write')
-    def device_api_call(r, operationId):
+    def device_api_call(id, operationId):
         """
         ---
         get:
           tags:
             - device
           description: Execute an operation identified by operationId. The parameters must be passed in the query string.
-          parameters:
-            - name: operationId
-              in: path
-              description: id of the operation.
-              required: true
-              type: string
           responses:
             '200':
               description: The response of the device.
@@ -170,6 +155,7 @@ def install(core, app, auth, **kwargs):
             '200':
               description: The response of the device.
         """
+        r = getResource(core, id, ['Device'])
         
         method = r.interface.get_method(operationId)
         
@@ -207,17 +193,15 @@ def install(core, app, auth, **kwargs):
             return ('', 204)
 
 
-    @app.route('/api/devices/<Device:r>/specification')
+    @app.route('/api/devices/<id>/specification')
     @auth.required('device:read resource:read')
-    def device_http_specification(r):
-        if not r.isTypeof('Http'):
-            raise Exception('Not a Http device')
+    def device_http_specification(id):
+        r = getResource(core, id, ['Http'])
         return jsonify(r.getSpecification())
 
 
-    @app.route('/api/devices/<Device:r>/subscription')
+    @app.route('/api/devices/<id>/subscription')
     @auth.required('device:read resource:read')
-    def device_mqtt_subscription(r):
-        if not r.isTypeof('MQTT'):
-            raise Exception('Not a MQTT device')
+    def device_mqtt_subscription(id):
+        r = getResource(core, id, ['MQTT'])
         return jsonify(r.getSubscription())

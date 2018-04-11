@@ -17,19 +17,54 @@ import re
 import sys
 from .Value import Value
 from .Field import Field
-from .Operator import Operator,EqualOperator,NotEqualOperator,ExistOperator,IsOperator,LowerOperator,GreaterOperator,LowerOrEqualOperator,GreaterOrEqualOperator,StartWithOperator,EndWithOperator,ContainOperator,ContainWordOperator
+from .Operator import Operator,EqualOperator,NotEqualOperator,ExistOperator,IsOperator,LowerOperator,GreaterOperator,LowerOrEqualOperator,GreaterOrEqualOperator,StartWithOperator,EndWithOperator,ContainOperator,ContainWordOperator,HasOperator
 from .Stream import Stream
 from .InvalidQueryException import InvalidQueryException
 from future.utils import iteritems, listvalues
 import ast
 
 
+
+def get_type_from_json_schema(schema):
+    
+    type = schema.get('type')
+    format = schema.get('format')
+    
+    if type is None:
+        if 'anyOf' in schema or 'oneOf' in schema:
+            types = []
+            for s in schema['anyOf' if 'anyOf' in schema else 'oneOf']:
+                t = get_type_from_json_schema(s)
+                if isinstance(t, list):
+                    types += t
+                elif t == '*':
+                    return t
+                else:
+                    types.append(t)
+            return list(set(types))
+        elif 'allOf' in schema:
+            for s in schema['allOf']:
+                t = get_type_from_json_schema(s)
+                if t != '*':
+                    return t
+    
+    if type == 'string':
+        if format == "date-time":
+            return "date"
+    
+    if type is None:
+        return '*'
+    
+    return type
+
+
 class Parser(object):
     
     
     
-    def __init__ (self, fields = {}, constants = {}):
+    def __init__ (self, fields = [], constants = {}):
         
+        self.rules = []
         self.fields = {}
         self.constants = {}
         self.operators = {}
@@ -48,8 +83,11 @@ class Parser(object):
             StartWithOperator(),
             EndWithOperator(),
             ContainOperator(),
-            ContainWordOperator()
+            ContainWordOperator(),
+            HasOperator(),
         ])
+        
+        self.addConstant('null', None)
         
         self.addField(fields)
         self.addConstant(constants)
@@ -77,7 +115,7 @@ class Parser(object):
             for value in field:
                 self.addField(value)
         else:
-            self.fields[str(field)] = field
+            self.fields[field.name] = field
     
     
     def getField (self, name):
@@ -108,6 +146,52 @@ class Parser(object):
         self.fieldFallback = fallback if callable(fallback) else None
     
     
+    def add_field_rule( self, regexp, callback):
+        self.rules.append({
+            'regexp': regexp,
+            're': re.compile(regexp),
+            'callback': callback
+        })
+    
+    
+    
+    
+    def import_fields_from_json_schema(self, schema, name = None, helper = None):
+        
+        
+        type = get_type_from_json_schema(schema)
+        
+        if type == 'object':
+            
+            properties = schema.get('properties', {})
+            
+            for prop_name in properties:
+                self.import_fields_from_json_schema( properties[prop_name], ("%s.%s" % (name, prop_name)) if name else prop_name )
+            
+            additionalProperties = schema.get('additionalProperties', True)
+            
+            if additionalProperties is not False:
+                sub_type = None
+                
+                if isinstance(additionalProperties, dict):
+                    sub_type = get_type_from_json_schema(additionalProperties)
+                
+                self.add_field_rule(r'^%s.[^\.]+' % name, lambda field: Field(field, type = sub_type))
+                
+        
+        
+        if name:
+            
+            field = Field(name, type = type)
+            
+            if callable(helper):
+                field = helper(name = name, type = type, schema = schema, default_field = field)
+            
+            if isinstance(field, Field):
+                self.addField(field)
+        
+        
+    
     """
     Entry point
     """
@@ -125,6 +209,13 @@ class Parser(object):
             if field in self.fields:
                 return self.fields[field]
             else:
+                
+                for rule in self.rules:
+                    if rule['re'].search(field):
+                        f = rule['callback'](field)
+                        if isinstance(f,Field):
+                            return f
+                
                 if self.fieldFallback is not None:
                     f = self.fieldFallback(field)
                     if isinstance(f,Field):
@@ -211,7 +302,7 @@ class Parser(object):
         
         field = self.parseField(stream)
         op = self.parseOperator(stream)
-        value = self.parseValue(stream) if op.hasValue() else Value()
+        value = self.parseValue(stream) if op.hasValue() else None
         
         if not op.accept(field, value):
             raise InvalidQueryException("the operator '%s' is invalid" % op, stream)

@@ -10,15 +10,9 @@ import json
 
 def install(core, app, auth, **kwargs):
 
-
-    apps_args = {
-        'fields': fields.DelimitedList(fields.Str())
-    }
-
     @app.route('/api/apps', methods=['POST'])
     @auth.required('app:write resource:write')
-    @use_args(apps_args)
-    def apps(args):
+    def apps():
         """
         ---
         post:
@@ -195,7 +189,7 @@ def install(core, app, auth, **kwargs):
                 if icon:
                     r.setIcon(content)
                 
-                response = jsonEncodeFilterByFields(r, args['fields'])
+                response = jsonify(r)
                 response.status_code = 201
                 return response
             else:
@@ -208,14 +202,10 @@ def install(core, app, auth, **kwargs):
         'exec': fields.Bool(missing=False, description="Set this parameter to '1' to get the HTML code ready to be executed in a browser (i.e. content-type set to 'text/html' and the preprocessor definitions set).")
     }
 
-    app_put_args = {
-        'fields': fields.DelimitedList(fields.Str())
-    }
-
-    @app.route('/api/apps/<App:r>', methods=['GET', 'PUT'])
-    @use_multi_args(GET = app_get_args, PUT = (app_put_args, ('query',)))
+    @app.route('/api/apps/<id>', methods=['GET', 'PUT'])
+    @use_multi_args(GET = app_get_args)
     @auth.required(GET = 'app:read resource:read', PUT = 'app:write resource:write')
-    def rapp(args, r):
+    def rapp(args, id):
         """
         ---
         get:
@@ -250,6 +240,7 @@ def install(core, app, auth, **kwargs):
               schema:
                 $ref: '#/definitions/App'
         """
+        r = getResource(core, id, ['App'])
         
         if request.method == 'GET':
             
@@ -275,18 +266,13 @@ def install(core, app, auth, **kwargs):
             
             r.setScript(request.data)
             
-            return jsonEncodeFilterByFields(r, args['fields'])
+            return jsonify(r)
 
 
 
-    app_icon_put_args = {
-        'fields': fields.DelimitedList(fields.Str())
-    }
-
-    @app.route('/api/files/<App:r>/icon', methods=['GET', 'PUT'])
-    @use_multi_args(PUT = (app_icon_put_args, ('query',)))
+    @app.route('/api/files/<id>/icon', methods=['GET', 'PUT'])
     @auth.required(GET = 'app:read resource:read', PUT = 'resource:admin')
-    def app_icon(args, r):
+    def app_icon(id):
         """
         ---
         get:
@@ -302,6 +288,7 @@ def install(core, app, auth, **kwargs):
               schema:
                 type: file
         """
+        r = getResource(core, id, ['App'])
         
         if request.method == 'GET':
             icon = r.readIcon()
@@ -315,5 +302,5 @@ def install(core, app, auth, **kwargs):
             
             r.setIcon(request.data)
             
-            return jsonEncodeFilterByFields(r, args['fields'])
+            return jsonify(r)
 

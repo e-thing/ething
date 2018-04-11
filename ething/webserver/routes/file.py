@@ -9,14 +9,9 @@ import json
 
 def install(core, app, auth, **kwargs):
 
-    files_args = {
-        'fields': fields.DelimitedList(fields.Str(), missing=None)
-    }
-
     @app.route('/api/files', methods=['POST'])
     @auth.required('file:write resource:write')
-    @use_args(files_args)
-    def files(args):
+    def files():
         """
         ---
         post:
@@ -159,7 +154,7 @@ def install(core, app, auth, **kwargs):
                 if content:
                     r.write(content)
                 
-                response = jsonEncodeFilterByFields(r, args['fields'])
+                response = jsonify(r)
                 response.status_code = 201
                 return response
             else:
@@ -170,13 +165,12 @@ def install(core, app, auth, **kwargs):
 
     file_put_args = {
         'append': fields.Bool(missing=False, description="If true, the content will be appended."),
-        'fields': fields.DelimitedList(fields.Str(), missing=None)
     }
 
-    @app.route('/api/files/<File:r>', methods=['GET', 'PUT'])
+    @app.route('/api/files/<id>', methods=['GET', 'PUT'])
     @use_multi_args(PUT = (file_put_args, ('query',)))
     @auth.required(GET = 'file:read resource:read', PUT = 'file:write resource:write')
-    def file(args, r):
+    def file(args, id):
         """
         ---
         get:
@@ -232,6 +226,7 @@ def install(core, app, auth, **kwargs):
               schema:
                 $ref: '#/definitions/File'
         """
+        r = getResource(core, id, ['File'])
         
         if request.method == 'GET':
             return Response(r.read(), mimetype = r.mime)
@@ -245,12 +240,13 @@ def install(core, app, auth, **kwargs):
             else:
                 r.write(content)
             
-            return jsonEncodeFilterByFields(r, args['fields'])
+            return jsonify(r)
 
     
-    @app.route('/api/files/<File:r>/thumbnail')
+    @app.route('/api/files/<id>/thumbnail')
     @auth.required('file:read resource:read')
-    def file_thumb(r):
+    def file_thumb(id):
+        r = getResource(core, id, ['File'])
         thumb = r.readThumbnail()
         
         if not thumb:
@@ -263,10 +259,11 @@ def install(core, app, auth, **kwargs):
         'args': fields.Str(description="A string representing the arguments to be passed to the script.")
     }
 
-    @app.route('/api/files/<File:r>/execute')
+    @app.route('/api/files/<id>/execute')
     @use_args(file_action_execute_args)
     @auth.required('file:read resource:read')
-    def file_execute(args, r):
+    def file_execute(args, id):
+        r = getResource(core, id, ['File'])
         
         if r.mime == 'application/javascript':
             

@@ -6,6 +6,7 @@ from future.utils import string_types, integer_types
 from dateparser import parse
 import datetime
 from .InvalidQueryException import InvalidQueryException
+from .utils import type_normalize, type_equals
 
 class Value(object):
     
@@ -14,36 +15,17 @@ class Value(object):
         self.__value = value
     
     
-    # return the intrinsec type : boolean, integer, double, string, ...
+    @property
     def type (self):
-        if isinstance(self.__value, bool):
-            return 'boolean'
-        elif isinstance(self.__value, integer_types):
-            return 'integer'
-        elif isinstance(self.__value, float):
-            return 'double'
-        elif isinstance(self.__value, string_types):
-            return 'string'
-        else:
-            return 'NULL'
+        return type_normalize(type(self.__value).__name__)
     
     # check if the value has the given type
     def isType(self, type):
-        type = type.lower()
         
-        if type == 'string' or type == 'boolean' or type == 'integer' or type == 'double':
-            return self.type()==type
-        elif type == 'bool':
-            return self.type()=='boolean'
-        elif type == 'number':
-            return self.type()=='integer' or self.type()=='double'
-        elif type == 'date':
-            return self.type()=='string' and self.isDate()
-        elif type == 'null':
-            return self.type()=='NULL'
-        else:
-            return False
+        if type == 'date':
+            return self.type=='string' and self.isDate()
         
+        return type_equals(self.type, type)
     
     
     def getValue (self):

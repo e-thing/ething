@@ -5,15 +5,13 @@ from flask_cors import CORS
 from werkzeug.exceptions import HTTPException
 from .auth import install_auth
 from .routes import install_routes
-from . import converters
 import json as js
-import os, sys
 import traceback
 import logging
 from .method_override import HTTPMethodOverrideMiddleware
-from .server_utils import ServerException, tb_extract_info
+from .server_utils import ServerException, tb_extract_info, root_path
 
-root_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
 
 debug = False
 
@@ -57,10 +55,6 @@ def create(core):
     
     if debug:
         core.log.info('webserver: debug mode enabled')
-    
-    
-    # register custom converters :
-    converters.install(core = core, app = app)
 
     @app.errorhandler(Exception)
     def unhandled_exception(e):

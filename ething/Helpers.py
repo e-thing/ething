@@ -3,7 +3,7 @@
 import json
 import datetime
 import sys
-from future.utils import iteritems
+from future.utils import iteritems, binary_type
 
 
 def dict_recursive_update(a, *more):
@@ -22,10 +22,28 @@ def serialize(obj):
         return obj.toJson()
     if isinstance(obj, datetime.datetime):
         return obj.isoformat()
+    if isinstance(obj, binary_type):
+        return obj.decode('utf8')
     return obj.__dict__
 
 
-def toJson(obj, **kwargs):
+def filter_obj(obj, fields):
+    cpy = {}
+    for f in fields:
+        if f in obj:
+            cpy[f] = obj[f]
+    return cpy
+    
+
+def toJson(obj, fields = None, **kwargs):
+    
+    # filter by keys
+    if fields is not None:
+        if isinstance(obj, dict):
+            obj = filter_obj(obj, fields)
+        elif isinstance(obj, list):
+            obj = [filter_obj(o, fields) for o in obj]
+    
     return json.dumps(obj, default=serialize, **kwargs)
 
 

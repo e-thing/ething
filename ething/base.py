@@ -469,6 +469,7 @@ def attr(name, validator = None, mode = None, **kwargs):
         attributes.setdefault(name, {
             'validator': validator,
             'model_adapter': default_model_adapter,
+            'model_key': name,
             'mode': mode,
             'classes': []
         })
@@ -518,7 +519,7 @@ class DataObject(object):
             for name in attributes:
                 attribute = attributes[name]
                 if 'default' in attribute:
-                    attribute['model_adapter'].set(self, self.__d, name, attribute['default'](self.__class__))
+                    attribute['model_adapter'].set(self, self.__d, attribute['model_key'], attribute['default'](self.__class__))
     
     def toJson(self):
         j = {}
@@ -529,7 +530,7 @@ class DataObject(object):
                 continue
             model_adapter = attribute['model_adapter']
             try:
-                j[name] = model_adapter.get(self, self.__d, name)
+                j[name] = model_adapter.get(self, self.__d, attribute['model_key'])
             except:
                 pass
         return j
@@ -552,13 +553,13 @@ class DataObject(object):
         
         model_adapter = attribute['model_adapter']
         
-        if not model_adapter.has(self, self.__d, name):
+        if not model_adapter.has(self, self.__d, attribute['model_key']):
             if 'default' in attribute:
-                model_adapter.set(self, self.__d, name, attribute['default'](self.__class__))
+                model_adapter.set(self, self.__d, attribute['model_key'], attribute['default'](self.__class__))
             else: # mandatory but not set
                 raise AttributeError('attribute "%s" is not set' % name)
         
-        return model_adapter.get(self, self.__d, name)
+        return model_adapter.get(self, self.__d, attribute['model_key'])
     
     
     def __setattr__ (self,    name, value ):
@@ -587,7 +588,7 @@ class DataObject(object):
         
         model_adapter = attribute['model_adapter']
         
-        model_adapter.set(self, self.__d, name, value)
+        model_adapter.set(self, self.__d, attribute['model_key'], value)
         
         self.setDirtyAttr(name)
         
@@ -622,7 +623,7 @@ class DataObject(object):
                     
                     model_adapter = attribute.get('model_adapter', name)
                     
-                    if not model_adapter.has(self, self.__d, name):
+                    if not model_adapter.has(self, self.__d, attribute['model_key']):
                         raise AttributeError('attribute "%s" is not set' % name)
                 
                 self._insert(self.__d)
