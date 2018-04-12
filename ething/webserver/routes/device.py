@@ -5,6 +5,7 @@ from flask import request, Response
 from ..server_utils import *
 import re
 import base64
+from future.utils import text_type
 
 def install(core, app, auth, **kwargs):
 
@@ -56,8 +57,8 @@ def install(core, app, auth, **kwargs):
         
         if isinstance(attr, dict):
             
-            if 'type' not in attr:
-                raise Exception('the "type" attribute is mandatory')
+            if 'type' not in attr or not isinstance(type, text_type) or len(type)==0:
+                raise Exception('the "type" attribute is mandatory and must be a non empty string')
             
             type = attr.pop('type')
             content = None

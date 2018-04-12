@@ -2,7 +2,6 @@
 from future.utils import string_types, integer_types, iteritems
 
 from ething.Device import Device, method, attr, isString, isInteger, isObject, isNone, PRIVATE
-from ething.rule.event.DeviceDataSet import DeviceDataSet
 
 from jsonpath_rw import jsonpath, parse
 import xml.etree.ElementTree as ET

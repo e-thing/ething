@@ -8,10 +8,7 @@ from future.utils import with_metaclass
 resource_classes = {}
 
 def get_resource_class(name):
-    if name in resource_classes:
-        return resource_classes[name]
-    else:
-        return None
+    return resource_classes.get(name)
 
 class MetaResource(type):
     
@@ -538,10 +535,7 @@ class Interface(object):
 interfaces_classes = {}
 
 def get_interface_class(name):
-    if name in interfaces_classes:
-        return interfaces_classes[name]
-    else:
-        return None
+    interfaces_classes.get(name)
 
 class MetaInterface(type):
     
@@ -578,10 +572,7 @@ class iface(with_metaclass(MetaInterface,object)):
 event_classes = {}
 
 def get_event_class(name):
-    if name in event_classes:
-        return event_classes[name]
-    else:
-        return None
+    return event_classes.get(name)
 
 class MetaEvent(type):
     
@@ -591,14 +582,23 @@ class MetaEvent(type):
         type.__init__(cls, nom, bases, dict)
         event_classes[nom] = cls
 
+signal_classes = {}
+
+def get_signal_class(name):
+    return signal_classes.get(name)
+
+class MetaSignal(type):
+    
+    """Signal metaclass"""
+    
+    def __init__(cls, nom, bases, dict):
+        type.__init__(cls, nom, bases, dict)
+        signal_classes[nom] = cls
 
 condition_classes = {}
 
 def get_condition_class(name):
-    if name in condition_classes:
-        return condition_classes[name]
-    else:
-        return None
+    return condition_classes.get(name)
 
 class MetaCondition(type):
     
@@ -613,10 +613,7 @@ class MetaCondition(type):
 action_classes = {}
 
 def get_action_class(name):
-    if name in action_classes:
-        return action_classes[name]
-    else:
-        return None
+    return action_classes.get(name)
 
 class MetaAction(type):
     

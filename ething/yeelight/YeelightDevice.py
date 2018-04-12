@@ -4,7 +4,6 @@ from future.utils import string_types
 
 from ething.Device import Device, method, attr, isString
 from ething.utils import pingable
-from ething.rule.event.DeviceDataSet import DeviceDataSet
 from ething.interfaces import Light
 import json
 

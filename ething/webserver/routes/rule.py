@@ -5,55 +5,73 @@ from flask import request, Response
 from ..server_utils import *
 
 def install(core, app, auth, **kwargs):
-
-    @app.route('/api/rules', methods=['GET', 'POST'])
-    @auth.required(GET = 'rule:read', POST = 'rule:write')
-    def rules():
-        
-        if request.method == 'GET':
-            return jsonify(core.findRules())
-        
-        elif request.method == 'POST':
-            
-            data = request.get_json()
-            
-            if isinstance(data, dict):
-                rule = core.createRule(data)
-                if rule:
-                    response = jsonify(rule)
-                    response.status_code = 201
-                    return response
-                else:
-                    raise Exception('Unable to create the rule');
-            
-            raise Exception('Invalid request');
-
     
-    @app.route('/api/rules/<id>', methods=['GET', 'DELETE', 'PATCH'])
-    @auth.required(GET = 'rule:read', DELETE = 'rule:admin', PATCH = 'rule:admin')
-    def rule(id):
+    
+    @app.route('/api/rules', methods=['POST'])
+    @auth.required('rule:write resource:write')
+    def rules():
+        """
+        ---
+        post:
+          tags:
+            - rule
+          description: |-
+            Create a new rule.
+          parameters:
+            - name: metadata
+              in: body
+              description: |-
+
+                the metadata of the rule to be created
+
+                example:
+
+                ```json
+                {
+                   "name" : 'myrule',
+                   "script": "ho58-ju",
+                   "event": {
+                       "type": "CustomEvent",
+                       "name": "foobar"
+                   }
+                }
+                ```
+                 
+              required: true
+              schema:
+                $ref: '#/definitions/Rule'
+          responses:
+            '200':
+              description: The rule was successfully created
+              schema:
+                $ref: '#/definitions/Rule'
+        """
         
-        rules = core.findRules({
-            '_id' : id
-        });
-        
-        if len(rules) == 0:
-            raise Exception('Unknown rule with id = %s' % id);
-        
-        rule = rules[0]
-        
-        if request.method == 'GET':
-            return jsonify(rule)
-        
-        elif request.method == 'DELETE':
-            rule.remove()
-            return ('', 204)
-        
-        elif request.method == 'PATCH':
+        attr = request.get_json()
+                
+        if attr is not None:
+            attr.setdefault('createdBy', g.auth.resource)
             
-            data = request.get_json()
+            r = core.create('Rule', attr)
             
-            if isinstance(data, dict) and rule.set(data):
-                return jsonify(rule)
-            
-            raise Exception('Invalid request');
+            if r:
+                response = jsonify(r)
+                response.status_code = 201
+                return response
+            else:
+                raise Exception('Unable to create the rule')
+        
+        raise Exception('Invalid request')
+    
+    
+    @app.route('/api/rules/<id>/execute')
+    @auth.required('rule:read resource:read')
+    def rule_execute(args, id):
+        r = getResource(core, id, ['Rule'])
+        
+        if not r.run():
+            raise Exception('An error occurs during execution of the rule')
+        
+        return ('', 204)
+    
+    

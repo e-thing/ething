@@ -7,7 +7,6 @@ from ething.meta import interface, method, iface
 from . import interfaces
 from ething.Helpers import dict_recursive_update
 from .helpers import *
-from ething.rule.event.DeviceDataSet import DeviceDataSet
 import inspect
 
 
@@ -23,7 +22,7 @@ for iname, iclass in inspect.getmembers(interfaces, inspect.isclass):
 
 
 class isSensorType(Validator):
-    def validate(self, value):
+    def validate(self, value, object):
         if sensorTypeStr(value) is None:
             raise ValueError('must be a valid integer or a string describing a sensor type')
         return value

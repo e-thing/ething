@@ -12,7 +12,7 @@ import copy
 
 class Validator(object):
     
-    def validate(self, value):
+    def validate(self, value, object):
         """
         Validate a value against this type and return a must return a sanitized value
         """
@@ -41,11 +41,11 @@ class Or(Validator):
             else:
                 self.items.append(i)
     
-    def validate(self, value):
+    def validate(self, value, object):
         errors = []
         for i in self.items:
             try:
-                return i.validate(value)
+                return i.validate(value, object)
             except Exception as e:
                 errors.append(e)
         
@@ -80,10 +80,10 @@ class And(Validator):
             else:
                 self.items.append(i)
     
-    def validate(self, value):
+    def validate(self, value, object):
         sanitized_value = value
         for i in self.items:
-            sanitized_value = i.validate(value)
+            sanitized_value = i.validate(value, object)
         return sanitized_value
     
     def schema(self):
@@ -104,7 +104,7 @@ class And(Validator):
 
 class isAnything(Validator):
     
-    def validate(self, value):
+    def validate(self, value, object):
         return value
     
     def schema(self):
@@ -112,7 +112,7 @@ class isAnything(Validator):
 
 class isNone(Validator):
     
-    def validate(self, value):
+    def validate(self, value, object):
         if value is not None:
             raise ValueError('not None')
         return value
@@ -122,7 +122,7 @@ class isNone(Validator):
 
 class isBool(Validator):
     
-    def validate(self, value):
+    def validate(self, value, object):
         if not isinstance(value, bool):
             raise ValueError('not a boolean')
         return value
@@ -134,7 +134,7 @@ class isEnum(Validator):
     def __init__(self, enum):
         self.enum = enum
     
-    def validate(self, value):
+    def validate(self, value, object):
         if value not in self.enum:
             raise ValueError("must be one of the following values: %s." % ','.join(str(e) for e in self.enum))
         return value
@@ -148,7 +148,7 @@ class isNumber(Validator):
         self.min = min
         self.max = max
     
-    def validate(self, value):
+    def validate(self, value, object):
         if not isinstance(value, integer_types) and not isinstance(value, float):
             raise ValueError('not a number')
         if self.min is not None:
@@ -169,10 +169,10 @@ class isNumber(Validator):
 
 class isInteger(isNumber):
     
-    def validate(self, value):
+    def validate(self, value, object):
         if not isinstance(value, integer_types):
             raise ValueError('not an integer')
-        return super(isInteger, self).validate(value)
+        return super(isInteger, self).validate(value, object)
     
     def schema(self):
         schema = super(isInteger, self).schema()
@@ -184,14 +184,14 @@ class isInstance(Validator):
     def __init__(self, cls):
         self.cls = cls
     
-    def validate(self, value):
+    def validate(self, value, object):
         if not isinstance(value, self.cls):
             raise ValueError('not an instance of "%s"' % self.cls.__name__)
         return value
 
 class isDate(Validator):
     
-    def validate(self, value):
+    def validate(self, value, object):
         """
         return a Datetime
         """
@@ -236,7 +236,7 @@ class isString(Validator):
             
             self.regex_c = re.compile(pattern, flags)
     
-    def validate(self, value):
+    def validate(self, value, object):
         if not isinstance(value, string_types):
             raise ValueError('not a string')
         
@@ -284,11 +284,11 @@ class isEmail(isString):
     def __init__(self):
         super(isEmail, self).__init__(allow_empty=False)
     
-    def validate(self, value):
+    def validate(self, value, object):
         
         message = "not an email"
         
-        super(isEmail, self).validate(value)
+        super(isEmail, self).validate(value, object)
         
         if '@' not in value:
             raise ValueError(message)
@@ -325,7 +325,7 @@ class isObject(Validator):
         self.allow_extra = allow_extra
         self.optionals = optionals
     
-    def validate(self, value):
+    def validate(self, value, object):
         if not isinstance(value, dict):
             raise ValueError('not an object')
         
@@ -345,7 +345,7 @@ class isObject(Validator):
             
             if validator:
                 try:
-                    sanitized_value[k] = validator.validate(v)
+                    sanitized_value[k] = validator.validate(v, object)
                 except Exception as e:
                     reraise( type(e), type(e)(("key '%s': " % k) + str(e)), sys.exc_info()[2] )
             
@@ -379,7 +379,7 @@ class isArray(Validator):
         self.min_len = min_len
         self.max_len = max_len
     
-    def validate(self, value):
+    def validate(self, value, object):
         if not isinstance(value, list):
             raise ValueError('not an array')
         
@@ -397,7 +397,7 @@ class isArray(Validator):
             sanitized_values = []
             for i in range(0, len(value)):
                 try:
-                    sanitized_values.append(self.item.validate(value[i]))
+                    sanitized_values.append(self.item.validate(value[i], object))
                 except Exception as e:
                     reraise( type(e), type(e)(("the array item at index %d is invalid: " % i) + str(e)), sys.exc_info()[2] )
             value = sanitized_values
@@ -447,10 +447,44 @@ class ModelAdapter(object):
         data[name] = value
     
     def get(self, data_object, data, name):
-        return data[name]
+        return data.get(name)
     
     def has(self, data_object, data, name):
         return name in data
+
+
+
+class NestedAdapter(ModelAdapter):
+    """
+    used to create nested model
+    """
+    def __init__(self, cls):
+        self.cls = cls
+    
+    def _inherit(self, data_object):
+        return {} # will be transmitted to the constructor !
+    
+    def set(self, data_object, data, name, value):
+        
+        if isinstance(value, self.cls):
+            instance = value
+        else:
+            if not isinstance(value, dict):
+                raise ValueError('must be an object')
+            
+            if self.has(data_object, data, name):
+                # update
+                instance = self.get(data_object, data, name)
+                instance.save(value)
+            else:
+                # create
+                instance = self.cls.create(value, **(self._inherit(data_object)))
+        
+        data[name] = instance.serialize()
+    
+    def get(self, data_object, data, name):
+        return self.cls.unserialize(data.get(name), **(self._inherit(data_object)))
+    
 
 default_model_adapter = ModelAdapter()
 
@@ -562,7 +596,7 @@ class DataObject(object):
         return model_adapter.get(self, self.__d, attribute['model_key'])
     
     
-    def __setattr__ (self,    name, value ):
+    def __setattr__ (self, name, value ):
         
         priv_access = False
         
@@ -575,20 +609,29 @@ class DataObject(object):
         if attribute is None:
             raise AttributeError('no attribute "%s"' % name)
         
+        model_adapter = attribute['model_adapter']
+        
         mode = attribute.get('mode')
         if (mode == PRIVATE or mode == READ_ONLY) and not priv_access:
+            
+            if mode == READ_ONLY:
+                if model_adapter.has(self, self.__d, attribute['model_key']):
+                    if value == model_adapter.get(self, self.__d, attribute['model_key']):
+                        return # do not raise an error if we want to write a read_only attribute with the same value !
+            
             raise AttributeError('attribute "%s" is not writable' % name)
         
         validator = attribute.get('validator')
         if validator:
             try:
-                value = validator.validate(value)
+                value = validator.validate(value, self)
             except ValueError as e:
                 raise AttributeError('invalid attribute "%s": %s' % (name, str(e)))
         
-        model_adapter = attribute['model_adapter']
-        
-        model_adapter.set(self, self.__d, attribute['model_key'], value)
+        try:
+            model_adapter.set(self, self.__d, attribute['model_key'], value)
+        except ValueError as e:
+            raise AttributeError('invalid attribute "%s": %s' % (name, str(e)))
         
         self.setDirtyAttr(name)
         
@@ -602,7 +645,11 @@ class DataObject(object):
     def getDirtyAttr(self):
         return self.__dirtyFields
     
-    def save(self):
+    def save(self, attributes = None):
+        
+        if attributes is not None:
+            for key, value in iteritems(attributes):
+                setattr(self, key, value)
         
         if len(self.__dirtyFields) == 0 and not self.__new:
             return # nothing to save
@@ -760,6 +807,21 @@ class DataObject(object):
             schema['description'] = description
         
         return schema
+    
+    
+    
+    def serialize(self):
+        return self.__d
+    
+    @classmethod
+    def unserialize(cls, data):
+        return cls(data = data)
+    
+    @classmethod
+    def create(cls, attributes, **ctor_attr):
+        instance = cls(**ctor_attr)
+        instance.save(attributes)
+        return instance
     
 
 

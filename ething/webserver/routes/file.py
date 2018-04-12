@@ -6,6 +6,8 @@ from ..server_utils import *
 import base64
 from werkzeug.http import parse_options_header
 import json
+from ething.ScriptEngine import ScriptEngine
+
 
 def install(core, app, auth, **kwargs):
 

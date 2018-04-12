@@ -1,6 +1,6 @@
 # coding: utf-8
 
-from future.utils import with_metaclass
+from future.utils import with_metaclass, string_types
 import string
 import re
 import sys
@@ -8,35 +8,52 @@ import copy
 import datetime
 from .ShortId import ShortId
 from .Helpers import dict_recursive_update
-from .rule.event import ResourceCreated, ResourceDeleted, ResourceMetaUpdated
 from .meta import MetaResource
 from .base import attr, DataObject, isBool, isString, isNone, isNumber, isObject, isEnum, READ_ONLY, PRIVATE, ModelAdapter, Validator
 from future.utils import iteritems
 
 
-class isResource(Validator):
+
+
+class isResource(isString):
     
-    def validate(self, value):
-        if not isinstance(value, Resource):
+    def __init__(self, accepted_types = None):
+        super(isResource, self).__init__(regex = '^[-_a-zA-Z0-9]{7}$')
+        self.accepted_types = accepted_types
+    
+    def validate(self, value, object):
+        if isinstance(value, string_types):
+            try:
+                value = super(isResource, self).validate(value, object)
+            except ValueError:
+                raise ValueError('not an id')
+            
+            r = object.ething.get(value)
+            
+            if r is None:
+                raise ValueError('the resource id=%s does not exist' % value)
+            
+            value = r
+        
+        elif not isinstance(value, Resource):
             raise ValueError('not a Resource')
+        
+        if self.accepted_types is not None:
+            for t in self.accepted_types:
+                if value.isTypeof(t):
+                    break
+            else:
+                raise ValueError('the Resource does not match the following types: %s' % ','.join(self.accepted_types))
+        
         return value
+        
 
-class isId(isString):
-    
-    def __init__(self):
-        super(isId, self).__init__(regex = '^[-_a-zA-Z0-9]{7}$')
-    
-    def validate(self, value):
-        try:
-            return super(isId, self).validate(value)
-        except ValueError:
-            raise ValueError('not an id')
-
-
-class CreatedByModelAdapter(ModelAdapter):
+class ResourceModelAdapter(ModelAdapter):
     
     def set(self, data_object, data, name, value):
         data[name] = value.id if isinstance(value, Resource) else value
+
+
 
 class DataModelAdapter(ModelAdapter):
     
@@ -53,7 +70,7 @@ class DataModelAdapter(ModelAdapter):
 @attr('extends', mode = READ_ONLY, default = lambda cls: [c.__name__ for c in cls.__mro__ if issubclass(c,Resource) and (c is not Resource)], description="An array of classes this resource is based on.")
 @attr('createdDate', default = lambda _: datetime.datetime.utcnow(), mode = READ_ONLY, description="Create time for this resource")
 @attr('modifiedDate', default = lambda _: datetime.datetime.utcnow(), description = "Last time this resource was modified")
-@attr('createdBy', validator = isResource() | isNone() | isId(), default = None, model_adapter = CreatedByModelAdapter(), description="The id of the resource responsible of the creation of this resource, or null.")
+@attr('createdBy', validator = isResource() | isNone(), default = None, model_adapter = ResourceModelAdapter(), description="The id of the resource responsible of the creation of this resource, or null.")
 @attr('data', validator = isObject(allow_extra = isString() | isNumber() | isNone() | isBool()), default = {}, model_adapter = DataModelAdapter(), description="A collection of arbitrary key-value pairs. Entries with null values are cleared in update. The keys must not be empty or longer than 64 characters, and must contain only the following characters : letters, digits, underscore and dash. Values must be either a string or a boolean or a number")
 @attr('description', validator = isString(), default = '', description = "A description of this resource.")
 @attr('public', validator = isEnum([False, 'readonly', 'readwrite']), default = False, description = "False: this resource is not publicly accessible. 'readonly': this resource is accessible for reading by anyone. 'readwrite': this resource is accessible for reading and writing by anyone.")
@@ -152,7 +169,7 @@ class Resource(with_metaclass(MetaResource, DataObject)):
         
         self.ething.log.debug("Resource deleted : %s" % str(self))
         
-        self.ething.dispatchSignal(ResourceDeleted.emit(self))
+        self.ething.dispatchSignal('ResourceDeleted', self)
         
         for child in children:
             if removeChildren:
@@ -171,7 +188,7 @@ class Resource(with_metaclass(MetaResource, DataObject)):
             # code 11000 on duplicate error
             raise Exception('internal error: doc insertion failed')
         
-        self.ething.dispatchSignal(ResourceCreated.emit(self))
+        self.ething.dispatchSignal('ResourceCreated', self)
         
         self.ething.log.debug("Resource created : %s" % str(self))
         
@@ -184,25 +201,11 @@ class Resource(with_metaclass(MetaResource, DataObject)):
         c = self.ething.db["resources"]
         c.replace_one({'_id' : self.id}, data)
         
-        self.ething.dispatchSignal(ResourceMetaUpdated.emit(self, list(self.getDirtyAttr())))
+        self.ething.dispatchSignal('ResourceMetaUpdated', self, list(self.getDirtyAttr()))
     
     def _refresh(self):
         c = self.ething.db["resources"]
         return c.find_one({'_id' : self.id})
-    
-    
-    # create a new resource
-    @classmethod
-    def create(cls, ething, attr):
-        
-        r = cls(ething)
-        
-        for k, v in iteritems(attr):
-            setattr(r, k, v)
-        
-        r.save()
-        
-        return r
     
     
     def match (self, expression):

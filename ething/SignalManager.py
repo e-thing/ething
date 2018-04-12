@@ -16,7 +16,7 @@ class SignalManager(object):
         self.core.rpc.register('signal', self.dispatch)
     
     def default_dispatcher (self, signal):
-        event_type = signal.name
+        event_type = type(signal).__name__
         
         if event_type in self.handlers:
             for handler in self.handlers[event_type]:
@@ -36,21 +36,29 @@ class SignalManager(object):
                 self.log.exception("Error calling signal dispatcher with signal: %s dispatcher: %s" % (str(signal), dispatcher))
     
     
-    def bind (self, event_type, handler):
+    def bind (self, event_types, handler):
         """Adds an event listener for event name"""
-        if event_type not in self.handlers:
-            self.handlers[event_type] = []
-        
-        self.handlers[event_type].append(handler)
+        for event_type in ' '.split(event_types):
+            if not event_type:
+                continue
+            
+            if event_type not in self.handlers:
+                self.handlers[event_type] = []
+            
+            self.handlers[event_type].append(handler)
     
     
-    def unbind (self, event_type, handler):
+    def unbind (self, event_types, handler):
         """removes previously added event listener"""
-        if event_type in self.handlers:
-            try:
-                self.handlers[event_type].remove(handler)
-            except (ValueError, KeyError):
-                pass
+        for event_type in ' '.split(event_types):
+            if not event_type:
+                continue
+            
+            if event_type in self.handlers:
+                try:
+                    self.handlers[event_type].remove(handler)
+                except (ValueError, KeyError):
+                    pass
         
     def addDispatcher(self, dispatcher):
         self.dispatchers.append(dispatcher)

@@ -15,7 +15,6 @@ import pymongo
 from .Helpers import dict_recursive_update
 import csv
 from io import StringIO
-from .rule.event import TableDataAdded
 from .base import attr, isBool, isString, isNone, isInteger, READ_ONLY, PRIVATE
 
 
@@ -23,7 +22,7 @@ from .base import attr, isBool, isString, isNone, isInteger, READ_ONLY, PRIVATE
 @attr('expireAfter', validator = isNone() | isInteger(min=1), default = None, description="The amount of time (in seconds) after which a records will be automatically removed. Set it to null or 0 to disable this feature.")
 @attr('length', default = 0, mode = READ_ONLY, description="The number of records in the table")
 @attr('keys', default = {}, mode = READ_ONLY, description="A key/value object where the keys correspond to the fields available in this table, and the corresponding value is the number of rows where the field is set. __The default keys ('_id' and 'date' are not listed)__")
-@attr('contentModifiedDate', default = datetime.datetime.utcnow(), mode = READ_ONLY, description="Last time the conten of this resource was modified.")
+@attr('contentModifiedDate', default = datetime.datetime.utcnow(), mode = READ_ONLY, description="Last time the content of this table was modified.")
 class Table(Resource):
 
     
@@ -337,7 +336,7 @@ class Table(Resource):
             
             doc = Table.docSerialize(dataArray[0])
             # generate an event
-            self.dispatchSignal(TableDataAdded.emit(self, doc))
+            self.dispatchSignal('TableDataAdded', self, doc)
             # mqtt publish
             #self.ething.mqttPublish("resource/table/%s/data" % self.id, doc, True)
             

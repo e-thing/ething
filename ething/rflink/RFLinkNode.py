@@ -93,7 +93,7 @@ class RFLinkNode(Device):
     @staticmethod
     def createDeviceFromMessage (subType, protocol, args, gateway):
         
-        return RFLinkNode.create(gateway.ething, {
+        return gateway.ething.create('RFLinkNode', {
             'nodeId' : args['ID'],
             'switchId' : convertSwitchId(args['SWITCH']) if 'SWITCH' in args else None,
             'protocol' : protocol,

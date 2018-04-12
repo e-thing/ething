@@ -14,23 +14,24 @@ from .ResourceQueryParser import ResourceQueryParser
 from .Config import Config
 from .SignalManager import SignalManager
 from .SocketManager import SocketManager
+from .RuleManager import RuleManager
 from .TaskManager import TaskManager
 from .Scheduler import Scheduler
 from .Mail import Mail
 from .rpc import RPC
 from .version import __version__
-from . import rule
 import logging
 import sys
 import os
 import datetime
 import re
 
-from .meta import get_resource_class
+from .meta import get_resource_class, get_signal_class
 
 from .File import File
 from .Table import Table
 from .App import App
+from .Rule import Rule
 
 from .rflink import RFLink
 from .mysensors import MySensors
@@ -178,7 +179,7 @@ class Core(object):
         self.taskManager = TaskManager(self, initialize = self._init_database)
         self.signalManager = SignalManager(self)
         self.socketManager = SocketManager(self)
-        self.ruleManager = rule.Manager(self)
+        self.ruleManager = RuleManager(self)
         self.mail = Mail(self)
         
         self.rpc.register('stop', self.stop)
@@ -226,7 +227,7 @@ class Core(object):
         dispatch the tick event
         """
         self.log.debug("tick...")
-        self.dispatchSignal(rule.event.Timer.emit())
+        self.dispatchSignal('Tick')
     
     
     def _ping(self):
@@ -322,7 +323,7 @@ class Core(object):
     def create (self, type, attributes):
         cl = get_resource_class(type)
         if cl is not None:
-            return cl.create(self, attributes)
+            return cl.create(attributes, ething = self)
         else:
             raise Exception('the type "%s" is unknown' % type)
     
@@ -371,31 +372,6 @@ class Core(object):
         }
     
     
-    #
-    # Rules
-    #
-    
-    def findRules (self, query = {}):
-        rules = []
-        c = self.db["rules"]
-        cursor = c.find(query, sort=[('priority', pymongo.DESCENDING)])
-        for doc in cursor:
-            rules.append(rule.Rule(self, doc))
-        
-        return rules
-    
-    
-    def getRule (self, id):
-        r = self.findRules({
-            '_id' : id
-        })
-        return r[0] if len(r) else None
-    
-    
-    def createRule (self, attr):
-        return rule.Rule.create(self,attr)
-    
-    
     @staticmethod
     def r_encode (data, showPrivateField = True):
         o={}
@@ -422,16 +398,19 @@ class Core(object):
         return o
     
     def dispatchSignal (self, signal, *args, **kwargs):
-        try:
-            if isinstance(signal, string_types):
-                cls = get_event_class(signal)
+    
+        if isinstance(signal, string_types):
+            try:
+                cls = get_signal_class(signal)
                 if not cls:
                     return
-                signal = cls.emit(*args, **kwargs)
-            
+                signal = cls(*args, **kwargs)
+            except:
+                self.log.exception('signal instanciate error')
+        
+        try:
             #self.log.debug('dispatchSignal %s' % signal)
             self.rpc.send('signal', signal)
-            
         except:
             pass
         

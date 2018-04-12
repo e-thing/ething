@@ -12,7 +12,6 @@ except ImportError:
     Image = None
 from io import BytesIO
 from .Helpers import dict_recursive_update
-from .rule.event import FileDataModified
 from .base import attr, isBool, isString, isNone, isInteger, READ_ONLY, PRIVATE
 
 
@@ -22,7 +21,7 @@ from .base import attr, isBool, isString, isNone, isInteger, READ_ONLY, PRIVATE
 @attr('size', default = 0, mode = READ_ONLY, description="The size of this resource in bytes")
 @attr('isText', default = True, mode = READ_ONLY, description="True if this file has text based content.")
 @attr('mime', default = 'text/plain', mode = READ_ONLY, description="The MIME type of the file (automatically detected from the content).")
-@attr('contentModifiedDate', default = datetime.datetime.utcnow(), mode = READ_ONLY, description="Last time the conten of this resource was modified (formatted RFC 3339 timestamp).")
+@attr('contentModifiedDate', default = datetime.datetime.utcnow(), mode = READ_ONLY, description="Last time the content of this file was modified (formatted RFC 3339 timestamp).")
 class File(Resource):
     
     def toJson (self):
@@ -103,7 +102,7 @@ class File(Resource):
         self.save()
         
         # generate an event
-        self.dispatchSignal(FileDataModified.emit(self))
+        self.dispatchSignal('FileDataModified', self)
         
         return True
     

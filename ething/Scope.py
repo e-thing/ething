@@ -84,7 +84,7 @@ class Scope(object):
     
 
 class ScopeValidator(Validator):
-    def validate(self, value):
+    def validate(self, value, object):
         if (not isinstance(value, string_types)) or (not Scope.validate(value)):
             raise ValueError('not a valid scope')
         return value

@@ -3,9 +3,6 @@ from future.utils import string_types, integer_types
 
 from future.utils import with_metaclass, listvalues
 from ething.Resource import Resource
-from ething.rule.event.LowBatteryDevice import LowBatteryDevice
-from ething.rule.event.DeviceConnected import DeviceConnected
-from ething.rule.event.DeviceDisconnected import DeviceDisconnected
 from ething.Helpers import dict_recursive_update
 from .meta import MetaDevice, interface, method, Interface, Method
 from .base import *
@@ -149,10 +146,10 @@ class Device(with_metaclass(MetaDevice, Resource)):
             
             if connected:
                 self.ething.log.debug("device connected %s" % self)
-                self.dispatchSignal(DeviceConnected.emit(self))
+                self.dispatchSignal('DeviceConnected',self)
             else:
                 self.ething.log.debug("device disconnected %s" % self)
-                self.dispatchSignal(DeviceDisconnected.emit(self))
+                self.dispatchSignal('DeviceDisconnected', self)
         
         self.save()
     

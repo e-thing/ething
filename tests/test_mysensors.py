@@ -23,6 +23,10 @@ def test_mysensors_message():
 
 def test_mysensors_sensors(core):
     
+    gateway = core.create('MySensorsGateway', {
+        'name': 'gateway'
+    })
+    
     
     d = core.create('MySensorsSensor', {
         'name': 'foobar',
@@ -31,7 +35,7 @@ def test_mysensors_sensors(core):
         'data':{
             'temperature': 45,
         },
-        'createdBy': 'gthyjuk'
+        'createdBy': gateway
     })
     
     assert d.interface.is_a('Thermometer')
