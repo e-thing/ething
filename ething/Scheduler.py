@@ -12,17 +12,19 @@ class Scheduler(object):
         self.log = core.log
         self.tasks = []
     
-    def tick (self, callback):
+    def tick (self, callback, args=(), kwargs={}):
         if callable(callback):
             self.tasks.append({
                 'type' : 'tick',
-                'callback' : callback
+                'callback' : callback,
+                'args': args,
+                'kwargs': kwargs,
             })
             return True
         
         return False
     
-    def setInterval (self, interval, callback, startInSec = 0):
+    def setInterval (self, interval, callback, startInSec = 0, args=(), kwargs={}):
         if callable(callback) and interval > 0:
             self.tasks.append({
                 'type' : 'interval',
@@ -30,34 +32,40 @@ class Scheduler(object):
                 'callback' : callback,
                 'startIn' : startInSec,
                 't0' : time.time(),
-                'running' : False
+                'running' : False,
+                'args': args,
+                'kwargs': kwargs,
             })
             return True
         
         return False
     
     
-    def delay (self, delay, callback):
+    def delay (self, delay, callback, args=(), kwargs={}):
         if callable(callback) and delay > 0:
             self.tasks.append({
                 'type' : 'delay',
                 'delay' : delay,
                 'callback' : callback,
-                't0' : time.time()
+                't0' : time.time(),
+                'args': args,
+                'kwargs': kwargs,
             })
             return True
         
         return False
     
     
-    def at (self, callback, hour = '*', min = 0):
+    def at (self, callback, hour = '*', min = 0, args=(), kwargs={}):
         if callable(callback):
             self.tasks.append({
                 'type' : 'at',
                 'hour' : hour,
                 'min' : min,
                 'callback' : callback,
-                't0' : time.time()
+                't0' : time.time(),
+                'args': args,
+                'kwargs': kwargs,
             })
             return True
         
@@ -71,7 +79,7 @@ class Scheduler(object):
             task['executedCount'] = 0
         task['executedCount'] += 1
         try:
-            task['callback']()
+            task['callback'](*task['args'], **task['kwargs'])
         except:
             self.log.exception('[scheduler] exception in task "%s"' % task['callback'].__name__)
     

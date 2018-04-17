@@ -22,6 +22,8 @@ class Controller(object):
         
         self._autoreconnect = False
         
+        self._socket = None
+        
         self._mqttClient = _mqttClient.Client( client_id = self._device.id, clean_session = True) 
         self._mqttClient.on_connect= self.on_connect
         self._mqttClient.on_message= self.on_message
@@ -103,9 +105,11 @@ class Controller(object):
         if rc != 0:
             self.log.warn("MQTT: Unexpected disconnection")
             self._autoreconnect = time.time()
-            self._status = "disconnected"
-            self.device.setConnectState(False)
-    
+        
+        self._status = "disconnected"
+        self.device.setConnectState(False)
+        self.ething.socketManager.unregisterReadSocket(self._socket)
+        self.ething.socketManager.unregisterWriteSocket(self._socket)
     
     def restart(self):
         if self._status != "disconnected":
@@ -128,9 +132,11 @@ class Controller(object):
         self._status = "connecting"
         self._autoreconnect = False
         
-        self.ething.socketManager.registerReadSocket(self._mqttClient.socket(), self.process)
-        
         self._mqttClient.connect(self.device.host, port=self.device.port, keepalive=Controller.KEEPALIVE)
+        
+        self._socket = self.mqttClient.socket()
+        
+        self.ething.socketManager.registerReadSocket(self._socket, self.process)
         
         self.processWrite()
         
@@ -140,10 +146,11 @@ class Controller(object):
     def close (self):
         if self._status != "disconnected":
             self.log.info("MQTT: disconnect")
+            self._mqttClient.disconnect()
             self._status = "disconnected"
             self._autoreconnect = False
-            self.ething.socketManager.unregisterReadSocket(self._mqttClient.socket())
-            self._mqttClient.disconnect()
+            self.ething.socketManager.unregisterReadSocket(self._socket)
+            self.ething.socketManager.unregisterWriteSocket(self._socket)
             self.device.setConnectState(False)
     
     
@@ -153,7 +160,7 @@ class Controller(object):
     
     def processWrite(self):
         if self._mqttClient.want_write():
-            self.ething.socketManager.registerWriteSocketOnce(self._mqttClient.socket(), self._mqttClient.loop_write)
+            self.ething.socketManager.registerWriteSocketOnce(self._socket, self._mqttClient.loop_write)
     
     def update (self):
         

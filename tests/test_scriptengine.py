@@ -9,5 +9,47 @@ def test_scriptengine(core):
     result = ScriptEngine.run(core, 'console.log("toto")');
     
     assert result.get('ok') is True
+
+
+
+@pytest.mark.nodejs
+def test_scriptengine_script(core):
     
+    script_content = u'script instanceof EThing.Resource ? 1 : 0'
     
+    script = core.create('File', {
+        'name' : 'script.js'
+    })
+    
+    script.write(script_content, encoding = 'utf8')
+    
+    result = ScriptEngine.runFromFile(script);
+    
+    print(result.get('stdout'))
+    print(result.get('stderr'))
+    
+    assert result.get('ok') is True
+    assert result.get('return') == 1
+
+
+@pytest.mark.nodejs
+def test_scriptengine_script_arg(core):
+    
+    script_content = u'argv.length'
+    
+    script = core.create('File', {
+        'name' : 'script.js'
+    })
+    
+    script.write(script_content, encoding = 'utf8')
+    
+    result = ScriptEngine.runFromFile(script, arguments='foo "bar fg"');
+    
+    print(result.get('stdout'))
+    print(result.get('stderr'))
+    
+    assert result.get('ok') is True
+    assert result.get('return') == 2
+    
+
+

@@ -23,14 +23,11 @@ class Signal(with_metaclass(MetaSignal,object)):
         return type(self).__name__
     
     def toJson (self):
-        js = {
-            'type': type(self).__name__,
-            'ts' : self.timestamp
+        return {
+            'name': type(self).__name__,
+            'ts' : self.timestamp,
+            'data': self.__dict__
         }
-        
-        js.update(self.__dict__)
-        
-        return js
     
     # deprecated: just for compatibility
     def __getitem__ (self, name):

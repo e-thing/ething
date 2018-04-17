@@ -120,8 +120,7 @@ class Controller(object):
         return self._transport
     
     def onResourceMetaUpdated(self, signal):
-        if signal['resource'] == self.gateway.id and signal['rModifiedDate'] > self.gateway.modifiedDate :
-            self.gateway.refresh()
+        if signal['resource'] == self.gateway.id :
             
             for attr in signal['attributes']:
                 if attr in Controller.reset_attr:
@@ -140,6 +139,7 @@ class Controller(object):
     
     
     def open (self):
+        self.gateway.refresh()
         
         try:
             self.transport.open()
@@ -154,6 +154,7 @@ class Controller(object):
     
     
     def close (self):
+        self.gateway.refresh()
         
         self.transport.close()
         
@@ -210,6 +211,8 @@ class Controller(object):
         r = True
         
         self.log.debug("MySensors: message received %s" % str(message))
+        
+        self.gateway.refresh()
         
         with self.gateway as gateway:
             

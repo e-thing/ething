@@ -7,10 +7,7 @@ from ething.base import DataObject, attr, READ_ONLY
 
 def _attr_signal_default(cls):
     if cls.signal is not None:
-        if isinstance(cls.signal, list) or isinstance(cls.signal, tuple):
-            return [s.__name__ for s in cls.signal]
-        else:
-            return [cls.signal.__name__]
+        return cls.signal.__name__
     else:
         return None
 
@@ -34,12 +31,8 @@ class Event(with_metaclass(MetaEvent,DataObject)):
     
     def filter(self, signal):
         
-        if self.signal is not None:
-            if isinstance(self.signal, list) or isinstance(self.signal, tuple):
-                if type(signal) not in self.signal:
-                    return False
-            elif not isinstance(signal, self.signal):
-                return False
+        if not isinstance(signal, type(self).signal):
+            return False
         
         return self._filter(signal)
         

@@ -335,7 +335,7 @@ def install(core, app, auth, **kwargs):
 
 
     table_action_remove_args = {
-        'ids': fields.DelimitedList(fields.Str(), description="The records id to be removed as a comma separated list."),
+        'ids': fields.DelimitedList(fields.Str(), missing=[], description="The records id to be removed as a comma separated list."),
     }
     
     @app.route('/api/tables/<id>/remove', methods=['POST'])

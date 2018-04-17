@@ -32,6 +32,7 @@
   * [DELETE /api/resources/{id}](#delete-apiresourcesid)
   * [GET /api/resources/{id}](#get-apiresourcesid)
   * [PATCH /api/resources/{id}](#patch-apiresourcesid)
+  * [POST /api/rules](#post-apirules)
   * [GET /api/settings](#get-apisettings)
   * [PATCH /api/settings](#patch-apisettings)
   * [POST /api/tables](#post-apitables)
@@ -61,6 +62,7 @@
   * [RFLinkNode](#rflinknode)
   * [RFLinkSerialGateway](#rflinkserialgateway)
   * [RTSP](#rtsp)
+  * [Rule](#rule)
   * [SSH](#ssh)
   * [Table](#table)
   * [YeelightBulbRGBW](#yeelightbulbrgbw)
@@ -195,9 +197,7 @@ The available fields for resource filtering :
  - 'name'
  - 'mime'
  - 'id'
- - 'location.latitude'
- - 'location.longitude'
- - 'location.altitude'
+ - 'location'
  - 'createdDate'
  - 'modifiedDate'
  - 'createdBy'
@@ -476,8 +476,8 @@ Retrieves an object describing the operations available for this device.
 Retrieves an object describing the operation identified by operationId.
 
 #### Path Params:
-- **operationId** [string]: id of the operation.
 - **id** [string]: An id representing a Resource.
+- **operationId** [string]: id of the operation.
 
 #### Responses:
   - 200: object describing the operation.
@@ -487,8 +487,8 @@ Retrieves an object describing the operation identified by operationId.
 Execute an operation identified by operationId. The parameters must be passed in the query string.
 
 #### Path Params:
-- **operationId** [string]: id of the operation.
 - **id** [string]: An id representing a Resource.
+- **operationId** [string]: id of the operation.
 
 #### Responses:
   - 200: The response of the device.
@@ -710,10 +710,10 @@ curl -H 'X-API-KEY: <YOUR_API_KEY>' http://localhost:8000/api/resources
 ```
 
 #### Query Params:
-- **skip** [integer]: Skips a number of resources.
-- **q** [string]: Query string for searching resources.
-- **sort** [string]: The key on which to do the sorting, by default the sort is made by modifiedDate descending. To make the sort descending, prepend the field name by minus "-". For instance, "-createdDate" will sort by createdDate descending.
 - **limit** [integer]: Limits the number of resources returned.
+- **sort** [string]: The key on which to do the sorting, by default the sort is made by modifiedDate descending. To make the sort descending, prepend the field name by minus "-". For instance, "-createdDate" will sort by createdDate descending.
+- **q** [string]: Query string for searching resources.
+- **skip** [integer]: Skips a number of resources.
 
 #### Responses:
   - 200: A list of resources
@@ -778,6 +778,36 @@ Clear a description :
 #### Responses:
   - 200: resource successfully updated
     [Resource](#resource)
+
+### POST /api/rules
+
+Create a new rule.
+
+#### Request body:
+
+##### Description:
+
+  the metadata of the rule to be created
+
+  example:
+
+  ```json
+  {
+     "name" : 'myrule',
+     "script": "ho58-ju",
+     "event": {
+         "type": "CustomEvent",
+         "name": "foobar"
+     }
+  }
+  ```
+
+##### Data:
+[Rule](#rule)
+
+#### Responses:
+  - 200: The rule was successfully created
+    [Rule](#rule)
 
 ### GET /api/settings
 
@@ -907,12 +937,12 @@ curl -H 'X-API-KEY: <YOUR_API_KEY>' http://localhost:8000/api/tables/<TABLE_ID>?
 - **id** [string]: An id representing a Resource.
 
 #### Query Params:
-- **query** [string]: Query string for filtering results.
-- **date_format** [string]: the format of the date field (default to RFC3339) : timestamp,timestamp_ms,rfc3339.
-- **fmt** [string]: the output format (default to JSON) : json,json_pretty,csv,csv_no_header.
 - **start** [integer]: Position of the first rows to return. If start is negative, the position will start from the end. (default to 0).
+- **fmt** [string]: the output format (default to JSON) : json,json_pretty,csv,csv_no_header.
 - **length** [integer]: Maximum number of rows to return. If not set, returns until the end.
 - **sort** [string]: the key on which to do the sorting, by default the sort is made by date ascending. To make the sort descending, prepend the field name by minus "-". For instance, "-date" will sort by date descending.
+- **date_format** [string]: the format of the date field (default to RFC3339) : timestamp,timestamp_ms,rfc3339.
+- **query** [string]: Query string for filtering results.
 
 #### Responses:
   - 200: The records of this table
@@ -1113,7 +1143,7 @@ An object describing an error
 
 #### PROPERTIES
 
-  - **contentModifiedDate** *(string)* *(readonly)*: Last time the conten of this resource was modified (formatted RFC 3339 timestamp).
+  - **contentModifiedDate** *(string)* *(readonly)*: Last time the content of this file was modified (formatted RFC 3339 timestamp).
   - **expireAfter** *(default=null)*: The amount of time (in seconds) after which this resource will be removed.
   - **isText** *(boolean)* *(readonly)*: True if this file has text based content.
   - **mime** *(string)* *(readonly)*: The MIME type of the file (automatically detected from the content).
@@ -1215,7 +1245,7 @@ MySensorsNode Device resource representation. This device is normally automatica
 
 #### PROPERTIES
 
-  - **createdBy**\*: The id of the resource responsible of the creation of this resource, or null.
+  - **createdBy**\* *(string)*: The id of the resource responsible of the creation of this resource, or null.
   - **firmware** *(readonly)*
   - **libVersion** *(readonly)*: The version of the MySensors library used.
   - **nodeId**\* *(integer)*: The id of the node.
@@ -1233,7 +1263,7 @@ MySensorsSensor Device resource representation. This device is normally automati
 
 #### PROPERTIES
 
-  - **createdBy**\*: The id of the resource responsible of the creation of this resource, or null.
+  - **createdBy**\* *(string)*: The id of the resource responsible of the creation of this resource, or null.
   - **sensorId**\* *(integer)*: The id of the sensor.
   - **sensorType**\* *(string)*: The type of the sensor.
 
@@ -1254,7 +1284,7 @@ The base representation of a resource object
 
 #### PROPERTIES
 
-  - **createdBy** *(default=null)*: The id of the resource responsible of the creation of this resource, or null.
+  - **createdBy** *(string)* *(default=null)*: The id of the resource responsible of the creation of this resource, or null.
   - **createdDate** *(string)* *(readonly)*: Create time for this resource
   - **data** *(object)* *(default={})*: A collection of arbitrary key-value pairs. Entries with null values are cleared in update. The keys must not be empty or longer than 64 characters, and must contain only the following characters : letters, digits, underscore and dash. Values must be either a string or a boolean or a number
 
@@ -1262,7 +1292,7 @@ The base representation of a resource object
   - **extends** *(array)* *(readonly)*: An array of classes this resource is based on.
 
   - **id** *(string)* *(readonly)*: The id of the resource
-  - **modifiedDate** *(string)*: Last time this resource was modified
+  - **modifiedDate** *(string)* *(default="\u003ccurrent date\u003e")*: Last time this resource was modified
   - **name**\* *(string)*: The name of the resource
   - **public** *(default=false)*: False: this resource is not publicly accessible. 'readonly': this resource is accessible for reading by anyone. 'readwrite': this resource is accessible for reading and writing by anyone.
   - **type** *(string)* *(readonly)*: The type of the resource
@@ -1287,7 +1317,7 @@ The base representation of a resource object
 
 #### PROPERTIES
 
-  - **createdBy**\*: The id of the resource responsible of the creation of this resource, or null.
+  - **createdBy**\* *(string)*: The id of the resource responsible of the creation of this resource, or null.
   - **nodeId**\* *(string)*: The hardware id of the node.
   - **protocol**\* *(string)*: The protocol name of the node.
   - **subType**\* *(string)*: The subtype of the device, ie: thermometer, switch, ...
@@ -1317,6 +1347,22 @@ RTSP Device resource representation, usually IP camera
   - **transport** *(string)* *(default="tcp")*: Lower transport protocol. Allowed values are the ones defined for the flags for rtsp_transport (see https://libav.org/avconv.html).
   - **url**\* *(string)*: The URL of the device rtsp://... .
 
+### Rule
+
+#### INHERITED
+
+[Resource](#resource)
+
+#### PROPERTIES
+
+  - **enabled** *(boolean)* *(default=true)*: If True (default), the rule is enabled
+  - **event**\*: The event object describing when to execute this rule
+  - **script**\* *(string)*: The JavaScript code to be executed
+  - **script_args** *(string)* *(default="")*: The arguments passed to the script of this rule
+  - **script_execution_count** *(integer)* *(readonly)*: The number of times this rule has been executed
+  - **script_execution_date** *(readonly)*: The last time this rule has been executed
+  - **script_return_code** *(integer)* *(readonly)*: The last exit code returned by the script of this rule
+
 ### SSH
 
 SSH Device resource representation
@@ -1342,7 +1388,7 @@ SSH Device resource representation
 
 #### PROPERTIES
 
-  - **contentModifiedDate** *(string)* *(readonly)*: Last time the conten of this resource was modified.
+  - **contentModifiedDate** *(string)* *(readonly)*: Last time the content of this table was modified.
   - **expireAfter** *(default=null)*: The amount of time (in seconds) after which a records will be automatically removed. Set it to null or 0 to disable this feature.
   - **keys** *(object)* *(readonly)*: A key/value object where the keys correspond to the fields available in this table, and the corresponding value is the number of rows where the field is set. __The default keys ('_id' and 'date' are not listed)__
 

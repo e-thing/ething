@@ -1,5 +1,5 @@
 # coding: utf-8
-from flask import Response
+from flask import Response, request
 from ething.Helpers import toJson
 
 def install(core, app, auth, **kwargs):
@@ -8,6 +8,10 @@ def install(core, app, auth, **kwargs):
     @app.route('/api/events')
     @auth.required()
     def events():
+        
+        remote_addr = request.remote_addr
+        
+        core.log.debug('SSE: new listener %s' % remote_addr)
         
         def gen():
             
@@ -30,6 +34,7 @@ def install(core, app, auth, **kwargs):
                     
             except GeneratorExit: # Or maybe use flask signals
                 client.stop()
+                core.log.debug('SSE: stop listener %s' % remote_addr)
         
         return Response(gen(), mimetype="text/event-stream")
 

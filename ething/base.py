@@ -505,7 +505,8 @@ def attr(name, validator = None, mode = None, **kwargs):
             'model_adapter': default_model_adapter,
             'model_key': name,
             'mode': mode,
-            'classes': []
+            'classes': [],
+            'on_change': None
         })
         
         required = False
@@ -627,6 +628,11 @@ class DataObject(object):
                 value = validator.validate(value, self)
             except ValueError as e:
                 raise AttributeError('invalid attribute "%s": %s' % (name, str(e)))
+        
+        on_change = attribute.get('on_change')
+        if on_change:
+            old_value = model_adapter.get(self, self.__d, attribute['model_key'])
+            on_change(self, value, old_value)
         
         try:
             model_adapter.set(self, self.__d, attribute['model_key'], value)

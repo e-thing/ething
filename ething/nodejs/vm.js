@@ -186,6 +186,21 @@ else if(user && password)
 	EThing.auth.setBasicAuth(user, password);
 
 
+
+function isResource(json){
+	return json.hasOwnProperty('id') && json.hasOwnProperty('type') && json.hasOwnProperty('name');
+}
+
+for(var k in globals){
+    if(isResource(globals[k])){
+        try{
+            globals[k] = EThing.instanciate(globals[k]);
+        } catch(e){}
+    }
+}
+
+
+
 	
 if(verbose) console.log('script stdout:',stdoutFile);
 if(verbose) console.log('script stderr:',stderrFile);

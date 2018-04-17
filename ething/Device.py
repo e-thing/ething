@@ -9,7 +9,14 @@ from .base import *
 import datetime
 
 
-@attr('battery', validator = isNone() | isInteger(min=0, max=100), default = None, description="The battery level of this device (must be between 0 (empty) and 100 (full) , or null if the device has no battery information).") # 0-100 : the battery level, if None it means that no battery information is provided
+
+def on_battery_change(self, value, old_value):
+    if value < self.BATTERY_LOW:
+        if old_value >= self.BATTERY_LOW:
+            self.dispatchSignal('LowBatteryDevice', self)
+
+
+@attr('battery', validator = isNone() | isInteger(min=0, max=100), default = None, on_change = on_battery_change, description="The battery level of this device (must be between 0 (empty) and 100 (full) , or null if the device has no battery information).") # 0-100 : the battery level, if None it means that no battery information is provided
 @attr('location', validator = isNone() | isString(), default = None, description="The location of this device.")
 @attr('connected', validator = isBool(), default = False, description="Set to true when this device is connected.")
 @attr('lastSeenDate', validator = isNone() | isInstance(datetime.datetime), default = None, description="Last time this device was reached or made a request.")

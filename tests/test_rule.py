@@ -31,6 +31,5 @@ def test_rule(core):
     assert rule.run(signal)
     
     assert rule.script_return_code == 0
-    assert rule.script_stdout == b"toto\n"
-    
+    assert rule.script_execution_count == 1
     

@@ -15,6 +15,7 @@ from .Config import Config
 from .SignalManager import SignalManager
 from .SocketManager import SocketManager
 from .RuleManager import RuleManager
+from .MqttDispatcher import MqttDispatcher
 from .TaskManager import TaskManager
 from .Scheduler import Scheduler
 from .Mail import Mail
@@ -155,6 +156,18 @@ class Core(object):
             except Exception as e:
                 self.log.exception("error while shutting down taskManager")
         
+        if hasattr(self, "mqttDispatcher"):
+            try:
+                self.mqttDispatcher.destroy()
+            except Exception as e:
+                self.log.exception("error while shutting down mqttDispatcher")
+        
+        if hasattr(self, "ruleManager"):
+            try:
+                self.ruleManager.destroy()
+            except Exception as e:
+                self.log.exception("error while shutting down ruleManager")
+        
         if hasattr(self, "rpc_server"):
             try:
                 self.rpc_server.stop()
@@ -180,6 +193,8 @@ class Core(object):
         self.signalManager = SignalManager(self)
         self.socketManager = SocketManager(self)
         self.ruleManager = RuleManager(self)
+        if self.config.get('mqtt.host'):
+            self.mqttDispatcher = MqttDispatcher(self)
         self.mail = Mail(self)
         
         self.rpc.register('stop', self.stop)

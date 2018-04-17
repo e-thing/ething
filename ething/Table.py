@@ -426,8 +426,9 @@ class Table(Resource):
     def getRow (self, id, fields = None):
         
         # return only specific fields
-        _fields = {}
+        _fields = None
         if fields is not None:
+            _fields = {}
             _fields['_id'] = False; # by default, the '_id' field is shown
             for field in fields:
                 # handle special key '_id' 

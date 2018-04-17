@@ -25,6 +25,8 @@ class WebServer(object):
         
         self.core.log.info("webserver process started, pid = %d" % os.getpid() )
         
+        self.core._init_database()
+        
         try:
             from ething.webserver.server import run
             

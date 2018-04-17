@@ -1,7 +1,6 @@
 # coding: utf-8
-from future.utils import string_types, text_type
 
-    
+from future.utils import string_types, text_type
 
 from .Helpers import dict_recursive_update, toJson
 
@@ -12,6 +11,9 @@ import time
 import subprocess
 import re
 import shlex
+import sys
+import json
+
 
 def addslashes(s):
     l = ["\\", '"', "'", "\0", ]
@@ -105,6 +107,15 @@ class ScriptEngine(object):
             stderrHdl.close()
             resultHdl.close()
         
+        result = result.decode(sys.stdout.encoding)
+        stdout = stdout.decode(sys.stdout.encoding)
+        stderr = stderr.decode(sys.stdout.encoding)
+        
+        try:
+            result = json.loads(result)
+        except:
+            pass
+        
         return {
             'executionTime' : time_end - time_start,
             'return' : result,
@@ -117,7 +128,7 @@ class ScriptEngine(object):
     
     
     @staticmethod
-    def runFromFile (script, arguments = ''):
+    def runFromFile (script, arguments = '', globals = {}):
         
         if script.mime != 'application/javascript':
             raise Exception('not a valid script file')
@@ -135,11 +146,14 @@ class ScriptEngine(object):
             except:
                 pass
         
-        globals = {
+        if globals is None:
+            globals = {}
+        
+        globals.update({
             'script' : script,
             'argv' : argv,
             'argc' : len(argv)
-        }
+        })
         
         return ScriptEngine.run(script.ething, scriptcontent, scriptName = os.path.basename(script.name), globals = globals)
         

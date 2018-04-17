@@ -164,6 +164,12 @@
 			label: 'authentication',
 			item: new $.Form.FormLayout({
 				items: [{
+					name: 'username',
+					item: new $.Form.Text({
+						validators:[$.Form.validator.NotEmpty],
+						placeholder: 'username'
+					})
+				}, {
 					name: 'password',
 					description: 'Change your password. The minimum length is 4 characters.',
 					item: new $.Form.Text({
@@ -185,54 +191,6 @@
 					}
 				}
 			})
-		},{
-			name: 'proxy',
-			description: 'Configure a proxy server if your e-Thing server does not have a direct connection to Internet.',
-			item: new $.Form.FormLayout({
-				items: [{
-					name: 'host',
-					label: false,
-					item: new $.Form.Text({
-						prefix: 'address',
-						validators:[$.Form.validator.NotEmpty],
-						placeholder: 'hostname'
-					})
-				},{
-					name: 'port',
-					label: false,
-					item: new $.Form.Number({
-						prefix: 'port',
-						minimum: 1,
-						maximum: 65535,
-						value: 80,
-						validators:[$.Form.validator.NotEmpty, $.Form.validator.Integer],
-						placeholder: 'port'
-					})
-				},{
-					name: 'user',
-					label: false,
-					item: new $.Form.Text({
-						prefix: 'user',
-						placeholder: 'user'
-					})
-				},{
-					name: 'password',
-					label: false,
-					item: new $.Form.Text({
-						prefix: 'password',
-						password: true,
-						placeholder: 'password'
-					})
-				}],
-				format: {
-					'out': function(value){
-						if(!value.password) delete value.password;
-						if(!value.user) delete value.user;
-						return value;
-					}
-				}
-			}),
-			checkable: true
 		},{
 			name: 'debug',
 			description: 'Enable debugging mode.',
@@ -279,20 +237,6 @@
 						password: true,
 						placeholder: 'password'
 					})
-				},{
-					name: 'clientId',
-					label: false,
-					item: new $.Form.Text({
-						prefix: 'clientId',
-						validators:[$.Form.validator.NotEmpty]
-					})
-				},{
-					name: 'rootTopic',
-					label: false,
-					item: new $.Form.Text({
-						prefix: 'rootTopic',
-						placeholder: 'ething/'
-					})
 				}],
 				format: {
 					'out': function(value){
@@ -308,32 +252,15 @@
 			checkable: true,
 			item: new $.Form.FormLayout({
 				items:[{
-					name: 'file',
-					label: 'storage',
-					item: new $.Form.Select({
-						items: {
-							'file' : true,
-							'database' : false
-						},
-						format:{
-							'in': function(v){
-								return !!v;
-							}
-						},
-						value: false
-					})
-				},{
 					name: 'level',
 					item: new $.Form.Select({
-						items: {
-							'TRACE' : 0,
-							'DEBUG' : 1,
-							'INFO' : 2,
-							'WARN' : 3,
-							'ERROR' : 4,
-							'FATAL' : 5
-						},
-						value: 2
+						items: ['TRACE', 'DEBUG', 'INFO', 'WARN', 'ERROR', 'FATAL'],
+						value: 'INFO',
+                        format: {
+                            'in': function(value){
+                                return value.toUpperCase();
+                            }
+                        }
 					})
 				}]
 			})
