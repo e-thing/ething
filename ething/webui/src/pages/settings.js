@@ -379,7 +379,7 @@
 			
 			var $loading = $('<tr>').html('<td>loading...</td>').prependTo($('#log tbody').empty());
 			
-			$.getJSON('/utils/read_log?line='+length+'&ts='+Math.floor(Date.now() / 1000), function(lines){
+			$.getJSON('/api/utils/read_log?line='+length+'&ts='+Math.floor(Date.now() / 1000), function(lines){
 				
 				var $body = $('#log tbody').empty();
 				

@@ -71,9 +71,14 @@
 		  <div class="form-signin" id="signin-form">
 			<h1>e-Thing</h1>
 			
+            <div class="form-group">
+				<label for="login" class="sr-only">Login</label>
+				<input type="text" id="login" name="login" class="form-control" placeholder="Login" required autofocus>
+			</div>
+            
 			<div class="form-group">
 				<label for="password" class="sr-only">Password</label>
-				<input type="password" id="password" name="password" class="form-control" placeholder="Password" required autofocus>
+				<input type="password" id="password" name="password" class="form-control" placeholder="Password" required>
 			</div>
 			
 			<div class="alert alert-danger" role="alert" id="access-err" style="display: none;">Invalid acces</div>
@@ -97,11 +102,18 @@
 			return decodeURIComponent(results[2].replace(/\+/g, " "));
 		}
 		
-		var passwordElm = document.getElementById('password'),
+		var loginElm = document.getElementById('login'),
+            passwordElm = document.getElementById('password'),
 			submitBtn = document.getElementById('signin-btn'),
 			errorElm = document.getElementById('access-err'),
 			redirect_uri = getParameterByName('redirect_uri');
 		
+        loginElm.onkeyup = function(e){
+			if(e.keyCode == 13){
+				passwordElm.focus();
+			}
+		}
+        
 		passwordElm.onkeyup = function(e){
 			if(e.keyCode == 13){
 				submitBtn.onclick.call(submitBtn);
@@ -140,7 +152,7 @@
 				}
 			};
 			
-			xhr.send('password='+encodeURIComponent(passwordElm.value)+'&redirect_uri='+encodeURIComponent(redirect_uri));
+			xhr.send('login'+encodeURIComponent(loginElm.value)+'&password='+encodeURIComponent(passwordElm.value)+'&redirect_uri='+encodeURIComponent(redirect_uri));
 			
 		}
 	</script>

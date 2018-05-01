@@ -15,13 +15,13 @@ def on_battery_change(self, value, old_value):
         if old_value >= self.BATTERY_LOW:
             self.dispatchSignal('LowBatteryDevice', self)
 
-
+@abstract
 @attr('battery', validator = isNone() | isInteger(min=0, max=100), default = None, on_change = on_battery_change, description="The battery level of this device (must be between 0 (empty) and 100 (full) , or null if the device has no battery information).") # 0-100 : the battery level, if None it means that no battery information is provided
 @attr('location', validator = isNone() | isString(), default = None, description="The location of this device.")
 @attr('connected', validator = isBool(), default = False, description="Set to true when this device is connected.")
 @attr('lastSeenDate', validator = isNone() | isInstance(datetime.datetime), default = None, description="Last time this device was reached or made a request.")
 @attr('methods', default = [], mode = READ_ONLY, description="The list of the methods available.")
-@attr('interfaces', default = [], mode = READ_ONLY, description="A list of intefaces this device inherit")
+@attr('interfaces', default = [], mode = READ_ONLY, description="A list of interfaces this device inherit")
 class Device(with_metaclass(MetaDevice, Resource)):
     
     
@@ -173,7 +173,7 @@ class Device(with_metaclass(MetaDevice, Resource)):
         super(Device, self).refresh(keepDirtyFields)
         object.__setattr__(self, '_Device__interface', Interface(self))
     
-    
+        
 
 
 

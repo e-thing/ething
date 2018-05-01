@@ -1,5 +1,5 @@
 # coding: utf-8
-from future.utils import string_types, integer_types
+from future.utils import string_types, integer_types, with_metaclass
 
 import re
 import sys
@@ -532,15 +532,33 @@ def attr(name, validator = None, mode = None, **kwargs):
         return cls
     return d
 
+def abstract(cls):
+    setattr(cls, '__abstract', True)
+    return cls
+
 def _make_default_fct(v):
     if callable(v):
         return v
     return lambda _: copy.deepcopy(v)
 
 
+class MetaDataObject(type):
+    
+    """MetaDataObject metaclass"""
+    
+    def __init__(cls, nom, bases, dict):
+        type.__init__(cls, nom, bases, dict)
+        
+        # do not propagate the __abstract attributes
+        if hasattr(cls, '__abstract'):
+            setattr(cls, '__abstract', False)
 
 
-class DataObject(object):
+class DataObject(with_metaclass(MetaDataObject, object)):
+    
+    @classmethod
+    def is_abstract(cls):
+        return getattr(cls, '__abstract', False)
     
     def __init__ (self, data = None):
         # make some private fields
@@ -570,7 +588,7 @@ class DataObject(object):
                 pass
         return j
     
-    def __getattr__ (self,    name ):
+    def __getattr__ (self, name ):
         
         priv_access = False
         
@@ -793,22 +811,6 @@ class DataObject(object):
         if required:
             schema['required'] = required
         
-        if not flatted:
-            bases = [b for b in cls.__bases__ if issubclass(b, DataObject) and b is not DataObject]
-            if len(bases):
-                allOf = []
-                
-                for b in bases:
-                    allOf.append({
-                        '$ref': '#/definitions/%s' % b.__name__
-                    })
-                
-                allOf.append(schema)
-                
-                schema = {
-                    'allOf': allOf
-                }
-        
         if description:
             schema['description'] = description
         
@@ -825,6 +827,9 @@ class DataObject(object):
     
     @classmethod
     def create(cls, attributes, **ctor_attr):
+        if cls.is_abstract():
+            raise Exception('Unable to create a new instance of the abstract class %s' % cls.__name__)
+        
         instance = cls(**ctor_attr)
         instance.save(attributes)
         return instance

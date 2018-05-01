@@ -133,8 +133,8 @@ def install(core, app, auth, **kwargs):
         'start': fields.Int(missing=0, description="Position of the first rows to return. If start is negative, the position will start from the end. (default to 0)"),
         'length': fields.Int(validate=validate.Range(min=0), description="Maximum number of rows to return. If not set, returns until the end"),
         'sort': fields.Str(description='the key on which to do the sorting, by default the sort is made by date ascending. To make the sort descending, prepend the field name by minus "-". For instance, "-date" will sort by date descending'),
-        'query': fields.Str(load_from="q", description="Query string for filtering results"),
-        'date_format': fields.Str(load_from="datefmt", validate=lambda val: val.lower() in date_fmts, missing = 'rfc3339', description="the format of the date field (default to RFC3339) : %s" % ','.join(date_fmts)),
+        'query': fields.Str(data_key="q", load_from="q", description="Query string for filtering results"),
+        'date_format': fields.Str(data_key="datefmt", load_from="datefmt", validate=lambda val: val.lower() in date_fmts, missing = 'rfc3339', description="the format of the date field (default to RFC3339) : %s" % ','.join(date_fmts)),
         'fmt': fields.Str(validate=validate.OneOf(table_fmts), missing = 'json', description="the output format (default to JSON) : %s" % ','.join(table_fmts)),
     }
 

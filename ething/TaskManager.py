@@ -152,7 +152,7 @@ class TaskManager(object):
                     running_tasks_count += 1
                 else:
                     # the task is finished
-                    if now - task.end_time > 60:
+                    if (task.end_time is not None) and (now - task.end_time > 60):
                         # remove from the queue
                         self._tasks.pop(i)
                         i -= 1

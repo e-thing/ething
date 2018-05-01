@@ -4,18 +4,19 @@ import sys
 import inspect
 from collections import OrderedDict
 from future.utils import with_metaclass
+from .base import MetaDataObject
 
 resource_classes = {}
 
 def get_resource_class(name):
     return resource_classes.get(name)
 
-class MetaResource(type):
+class MetaResource(MetaDataObject):
     
     """Resource metaclass"""
     
     def __init__(cls, nom, bases, dict):
-        type.__init__(cls, nom, bases, dict)
+        MetaDataObject.__init__(cls, nom, bases, dict)
         resource_classes[nom] = cls
 
 
@@ -53,9 +54,12 @@ class InterfaceDecorator(object):
             setattr(cls, 'meta', self.__parse(cls))
             
             interface_name = cls.meta['name']
+            
+            register_interface_class(interface_name, cls)
+            
             for c_n, c_m in self.__list_methods_with_meta(cls):
                 c_m.meta.setdefault('interfaces', [])
-                c_m.meta['interfaces'].append(cls.meta['name'])
+                c_m.meta['interfaces'].append(interface_name)
             
     
     def __list_methods(self, cls):
@@ -310,7 +314,7 @@ interface = InterfaceDecorator()
 
 type_synonyms = [
     ['int', 'float', 'long', 'double'],
-    ['unicode', 'string']
+    ['unicode', 'string', 'str']
 ]
 
 
@@ -463,7 +467,6 @@ class Interface(object):
         check wether the current interface inherit of the given interface name
         """
         return interface_name in self.bases_names
-        
     
     def build(self):
         self.__methods = []
@@ -537,13 +540,18 @@ interfaces_classes = {}
 def get_interface_class(name):
     interfaces_classes.get(name)
 
+def register_interface_class(name, cls):
+    if name in interfaces_classes:
+        raise Exception('Two interfaces have the same name "%s"' % name)
+    interfaces_classes[name] = cls
+
 class MetaInterface(type):
     
     """MetaInterface metaclass"""
     
     def __init__(cls, nom, bases, dict):
         
-        interfaces_classes[nom] = cls
+        # interfaces_classes[nom] = cls
         
         # do not propagate the meta attributes
         if hasattr(cls, 'meta'):
@@ -565,7 +573,24 @@ class MetaDevice(MetaResource, MetaInterface):
 
 
 class iface(with_metaclass(MetaInterface,object)):
-    pass
+    
+    @classmethod
+    def is_interface(cls):
+        return getattr(cls, 'meta', None) is not None
+    
+    @classmethod
+    def get_inherited_interfaces(cls):
+        inherited = []
+        
+        if cls.is_interface():
+            inherited.append(cls)
+        else:
+            inherited = []
+            for b in cls.__bases__:
+                if issubclass(b, iface):
+                    inherited += b.get_inherited_interfaces()
+        
+        return inherited
     
 
 
@@ -574,12 +599,12 @@ event_classes = {}
 def get_event_class(name):
     return event_classes.get(name)
 
-class MetaEvent(type):
+class MetaEvent(MetaDataObject):
     
     """Event metaclass"""
     
     def __init__(cls, nom, bases, dict):
-        type.__init__(cls, nom, bases, dict)
+        MetaDataObject.__init__(cls, nom, bases, dict)
         event_classes[nom] = cls
 
 signal_classes = {}
@@ -595,30 +620,3 @@ class MetaSignal(type):
         type.__init__(cls, nom, bases, dict)
         signal_classes[nom] = cls
 
-condition_classes = {}
-
-def get_condition_class(name):
-    return condition_classes.get(name)
-
-class MetaCondition(type):
-    
-    """Condition metaclass"""
-    
-    def __init__(cls, nom, bases, dict):
-        type.__init__(cls, nom, bases, dict)
-        condition_classes[nom] = cls
-
-
-
-action_classes = {}
-
-def get_action_class(name):
-    return action_classes.get(name)
-
-class MetaAction(type):
-    
-    """Action metaclass"""
-    
-    def __init__(cls, nom, bases, dict):
-        type.__init__(cls, nom, bases, dict)
-        action_classes[nom] = cls

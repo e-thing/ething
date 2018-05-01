@@ -2,9 +2,10 @@
 
 
 
-from ething.Device import Device, method, attr, isString
+from ething.Device import Device, method, attr, abstract, isString
 import json
 
+@abstract
 @attr('sid', validator = isString(allow_empty = False), description="The uniq sid of the device")
 class MihomeDevice(Device):
     """

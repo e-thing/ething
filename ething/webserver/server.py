@@ -44,7 +44,12 @@ def create(core):
     
     app.wsgi_app = HTTPMethodOverrideMiddleware(app.wsgi_app)
     
-    CORS(app, resources={r"/api/*": {"origins": "*"}})
+    cors_opt = {"origins": "*", "supports_credentials": True}
+    
+    CORS(app, resources={
+        r"/api/*": cors_opt,
+        r"/auth/*": cors_opt
+    })
 
     log = logging.getLogger('werkzeug')
     log.setLevel(logging.ERROR)

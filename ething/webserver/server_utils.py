@@ -164,15 +164,15 @@ def getResource(core, id, restrictToTypes = None):
         
         if scope is not None:
             
-            scopes = filter(None, auth.scope.split(" "))
+            scopes = filter(None, g.auth.scope.split(" "))
             
             allowed_types = []
             for scope in scopes:
                 type = scope.split(':')[0].capitalize()
                 if type not in allowed_types:
                     allowed_types.append(type)
-            
-            if 'resource' not in allowed_types:
+             
+            if 'Resource' not in allowed_types:
                 # restrict the search to the allowed_types
                 ok = False
                 for allowed_type in allowed_types:

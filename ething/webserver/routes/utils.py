@@ -5,10 +5,20 @@ from flask import request, Response
 from ..server_utils import *
 import os
 
+from ething.meta import resource_classes, interfaces_classes, iface
+from ething.base import READ_ONLY
+from ething.Resource import Resource
+
+def resource_attr_helper(schema, name, attribute):
+    
+    if attribute.get('mode') == READ_ONLY:
+        schema['readOnly'] = True
+
+_meta = None
 
 def install(core, app, auth, **kwargs):
 
-    @app.route('/utils/serial_ports_list')
+    @app.route('/api/utils/serial_ports_list')
     @auth.required()
     def serial_ports_list():
         import serial.tools.list_ports
@@ -36,7 +46,7 @@ def install(core, app, auth, **kwargs):
         return jsonify(info, indent=4)
 
 
-    @app.route('/utils/net_list')
+    @app.route('/api/utils/net_list')
     @auth.required()
     def net_list():
         import ething.utils.net_scan
@@ -47,7 +57,7 @@ def install(core, app, auth, **kwargs):
         'line': fields.Int(validate=validate.Range(min=0), missing=50),
     }
 
-    @app.route('/utils/read_log')
+    @app.route('/api/utils/read_log')
     @use_args(read_log_args)
     @auth.required()
     def read_log(args):
@@ -84,6 +94,79 @@ def install(core, app, auth, **kwargs):
             lines = tail(logfilename, linenb)
         
         return jsonify(lines)
-
+    
+    #
+    # META
+    #
+    
+    @app.route('/api/utils/definitions')
+    def definitions():
+        global _meta
+        
+        if _meta is None:
+            _meta = {
+                "resources": {},
+                "interfaces": {},
+            }
+            
+            for name in list(resource_classes):
+                resource_cls = resource_classes[name]
+                
+                schema = resource_cls.schema(flatted = False, helper = resource_attr_helper)
+                
+                # static inheritance
+                allOf = []
+                for b in resource_cls.__bases__:
+                    
+                    if issubclass(b, Resource):
+                        allOf.append({
+                            '$ref': '#/resources/%s' % b.__name__
+                        })
+                    elif issubclass(b, iface):
+                        
+                        for i in b.get_inherited_interfaces():
+                            allOf.append({
+                                '$ref': '#/interfaces/%s' % i.__name__
+                            })
+                        
+                
+                if len(allOf) > 0:
+                    if schema:
+                        allOf.append(schema)
+                    
+                    schema = {
+                        'allOf': allOf
+                    }
+                
+                if resource_cls.is_abstract():
+                    schema['virtual'] = True
+                
+                _meta['resources'][name] = schema
+            
+            for name in list(interfaces_classes):
+                interface_cls = interfaces_classes[name]
+                
+                # static inheritance
+                allOf = []
+                
+                for b in interface_cls.__bases__:
+                    if issubclass(b, iface):
+                        for i in b.get_inherited_interfaces():
+                            allOf.append({
+                                '$ref': '#/interfaces/%s' % i.__name__
+                            })
+                
+                if len(allOf) > 0:
+                    schema = {
+                        'allOf': allOf
+                    }
+                else:
+                    schema = {
+                        'type': 'object'
+                    }
+                
+                _meta['interfaces'][name] = schema
+        
+        return jsonify(_meta)
 
 

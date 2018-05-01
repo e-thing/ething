@@ -27,9 +27,9 @@ class MihomeGateway(Device, RGBWLight):
     
     
     def getGatewayKey (self):
-        aes = pyaes.AESModeOfOperationCBC(just16(self.password), iv = IV)
+        aes = pyaes.AESModeOfOperationCBC(just16(self.password).encode('utf8'), iv = IV)
         ciphertext = aes.encrypt(just16(self._token))
-        return binascii.hexlify(ciphertext)
+        return binascii.hexlify(ciphertext).decode('utf8')
     
     
     def processData (self, response):

@@ -4,12 +4,12 @@
 
      
 
-from ething.Device import Device, method, attr, isString, isBool, isNone, READ_ONLY
+from ething.Device import Device, method, attr, abstract, isString, isBool, isNone, READ_ONLY
 from .Message import Message
 
 
 
-
+@abstract
 @attr('appVersion', default=None, description="The version of the Zigate firmware.")
 @attr('sdkVersion', default=None, description="The version of the Zigate SDK.")
 class ZigateGateway(Device):

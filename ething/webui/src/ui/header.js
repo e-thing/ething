@@ -14,7 +14,7 @@
 	
 	$('#nav-logout',$html).click(function(){
 		EThing.auth.reset();
-		window.location.assign(window.sessionUrl+'/logout');
+		window.location.assign(window.sessionUrl+'/logout?redirect=');
 	});
 	
 	var update = function(){

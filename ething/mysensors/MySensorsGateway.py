@@ -2,12 +2,13 @@
 
 
 from future.utils import string_types
-from ething.Device import Device, method, attr, isString, isBool, isNone, READ_ONLY
+from ething.Device import Device, method, attr, abstract, isString, isBool, isNone, READ_ONLY
 from ething.Helpers import dict_recursive_update
 from .helpers import *
 from .Message import Message
 
 
+@abstract
 @attr('isMetric', validator = isBool(), default=True, description="Set the unit to Metric(default) instead of Imperial.")
 @attr('libVersion', default=None, mode = READ_ONLY, description="The version of the MySensors library used.")
 class MySensorsGateway(Device):

@@ -2,13 +2,13 @@
 from future.utils import string_types
 
 
-from ething.Device import Device, method, attr, isString
+from ething.Device import Device, method, attr, abstract, isString
 from ething.utils import pingable
 from ething.interfaces import Light
 import json
 
 
-
+@abstract
 @pingable()
 @attr('host', validator = isString(allow_empty=False), description="The ip address or hostname of the device to connect to.")
 class YeelightDevice (Device, Light):

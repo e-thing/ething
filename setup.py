@@ -569,13 +569,13 @@ setup(
         "PyJWT",
         "netaddr",
         "webargs",
+        "apispec", # http api
+        "Jinja2", # http api
     ],
     
     extras_require={
         "dev": [
             "pytest", # unit test
-            "apispec", # http api
-            "Jinja2", # http api
         ]
     },
     

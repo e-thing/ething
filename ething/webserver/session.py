@@ -14,11 +14,11 @@ class Session(object):
         self.core = core
         
 
-    def authenticate(self, password, request, response):
+    def authenticate(self, login, password, request, response):
         #if self.core.config['auth']['localonly']:
         #    pass
         
-        if password == self.core.config['auth']['password']:
+        if login == self.core.config['auth']['username'] and password == self.core.config['auth']['password']:
             
             # set session cookie (httponly)
             expireAt = int(time.time() + self.core.config['session']['expiration'])
@@ -39,8 +39,8 @@ class Session(object):
             
             token = jwt.encode(sessionData, self.core.config['session']['secret'])
             
-            response.set_cookie(self.core.config['session']['cookie_name'], token, expires = expireAt, path = path, secure = secure, httponly = True)
-            response.set_cookie('Csrf-token', csrf_token, expires = expireAt, path = path, secure = secure, httponly = False)
+            response.set_cookie(self.core.config['session']['cookie_name'], token, expires = expireAt, domain = request.host, path = path, secure = secure, httponly = True)
+            response.set_cookie('Csrf-token', csrf_token, expires = expireAt, domain = request.host, path = path, secure = secure, httponly = False)
             
             return True
             

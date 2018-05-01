@@ -1,10 +1,10 @@
 # coding: utf-8
 
 
-from ething.Device import Device, method, interface, attr, isString, isNone, isEnum
+from ething.Device import Device, method, interface, attr, abstract, isString, isNone, isEnum
 
 
-
+@abstract
 @attr('address', validator = isString(allow_empty=False), description="The short address of this device on the zigbee network")
 @attr('model', validator = isString(allow_empty=False) | isNone(), description="The model of this device")
 @attr('manufacturer', validator = isString(allow_empty=False) | isNone(), description="The manufacturer of this device")

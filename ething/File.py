@@ -240,6 +240,8 @@ class File(Resource):
       "hdf" : "application/x-hdf", 
       "js" : "application/javascript",
       "json" : "application/json", 
+      "yaml" : "application/x-yaml", 
+      "py" : "text/x-python",
       "skp" : "application/x-koan", 
       "skd" : "application/x-koan", 
       "skt" : "application/x-koan", 

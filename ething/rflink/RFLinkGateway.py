@@ -2,11 +2,11 @@
 
 
 
-from ething.Device import Device, method, attr, isString, isBool, isNone, READ_ONLY
+from ething.Device import Device, method, attr, abstract, isString, isBool, isNone, READ_ONLY
 
 
 
-
+@abstract
 @attr('version', default=None, mode = READ_ONLY, description="The version of the RFLink library used.")
 @attr('revision', default=None, mode = READ_ONLY, description="The revision number of the RFLink library used.")
 @attr('build', default=None, mode = READ_ONLY, description="The build number of the RFLink library used.")

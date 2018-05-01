@@ -6,6 +6,7 @@ from future.utils import string_types
 import apispec
 from ething.version import __version__
 from ething.meta import resource_classes
+from ething.Resource import Resource
 import json
 from ething.base import READ_ONLY
 import jinja2
@@ -230,6 +231,24 @@ def generate(app, core, specification = 'stdout', documentation = None):
         resource_cls = resource_classes[name]
         
         schema = resource_cls.schema(flatted = False, helper = resource_attr_helper)
+        
+        # static inheritance
+        allOf = []
+        for b in resource_cls.__bases__:
+            if issubclass(b, Resource):
+                allOf.append({
+                    '$ref': '#/definitions/%s' % b.__name__
+                })
+        
+        if len(allOf) > 0:
+            if schema:
+                allOf.append(schema)
+            
+            schema = {
+                'allOf': allOf
+            }
+        
+        _meta['resources'][name] = schema
         
         if name == "Resource":
             schema.update({'discriminator': 'type'})

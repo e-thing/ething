@@ -1,7 +1,5 @@
 # coding: utf-8
 from __future__ import print_function
-from .core import Core, Config
-from .utils import print_info
 from .version import __version__
 
 import argparse
@@ -201,6 +199,8 @@ def main():
     parser.add_argument('-c', '--config', type=str, help='set the config file')
     parser.add_argument('-d', '--daemon', action='store_true', help='launch this program as a daemon')
     parser.add_argument('-p', '--pidfile', type=str, help='set pid to the given file')
+    parser.add_argument('--repair', action='store_true', help='try to repair the database and exit')
+    parser.add_argument('--generate-docs', type=str, metavar="OUTPUT_DIRECTORY", help='generate the webserver documentations (openapi + markdown) and exit')
     
 
     args = parser.parse_args()
@@ -230,7 +230,6 @@ def main():
         # first start
         # some settup can be done here !
         print("first startup, initializing...")
-        
         os.makedirs(USER_DIR)
     
     
@@ -252,17 +251,42 @@ def main():
         createDaemon()
     
     
+    from .core import Core, Config
+    from .utils import print_info
+    
     init_logger(not args.daemon)
     
     try:
         config = Config.load(CONFIG_FILE)
     except:
         raise
-
-
+    
     core = Core(config)
     
     print_info(core, core.log.info)
+    
+    
+    
+    if args.repair :
+        core.log.info("repairing...")
+        core.repair()
+        sys.exit()
+    
+    
+    if args.generate_docs :
+        print('generating docs ...')
+        outdir = args.generate_docs
+        if outdir and os.path.isdir(outdir):
+            from ething.webserver import server
+            from ething.webserver.specification import generate
+            
+            app = server.create(core)
+            generate(app, core, specification = os.path.join(outdir, 'openapi.json'), documentation = os.path.join(outdir, 'http_api.md'))
+            
+        else:
+            raise Exception('the directory does not exist %s' % outdir)
+        sys.exit()
+    
 
     exit_code = 0
     

@@ -448,7 +448,25 @@ class Core(object):
         db_client.drop_database(db_name)
         self.db = db_client[db_name]
         
-        
     
+    def repair(self):
+        """
+        repair the database
+        """
+        results = {}
+        
+        resources = self.find()
+        
+        results['count'] = len(resources)
+        
+        i=0
+        n= len(resources)
+        
+        for r in resources:
+            i += 1
+            self.log.info("repairing %d/%d %s %s %s ..." % (i, n, r.type, r.id, r.name))
+            r.repair()
+        
+        return results
 
 

@@ -52,7 +52,7 @@
 			
 			var $content = $view.find('.list-group').html('<p class="text-center">scanning...</p>');
 			
-			$.getJSON('.ui/utils/net_list', function(items){
+			$.getJSON('/api/utils/net_list', function(items){
 				
 				if(items.length===0) {
 					$content.html('<p class="text-center">nothing found...</p>');

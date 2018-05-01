@@ -49,25 +49,31 @@ def install(core, app, auth, **kwargs):
     @app.route('/auth/password', methods=['POST'])
     def auth_password():
         
+        login = request.values.get('login')
         password = request.values.get('password')
-        redirect_uri = request.values.get('redirect_uri') or url_for('root_client')
+        redirect_uri = request.values.get('redirect_uri')
         
-        if len(password) > 0:
-            resp = make_response(redirect(redirect_uri))
-            if auth.session.authenticate(password, request, resp):
+        if redirect_uri is not None and not redirect_uri:
+            redirect_uri = url_for('root_client')
+        
+        if len(login) > 0 and len(password) > 0:
+            resp = make_response(redirect(redirect_uri) if redirect_uri is not None else ('', 204))
+            if auth.session.authenticate(login, password, request, resp):
                 return resp
-            
         
-        raise Exception('invalid authentication credentials !')
+        raise ServerException('invalid authentication credentials !', 401)
 
 
 
     @app.route('/auth/logout')
     def auth_logout():
         
-        redirect_uri = request.values.get('redirect_uri') or ''
+        redirect_uri = request.values.get('redirect_uri')
         
-        resp = make_response(redirect(url_for('auth_login', redirect_uri = redirect_uri)))
+        if redirect_uri is not None and not redirect_uri:
+            redirect_uri = url_for('auth_login')
+        
+        resp = make_response(redirect(redirect_uri) if redirect_uri is not None else ('', 204))
         
         auth.session.unauthenticate(request, resp)
         

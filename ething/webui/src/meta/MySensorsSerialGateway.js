@@ -16,7 +16,7 @@
 		'properties' : {
 			"port": {
 				editable: function(){
-					return $.getJSON('../utils/serial_ports_list').then(function(ports){
+					return $.getJSON('/api/utils/serial_ports_list').then(function(ports){
 						
 						return new $.Form.Text({
 							placeholder: '/dev/ttyS0',

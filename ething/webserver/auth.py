@@ -118,19 +118,14 @@ class Auth(object):
             
     
     def check_public(self):
-        
-        matches = re.search('^/api/([^/]+)/([a-zA-Z0-9_-]{7})($|/|\\?)', str(request.url_rule))
+        matches = re.search('^/api/([^/]+)/([a-zA-Z0-9_-]{7})($|/|\\?)', str(request.path))
         
         if matches:
-            id = matches.group(1)
+            id = matches.group(2)
             resource = self.core.get(id)
-            
             if resource:
-                
                 public = resource.public
-                
                 if public == 'readonly':
-                    g.scope = 'resource:read'
                     return AuthContext('public', scope = 'resource:read')
                 elif public == 'readwrite':
                     return AuthContext('public', scope = 'resource:read resource:write')
