@@ -66,7 +66,7 @@ def install(core, app, auth, **kwargs):
     
     @app.route('/api/rules/<id>/execute')
     @auth.required('rule:read resource:read')
-    def rule_execute(args, id):
+    def rule_execute(id):
         r = getResource(core, id, ['Rule'])
         
         if not r.run():

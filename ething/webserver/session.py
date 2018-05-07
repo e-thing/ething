@@ -96,7 +96,7 @@ class Session(object):
             path = '/'
         
         # remove the session cookie
-        response.set_cookie(self.core.config['session']['cookie_name'], '', expires = 0, path = path)
-        response.set_cookie('Csrf-token', '', expires = 0, path = path)
+        response.set_cookie(self.core.config['session']['cookie_name'], '', expires = 0, domain = request.host, path = path)
+        response.set_cookie('Csrf-token', '', expires = 0, domain = request.host, path = path)
         
     

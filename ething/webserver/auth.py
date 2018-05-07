@@ -71,7 +71,7 @@ class Auth(object):
     
     def check(self, permissions):
         
-        authctx = self.check_session() or self.check_apikey() or self.check_basic() or self.check_public()
+        authctx = self.check_localhost() or self.check_session() or self.check_apikey() or self.check_basic() or self.check_public()
         
         if authctx and isinstance(authctx, AuthContext):
             g.auth = authctx
@@ -84,7 +84,9 @@ class Auth(object):
         
         raise ServerException('not authenticated', 401)
     
-    
+    def check_localhost(self):
+        if request.remote_addr == '127.0.0.1':
+            return AuthContext('localhost')
     
     def check_session(self):
         if self.session and self.session.isAuthenticated(request, False):

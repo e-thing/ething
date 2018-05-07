@@ -63,7 +63,7 @@ class ScriptEngine(object):
             "--stderr",
             stderrHdl.name,
             "--serverUrl",
-            addslashes('http://localhost:%d/api' % ething.config.get('webserver.port', 8000)),
+            addslashes('http://localhost:%d' % ething.config.get('webserver.port', 8000)),
             "-t",
             str(ething.config('script.timeout')),
             "--filename",
@@ -73,11 +73,11 @@ class ScriptEngine(object):
         if apiKey:
             cmd.append('--apikey')
             cmd.append(apiKey)
-        else:
-            cmd.append('--user')
-            cmd.append('"%s"' % addslashes(ething.config('auth.username')))
-            cmd.append('--password')
-            cmd.append('"%s"' % addslashes(ething.config('auth.password')))
+        # else:
+        #     cmd.append('--user')
+        #     cmd.append('"%s"' % addslashes(ething.config('auth.username')))
+        #     cmd.append('--password')
+        #     cmd.append('"%s"' % addslashes(ething.config('auth.password')))
         
         if isinstance(globals, dict):
             cmd.append('--globals')

@@ -23,9 +23,10 @@ for iname, iclass in inspect.getmembers(interfaces, inspect.isclass):
 
 class isSensorType(Validator):
     def validate(self, value, object):
-        if sensorTypeStr(value) is None:
+        formatted = sensorTypeStr(value)
+        if formatted is None:
             raise ValueError('must be a valid integer or a string describing a sensor type')
-        return value
+        return formatted
     
     def schema(self):
         return {"type":"string"}
@@ -39,7 +40,7 @@ class SensorTypeAdapter(ModelAdapter):
         return sensorTypeStr(data[name])
 
 @attr('sensorId', validator = isInteger(min=0, max=254), description="The id of the sensor.")
-@attr('sensorType', validator = (isString(allow_empty=False) | isInteger(min=0)) & isSensorType(), model_adapter = SensorTypeAdapter(), description="The type of the sensor.")
+@attr('sensorType', validator = isSensorType(), model_adapter = SensorTypeAdapter(), description="The type of the sensor.")
 @attr('createdBy', required = True)
 class MySensorsSensor (Device):
     """

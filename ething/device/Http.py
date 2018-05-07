@@ -19,8 +19,8 @@ except ImportError:
 
 
 @pingable('url')
-@attr('url', validator = isNone() | isString(allow_empty = False, regex = '^https?://'), default = None, description="The URL of the device, or null if there is none defined. No URL defined means that the device cannot be reached. Only device with an URL set has a Swagger specification (see /device/<id>/specification endpoint). The specification object define all the available HTTP requests this device accepts.")
-@attr('scope', validator = isString() & ScopeValidator(), default = '', description="The allowed scopes for this device (space separated list). Restrict the Http api access. Default to an empty string (no access).")
+@attr('url', validator = isString(allow_empty = False, regex = '^https?://'), description="The URL of the device.")
+@attr('scope', validator = ScopeValidator(), default = '', description="The allowed scopes for this device (space separated list). Restrict the Http api access. Default to an empty string (no access).")
 @attr('auth', validator = isObject(user=isString(allow_empty=False), password=isString(allow_empty=False), type=isString(enum=['basic', 'digest'])) | isNone(), default=None, description="An object describing the authentication method to use on HTTP request.")
 @attr('apikey', default = lambda _: ApiKey.generate(), mode = READ_ONLY, description="The apikey for authenticating this device.")
 @attr('specification', default = None, mode = PRIVATE)

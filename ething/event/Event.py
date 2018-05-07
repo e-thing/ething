@@ -2,7 +2,7 @@
 
 from ething.meta import MetaEvent, get_event_class
 from future.utils import with_metaclass, string_types
-from ething.base import DataObject, attr, READ_ONLY
+from ething.base import DataObject, attr, READ_ONLY, abstract
 
 
 def _attr_signal_default(cls):
@@ -11,7 +11,7 @@ def _attr_signal_default(cls):
     else:
         return None
 
-
+@abstract
 @attr('type', mode = READ_ONLY, default = lambda cls: str(cls.__name__), description = "The type of the event")
 @attr('signal', mode = READ_ONLY, default = _attr_signal_default, description = "The name of the signals this event is listening to")
 class Event(with_metaclass(MetaEvent,DataObject)):

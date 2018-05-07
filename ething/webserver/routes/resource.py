@@ -153,7 +153,7 @@ def install(core, app, auth, **kwargs):
                 content = None
             
                 if r.type == 'Http':
-                    content = attr.pop('content', None)
+                    content = attr.pop('specification', None)
                 elif r.type == 'MQTT':
                     content = attr.pop('subscription', None)
                 
@@ -164,7 +164,7 @@ def install(core, app, auth, **kwargs):
                 
                 if content:
                     if r.type == 'Http':
-                        r.setSpecification(base64.b64decode(content))
+                        r.setSpecification(content)
                     elif r.type == 'MQTT':
                         r.setSubscription(content)
                 

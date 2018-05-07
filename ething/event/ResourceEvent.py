@@ -1,7 +1,7 @@
 # coding: utf-8
 
 from . import Signal, Event
-from ething.base import attr, Validator, isNone
+from ething.base import attr, Validator, isNone, abstract
 from ething.ShortId import ShortId
 from ething.ResourceQueryParser import ResourceQueryParser
 from future.utils import string_types
@@ -77,6 +77,7 @@ class isResourceFilter(Validator):
         }
 
 
+@abstract
 @attr('resource', validator = isResourceFilter() | isNone(), default = None, description="filter the resource emitting the signal")
 class ResourceEvent(Event):
     

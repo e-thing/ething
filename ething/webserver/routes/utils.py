@@ -5,11 +5,13 @@ from flask import request, Response
 from ..server_utils import *
 import os
 
-from ething.meta import resource_classes, interfaces_classes, iface
+from ething.meta import resource_classes, interfaces_classes, event_classes, iface
 from ething.base import READ_ONLY
 from ething.Resource import Resource
 
-def resource_attr_helper(schema, name, attribute):
+from ething.Scope import Scope
+
+def attr_helper(schema, name, attribute):
     
     if attribute.get('mode') == READ_ONLY:
         schema['readOnly'] = True
@@ -107,12 +109,14 @@ def install(core, app, auth, **kwargs):
             _meta = {
                 "resources": {},
                 "interfaces": {},
+                "scopes": Scope.list,
+                "events": {}
             }
             
             for name in list(resource_classes):
                 resource_cls = resource_classes[name]
                 
-                schema = resource_cls.schema(flatted = False, helper = resource_attr_helper)
+                schema = resource_cls.schema(flatted = False, helper = attr_helper)
                 
                 # static inheritance
                 allOf = []
@@ -166,6 +170,17 @@ def install(core, app, auth, **kwargs):
                     }
                 
                 _meta['interfaces'][name] = schema
+             
+            for name in list(event_classes):
+                event_cls = event_classes[name]
+                
+                schema = event_cls.schema(helper = attr_helper)
+                
+                if resource_cls.is_abstract():
+                    schema['virtual'] = True
+                
+                _meta['events'][name] = schema
+                
         
         return jsonify(_meta)
 

@@ -46,7 +46,8 @@ class isResource(isString):
                 raise ValueError('the Resource does not match the following types: %s' % ','.join(self.accepted_types))
         
         return value
-        
+    
+
 
 class ResourceModelAdapter(ModelAdapter):
     
@@ -69,7 +70,7 @@ class DataModelAdapter(ModelAdapter):
 @attr('type', mode = READ_ONLY, default = lambda cls: str(cls.__name__), description = "The type of the resource")
 @attr('extends', mode = READ_ONLY, default = lambda cls: [c.__name__ for c in cls.__mro__ if issubclass(c,Resource) and (c is not Resource)], description="An array of classes this resource is based on.")
 @attr('createdDate', default = lambda _: datetime.datetime.utcnow(), mode = READ_ONLY, description="Create time for this resource")
-@attr('modifiedDate', default = lambda _: datetime.datetime.utcnow(), description = "Last time this resource was modified")
+@attr('modifiedDate', default = lambda _: datetime.datetime.utcnow(), mode = READ_ONLY, description = "Last time this resource was modified")
 @attr('createdBy', validator = isResource() | isNone(), default = None, model_adapter = ResourceModelAdapter(), description="The id of the resource responsible of the creation of this resource, or null.")
 @attr('data', validator = isObject(allow_extra = isString() | isNumber() | isNone() | isBool()), default = {}, model_adapter = DataModelAdapter(), description="A collection of arbitrary key-value pairs. Entries with null values are cleared in update. The keys must not be empty or longer than 64 characters, and must contain only the following characters : letters, digits, underscore and dash. Values must be either a string or a boolean or a number")
 @attr('description', validator = isString(), default = '', description = "A description of this resource.")
@@ -196,7 +197,7 @@ class Resource(with_metaclass(MetaResource, DataObject)):
     def _save(self, data):
         
         self.ething.log.debug("Resource update : %s , dirtyFields: %s" % (str(self), self.getDirtyAttr()))
-        self.modifiedDate = datetime.datetime.utcnow() # update the modification time
+        self._modifiedDate = datetime.datetime.utcnow() # update the modification time
         
         c = self.ething.db["resources"]
         c.replace_one({'_id' : self.id}, data)

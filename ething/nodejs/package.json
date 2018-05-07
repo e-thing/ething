@@ -1,0 +1,15 @@
+{
+  "name": "ething-rule-server",
+  "version": "0.1.0",
+  "description": "",
+  "main": "vm.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node server.js"
+  },
+  "author": "a.mezerette",
+  "license": "ISC",
+  "dependencies": {
+    "ething-js": "^0.1.4"
+  }
+}

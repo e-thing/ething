@@ -344,7 +344,7 @@ class Method(object):
             for i in range(0,len(args)):
                 
                 if i>= len(arg_names):
-                    raise ValueError("%s() takes exactly %d arguments", (self.name, len(arg_names)))
+                    raise ValueError("%s() takes exactly %d arguments" % (self.name, len(arg_names)))
                 
                 arg_name = arg_names[i]
                 

@@ -4,7 +4,6 @@
 from flask import request, Response
 from ..server_utils import *
 import re
-import base64
 from future.utils import text_type
 
 def install(core, app, auth, **kwargs):
@@ -65,7 +64,7 @@ def install(core, app, auth, **kwargs):
             content = None
             
             if type == 'Http':
-                content = attr.pop('content', None)
+                content = attr.pop('specification', None)
             elif type == 'MQTT':
                 content = attr.pop('subscription', None)
             
@@ -77,7 +76,7 @@ def install(core, app, auth, **kwargs):
                 
                 if content:
                     if r.type == 'Http':
-                        r.setSpecification(base64.b64decode(content))
+                        r.setSpecification(content)
                     elif r.type == 'MQTT':
                         r.setSubscription(content)
                 
@@ -176,7 +175,7 @@ def install(core, app, auth, **kwargs):
                     kwargs = data
                 elif isinstance(data, list):
                     args = data
-                else:
+                elif data is not None: # empty content with content-type set to application/json will return None
                     args.append(data)
             except:
                 pass

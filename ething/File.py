@@ -15,7 +15,7 @@ from .Helpers import dict_recursive_update
 from .base import attr, isBool, isString, isNone, isInteger, READ_ONLY, PRIVATE
 
 
-@attr('expireAfter', validator = isNone() | isInteger(min=1), default = None, description="The amount of time (in seconds) after which this resource will be removed.")
+@attr('expireAfter', validator = isInteger(min=1) | isNone(), default = None, description="The amount of time (in seconds) after which this resource will be removed.")
 @attr('content', default = None, mode = PRIVATE)
 @attr('thumb', default = None, mode = PRIVATE)
 @attr('size', default = 0, mode = READ_ONLY, description="The size of this resource in bytes")

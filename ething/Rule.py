@@ -5,13 +5,14 @@ from .base import NestedAdapter, attr, READ_ONLY, isString, isAnything, isBool
 from .ScriptEngine import ScriptEngine
 
 from . import event
+import datetime
 
 
 
 class isEvent(isAnything):
     
     def schema(self):
-        return {"$ref":"Event"}
+        return {"$ref":"#/events/Event"}
 
 
 class EventAdapter(NestedAdapter):
@@ -51,6 +52,8 @@ class Rule(Resource):
         
         self._script_execution_count = self.script_execution_count + 1
         
+        self._script_execution_date = datetime.datetime.utcnow()
+        
         try:
             result = ScriptEngine.runFromFile(script, arguments = self.script_args, globals = {
                 'signal' : signal,
@@ -64,8 +67,12 @@ class Rule(Resource):
         
         stderr = result.get('stderr')
         if stderr:
-            self.ething.log.error('rule %s error:' % self)
+            self.ething.log.error('rule %s error (return code = %d):' % (self, result.get('return_code')))
             self.ething.log.error(stderr)
+        
+        #stdout = result.get('stdout')
+        #if stdout:
+        #    self.ething.log.info(stdout)
         
         self.save()
         

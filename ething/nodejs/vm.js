@@ -1,4 +1,4 @@
-
+var EThing = require('ething-js');
 
 function usage(){
 	console.error();
@@ -130,7 +130,6 @@ while(arguments.length){
 			// parse url
 			var url = require('url');
 			var tmpurl = extend(url.parse(serverUrl), url.parse(arguments[0]));
-			tmpurl.pathname = tmpurl.pathname.replace(/\/?$/,'/api');
 			serverUrl = url.format(tmpurl);
 			
 			break;
@@ -168,8 +167,6 @@ if (!fs.existsSync(scriptFile)) {
 var script = fs.readFileSync(scriptFile).toString('utf8');
 
 if(verbose) console.log('script file:',scriptFile);
-
-var EThing = require("./../webui/node_modules/ething-js");
 
 
 if(!filename){
@@ -211,6 +208,8 @@ const output = stdoutFile==='-' ? process.stdout : fs.createWriteStream(stdoutFi
 const errorOutput = stderrFile==='-' ? process.stderr : fs.createWriteStream(stderrFile);
 const resultOutput = resultFile==='-' ? process.stdout : fs.createWriteStream(resultFile);
 const logger = new console.Console(output, errorOutput);
+
+exitCode = 0;
 
 process.on('uncaughtException', function(err){
 	if(verbose) console.error('Error in script:', err);
@@ -263,13 +262,15 @@ try {
 			resultOutput.write(resultStr);
 		} catch(e){
 			if(verbose) console.error('Error stringify output:', e);
+            exitCode = 1;
 		}
 	}
 	
 } catch(e){
 	if(verbose) console.error('Error in script:', e);
 	logger.error(e);
+    exitCode = 1;
 }
 	
-	
+process.exit(exitCode);
 

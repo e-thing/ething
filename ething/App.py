@@ -12,7 +12,7 @@ from .base import attr, isBool, isString, isNone, isInteger, READ_ONLY, PRIVATE,
 
 
 
-@attr('scope', validator = isString() & ScopeValidator(), default = '', description="The allowed scopes for this application (space separated list). No permissions by default.")
+@attr('scope', validator = ScopeValidator(), default = '', description="The allowed scopes for this application (space separated list). No permissions by default.")
 @attr('apikey', default = lambda _: ApiKey.generate(), mode = READ_ONLY, description="The apikey for authenticating this app.")
 @attr('content', default = None, mode = PRIVATE)
 @attr('icon', default = None, mode = PRIVATE)
