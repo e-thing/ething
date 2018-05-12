@@ -258,7 +258,7 @@ def install(core, app, auth, **kwargs):
     
     
     file_action_execute_args = {
-        'args': fields.Str(description="A string representing the arguments to be passed to the script.")
+        'args': fields.Str(missing=None, description="A string representing the arguments to be passed to the script.")
     }
 
     @app.route('/api/files/<id>/execute')
@@ -274,7 +274,7 @@ def install(core, app, auth, **kwargs):
             if not res:
                 raise Exception('Unable to execute')
             
-            jsonify(res);
+            return jsonify(res)
             
         else:
             raise Exception('Not executable')

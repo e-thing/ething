@@ -86,12 +86,14 @@ class RFLinkGateway(Device):
             raise Exception(error)
         return resp.split(';', 2)[-1]
     
+    @method
     def startInclusion(self):
         """
         Put this gateway into inclusion mode. Unknown devices will be added automatically.
         """
         self.setData("inclusion", True)
     
+    @method
     def stopInclusion(self):
         """
         Quit the inclusion mode for this gateway.

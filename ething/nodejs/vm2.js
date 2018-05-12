@@ -3,7 +3,7 @@ var EThing = require('ething-js');
 function usage(){
 	console.error();
 	console.error("usage:");
-	console.error("  "+process.argv.slice(0,2).join(' ')+" [--stdout file] [--stderr file] [--result file]");
+	console.error("  "+process.argv.slice(0,2).join(' ')+" [--out file]");
 	console.error("      [--globals json] [-t timeout] [--user user] [--password password] [--serverUrl url]");
 	console.error("      [--apikey key] [--filename name] script");
 	console.error();
@@ -18,9 +18,7 @@ function extend(a, b){
 
 var filename = null;
 var scriptFile = null;
-var stdoutFile = './stdout.log';
-var stderrFile = './stderr.log';
-var resultFile = './result';
+var outFile = './out.log';
 var globals = {};
 var timeout = 300000; // in ms
 var user = 'ething';
@@ -43,29 +41,13 @@ while(arguments.length){
 		case '--verbose':
 			verbose = true;
 			break;
-		case '--result':
+		case '--out':
 			arguments.shift();
 			if(!arguments.length){
 				usage();
 				process.exit(1);
 			}
-			resultFile = arguments[0];
-			break;
-		case '--stdout':
-			arguments.shift();
-			if(!arguments.length){
-				usage();
-				process.exit(1);
-			}
-			stdoutFile = arguments[0];
-			break;
-		case '--stderr':
-			arguments.shift();
-			if(!arguments.length){
-				usage();
-				process.exit(1);
-			}
-			stderrFile = arguments[0];
+			outFile = arguments[0];
 			break;
 		case '--globals':
 			arguments.shift();
@@ -199,15 +181,35 @@ for(var k in globals){
 
 
 	
-if(verbose) console.log('script stdout:',stdoutFile);
-if(verbose) console.log('script stderr:',stderrFile);
-if(verbose) console.log('script result:',resultFile);
+if(verbose) console.log('script stdout:',outFile);
 
 const vm = require('vm');
-const output = stdoutFile==='-' ? process.stdout : fs.createWriteStream(stdoutFile);
-const errorOutput = stderrFile==='-' ? process.stderr : fs.createWriteStream(stderrFile);
-const resultOutput = resultFile==='-' ? process.stdout : fs.createWriteStream(resultFile);
-const logger = new console.Console(output, errorOutput);
+
+
+
+var stream = require('stream');
+
+const outStream = outFile==='-' ? process.stdout : fs.createWriteStream(outFile);
+
+var sdtoutStream = new stream.Writable();
+
+sdtoutStream._write = function (chunk, encoding, done) {
+    outStream.write(JSON.stringify({
+        type: 'stdout',
+        chunk: chunk.toString()
+    })+",\n", done);
+};
+
+var sdterrStream = new stream.Writable();
+
+sdterrStream._write = function (chunk, encoding, done) {
+    outStream.write(JSON.stringify({
+        type: 'stderr',
+        chunk: chunk.toString()
+    })+",\n", done);
+};
+
+const logger = new console.Console(sdtoutStream, sdterrStream);
 
 process.on('uncaughtException', function(err){
 	if(verbose) console.error('Error in script:', err);
@@ -254,15 +256,6 @@ try {
 	
 	if(verbose) console.log('end script', new Date().toISOString());
 	
-	if(typeof result != 'undefined' && result !== null){
-		try {
-			var resultStr = JSON.stringify(result, null, ' ');
-			resultOutput.write(resultStr);
-		} catch(e){
-			if(verbose) console.error('Error stringify output:', e);
-            process.exit(1);
-		}
-	}
 	
 } catch(e){
 	if(verbose) console.error('Error in script:', e);

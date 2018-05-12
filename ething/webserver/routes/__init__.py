@@ -3,7 +3,6 @@
 from . import static
 from . import file
 from . import table
-from . import app
 from . import device
 from . import rule
 from . import utils
@@ -20,7 +19,6 @@ def install_routes(**kwargs):
     static.install(**kwargs)
     file.install(**kwargs)
     table.install(**kwargs)
-    app.install(**kwargs)
     device.install(**kwargs)
     rule.install(**kwargs)
     utils.install(**kwargs)

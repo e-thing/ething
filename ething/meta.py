@@ -289,7 +289,13 @@ class MethodDecorator(object):
     
     def bind_to(self, instance):
         def d(func):
+            
             self.init(func)
+            
+            orig = getattr(instance, func.meta['name'], None)
+            
+            if orig is not None and getattr(orig, 'meta', None) is not None:
+                self.__setdefaults(func.meta, orig.meta)
             
             dbs = getattr(instance, '__dynamic_bounds', []) + [func]
             

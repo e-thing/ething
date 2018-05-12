@@ -25,7 +25,8 @@ def addslashes(s):
 class ScriptEngine(object):
 
     
-    PROG = os.path.abspath(os.path.join(os.path.dirname(__file__), './nodejs/vm.js'))
+    # PROG = os.path.abspath(os.path.join(os.path.dirname(__file__), './nodejs/vm.js'))
+    PROG = os.path.abspath(os.path.join(os.path.dirname(__file__), './nodejs/vm2.js'))
     
     @staticmethod
     def run (ething, script, scriptName = 'anonymous', apiKey = None, globals = None):
@@ -48,20 +49,14 @@ class ScriptEngine(object):
         scriptHdl = tempfile.NamedTemporaryFile()
         scriptHdl.write(script)
         scriptHdl.flush()
-        stdoutHdl = tempfile.NamedTemporaryFile()
-        stderrHdl = tempfile.NamedTemporaryFile()
-        resultHdl = tempfile.NamedTemporaryFile()
+        outHdl = tempfile.NamedTemporaryFile()
         
         cmd = [
             nodejs_exe,
             prog,
             scriptHdl.name,
-            "--result",
-            resultHdl.name,
-            "--stdout",
-            stdoutHdl.name,
-            "--stderr",
-            stderrHdl.name,
+            "--out",
+            outHdl.name,
             "--serverUrl",
             addslashes('http://localhost:%d' % ething.config.get('webserver.port', 8000)),
             "-t",
@@ -94,22 +89,26 @@ class ScriptEngine(object):
             return_var = subprocess.call(cmdstr, shell=True);
             time_end = time.time()
             
-            stdout = stdoutHdl.read()
-            stderr = stderrHdl.read()
-            result = resultHdl.read()
+            out = outHdl.read()
             
         except OSError as e:
             raise Exception('unable to execute nodejs [cmd=%s]' % nodejs_exe)
             
         finally:
             scriptHdl.close()
-            stdoutHdl.close()
-            stderrHdl.close()
-            resultHdl.close()
+            outHdl.close()
         
-        result = result.decode(sys.stdout.encoding)
-        stdout = stdout.decode(sys.stdout.encoding)
-        stderr = stderr.decode(sys.stdout.encoding)
+        out = out.decode(sys.stdout.encoding)
+        
+        if len(out):
+            out = out[:out.rfind(',')]
+        
+        out = json.loads('[%s]' % out)
+        
+        sdterr = ''
+        for item in out:
+            if item['type'] == 'stderr':
+                sdterr += item['chunk'].encode('utf8').decode('unicode_escape')
         
         try:
             result = json.loads(result)
@@ -118,9 +117,8 @@ class ScriptEngine(object):
         
         return {
             'executionTime' : time_end - time_start,
-            'return' : result,
-            'stdout' : stdout,
-            'stderr' : stderr,
+            'output' : out,
+            'sdterr': sdterr,
             'return_code': return_var,
             'ok' : return_var == 0
         }

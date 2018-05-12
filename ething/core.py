@@ -31,7 +31,6 @@ from .meta import get_resource_class, get_signal_class
 
 from .File import File
 from .Table import Table
-from .App import App
 from .Rule import Rule
 
 from .rflink import RFLink

@@ -25,11 +25,9 @@ def test_scriptengine_script(core):
     
     result = ScriptEngine.runFromFile(script);
     
-    print(result.get('stdout'))
     print(result.get('stderr'))
     
     assert result.get('ok') is True
-    assert result.get('return') == 1
 
 
 @pytest.mark.nodejs
@@ -45,11 +43,9 @@ def test_scriptengine_script_arg(core):
     
     result = ScriptEngine.runFromFile(script, arguments='foo "bar fg"');
     
-    print(result.get('stdout'))
     print(result.get('stderr'))
     
     assert result.get('ok') is True
-    assert result.get('return') == 2
     
 
 

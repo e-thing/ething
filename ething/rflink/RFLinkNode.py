@@ -38,7 +38,7 @@ meta = [
 
 
 @attr('nodeId', validator = isString(allow_empty=False), description="The hardware id of the node.")
-@attr('subType', validator = isString() & isEnum(subTypes), description="The subtype of the device, ie: thermometer, switch, ...")
+@attr('subType', validator = isEnum(subTypes), description="The subtype of the device, ie: thermometer, switch, ...")
 @attr('protocol', validator = isString(allow_empty=False), description="The protocol name of the node.")
 @attr('switchId', validator = isNone() | isString(allow_empty=False), description="The switch id of the node. Only available for switch/door/motion subtypes.")
 @attr('createdBy', required = True)
@@ -65,10 +65,10 @@ class RFLinkNode(Device):
             interface.inherit(self, Switch if subType == 'switch' else Light)
             
             @method.bind_to(self)
-            def set_state(self, state):
+            def setState(self, state):
                 value = 'ON' if state else 'OFF'
                 if self.gateway.sendMessage("10;%s;%s;%s;%s;" % (self.protocol, self.nodeId, self.switchId, value)): # 10;NewKaku;00c142;1;OFF
-                    self.store('state', True)
+                    self.store('state', bool(state))
             
         
         else:
