@@ -305,7 +305,7 @@ def install(core, app, auth, **kwargs):
                 args['show_header'] = (fmt == "csv")
                 
                 fields = request.args.get('fields')
-                if isinstance(fields, text_types):
+                if fields is not None:
                     fields = fields.replace(' ',',').replace(';',',').replace('|',',').split(',')
                     args['fields'] = fields
                 

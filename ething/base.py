@@ -501,13 +501,17 @@ def attr(name, validator = None, mode = None, **kwargs):
             attributes = copy_attr
         
         attributes.setdefault(name, {
-            'validator': validator,
             'model_adapter': default_model_adapter,
             'model_key': name,
-            'mode': mode,
             'classes': [],
             'on_change': None
         })
+        
+        if validator is not None:
+            attributes[name]['validator'] = validator
+        
+        if mode is not None:
+            attributes[name]['mode'] = mode
         
         required = False
         

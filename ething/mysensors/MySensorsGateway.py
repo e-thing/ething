@@ -12,7 +12,9 @@ from .Message import Message
 @attr('isMetric', validator = isBool(), default=True, description="Set the unit to Metric(default) instead of Imperial.")
 @attr('libVersion', default=None, mode = READ_ONLY, description="The version of the MySensors library used.")
 class MySensorsGateway(Device):
-    
+    """
+    see https://www.mysensors.org
+    """
     
     def getNodes (self, filter = None):
         q = {

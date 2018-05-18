@@ -73,7 +73,11 @@ class isResourceFilter(Validator):
     
     def schema(self):
         return {
-            "type": "string"
+            "type": "array",
+            "items": {
+                "type": "string"
+            },
+            "onlyTypes": self.onlyTypes
         }
 
 

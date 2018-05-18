@@ -11,4 +11,7 @@ class TableDataAdded(ResourceSignal):
 
 @attr('resource', validator = isResourceFilter(onlyTypes = ('Table',)) | isNone())
 class TableDataAddedEvent(ResourceEvent):
+    """
+    is emitted each time a new value is appended to a table
+    """
     signal = TableDataAdded

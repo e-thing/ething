@@ -9,5 +9,8 @@ class FileDataModified(ResourceSignal):
 
 @attr('resource', validator = isResourceFilter(onlyTypes = ('File',)) | isNone())
 class FileDataModifiedEvent(ResourceEvent):
+    """
+    is emitted each time file's content is modified
+    """
     signal = FileDataModified
     

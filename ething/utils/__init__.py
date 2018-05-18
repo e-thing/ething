@@ -6,19 +6,48 @@ from .nodejs import *
 
 from .null_context_manager import NullContextManager
 
+_info = None
+
+def get_info(core):
+    global _info
+    
+    if _info is None:
+        import platform, sys
+        
+        _info = {
+            'VERSION': core.version,
+            'python': {
+                'version': platform.python_version(),
+                'type': platform.python_implementation(),
+                'executable': sys.executable
+            },
+            'platform': {
+                'name': "%s %s" % (sys.platform, platform.platform()),
+                'version': platform.version()
+            },
+            'nodejs': {
+                'version': (is_nodejs_installed(core) or "not found")
+            }
+        }
+    
+    return _info
+
 
 def print_info(core, printer):
-    import platform, sys
+    info = get_info(core)
     
-    printer("ETHING    : version=%s" % core.version)
+    printer("ETHING    : version=%s" % info.get('VERSION'))
     
-    printer("PYTHON    : version=%s type=%s" % (platform.python_version(), platform.python_implementation()))
-    printer("PYTHON_EXE: %s" % (sys.executable))
+    python_info = info.get('python', {})
+    printer("PYTHON    : version=%s type=%s" % (python_info.get('version'), python_info.get('type')))
+    printer("PYTHON_EXE: %s" % (python_info.get('executable')))
     
-    printer("PLATFORM  : %s %s" % (sys.platform, platform.platform()))
-    printer("SYSTEM    : %s" % (platform.version()))
+    platform_info = info.get('platform', {})
+    printer("PLATFORM  : %s" % (python_info.get('name')))
+    printer("SYSTEM    : %s" % (python_info.get('version')))
     
-    printer("NODE.JS   : %s" % (is_nodejs_installed(core) or "not found"))
+    nodejs_info = info.get('nodejs', {})
+    printer("NODE.JS   : %s" % (nodejs_info.get('version')))
     
     
     

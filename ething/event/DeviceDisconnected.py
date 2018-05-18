@@ -9,5 +9,8 @@ class DeviceDisconnected(ResourceSignal):
 
 @attr('resource', validator = isResourceFilter(onlyTypes = ('Device',)) | isNone())
 class DeviceDisconnectedEvent(ResourceEvent):
+    """
+    is emitted each time a device disconnect
+    """
     signal = DeviceDisconnected
     

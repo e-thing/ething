@@ -40,24 +40,24 @@ class MihomeGateway(Device, RGBWLight):
         
         data = json.loads(response['data'])
         
-        attr = {}
-        
         if data:
             
             if 'rgb' in data:
                 rgb = data['rgb'] & 0xffffff
                 brightness = data['rgb'] >> 24
                 
-                attr['color'] = '#' + format(rgb, '06X')
-                attr['brightness'] = brightness
+                color = '#' + format(rgb, '06X')
+                brightness = brightness
+                
+                self.store(None, {
+                    'color': color,
+                    'brightness': brightness
+                }, history = False)
             
             
             if 'illumination' in data:
-                attr['illumination'] = int(data['illumination']) - 300 # lm
-            
-        
-        if attr :
-            self.store(None, attr)
+                illumination = int(data['illumination']) - 300 # lm
+                self.store('illumination', illumination)
         
     
     

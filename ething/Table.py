@@ -313,21 +313,34 @@ class Table(Resource):
             # insert the data
             c = self.collection
             c.insert_one(dataArray[0])
-            # remove extra row
+            # remove extra rows
             if maxLength and length > maxLength :
                 
-                # remove the oldest document
-                removedDoc = c.find_one_and_delete({}, sort=[('date',pymongo.ASCENDING)])
+                removed_docs = []
+                remove_length = length - maxLength
                 
-                length-=1
+                # remove extra rows
+                if remove_length == 1 :
+                    # remove the oldest document
+                    removed_doc = c.find_one_and_delete({}, sort=[('date',pymongo.ASCENDING)])
+                    removed_docs.append(removed_doc)
+                elif remove_length > 1 :
+                    # multiple docs
+                    removed_docs = list(c.find({}, sort=[('date',pymongo.ASCENDING)], limit=remove_length))
+                    removed_docs_ids = [doc['_id'] for doc in removed_docs]
+                    c.delete_many({
+                        '_id': { '$in': removed_docs_ids }
+                    })
+                
+                length -= len(removed_docs)
                 
                 # update the key count
-                for field in removedDoc:
-                    if field in keys:
-                        keys[field]-=1
-                        if keys[field]<=0:
-                            del keys[field]
-            
+                for removed_doc in removed_docs:
+                    for field in removed_doc:
+                        if field in keys:
+                            keys[field]-=1
+                            if keys[field]<=0:
+                                del keys[field]
             
             self._length = length
             self.setDirtyAttr('keys')
@@ -344,7 +357,6 @@ class Table(Resource):
         
         
         return False
-    
     
     
     def importData(self, dataArray = [], invalidFields = INVALID_FIELD_RENAME, skipError = True):

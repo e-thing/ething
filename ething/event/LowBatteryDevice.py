@@ -9,5 +9,8 @@ class LowBatteryDevice(ResourceSignal):
 
 @attr('resource', validator = isResourceFilter(onlyTypes = ('Device',)) | isNone())
 class LowBatteryDeviceEvent(ResourceEvent):
+    """
+    is emitted each time the device's battery level go under 10%
+    """
     signal = LowBatteryDevice
     

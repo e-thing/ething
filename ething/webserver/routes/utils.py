@@ -8,8 +8,11 @@ import os
 from ething.meta import resource_classes, interfaces_classes, event_classes, iface
 from ething.base import READ_ONLY
 from ething.Resource import Resource
+from ething.event import Event
 
 from ething.Scope import Scope
+
+from ething.utils import get_info
 
 def attr_helper(schema, name, attribute):
     
@@ -102,6 +105,7 @@ def install(core, app, auth, **kwargs):
     #
     
     @app.route('/api/utils/definitions')
+    @auth.required()
     def definitions():
         global _meta
         
@@ -110,7 +114,8 @@ def install(core, app, auth, **kwargs):
                 "resources": {},
                 "interfaces": {},
                 "scopes": Scope.list,
-                "events": {}
+                "events": {},
+                "info": get_info(core)
             }
             
             for name in list(resource_classes):
@@ -171,12 +176,40 @@ def install(core, app, auth, **kwargs):
                 
                 _meta['interfaces'][name] = schema
              
+            #for name in list(event_classes):
+            #    event_cls = event_classes[name]
+            #    
+            #    schema = event_cls.schema(helper = attr_helper)
+            #    
+            #    if event_cls.is_abstract():
+            #        schema['virtual'] = True
+            #    
+            #    _meta['events'][name] = schema
+            
             for name in list(event_classes):
                 event_cls = event_classes[name]
                 
-                schema = event_cls.schema(helper = attr_helper)
+                schema = event_cls.schema(flatted = False, helper = attr_helper)
                 
-                if resource_cls.is_abstract():
+                # static inheritance
+                allOf = []
+                for b in event_cls.__bases__:
+                    
+                    if issubclass(b, Event):
+                        allOf.append({
+                            '$ref': '#/events/%s' % b.__name__
+                        })
+                        
+                
+                if len(allOf) > 0:
+                    if schema:
+                        allOf.append(schema)
+                    
+                    schema = {
+                        'allOf': allOf
+                    }
+                
+                if event_cls.is_abstract():
                     schema['virtual'] = True
                 
                 _meta['events'][name] = schema

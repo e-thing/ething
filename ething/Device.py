@@ -118,7 +118,7 @@ class Device(with_metaclass(MetaDevice, Resource)):
                         
                         maxLength = 5000
                         
-                        if isinstance(history, integer_types):
+                        if isinstance(history, integer_types) and history is not True:
                             maxLength = history if history > 0 else None
                         
                         # create it !

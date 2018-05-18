@@ -43,6 +43,7 @@ def rule_to_path(rule):
 path_arguments = {
     'id': "An id representing a Resource",
     'operationId': "id of the operation",
+    'customEventName': 'name of the custom event',
 }
 
 CONVERTER_MAPPING = {

@@ -46,86 +46,86 @@ exec(open(pjoin(here,NAME,'version.py')).read())
 
 
 
-class BuildWebUI(Command):
-    """
-    Build the webui
-    """
-    
-    description = 'build the webui'
-    user_options = []
-    
-    node_modules = pjoin(webui_root, 'node_modules')
-    dist_dir = pjoin(webui_root, 'dist')
-    src_dir = pjoin(webui_root, 'src')
-    
-    def initialize_options(self):
-        pass
-    
-    def finalize_options(self):
-        pass
-    
-    def run(self):
-        
-        if not which('npm'):
-            print("ERROR: `{0}` unavailable. If you're running this command using sudo, make sure `{0}` is available to sudo.".format('npm'), file=sys.stderr)
-            return
-        
-            
-        # start build webui
-        
-        if is_stale(self.dist_dir, self.src_dir):
-            
-            print("webui build required.")
-            
-            try:
-                print("Installing webui build dependencies with npm. This may take a while...")
-                
-                run('npm install --only=dev', cwd=webui_root)
-                
-                print("Building webui. This may take a while...")
-                
-                run('npm run build', cwd=webui_root)
-                
-            except CalledProcessError as e:
-                print('ERROR: Failed to build the webui: %s'.format(e), file=sys.stderr)
-                return
-        
-        else :
-            print("no webui build required.")
-        
-        # end build webui
-        
-        print("Installing webui dependencies with npm. This may take a while...")
-        
-        try:
-            run('npm install --only=prod', cwd=webui_root)
-        except CalledProcessError as e:
-            print('ERROR: Failed to install the webui: %s'.format(e), file=sys.stderr)
-            return
-        
-        
-        
-        self.update_package_data()
-        
-        
-    
-    
-    
-    def update_package_data(self):
-        
-        package_data = self.distribution.package_data
-        
-        package_data.setdefault(NAME, [])
-        
-        for d in run('npm ls --only=prod --parseable', output=True, cwd=webui_root).splitlines():
-            
-            d = d.decode("utf-8")
-            
-            if d.startswith(self.node_modules):
-                
-                reld = os.path.relpath(d, root)
-                print(reld)
-                package_data[NAME] += _get_package_data(NAME, reld+'/**' )
+# class BuildWebUI(Command):
+#     """
+#     Build the webui
+#     """
+#     
+#     description = 'build the webui'
+#     user_options = []
+#     
+#     node_modules = pjoin(webui_root, 'node_modules')
+#     dist_dir = pjoin(webui_root, 'dist')
+#     src_dir = pjoin(webui_root, 'src')
+#     
+#     def initialize_options(self):
+#         pass
+#     
+#     def finalize_options(self):
+#         pass
+#     
+#     def run(self):
+#         
+#         if not which('npm'):
+#             print("ERROR: `{0}` unavailable. If you're running this command using sudo, make sure `{0}` is available to sudo.".format('npm'), file=sys.stderr)
+#             return
+#         
+#             
+#         # start build webui
+#         
+#         if is_stale(self.dist_dir, self.src_dir):
+#             
+#             print("webui build required.")
+#             
+#             try:
+#                 print("Installing webui build dependencies with npm. This may take a while...")
+#                 
+#                 run('npm install --only=dev', cwd=webui_root)
+#                 
+#                 print("Building webui. This may take a while...")
+#                 
+#                 run('npm run build', cwd=webui_root)
+#                 
+#             except CalledProcessError as e:
+#                 print('ERROR: Failed to build the webui: %s'.format(e), file=sys.stderr)
+#                 return
+#         
+#         else :
+#             print("no webui build required.")
+#         
+#         # end build webui
+#         
+#         print("Installing webui dependencies with npm. This may take a while...")
+#         
+#         try:
+#             run('npm install --only=prod', cwd=webui_root)
+#         except CalledProcessError as e:
+#             print('ERROR: Failed to install the webui: %s'.format(e), file=sys.stderr)
+#             return
+#         
+#         
+#         
+#         self.update_package_data()
+#         
+#         
+#     
+#     
+#     
+#     def update_package_data(self):
+#         
+#         package_data = self.distribution.package_data
+#         
+#         package_data.setdefault(NAME, [])
+#         
+#         for d in run('npm ls --only=prod --parseable', output=True, cwd=webui_root).splitlines():
+#             
+#             d = d.decode("utf-8")
+#             
+#             if d.startswith(self.node_modules):
+#                 
+#                 reld = os.path.relpath(d, root)
+#                 print(reld)
+#                 package_data[NAME] += _get_package_data(NAME, reld+'/**' )
         
     
 
@@ -150,15 +150,15 @@ def wrapper(cls, strict=True):
     class Cmd(cls):
         def run(self):
             print("############## start %s" % cls.__name__)
-            if not getattr(self, 'uninstall', None):
-                try:
-                    self.run_command('build_webui')
-                    #self.run_command('handle_files')
-                except Exception:
-                    if strict:
-                        raise
-                    else:
-                        pass
+            # if not getattr(self, 'uninstall', None):
+            #     try:
+            #         self.run_command('build_webui')
+            #         #self.run_command('handle_files')
+            #     except Exception:
+            #         if strict:
+            #             raise
+            #         else:
+            #             pass
             
             # update package data
             update_package_data(self.distribution)
@@ -174,7 +174,7 @@ def wrapper(cls, strict=True):
 
 
 cmdclass = {
-    'build_webui': BuildWebUI,
+    # 'build_webui': BuildWebUI,
     'build_py': wrapper(build_py, strict=is_repo),
     'bdist_egg': wrapper(bdist_egg, strict=True) if 'bdist_egg' in sys.argv else bdist_egg_disabled,
     'sdist': wrapper(sdist, strict=True),
@@ -571,6 +571,7 @@ setup(
         "webargs",
         "apispec", # http api
         "Jinja2", # http api
+        "xmltodict",
     ],
     
     extras_require={

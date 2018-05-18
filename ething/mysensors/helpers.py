@@ -256,7 +256,7 @@ def RGBW_decoder(value):
 
 
 
-# id, name, type or codec (encoder, decoder, True), keep_history(ie store the value in a table)
+# id, name, type or codec (encoder, decoder), keep_history(ie store the value in a table)
 valueTypes = {
     'V_TEMP' : (0 , "temperature", 'float', True),
     'V_HUM' : (1 , "humidity", 'float', True),

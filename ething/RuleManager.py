@@ -83,7 +83,6 @@ class RuleManager(object):
             
             for signal in self._queue:
                 signal_type = type(signal).__name__
-                
                 for rule in self._cache.get(signal_type, []):
                     if rule.event.filter(signal):
                         self.log.debug("process rule %s from signal %s" % (rule, signal_type))
@@ -100,7 +99,7 @@ class RuleManager(object):
         })
         
         for rule in rules:
-            signal = rule.event.signal
+            signal = rule.event.signal.__name__
             
             if signal not in self._cache:
                 self._cache[signal] = []

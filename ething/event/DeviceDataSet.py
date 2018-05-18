@@ -13,6 +13,9 @@ class DeviceDataSet(ResourceSignal):
 
 @attr('resource', validator = isResourceFilter(onlyTypes = ('Device',)) | isNone())
 class DeviceDataSetEvent(ResourceEvent):
+    """
+    is emitted each time a device emitted data
+    """
     signal = DeviceDataSet
 
 

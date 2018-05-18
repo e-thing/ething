@@ -2,7 +2,6 @@
 
 """
  @author Adrien Mezerette <a.mezerette@gmail.com>
- @version 0.1.0
  @package ething
 """
 
@@ -42,7 +41,7 @@ from .zigate import Zigate
 from .device.Http import Http
 from .device.RTSP import RTSP
 from .device.SSH import SSH
-
+from .device.Denon import Denon
 
 
 

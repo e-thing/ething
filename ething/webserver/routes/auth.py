@@ -62,7 +62,17 @@ def install(core, app, auth, **kwargs):
                 return resp
         
         raise ServerException('invalid authentication credentials !', 401)
-
+    
+    @app.route('/auth/refresh', methods=['POST'])
+    @auth.required()
+    def auth_refresh():
+        
+        if g.auth.type == 'session':
+            resp = make_response(('', 204))
+            if auth.session.refresh(request, resp):
+                return resp
+        
+        raise ServerException('not authorized', 403)
 
 
     @app.route('/auth/logout')
@@ -78,18 +88,5 @@ def install(core, app, auth, **kwargs):
         auth.session.unauthenticate(request, resp)
         
         return resp
-        
-
-    @app.route('/auth/login')
-    def auth_login():
-        
-        redirect_uri = request.values.get('redirect_uri') or url_for('root_client')
-        
-        if auth.session.isAuthenticated(request):
-            
-            return redirect(redirect_uri)
-        
-        else:
-            core.log.info(dir_html)
-            return send_from_directory(dir_html, 'login.html')
+    
 

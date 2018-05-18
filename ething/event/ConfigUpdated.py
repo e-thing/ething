@@ -10,5 +10,6 @@ class ConfigUpdated(Signal):
 
 
 class ConfigUpdatedEvent(Event):
+    
     signal = ConfigUpdated
 

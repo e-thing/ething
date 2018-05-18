@@ -20,33 +20,56 @@ class Session(object):
         
         if login == self.core.config['auth']['username'] and password == self.core.config['auth']['password']:
             
-            # set session cookie (httponly)
-            expireAt = int(time.time() + self.core.config['session']['expiration'])
-            
-            path = re.sub('/auth/.*$', '', str(request.url_rule))
-            if not path:
-                path = '/'
-            
-            secure = bool(request.url.startswith('https://'))
-            
-            sessionData = {
-                'sessionId' : uniqid(''),
-                'iat' : time.time(),
-                'exp' : expireAt
-            }
-            
-            csrf_token = hmac.new(self.core.config['session']['secret'].encode('utf8'), sessionData['sessionId'].encode('utf8'), hashlib.md5).hexdigest()
-            
-            token = jwt.encode(sessionData, self.core.config['session']['secret'])
-            
-            response.set_cookie(self.core.config['session']['cookie_name'], token, expires = expireAt, domain = request.host, path = path, secure = secure, httponly = True)
-            response.set_cookie('Csrf-token', csrf_token, expires = expireAt, domain = request.host, path = path, secure = secure, httponly = False)
+            self.generate(request, response)
             
             return True
             
         
         return False
-
+    
+    def generate(self, request, response, sessionData = None):
+        # set session cookie (httponly)
+        expireAt = int(time.time() + self.core.config['session']['expiration'])
+        
+        path = re.sub('/auth/.*$', '', str(request.url_rule))
+        if not path:
+            path = '/'
+        
+        secure = bool(request.url.startswith('https://'))
+        
+        if sessionData is None:
+            sessionData = {
+                'sessionId' : uniqid(''),
+                'iat' : time.time()
+            }
+        
+        sessionData['exp'] = expireAt
+        
+        csrf_token = hmac.new(self.core.config['session']['secret'].encode('utf8'), sessionData['sessionId'].encode('utf8'), hashlib.md5).hexdigest()
+        
+        token = jwt.encode(sessionData, self.core.config['session']['secret'])
+        
+        response.set_cookie(self.core.config['session']['cookie_name'], token, expires = expireAt, domain = request.host, path = path, secure = secure, httponly = True)
+        response.set_cookie('Csrf-token', csrf_token, expires = expireAt, domain = request.host, path = path, secure = secure, httponly = False)
+    
+    
+    def refresh(self, request, response):
+        
+        token = self.get_token(request)
+        
+        if token:
+            
+            try:
+                sessionData = jwt.decode(token, self.core.config['session']['secret'])
+            except jwt.exceptions.InvalidTokenError:
+                return False
+            
+            self.generate(request, response, sessionData)
+            
+            return True
+        
+        return False
+    
     
     def checkCsrf(self, request):
         # Csrf control
@@ -63,13 +86,14 @@ class Session(object):
         
         return False
         
-        
+    
+    def get_token(self, request):
+        return request.cookies.get(self.core.config['session']['cookie_name'])
     
     
     def isAuthenticated(self, request, checkCsrf = None):
         
-        token = request.cookies.get(self.core.config['session']['cookie_name'])
-        csrfToken = request.cookies.get('Csrf-token')
+        token = self.get_token(request)
         
         if token and ((not checkCsrf) or self.checkCsrf(request)):
             # ok decode the JWT token !

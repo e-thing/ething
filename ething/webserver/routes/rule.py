@@ -74,4 +74,9 @@ def install(core, app, auth, **kwargs):
         
         return ('', 204)
     
+    @app.route('/api/rules/trigger/<customEventName>')
+    @auth.required('rule:trigger')
+    def trigger_custom_event(customEventName):
+        core.dispatchSignal('Custom', customEventName)
+        return ('', 204)
     

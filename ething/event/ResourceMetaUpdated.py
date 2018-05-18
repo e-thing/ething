@@ -14,6 +14,9 @@ class ResourceMetaUpdated(ResourceSignal):
 
 @attr('attributes', validator = isArray(min_len = 1, item = isString(allow_empty = False)) | isNone(), default = None)
 class ResourceMetaUpdatedEvent(ResourceEvent):
+    """
+    is emitted each time a resource attribute has been updated
+    """
     
     signal = ResourceMetaUpdated
     

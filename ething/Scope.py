@@ -62,11 +62,8 @@ class Scope(object):
         'rule:write' : {
             'description' : 'create rules'
         },
-        'rule:execute' : {
-            'description' : 'execute rules'
-        },
-        'rule:admin' : {
-            'description' : 'delete rules'
+        'rule:trigger' : {
+            'description' : 'trigger custom events'
         }
         
     }

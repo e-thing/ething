@@ -13,7 +13,9 @@ class Tick(Signal):
 
 @attr('cron_expression', validator = isString(allow_empty = False))
 class Timer(Event):
-    
+    """
+    is emitted periodically at fixed times, dates, or intervals
+    """
     signal = Tick
     
     DELTA = 2

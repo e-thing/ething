@@ -28,7 +28,7 @@ def to_CIDR_notation(bytes_network, bytes_netmask):
 
 def scan_and_print_neighbors(net, interface, timeout=1):
     results = []
-    #print("arping %s on %s" % (net, interface))
+    # print("arping %s on %s" % (net, interface))
     try:
         ans, unans = scapy.layers.l2.arping(net, iface=interface, timeout=timeout, verbose=False)
         for s, r in ans.res:
@@ -44,7 +44,7 @@ def scan_and_print_neighbors(net, interface, timeout=1):
             
             vendor = get_vendor(mac)
             
-            #print(ip, mac, hostname, vendor)
+            # print(ip, mac, hostname, vendor)
             
             results.append({
                 'mac': mac,
@@ -84,7 +84,12 @@ def get_vendor(mac):
 def scan():
     results = []
     
-    for network, netmask, _, interface, address in scapy.config.conf.route.routes:
+    for route in scapy.config.conf.route.routes:
+        
+        network = route[0]
+        netmask = route[1]
+        interface = route[3]
+        address = route[4]
         
         # skip loopback network and default gw
         if network == 0 or interface == 'lo' or address == '127.0.0.1' or address == '0.0.0.0':
@@ -93,19 +98,17 @@ def scan():
         if netmask <= 0 or netmask == 0xFFFFFFFF:
             continue
         
-        net = to_CIDR_notation(network, netmask)
-        
         if interface != scapy.config.conf.iface:
             # see http://trac.secdev.org/scapy/ticket/537
             # skipping because scapy currently doesn't support arping on non-primary network interfaces
             continue
         
+        net = to_CIDR_notation(network, netmask)
+        
         if net:
-            #print(network, netmask, interface, address, net)
+            # print(network, netmask, interface, address, net)
             r = scan_and_print_neighbors(net, interface)
             results += r
     
     return results
 
-
-    
