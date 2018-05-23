@@ -319,7 +319,7 @@ interface = InterfaceDecorator()
 
 
 type_synonyms = [
-    ['int', 'float', 'long', 'double'],
+    ['int', 'float', 'long', 'double', 'integer'],
     ['unicode', 'string', 'str']
 ]
 
@@ -391,8 +391,8 @@ class Method(object):
                     kwargs[arg_name] = self.args[arg_name]['default']
         
         if self.bounded:
-            if hasattr(self.device, self.func_name):
-                res = getattr(self.device, self.func_name)(**kwargs)
+            if hasattr(self.device, self.name):
+                res = getattr(self.device, self.name)(**kwargs)
             else:
                 res = self.__func(self.device, **kwargs)
         else:

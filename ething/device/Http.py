@@ -5,15 +5,16 @@ from future.utils import string_types
 from future.utils import iteritems
 from ething.Device import Device, method, attr, isString, isNone, isObject, READ_ONLY, PRIVATE, Validator
 from ething.utils import pingable
+from ething.Helpers import dict_recursive_update
 from ething.Scope import Scope, ScopeValidator
 from ething.ApiKey import ApiKey
 import json
 from ething.swagger import Reader
 import requests
 try:
-    from urllib.parse import urlparse, urlencode
+    from urllib.parse import urlparse, urlsplit, urlencode, parse_qs, urlunparse
 except ImportError:
-    from urlparse import urlparse
+    from urlparse import urlparse, urlsplit, parse_qs, urlunparse
     from urllib import urlencode
 
 
@@ -79,7 +80,7 @@ class Http(Device):
                 r = self.make_request(request_['url'], method = request_['method'], headers = request_['headers'], body = request_['body'])
                 
                 content_type = r.headers.get('content-type', None)
-                content_length = r.headers.get('content-length', None)
+                content_length = int(r.headers.get('content-length', 0))
                 isjson = False
                 stream = False
                 
@@ -87,7 +88,7 @@ class Http(Device):
                     isjson = True
                     stream = False
                 else:
-                    if content_length is None or content_length > 15000:
+                    if content_length > 15000:
                         stream = True
                 
                 if stream:
@@ -141,14 +142,14 @@ class Http(Device):
         
         auth = None
         
-        ref = urlparse.urlsplit(self.url)
-        new = urlparse.urlsplit(path)
+        ref = urlsplit(self.url)
+        new = urlsplit(path)
         
         # join path
         path = ref.path.rstrip('/') + '/' + new.path.lstrip('/')
         
         # join the query string
-        query = dict_recursive_update({}, urlparse.parse_qs(ref.new), urlparse.parse_qs(ref.query))
+        query = dict_recursive_update({}, parse_qs(new.query), parse_qs(ref.query))
         
         if self.isAuthenticate and self.authMode == 'query':
             query['user'] = [self.authUser]
@@ -161,7 +162,7 @@ class Http(Device):
         
         query = urlencode(q)
         
-        url = urlparse.urlunparse((ref.scheme, ref.netloc, path, '', query, ''))
+        url = urlunparse((ref.scheme, ref.netloc, path, '', query, ''))
         
         self.ething.log.debug("Http request: %s", url)
         

@@ -199,6 +199,7 @@ def main():
     parser.add_argument('-c', '--config', type=str, help='set the config file')
     parser.add_argument('-d', '--daemon', action='store_true', help='launch this program as a daemon')
     parser.add_argument('-p', '--pidfile', type=str, help='set pid to the given file')
+    parser.add_argument('--stop', action='store_true', help='stop any running instance and exit')
     parser.add_argument('--repair', action='store_true', help='try to repair the database and exit')
     parser.add_argument('--generate-docs', type=str, metavar="OUTPUT_DIRECTORY", help='generate the webserver documentations (openapi + markdown) and exit')
     
@@ -214,12 +215,16 @@ def main():
     if args.pidfile :
         PID_FILE = args.pidfile
     
+    if args.stop :
+        quitInstance()
+        sys.exit()
     
     try:
         pid = isAlreadyRunning()
     except IOError as e:
         if e.errno == errno.EACCES or e.errno == errno.EPERM:
             pid = True # pid file exists but access denied
+    
     if pid:
         print("ething already running with pid=%s" % (str(pid) if pid is not True else '<access_denied>'))
         print("if it is not true, delete manually the file '%s' and try again." % PID_FILE)

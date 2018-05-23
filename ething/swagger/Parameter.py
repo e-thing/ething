@@ -141,9 +141,9 @@ class StandardParameter(Parameter):
             where = {}
         
         for field in StandardParameter.jsonSchemaFields:
-            f = schema.get('field', None)
+            f = schema.get(field, None)
             if f is not None:
-                where['field'] = StandardParameter.filter(f) if field == 'items' else f
+                where[field] = StandardParameter.filter(f) if field == 'items' else f
         
         return where;
     
