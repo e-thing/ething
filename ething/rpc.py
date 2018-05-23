@@ -6,7 +6,12 @@ import pickle
 import os
 import tempfile
 import traceback
+import errno
 
+if os.name == 'nt':
+    EAGAIN = errno.WSAEWOULDBLOCK
+else:
+    EAGAIN = errno.EAGAIN
 
 class RPC_Response(object):
     
@@ -44,7 +49,7 @@ class RPC_pubsubmsg(object):
         self.message = message
 
 
-default_address = os.path.join(tempfile.gettempdir(), './ething_socket')
+default_address = ('127.0.0.1', 8042) if os.name == 'nt' else os.path.join(tempfile.gettempdir(), './ething_socket')
 
 
 class RPC(object):
@@ -96,7 +101,12 @@ class RPC(object):
             return None
         
         size = struct.unpack('!i', header)[0]
-        data = sock.recv(size)
+        try:
+            data = sock.recv(size)
+        except socket.error as err:
+            if err.errno != EAGAIN:
+                raise
+
         if len(data) != size:
             return None
         

@@ -1,8 +1,13 @@
 # coding: utf-8
-from multiprocessing import Process
 import time
+import os
 
+is_thread = os.name == "nt"
 
+if is_thread:
+    from threading import Thread
+else:
+    from multiprocessing import Process
 
 
 class Task(object):
@@ -41,7 +46,7 @@ class Task(object):
     
     @property
     def exit_code(self):
-        return self._p.exitcode if self._p is not None else None
+        return (self._p.exitcode if not is_thread else 0) if self._p is not None else None
     
     @property
     def pid(self):
@@ -59,7 +64,11 @@ class Task(object):
     def start(self):
         self.log.debug("start task '%s'" % self.name)
         self._start_time = time.time()
-        self._p = Process(target=self._wrapper, args=self._args, kwargs=self._kwargs)
+        if is_thread:
+            self._p = Thread(target=self._wrapper, args=self._args, kwargs=self._kwargs)
+            self._p.daemon = True
+        else:
+            self._p = Process(target=self._wrapper, args=self._args, kwargs=self._kwargs)
         self._p.start()
     
     def _wrapper(self, *args, **kwargs):
@@ -73,8 +82,12 @@ class Task(object):
     def stop(self):
         if self.is_running:
             self.log.debug("stop task '%s', pid=%d" % (self.name, self.pid))
-            self._p.terminate()
-            self._p.join()
+            if not is_thread:
+                self._p.terminate()
+                self._p.join()
+            else:
+                # thread cannot be stopped !
+                pass
         
         if self._end_time is None and self._p:
             self._end_time = time.time()

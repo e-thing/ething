@@ -4,7 +4,10 @@ from future.utils import text_type, bord
 from .Resource import Resource
 import datetime
 import os
-import magic
+try:
+    import magic
+except ImportError:
+    magic = None
 import re
 try:
     from PIL import Image, ImageOps
@@ -144,7 +147,10 @@ class File(Resource):
                 # try to get the mime type from the content
                 if not content:
                     content = self.read()
-                mime = magic.from_buffer(content, mime=True)
+                if magic:
+                    mime = magic.from_buffer(content, mime=True)
+                else:
+                    mime = 'text/plain'
             
             
             self._mime = mime

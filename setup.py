@@ -555,7 +555,7 @@ setup(
         "pillow",
         "shortid",
         "python-magic",
-        "flask",
+        "Flask",
         "flask-cors",
         "paramiko",
         "jsonderef",
@@ -572,6 +572,7 @@ setup(
         "apispec", # http api
         "Jinja2", # http api
         "xmltodict",
+        "python-magic"
     ],
     
     extras_require={

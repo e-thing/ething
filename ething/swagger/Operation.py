@@ -5,7 +5,10 @@ from ething.Helpers import reraise
 import re
 from .Parameter import instanciate as instanciate_parameter, StandardParameter
 import sys
-import magic
+try:
+    import magic
+except ImportError:
+    magic = None
 import string
 import random
 import json
@@ -150,12 +153,17 @@ class Operation(object):
             if where == 'formData' : 
                 
                 if param.type == 'file':
-                    
+
+                    if magic:
+                        mime = magic.from_buffer(value, mime=True)
+                    else:
+                        mime = 'text/plain'
+
                     formData[param.name] = {
                         "type" : "file",
                         "content" : str(value),
                         "filename" : 'file'+str(hasFiles),
-                        "mime" : magic.from_buffer(value, mime=True)
+                        "mime" : mime
                     }
                     
                     hasFiles += 1;

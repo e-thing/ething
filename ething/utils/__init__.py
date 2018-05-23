@@ -43,8 +43,8 @@ def print_info(core, printer):
     printer("PYTHON_EXE: %s" % (python_info.get('executable')))
     
     platform_info = info.get('platform', {})
-    printer("PLATFORM  : %s" % (python_info.get('name')))
-    printer("SYSTEM    : %s" % (python_info.get('version')))
+    printer("PLATFORM  : %s" % (platform_info.get('name')))
+    printer("SYSTEM    : %s" % (platform_info.get('version')))
     
     nodejs_info = info.get('nodejs', {})
     printer("NODE.JS   : %s" % (nodejs_info.get('version')))

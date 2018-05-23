@@ -5,7 +5,7 @@ import sys
 
 def is_nodejs_installed(core = None):
     
-    exe = "nodejs"
+    exe = "node"
     res = False
     
     if core:

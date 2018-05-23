@@ -77,7 +77,7 @@ class Config(object):
         },
         
         'nodejs': {
-            'executable': 'nodejs'
+            'executable': 'node'
         },
         
         'node-red': {
