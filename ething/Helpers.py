@@ -33,17 +33,17 @@ def filter_obj(obj, fields):
         if f in obj:
             cpy[f] = obj[f]
     return cpy
-    
 
-def toJson(obj, fields = None, **kwargs):
-    
+
+def toJson(obj, fields=None, **kwargs):
+
     # filter by keys
     if fields is not None:
         if isinstance(obj, dict):
             obj = filter_obj(obj, fields)
         elif isinstance(obj, list):
             obj = [filter_obj(o, fields) for o in obj]
-    
+
     return json.dumps(obj, default=serialize, **kwargs)
 
 
@@ -61,21 +61,19 @@ else:
             raise exc_value.with_traceback(exc_traceback)
         raise exc_value
 
+
 def is_number(s):
     try:
         float(s)
         return True
     except ValueError:
         pass
- 
+
     try:
         import unicodedata
         unicodedata.numeric(s)
         return True
     except (TypeError, ValueError):
         pass
-    
+
     return False
-
-
-

@@ -5,10 +5,9 @@ from ..server_utils import *
 
 
 def install(core, app, auth, **kwargs):
-    
-    
+
     @app.route('/api/settings', methods=['GET', 'PATCH'])
-    @auth.required(GET = 'settings:read', PATCH = 'settings:write')
+    @auth.required(GET='settings:read', PATCH='settings:write')
     def settings():
         """
         ---
@@ -40,5 +39,5 @@ def install(core, app, auth, **kwargs):
         """
         if request.method == 'PATCH':
             core.config.set(request.get_json())
-        
+
         return jsonify(core.config())

@@ -72,23 +72,29 @@ items: {{ render_schema(schema["items"], indent + 2) }}
   {% for ref, definition in definitions | dictsort %}
 {{ "### " + ref | indent(indent, True) }}
 
-{% if definition.description %}
-{{ definition.description }}
-{% endif %}
-
 {% set object = definition %}
+{% set bases = [] %}
 
 {% if definition.allOf %}
-#### INHERITED
-
 {% for base in definition.allOf %}
 {% if "$ref" in base %}
-{{ render_ref(base["$ref"]) }}
+{% do bases.append(base["$ref"]) %}
 {% else %}
 {% do object.update(base) %}
 {% endif %}
 {% endfor %}
+{% endif %}
 
+{% if object.description %}
+{{ definition.description }}
+{% endif %}
+
+{% if bases %}
+#### INHERITED
+
+{% for base in bases %}
+{{ render_ref(base) }}
+{% endfor %}
 {% endif %}
 
 {% if object.properties %}

@@ -2,7 +2,7 @@
 
 # EThing HTTP API
 
-**Version**: 0.1.1
+**Version**: 0.1.2
 
 ## Table of Contents
 
@@ -15,9 +15,6 @@
 * [Partial response](#partial-response)
 * [Filter resource or table data](#filter-resource-or-table-data)
 * [Paths](#path)
-  * [POST /api/apps](#post-apiapps)
-  * [GET /api/apps/{id}](#get-apiappsid)
-  * [PUT /api/apps/{id}](#put-apiappsid)
   * [POST /api/devices](#post-apidevices)
   * [GET /api/devices/{id}/api](#get-apidevicesidapi)
   * [GET /api/devices/{id}/api/{operationId}](#get-apidevicesidapioperationid)
@@ -26,7 +23,6 @@
   * [POST /api/files](#post-apifiles)
   * [GET /api/files/{id}](#get-apifilesid)
   * [PUT /api/files/{id}](#put-apifilesid)
-  * [GET /api/files/{id}/icon](#get-apifilesidicon)
   * [POST /api/notification](#post-apinotification)
   * [GET /api/resources](#get-apiresources)
   * [DELETE /api/resources/{id}](#delete-apiresourcesid)
@@ -43,7 +39,7 @@
   * [POST /api/tables/{id}/replace](#post-apitablesidreplace)
   * [GET /api/tables/{id}/statistics](#get-apitablesidstatistics)
 * [Definitions](#definitions)
-  * [App](#app)
+  * [Denon](#denon)
   * [Device](#device)
   * [Error](#error)
   * [File](#file)
@@ -279,162 +275,6 @@ Search for resources created by the current authenticated Device or App
 
 ## Paths
 
-### POST /api/apps
-
-Creates a new application.
-
-An application consists of a single HTML page. Use the Javascript SDK to easily build an application.
-
- example:
-
-```html
-<!DOCTYPE html>
-<html>
-
-  <head>
-
-    <!-- CORE -->
-    <script src="__JS_URL__"></script>
-
-  </head>
-
-  <body>
-
-    <!-- your content goes here -->
-
-    <!-- APP -->
-    <script type="text/javascript">
-      var main = function() {
-        var app = EThing.auth.getApp();
-
-        var textnode = document.createTextNode('application : ' + app.name());
-        document.body.appendChild(textnode);
-
-      };
-
-      EThing.initialize({
-        serverUrl: '__SERVER_URL__',
-        apiKey: '__API_KEY__'
-      }, main || null, function(error) {
-        // on error
-        alert(error.message);
-      });
-
-    </script>
-
-  </body>
-</html>
-```
-
-#### Preprocessor definitions
-
-The following string are automatically replaced in the HTML code :
-
-| Definition     | Value                                                                |
-|----------------|----------------------------------------------------------------------|
-| __API_KEY__    | the API key of this application                                      |
-| __ID__         | the ID of this application                                           |
-| __NAME__       | the name of this application                                         |
-| __SERVER_URL__ | the url of the server                                                |
-| __JS_URL__     | the url of Javascript API                                            |
-
-There are 2 ways to pass directly the code and the icon data of the application on the same request :
-
- - pass the code or/and the icon data as a base-64 encoded ASCII string through the key 'content' and 'icon' respectively of the metadata object.
-
- example:
-
-```json
-{
-   "name": "myapp",
-   "content": "SGVsb...GQgIQ==", // your code in base-64
-   "icon": "bXkga...biBkYXRh" // your icon data in base-64
-}
-```
-
- - multipart/related request: transfers the code and/or the icon binary data along with metadata. The order of the different part does not matter. The code part must have the Content-Type header set to 'text/html' or 'text/plain'.
-   The icon part must have the Content-Type header set to a compatible image MIME type.
-
- example:
-
-```
-POST /ething/api/apps HTTP/1.1
-Host: <YOUR_HOST>
-Content-Type: multipart/related; boundary=foo_bar_baz
-
---foo_bar_baz
-Content-Type: application/json; charset=UTF-8
-
-{
-  "name": "myapp"
-}
-
---foo_bar_baz
-Content-Type: image/jpeg
-
-<JPEG DATA>
-
---foo_bar_baz
-Content-Type: text/html
-
-<!doctype html>
-<html lang="en">
-<head>
-  <meta charset="utf-8">
-  <title>myapp</title>
-</head>
-<body>
-  Hello World !
-</body>
-</html>
---foo_bar_baz--
-```
-
-#### Request body:
-
-##### Description:
-  The metadata of the application to be created.
-
-##### Data:
-[App](#app)
-
-#### Responses:
-  - 200: The application was successfully created
-    [App](#app)
-
-### GET /api/apps/{id}
-
-Retrieves the script of an application.
-
-#### Path Params:
-- **id** [string]: An id representing a Resource.
-
-#### Query Params:
-- **exec** [boolean]: Set this parameter to '1' to get the HTML code ready to be executed in a browser (i.e. content-type set to 'text/html' and the preprocessor definitions set).
-
-#### Responses:
-  - 200: The source code
-    *(file)*
-
-### PUT /api/apps/{id}
-
-Set the script for this application. The script must be a single HTML page.
-
-#### Path Params:
-- **id** [string]: An id representing a Resource.
-
-#### Request body:
-
-##### Description:
-  The script as a HTML page.
-
-##### Data:
-*(string)*
-
-#### Responses:
-  - 200: The script was set successfully. It returns back the meta data of this application.
-    [App](#app)
-
 ### POST /api/devices
 
 Creates a new device.
@@ -666,17 +506,6 @@ curl
   - 200: The file's metadata
     [File](#file)
 
-### GET /api/files/{id}/icon
-
-Retrieves the icon of an application if there is one defined.
-
-#### Path Params:
-- **id** [string]: An id representing a Resource.
-
-#### Responses:
-  - 200: The icon of this application.
-    *(file)*
-
 ### POST /api/notification
 
 Send a notification to the registered email addresses (cf. settings).
@@ -710,10 +539,10 @@ curl -H 'X-API-KEY: <YOUR_API_KEY>' http://localhost:8000/api/resources
 ```
 
 #### Query Params:
-- **limit** [integer]: Limits the number of resources returned.
-- **sort** [string]: The key on which to do the sorting, by default the sort is made by modifiedDate descending. To make the sort descending, prepend the field name by minus "-". For instance, "-createdDate" will sort by createdDate descending.
 - **q** [string]: Query string for searching resources.
 - **skip** [integer]: Skips a number of resources.
+- **limit** [integer]: Limits the number of resources returned.
+- **sort** [string]: The key on which to do the sorting, by default the sort is made by modifiedDate descending. To make the sort descending, prepend the field name by minus "-". For instance, "-createdDate" will sort by createdDate descending.
 
 #### Responses:
   - 200: A list of resources
@@ -937,12 +766,12 @@ curl -H 'X-API-KEY: <YOUR_API_KEY>' http://localhost:8000/api/tables/<TABLE_ID>?
 - **id** [string]: An id representing a Resource.
 
 #### Query Params:
-- **start** [integer]: Position of the first rows to return. If start is negative, the position will start from the end. (default to 0).
-- **fmt** [string]: the output format (default to JSON) : json,json_pretty,csv,csv_no_header.
-- **length** [integer]: Maximum number of rows to return. If not set, returns until the end.
 - **sort** [string]: the key on which to do the sorting, by default the sort is made by date ascending. To make the sort descending, prepend the field name by minus "-". For instance, "-date" will sort by date descending.
-- **date_format** [string]: the format of the date field (default to RFC3339) : timestamp,timestamp_ms,rfc3339.
-- **query** [string]: Query string for filtering results.
+- **datefmt** [string]: the format of the date field (default to RFC3339) : timestamp,timestamp_ms,rfc3339.
+- **fmt** [string]: the output format (default to JSON) : json,json_pretty,csv,csv_no_header.
+- **start** [integer]: Position of the first rows to return. If start is negative, the position will start from the end. (default to 0).
+- **length** [integer]: Maximum number of rows to return. If not set, returns until the end.
+- **q** [string]: Query string for filtering results.
 
 #### Responses:
   - 200: The records of this table
@@ -1067,9 +896,9 @@ Update records in a table
 - **id** [string]: An id representing a Resource.
 
 #### Query Params:
-- **upsert** [boolean]: If true and no records was found, the data will be added to the table as a new record.
 - **q** [string]: A query that select the rows to update.
 - **invalid_field** [string]: The behaviour to adopt when an invalid field name appears.
+- **upsert** [boolean]: If true and no records was found, the data will be added to the table as a new record.
 
 #### Responses:
   - 200: The records was successfully updated
@@ -1093,22 +922,17 @@ Compute statistics of a column (=key)
 
 ## Definitions
 
-### App
+### Denon
 
-Application resource representation
+Denon Device resource representation
 
 #### INHERITED
 
-[Resource](#resource)
+[Device](#device)
 
 #### PROPERTIES
 
-  - **apikey** *(string)* *(readonly)*: The apikey for authenticating this app.
-  - **contentModifiedDate** *(string)* *(readonly)*: Last time the conten of this resource was modified
-  - **mime** *(string)* *(readonly)*: The mime type of this app
-  - **scope** *(string)* *(default="")*: The allowed scopes for this application (space separated list). No permissions by default.
-  - **size** *(integer)* *(readonly)*: The size of the application in bytes
-  - **version** *(string)* *(default=null)*: The version of this application
+  - **host**\* *(string)*: The ip address or hostname of the device to connect to.
 
 ### Device
 
@@ -1120,9 +944,9 @@ Application resource representation
 
   - **battery** *(default=null)*: The battery level of this device (must be between 0 (empty) and 100 (full) , or null if the device has no battery information).
   - **connected** *(boolean)* *(default=false)*: Set to true when this device is connected.
-  - **interfaces** *(array)* *(readonly)*: A list of intefaces this device inherit
+  - **interfaces** *(array)* *(readonly)*: A list of interfaces this device inherit
 
-  - **lastSeenDate** *(default=null)*: Last time this device was reached or made a request.
+  - **lastSeenDate** *(readonly)*: The last time this device was reached or made a request.
   - **location** *(default=null)*: The location of this device.
   - **methods** *(array)* *(readonly)*: The list of the methods available.
 
@@ -1144,7 +968,7 @@ An object describing an error
 #### PROPERTIES
 
   - **contentModifiedDate** *(string)* *(readonly)*: Last time the content of this file was modified (formatted RFC 3339 timestamp).
-  - **expireAfter** *(default=null)*: The amount of time (in seconds) after which this resource will be removed.
+  - **expireAfter** *(integer)* *(default=null)*: The amount of time (in seconds) after which this resource will be removed.
   - **isText** *(boolean)* *(readonly)*: True if this file has text based content.
   - **mime** *(string)* *(readonly)*: The MIME type of the file (automatically detected from the content).
   - **size** *(integer)* *(readonly)*: The size of this resource in bytes
@@ -1166,7 +990,7 @@ Http Device resource representation
     - **user** *(string)*
 
   - **scope** *(string)* *(default="")*: The allowed scopes for this device (space separated list). Restrict the Http api access. Default to an empty string (no access).
-  - **url** *(default=null)*: The URL of the device, or null if there is none defined. No URL defined means that the device cannot be reached. Only device with an URL set has a Swagger specification (see /device/<id>/specification endpoint). The specification object define all the available HTTP requests this device accepts.
+  - **url**\* *(string)*: The URL of the device.
 
 ### MihomeDevice
 
@@ -1225,6 +1049,8 @@ MQTT Device resource representation
   - **address**\* *(string)*: The ip address or hostname of the gateway.
 
 ### MySensorsGateway
+
+see https://www.mysensors.org
 
 #### INHERITED
 
@@ -1292,7 +1118,7 @@ The base representation of a resource object
   - **extends** *(array)* *(readonly)*: An array of classes this resource is based on.
 
   - **id** *(string)* *(readonly)*: The id of the resource
-  - **modifiedDate** *(string)* *(default="\u003ccurrent date\u003e")*: Last time this resource was modified
+  - **modifiedDate** *(string)* *(readonly)*: Last time this resource was modified
   - **name**\* *(string)*: The name of the resource
   - **public** *(default=false)*: False: this resource is not publicly accessible. 'readonly': this resource is accessible for reading by anyone. 'readwrite': this resource is accessible for reading and writing by anyone.
   - **type** *(string)* *(readonly)*: The type of the resource
@@ -1320,7 +1146,7 @@ The base representation of a resource object
   - **createdBy**\* *(string)*: The id of the resource responsible of the creation of this resource, or null.
   - **nodeId**\* *(string)*: The hardware id of the node.
   - **protocol**\* *(string)*: The protocol name of the node.
-  - **subType**\* *(string)*: The subtype of the device, ie: thermometer, switch, ...
+  - **subType**\*: The subtype of the device, ie: thermometer, switch, ...
   - **switchId**\*: The switch id of the node. Only available for switch/door/motion subtypes.
 
 ### RFLinkSerialGateway

@@ -13,4 +13,3 @@ class ResourceDeletedEvent(ResourceEvent):
     is emitted each time a resource is deleted
     """
     signal = ResourceDeleted
-    

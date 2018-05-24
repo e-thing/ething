@@ -9,12 +9,10 @@ except ImportError:
 
 
 def test_swagger():
-    
+
     def get(url):
         response = urlopen(url)
         return json.loads(response.read().decode("utf-8"))
-    
-    reader = Reader(get('https://raw.githubusercontent.com/OAI/OpenAPI-Specification/master/examples/v2.0/json/petstore.json'))
-    
-    
-    
+
+    reader = Reader(get(
+        'https://raw.githubusercontent.com/OAI/OpenAPI-Specification/master/examples/v2.0/json/petstore.json'))

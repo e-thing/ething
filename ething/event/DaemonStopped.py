@@ -8,8 +8,5 @@ class DaemonStopped(Signal):
     pass
 
 
-
 class DaemonStoppedEvent(Event):
     signal = DaemonStopped
-
-

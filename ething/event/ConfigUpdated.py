@@ -8,8 +8,6 @@ class ConfigUpdated(Signal):
     pass
 
 
-
 class ConfigUpdatedEvent(Event):
-    
-    signal = ConfigUpdated
 
+    signal = ConfigUpdated

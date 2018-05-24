@@ -3,8 +3,8 @@
 from flask import request, Response
 from ..server_utils import *
 
-def install(core, app, auth, **kwargs):
 
+def install(core, app, auth, **kwargs):
 
     notify_args = {
         'subject': fields.Str(required=True, location="json"),
@@ -38,5 +38,3 @@ def install(core, app, auth, **kwargs):
               description: The notification was successfully sent
         """
         core.notify(args['subject'], args['body'])
-
-

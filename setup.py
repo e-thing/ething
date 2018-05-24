@@ -17,7 +17,8 @@ except ImportError:
 
 # To use a consistent encoding
 from codecs import open
-import os, sys
+import os
+import sys
 from subprocess import check_call, CalledProcessError, check_output
 from os.path import join as pjoin
 SEPARATORS = os.sep if os.altsep is None else os.sep + os.altsep
@@ -38,96 +39,89 @@ with open(pjoin(here, 'README.md'), encoding='utf-8') as f:
     long_description = f.read()
 
 
-exec(open(pjoin(here,NAME,'version.py')).read())
-
-
-
-
-
+exec(open(pjoin(here, NAME, 'version.py')).read())
 
 
 # class BuildWebUI(Command):
 #     """
 #     Build the webui
 #     """
-#     
+#
 #     description = 'build the webui'
 #     user_options = []
-#     
+#
 #     node_modules = pjoin(webui_root, 'node_modules')
 #     dist_dir = pjoin(webui_root, 'dist')
 #     src_dir = pjoin(webui_root, 'src')
-#     
+#
 #     def initialize_options(self):
 #         pass
-#     
+#
 #     def finalize_options(self):
 #         pass
-#     
+#
 #     def run(self):
-#         
+#
 #         if not which('npm'):
 #             print("ERROR: `{0}` unavailable. If you're running this command using sudo, make sure `{0}` is available to sudo.".format('npm'), file=sys.stderr)
 #             return
-#         
-#             
+#
+#
 #         # start build webui
-#         
+#
 #         if is_stale(self.dist_dir, self.src_dir):
-#             
+#
 #             print("webui build required.")
-#             
+#
 #             try:
 #                 print("Installing webui build dependencies with npm. This may take a while...")
-#                 
+#
 #                 run('npm install --only=dev', cwd=webui_root)
-#                 
+#
 #                 print("Building webui. This may take a while...")
-#                 
+#
 #                 run('npm run build', cwd=webui_root)
-#                 
+#
 #             except CalledProcessError as e:
 #                 print('ERROR: Failed to build the webui: %s'.format(e), file=sys.stderr)
 #                 return
-#         
+#
 #         else :
 #             print("no webui build required.")
-#         
+#
 #         # end build webui
-#         
+#
 #         print("Installing webui dependencies with npm. This may take a while...")
-#         
+#
 #         try:
 #             run('npm install --only=prod', cwd=webui_root)
 #         except CalledProcessError as e:
 #             print('ERROR: Failed to install the webui: %s'.format(e), file=sys.stderr)
 #             return
-#         
-#         
-#         
+#
+#
+#
 #         self.update_package_data()
-#         
-#         
-#     
-#     
-#     
+#
+#
+#
+#
+#
 #     def update_package_data(self):
-#         
+#
 #         package_data = self.distribution.package_data
-#         
+#
 #         package_data.setdefault(NAME, [])
-#         
+#
 #         for d in run('npm ls --only=prod --parseable', output=True, cwd=webui_root).splitlines():
-#             
+#
 #             d = d.decode("utf-8")
-#             
+#
 #             if d.startswith(self.node_modules):
-#                 
+#
 #                 reld = os.path.relpath(d, root)
 #                 print(reld)
 #                 package_data[NAME] += _get_package_data(NAME, reld+'/**' )
-        
-    
 
 
 def update_package_data(distribution):
@@ -135,18 +129,20 @@ def update_package_data(distribution):
     build_py = distribution.get_command_obj('build_py')
     build_py.finalize_options()
 
+
 class bdist_egg_disabled(bdist_egg):
     """Disabled version of bdist_egg
     Prevents setup.py install performing setuptools' default easy_install,
     which it should never ever do.
     """
+
     def run(self):
         sys.exit("Aborting implicit building of eggs. Use `pip install .` "
                  " to install from source.")
 
 
 def wrapper(cls, strict=True):
-    
+
     class Cmd(cls):
         def run(self):
             print("############## start %s" % cls.__name__)
@@ -159,18 +155,16 @@ def wrapper(cls, strict=True):
             #             raise
             #         else:
             #             pass
-            
+
             # update package data
             update_package_data(self.distribution)
-            
+
             print("############## wrap end %s" % cls.__name__)
             result = cls.run(self)
             print("############## end %s" % cls.__name__)
             return result
-    
+
     return Cmd
-
-
 
 
 cmdclass = {
@@ -185,10 +179,9 @@ if bdist_wheel:
     cmdclass['bdist_wheel'] = wrapper(bdist_wheel, strict=True)
 
 
-
-#----------------------
+# ----------------------
 # some tools
-#----------------------
+# ----------------------
 
 def run(cmd, output=False, **kwargs):
     """Echo a command before running it.  Defaults to repo as cwd"""
@@ -201,7 +194,6 @@ def run(cmd, output=False, **kwargs):
     return check_output(cmd, **kwargs) if output else check_call(cmd, **kwargs)
 
 
-
 def is_stale(target, source):
     """Test whether the target file/directory is stale based on the source
        file/directory.
@@ -210,6 +202,7 @@ def is_stale(target, source):
         return True
     target_mtime = recursive_mtime(target) or 0
     return compare_recursive_mtime(source, cutoff=target_mtime)
+
 
 def compare_recursive_mtime(path, cutoff, newest=True):
     """Compare the newest/oldest mtime for all files in a directory.
@@ -311,7 +304,6 @@ def which(cmd, mode=os.F_OK | os.X_OK, path=None):
     return None
 
 
-
 def _get_data_files(data_specs, existing):
     """Expand data file specs into valid data files metadata.
     Parameters
@@ -362,6 +354,7 @@ def _get_files(file_patterns, top=here):
         absolute paths.
     top: str
         the directory to consider for data files
+
     Note:
     Files in `node_modules` are ignored.
     """
@@ -397,6 +390,7 @@ def _get_package_data(root, file_patterns=None):
         The globs can be recursive if they include a `**`.
         They should be relative paths from the root or
         absolute paths.  If not given, all files will be used.
+
     Note:
     Files in `node_modules` are ignored.
     """
@@ -404,7 +398,9 @@ def _get_package_data(root, file_patterns=None):
         file_patterns = ['*']
     return _get_files(file_patterns, pjoin(here, root))
 
+
 import re
+
 
 def _compile_pattern(pat, ignore_case=True):
     """Translate and compile a glob pattern to a regular expression matcher."""
@@ -416,6 +412,7 @@ def _compile_pattern(pat, ignore_case=True):
         res = _translate_glob(pat)
     flags = re.IGNORECASE if ignore_case else 0
     return re.compile(res, flags=flags).match
+
 
 def _iexplode_path(path):
     """Iterate over all the parts of a path.
@@ -505,33 +502,32 @@ def _translate_glob_part(pat):
     return ''.join(res)
 
 
-
-#----------------------
-# setup 
-#----------------------
+# ----------------------
+# setup
+# ----------------------
 
 
 setup(
-    name='ething', 
-    
-    version=__version__, 
-    
-    description='A home automation project', 
-    
-    long_description=long_description, 
-    
-    url='https://github.com/e-thing/ething',  
-    
-    author='Adrien Mezerette',  
-    author_email='a.mezerette@gmail.com',  
-    
+    name='ething',
+
+    version=__version__,
+
+    description='A home automation project',
+
+    long_description=long_description,
+
+    url='https://github.com/e-thing/ething',
+
+    author='Adrien Mezerette',
+    author_email='a.mezerette@gmail.com',
+
     classifiers=[  # Optional
         # How mature is this project? Common values are
         #   3 - Alpha
         #   4 - Beta
         #   5 - Production/Stable
         'Development Status :: 3 - Alpha',
-        
+
         # Specify the Python versions you support here. In particular, ensure
         # that you indicate whether you support Python 2, Python 3 or both.
         'Programming Language :: Python :: 2',
@@ -541,13 +537,13 @@ setup(
         'Programming Language :: Python :: 3.5',
         'Programming Language :: Python :: 3.6',
     ],
-    
-    
-    keywords='home automation ething iot mysensors rflink zigate', 
-    
-    packages= find_packages(),
 
-    
+
+    keywords='home automation ething iot mysensors rflink zigate',
+
+    packages=find_packages(),
+
+
     install_requires=[
         "future",
         "pymongo==3.5.1",
@@ -569,21 +565,21 @@ setup(
         "PyJWT",
         "netaddr",
         "webargs",
-        "apispec", # http api
-        "Jinja2", # http api
+        "apispec",  # http api
+        "Jinja2",  # http api
         "xmltodict",
         "python-magic"
     ],
-    
+
     extras_require={
         "dev": [
-            "pytest", # unit test
+            "pytest",  # unit test
         ]
     },
-    
+
     include_package_data=False,
-    
-    package_data= {
+
+    package_data={
         # accept ** wildcard
         NAME: _get_package_data(NAME, [
             'nodejs/*.js',
@@ -596,21 +592,20 @@ setup(
             'webserver/routes/*.html',
         ])
     },
-    
-    entry_points={ 
+
+    entry_points={
         'console_scripts': [
             'ething=ething.main:main',
         ],
     },
-    
-    project_urls={ 
+
+    project_urls={
         'Bug Reports': 'https://github.com/e-thing/ething/issues',
         'Source': 'https://github.com/e-thing/ething/',
     },
-    
-    zip_safe=False,
-    
-    cmdclass=cmdclass,
-    
-)
 
+    zip_safe=False,
+
+    cmdclass=cmdclass,
+
+)

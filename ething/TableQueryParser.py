@@ -5,37 +5,36 @@ from .query.Field import Field
 import re
 import sys
 
+
 def getDefaultFields():
-    
+
     fieldId = Field('_id')
-    
-    def idCompil(op,value):
+
+    def idCompil(op, value):
         # shortcut
-        return fieldId.compil(op,value)
-    
+        return fieldId.compil(op, value)
+
     return [
         Field('id', 'string', idCompil),
         Field('date', 'date')
     ]
-    
+
 
 class TableQueryParser(Parser):
-    
+
     fields = getDefaultFields()
-    
-    def __init__ (self):
-        
+
+    def __init__(self):
+
         super(TableQueryParser, self).__init__(TableQueryParser.fields)
-        
+
         self.setFieldFallback(self.fallback)
-    
-    
+
     def fallback(self, field):
         return Field(field)
-    
-    
+
     @staticmethod
-    def check (expr):
+    def check(expr):
         message = ''
         ok = True
         try:
@@ -44,16 +43,5 @@ class TableQueryParser(Parser):
         except:
             ok = False
             message = sys.exc_info()[1]
-        
+
         return ok, message
-    
-
-
-
-
-
-
-
-
-
-    

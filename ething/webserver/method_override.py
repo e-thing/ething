@@ -1,7 +1,6 @@
 # coding: utf-8
 
 
-
 class HTTPMethodOverrideMiddleware(object):
     allowed_methods = frozenset([
         'GET',

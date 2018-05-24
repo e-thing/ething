@@ -9,7 +9,7 @@ class TableDataAdded(ResourceSignal):
         self.data = data
 
 
-@attr('resource', validator = isResourceFilter(onlyTypes = ('Table',)) | isNone())
+@attr('resource', validator=isResourceFilter(onlyTypes=('Table',)) | isNone())
 class TableDataAddedEvent(ResourceEvent):
     """
     is emitted each time a new value is appended to a table

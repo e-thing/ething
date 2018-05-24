@@ -14,14 +14,12 @@ def test_shortid(id, valid):
 
 @pytest.mark.skip()
 def test_shortid_duplicate():
-    
+
     ids = []
-    for i in range(0,1000):
+    for i in range(0, 1000):
         ids.append(ShortId.generate())
-    
+
     import collections
-    
-    assert len([item for item, count in collections.Counter(ids).items() if count > 1]) == 0
-    
-    
-    
+
+    assert len([item for item, count in collections.Counter(
+        ids).items() if count > 1]) == 0

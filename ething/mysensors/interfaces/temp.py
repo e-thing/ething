@@ -2,7 +2,7 @@
 
 from ething.interfaces import Thermometer
 
-class Temp (Thermometer):
-    
-    pass
 
+class Temp (Thermometer):
+
+    pass

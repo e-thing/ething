@@ -1,8 +1,6 @@
 # coding: utf-8
 
 
-
-
 from .ZigateDevice import ZigateDevice
 from .helpers import model
 
@@ -12,15 +10,6 @@ class ZigateAqaraTHP(ZigateDevice):
     """
     Mihome temperatire/humidity/pressure Sensor Device class.
     """
-    
-    def onMessage (self, message):
-        pass # todo
-        
-        
-    
 
-
-
-
-
- 
+    def onMessage(self, message):
+        pass  # todo

@@ -2,10 +2,11 @@
 
 import random
 
+
 class ApiKey(object):
-    
+
     @staticmethod
-    def generate ():
+    def generate():
         return '%04x%04x-%04x-%04x-%04x-%04x%04x%04x' % (
             # 32 bits for "time_low"
             random.randint(0, 0xffff), random.randint(0, 0xffff),
@@ -19,6 +20,6 @@ class ApiKey(object):
             # two most significant bits holds zero and one for variant DCE1.1
             random.randint(0, 0x3fff) | 0x8000,
             # 48 bits for "node"
-            random.randint(0, 0xffff), random.randint(0, 0xffff), random.randint(0, 0xffff)
+            random.randint(0, 0xffff), random.randint(
+                0, 0xffff), random.randint(0, 0xffff)
         )
-    

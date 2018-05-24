@@ -5,11 +5,10 @@ from ething.ScriptEngine import ScriptEngine
 
 @pytest.mark.nodejs
 def test_scriptengine(core):
-    
-    result = ScriptEngine.run(core, 'console.log("toto")');
-    
-    assert result.get('ok') is True
 
+    result = ScriptEngine.run(core, 'console.log("toto")')
+
+    assert result.get('ok') is True
 
 
 @pytest.mark.nodejs
@@ -18,12 +17,12 @@ def test_scriptengine_script(core):
     script_content = u'script instanceof EThing.Resource ? 1 : 0'
 
     script = core.create('File', {
-        'name' : 'script.js'
+        'name': 'script.js'
     })
 
-    script.write(script_content, encoding = 'utf8')
+    script.write(script_content, encoding='utf8')
 
-    result = ScriptEngine.runFromFile(script);
+    result = ScriptEngine.runFromFile(script)
 
     print(result.get('stderr'))
 
@@ -36,16 +35,13 @@ def test_scriptengine_script_arg(core):
     script_content = u'argv.length'
 
     script = core.create('File', {
-        'name' : 'script.js'
+        'name': 'script.js'
     })
 
-    script.write(script_content, encoding = 'utf8')
+    script.write(script_content, encoding='utf8')
 
-    result = ScriptEngine.runFromFile(script, arguments='foo "bar fg"');
+    result = ScriptEngine.runFromFile(script, arguments='foo "bar fg"')
 
     print(result.get('stderr'))
 
     assert result.get('ok') is True
-    
-
-

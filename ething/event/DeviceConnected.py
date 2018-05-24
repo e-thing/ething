@@ -7,10 +7,9 @@ class DeviceConnected(ResourceSignal):
     pass
 
 
-@attr('resource', validator = isResourceFilter(onlyTypes = ('Device',)) | isNone())
+@attr('resource', validator=isResourceFilter(onlyTypes=('Device',)) | isNone())
 class DeviceConnectedEvent(ResourceEvent):
     """
     is emitted each time a device connect
     """
     signal = DeviceConnected
-    

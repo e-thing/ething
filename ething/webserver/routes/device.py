@@ -6,9 +6,8 @@ from ..server_utils import *
 import re
 from future.utils import text_type
 
+
 def install(core, app, auth, **kwargs):
-
-
 
     @app.route('/api/devices', methods=['POST'])
     @auth.required('device:write resource:write')
@@ -53,42 +52,42 @@ def install(core, app, auth, **kwargs):
                   - $ref: '#/definitions/Device'
         """
         attr = request.get_json()
-        
+
         if isinstance(attr, dict):
-            
+
             type = attr.pop('type', None)
-            
-            if not isinstance(type, text_type) or len(type)==0:
-                raise Exception('the "type" attribute is mandatory and must be a non empty string')
-            
+
+            if not isinstance(type, text_type) or len(type) == 0:
+                raise Exception(
+                    'the "type" attribute is mandatory and must be a non empty string')
+
             content = None
-            
+
             if type == 'Http':
                 content = attr.pop('specification', None)
             elif type == 'MQTT':
                 content = attr.pop('subscription', None)
-            
+
             attr.setdefault('createdBy', g.auth.resource)
-            
+
             r = core.create(type, attr)
-            
+
             if r:
-                
+
                 if content:
                     if r.type == 'Http':
                         r.setSpecification(content)
                     elif r.type == 'MQTT':
                         r.setSubscription(content)
-                
+
                 response = jsonify(r)
                 response.status_code = 201
                 return response
             else:
-                raise Exception('Unable to create the device (type = %s)' % type);
-        
+                raise Exception(
+                    'Unable to create the device (type = %s)' % type)
+
         raise Exception('Invalid request')
-
-
 
     @app.route('/api/devices/<id>/api')
     @auth.required('device:read resource:read')
@@ -106,7 +105,6 @@ def install(core, app, auth, **kwargs):
         r = getResource(core, id, ['Device'])
         return jsonify(r.interface)
 
-
     @app.route('/api/devices/<id>/api/<operationId>')
     @auth.required('device:read resource:read')
     def device_api(id, operationId):
@@ -122,7 +120,6 @@ def install(core, app, auth, **kwargs):
         """
         r = getResource(core, id, ['Device'])
         return jsonify(r.interface.get_method(operationId))
-
 
     @app.route('/api/devices/<id>/call/<operationId>', methods=['GET', 'POST'])
     @auth.required('device:write resource:write')
@@ -157,17 +154,17 @@ def install(core, app, auth, **kwargs):
               description: The response of the device.
         """
         r = getResource(core, id, ['Device'])
-        
+
         method = r.interface.get_method(operationId)
-        
+
         args = []
         kwargs = {}
-        
+
         if request.method == 'GET':
-            
+
             for arg_name in list(set(list(request.args)).intersection(list(method.args))):
                 kwargs[arg_name] = method.args[arg_name]
-            
+
         elif request.method == 'POST':
             try:
                 data = request.get_json()
@@ -175,31 +172,29 @@ def install(core, app, auth, **kwargs):
                     kwargs = data
                 elif isinstance(data, list):
                     args = data
-                elif data is not None: # empty content with content-type set to application/json will return None
+                elif data is not None:  # empty content with content-type set to application/json will return None
                     args.append(data)
             except:
                 pass
-        
+
         return_type = method.return_type
-        
+
         if return_type:
-            
+
             if re.search('^[^/]+/[^/]+$', return_type):
                 return Response(method.call(*args, **kwargs), mimetype=return_type)
             else:
                 return jsonify(method.call(*args, **kwargs))
-            
+
         else:
             method.call(*args, **kwargs)
-            return ('', 204)
-
+            return '', 204
 
     @app.route('/api/devices/<id>/specification')
     @auth.required('device:read resource:read')
     def device_http_specification(id):
         r = getResource(core, id, ['Http'])
         return jsonify(r.getSpecification())
-
 
     @app.route('/api/devices/<id>/subscription')
     @auth.required('device:read resource:read')

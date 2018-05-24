@@ -4,9 +4,9 @@
 from flask import request, Response
 from ..server_utils import *
 
+
 def install(core, app, auth, **kwargs):
-    
-    
+
     @app.route('/api/rules', methods=['POST'])
     @auth.required('rule:write resource:write')
     def rules():
@@ -36,7 +36,7 @@ def install(core, app, auth, **kwargs):
                    }
                 }
                 ```
-                 
+
               required: true
               schema:
                 $ref: '#/definitions/Rule'
@@ -46,37 +46,35 @@ def install(core, app, auth, **kwargs):
               schema:
                 $ref: '#/definitions/Rule'
         """
-        
+
         attr = request.get_json()
-                
+
         if attr is not None:
             attr.setdefault('createdBy', g.auth.resource)
-            
+
             r = core.create('Rule', attr)
-            
+
             if r:
                 response = jsonify(r)
                 response.status_code = 201
                 return response
             else:
                 raise Exception('Unable to create the rule')
-        
+
         raise Exception('Invalid request')
-    
-    
+
     @app.route('/api/rules/<id>/execute')
     @auth.required('rule:read resource:read')
     def rule_execute(id):
         r = getResource(core, id, ['Rule'])
-        
+
         if not r.run():
             raise Exception('An error occurs during execution of the rule')
-        
-        return ('', 204)
-    
+
+        return '', 204
+
     @app.route('/api/rules/trigger/<customEventName>')
     @auth.required('rule:trigger')
     def trigger_custom_event(customEventName):
         core.dispatchSignal('Custom', customEventName)
-        return ('', 204)
-    
+        return '', 204

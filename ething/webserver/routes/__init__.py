@@ -13,9 +13,8 @@ from . import settings
 from . import resource
 
 
-
 def install_routes(**kwargs):
-    
+
     static.install(**kwargs)
     file.install(**kwargs)
     table.install(**kwargs)

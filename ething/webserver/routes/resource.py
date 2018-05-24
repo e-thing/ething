@@ -4,15 +4,14 @@ from flask import request, Response
 from ..server_utils import *
 from future.utils import iteritems
 
+
 def install(core, app, auth, **kwargs):
-    
-    
+
     @app.route('/api/usage', methods=['GET'])
     @auth.required('resource:read')
     def usage():
         return jsonify(core.usage())
-    
-    
+
     resources_args = {
         'q': fields.Str(missing=None, description='Query string for searching resources'),
         'limit': fields.Int(validate=validate.Range(min=0), description='Limits the number of resources returned'),
@@ -31,9 +30,9 @@ def install(core, app, auth, **kwargs):
               - resource
             description: |-
                 Lists the resources.
-                
+
                 #### cURL example
-                
+
                 ```bash
                 curl -H 'X-API-KEY: <YOUR_API_KEY>' http://localhost:8000/api/resources
                 ```
@@ -45,46 +44,44 @@ def install(core, app, auth, **kwargs):
                         items:
                             $ref: '#/definitions/Resource'
         """
-        
+
         query = args.pop('q')
-        
+
         auth = g.auth
-        
+
         if auth.scope is not None:
-            
+
             scopes = filter(None, auth.scope.split(" "))
-            
+
             allowed_types = []
             for scope in scopes:
                 type = scope.split(':')[0].capitalize()
                 if type not in allowed_types:
                     allowed_types.append(type)
-            
+
             if 'resource' not in allowed_types:
                 # restrict the search to the allowed_types
-                
+
                 typeQuery = {
-                    'extends' : { '$in' : allowed_types }
+                    'extends': {'$in': allowed_types}
                 }
-                
+
                 if query:
                     query = {
-                        '$and' : [core.resourceQueryParser.parse(query), typeQuery]
+                        '$and': [core.resourceQueryParser.parse(query), typeQuery]
                     }
                 else:
                     query = typeQuery
-        
-        return jsonify(core.find(query = query, **args))
 
-    
-    
+        return jsonify(core.find(query=query, **args))
+
     resource_delete_args = {
         'children': fields.Bool(missing=False)
     }
 
     @app.route('/api/resources/<id>', methods=['GET', 'DELETE', 'PATCH'])
-    @use_multi_args(DELETE = resource_delete_args)
-    @auth.required(GET = 'resource:read resource:write file:read file:write table:read table:write table:append device:read device:write app:read app:write', DELETE = 'resource:admin', PATCH = 'resource:admin')
+    @use_multi_args(DELETE=resource_delete_args)
+    @auth.required(GET='resource:read resource:write file:read file:write table:read table:write table:append device:read device:write app:read app:write', DELETE='resource:admin', PATCH='resource:admin')
     def resource(args, id):
         """Get a resource by its id
         ---
@@ -109,7 +106,7 @@ def install(core, app, auth, **kwargs):
             - resource
           description: |-
             update a resource. Only properties which are not readonly can be modified.
-             
+
             Rename a resource :
 
             ```json
@@ -138,42 +135,40 @@ def install(core, app, auth, **kwargs):
               schema:
                 $ref: '#/definitions/Resource'
         """
-        
+
         r = getResource(core, id)
-        
+
         if request.method == 'GET':
             return jsonify(r)
-        
+
         elif request.method == 'PATCH':
-            
+
             data = request.get_json()
-            
+
             if isinstance(data, dict):
-                
+
                 content = None
-            
+
                 if r.type == 'Http':
-                    content = attr.pop('specification', None)
+                    content = data.pop('specification', None)
                 elif r.type == 'MQTT':
-                    content = attr.pop('subscription', None)
-                
+                    content = data.pop('subscription', None)
+
                 for key, value in iteritems(data):
                     setattr(r, key, value)
-                
+
                 r.save()
-                
+
                 if content:
                     if r.type == 'Http':
                         r.setSpecification(content)
                     elif r.type == 'MQTT':
                         r.setSubscription(content)
-                
+
                 return jsonify(r)
-            
-            raise Exception('Invalid request');
-        
+
+            raise Exception('Invalid request')
+
         elif request.method == 'DELETE':
             r.remove(args['children'])
-            return ('', 204)
-
-
+            return '', 204

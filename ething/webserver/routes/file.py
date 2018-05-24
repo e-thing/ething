@@ -25,7 +25,7 @@ def install(core, app, auth, **kwargs):
             There are 2 ways to pass directly the content of the file on the same request :
 
              - pass the content as a base-64 encoded ASCII string through the key 'content' of the metadata object.
-             
+
              example:
 
             ```json
@@ -34,11 +34,11 @@ def install(core, app, auth, **kwargs):
                "content": "SGVsbG8gd29ybGQgIQ==" // 'Hello world !' in base-64
             }
             ```
-             
+
              - multipart/related request: transfers the content along with metadata that describes it. *The metadata part must come first*.
-             
+
              example:
-             
+
             ```
             POST /ething/api/files HTTP/1.1
             Host: <YOUR_HOST>
@@ -111,7 +111,7 @@ def install(core, app, auth, **kwargs):
                    "description": "an optional description"
                 }
                 ```
-                 
+
               required: true
               schema:
                 $ref: '#/definitions/File'
@@ -121,57 +121,58 @@ def install(core, app, auth, **kwargs):
               schema:
                 $ref: '#/definitions/File'
         """
-        
+
         attr = None
         content = None
-        
+
         if request.mimetype == 'multipart/related':
-            
-            parts = list(parse_multipart_data(request.stream, request.mimetype_params['boundary']))
-            
+
+            parts = list(parse_multipart_data(request.stream,
+                                              request.mimetype_params['boundary']))
+
             for headers, body in parts:
-                mimetype, params = parse_options_header(headers['Content-Type'])
-                
+                mimetype, params = parse_options_header(
+                    headers['Content-Type'])
+
                 if mimetype == 'application/json':
                     attr = json.loads(body.decode())
                 else:
                     content = body
-            
+
         else:
             attr = request.get_json()
-            
+
             if isinstance(attr, dict):
-                
+
                 if 'content' in attr:
                     content = base64.b64decode(attr['content'])
                     attr.pop('content')
-                
+
         if attr is not None:
             attr.setdefault('createdBy', g.auth.resource)
-            
+
             r = core.create('File', attr)
-            
+
             if r:
-                
+
                 if content:
                     r.write(content)
-                
+
                 response = jsonify(r)
                 response.status_code = 201
                 return response
             else:
                 raise Exception('Unable to create the file')
-        
-        raise Exception('Invalid request')
 
+        raise Exception('Invalid request')
 
     file_put_args = {
         'append': fields.Bool(missing=False, description="If true, the content will be appended."),
     }
 
     @app.route('/api/files/<id>', methods=['GET', 'PUT'])
-    @use_multi_args(PUT = (file_put_args, ('query',)))
-    @auth.required(GET = 'file:read resource:read', PUT = 'file:write resource:write')
+    @use_multi_args(PUT=(file_put_args, ('query',)))
+    @auth.required(GET='file:read resource:read', PUT='file:write resource:write')
     def file(args, id):
         """
         ---
@@ -229,34 +230,32 @@ def install(core, app, auth, **kwargs):
                 $ref: '#/definitions/File'
         """
         r = getResource(core, id, ['File'])
-        
+
         if request.method == 'GET':
-            return Response(r.read(), mimetype = r.mime)
-        
+            return Response(r.read(), mimetype=r.mime)
+
         elif request.method == 'PUT':
-            
+
             content = request.data
-            
+
             if args['append']:
                 r.append(content)
             else:
                 r.write(content)
-            
+
             return jsonify(r)
 
-    
     @app.route('/api/files/<id>/thumbnail')
     @auth.required('file:read resource:read')
     def file_thumb(id):
         r = getResource(core, id, ['File'])
         thumb = r.readThumbnail()
-        
+
         if not thumb:
             raise Exception('No thumbnail available')
-        
+
         return Response(thumb, mimetype='image/png')
-    
-    
+
     file_action_execute_args = {
         'args': fields.Str(missing=None, description="A string representing the arguments to be passed to the script.")
     }
@@ -266,15 +265,15 @@ def install(core, app, auth, **kwargs):
     @auth.required('file:read resource:read')
     def file_execute(args, id):
         r = getResource(core, id, ['File'])
-        
+
         if r.mime == 'application/javascript':
-            
+
             res = ScriptEngine.runFromFile(r, args['args'])
-            
+
             if not res:
                 raise Exception('Unable to execute')
-            
+
             return jsonify(res)
-            
+
         else:
             raise Exception('Not executable')

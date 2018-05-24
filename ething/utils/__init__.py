@@ -8,12 +8,14 @@ from .null_context_manager import NullContextManager
 
 _info = None
 
+
 def get_info(core):
     global _info
-    
+
     if _info is None:
-        import platform, sys
-        
+        import platform
+        import sys
+
         _info = {
             'VERSION': core.version,
             'python': {
@@ -29,27 +31,23 @@ def get_info(core):
                 'version': (is_nodejs_installed(core) or "not found")
             }
         }
-    
+
     return _info
 
 
 def print_info(core, printer):
     info = get_info(core)
-    
+
     printer("ETHING    : version=%s" % info.get('VERSION'))
-    
+
     python_info = info.get('python', {})
-    printer("PYTHON    : version=%s type=%s" % (python_info.get('version'), python_info.get('type')))
+    printer("PYTHON    : version=%s type=%s" %
+            (python_info.get('version'), python_info.get('type')))
     printer("PYTHON_EXE: %s" % (python_info.get('executable')))
-    
+
     platform_info = info.get('platform', {})
     printer("PLATFORM  : %s" % (platform_info.get('name')))
     printer("SYSTEM    : %s" % (platform_info.get('version')))
-    
+
     nodejs_info = info.get('nodejs', {})
     printer("NODE.JS   : %s" % (nodejs_info.get('version')))
-    
-    
-    
-    
-

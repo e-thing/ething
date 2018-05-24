@@ -4,13 +4,14 @@ from ething.core import Core
 import os
 import tempfile
 
+
 @pytest.fixture
 def core():
     core = Core({
-        'db':{
+        'db': {
             'database': 'test_unit'
         },
-        'log':{
+        'log': {
             'level': 'debug'
         },
         'debug': True,
@@ -22,9 +23,9 @@ def core():
             'address': os.path.join(tempfile.gettempdir(), './ething_socket_test')
         }
     })
-    
+
     core.reset()
-    
+
     return core
 
 
@@ -34,6 +35,7 @@ from ething.TaskManager import TaskManager
 from ething.Scheduler import Scheduler
 from ething.Mail import Mail
 
+
 @pytest.fixture
 def core_extended(core):
     core.scheduler = Scheduler(core)
@@ -41,5 +43,5 @@ def core_extended(core):
     core.signalManager = SignalManager(core)
     core.socketManager = SocketManager(core)
     core.mail = Mail(core)
-    
+
     return core
