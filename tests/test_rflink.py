@@ -8,8 +8,9 @@ def test_rflink_controller(core_extended):
     
     
     
-    gateway = core_extended.create('RFLinkGateway', {
-        'name': 'gateway'
+    gateway = core_extended.create('RFLinkSerialGateway', {
+        'name': 'gateway',
+        'port': '?'
     })
     
     class Transport(object):

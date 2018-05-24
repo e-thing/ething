@@ -23,8 +23,9 @@ def test_mysensors_message():
 
 def test_mysensors_sensors(core):
     
-    gateway = core.create('MySensorsGateway', {
-        'name': 'gateway'
+    gateway = core.create('MySensorsEthernetGateway', {
+        'name': 'gateway',
+        'address': '127.0.0.1'
     })
     
     
@@ -51,8 +52,9 @@ def test_mysensors_controller(core_extended):
     
     
     
-    gateway = core_extended.create('MySensorsGateway', {
-        'name': 'gateway'
+    gateway = core_extended.create('MySensorsEthernetGateway', {
+        'name': 'gateway',
+        'address': '127.0.0.1'
     })
     
     class Transport(object):

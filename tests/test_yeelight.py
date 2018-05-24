@@ -6,9 +6,7 @@ from ething.yeelight.Controller import Controller
 
 def test_yeelight_controller(core_extended):
     
-    
-    
-    device = core_extended.create('YeelightDevice', {
+    device = core_extended.create('YeelightBulbRGBW', {
         'name': 'device',
         'host': '192.168.1.2'
     })
