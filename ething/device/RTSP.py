@@ -3,6 +3,7 @@
 
 from ething.Device import Device, method, attr, isString, isObject, isInteger, isNone, READ_ONLY, Validator
 from ething.utils import pingable
+from ething.interfaces import Camera
 import subprocess
 try:
     from urllib.parse import urlparse
@@ -13,7 +14,7 @@ except ImportError:
 @pingable('url')
 @attr('url', validator=isString(allow_empty=False, regex='^rtsp://'), description="The URL of the device rtsp://... .")
 @attr('transport', validator=isString(allow_empty=False, enum=['udp', 'tcp', 'http']), default='tcp', description="Lower transport protocol. Allowed values are the ones defined for the flags for rtsp_transport (see https://libav.org/avconv.html).")
-class RTSP(Device):
+class RTSP(Device, Camera):
     """
     RTSP Device resource representation, usually IP camera
     """

@@ -8,3 +8,4 @@ from .dimmableLight import DimmableLight
 from .rgbLight import RGBLight
 from .rgbwLight import RGBWLight
 from .thermometer import Thermometer
+from .camera import Camera

@@ -419,6 +419,24 @@ class Method(object):
             if 'type' in arg_schema:
                 if arg_schema['type'] == 'str':
                     arg_schema['type'] = 'string'
+                elif arg_schema['type'] == 'NoneType':
+                    arg_schema['type'] = 'null'
+                elif arg_schema['type'] == 'int':
+                    arg_schema['type'] = 'number'
+                elif arg_schema['type'] == 'long':
+                    arg_schema['type'] = 'number'
+                elif arg_schema['type'] == 'float':
+                    arg_schema['type'] = 'number'
+                elif arg_schema['type'] == 'tuple':
+                    arg_schema['type'] = 'array'
+                elif arg_schema['type'] == 'list':
+                    arg_schema['type'] = 'array'
+                elif arg_schema['type'] == 'bool':
+                    arg_schema['type'] = 'boolean'
+                elif arg_schema['type'] == 'dict':
+                    arg_schema['type'] = 'object'
+                elif arg_schema['type'] == 'OrderedDict':
+                    arg_schema['type'] = 'object'
 
             properties[arg_name] = arg_schema
 

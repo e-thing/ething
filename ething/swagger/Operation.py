@@ -5,10 +5,7 @@ from ething.Helpers import reraise
 import re
 from .Parameter import instanciate as instanciate_parameter, StandardParameter
 import sys
-try:
-    import magic
-except ImportError:
-    magic = None
+from ething.utils.mime import content_to_mime
 import string
 import random
 import json
@@ -150,11 +147,8 @@ class Operation(object):
             if where == 'formData':
 
                 if param.type == 'file':
-
-                    if magic:
-                        mime = magic.from_buffer(value, mime=True)
-                    else:
-                        mime = 'text/plain'
+                    
+                    mime = content_to_mime(value, 'text/plain')
 
                     formData[param.name] = {
                         "type": "file",

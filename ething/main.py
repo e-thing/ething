@@ -81,7 +81,7 @@ def quitInstance():
         return
 
     try:
-        os.kill(pid, 3)  # SIGUIT
+        os.kill(pid, signal.SIGINT)  # SIGUIT
 
         t = time.time()
         print("waiting for ething to quit")
@@ -96,7 +96,8 @@ def quitInstance():
             print("ething did not respond")
             print("Kill signal was send to process with id %s" % pid)
 
-    except:
+    except Exception as e:
+        print(e)
         print("Error quitting ething")
 
 
