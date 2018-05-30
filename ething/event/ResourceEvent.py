@@ -15,7 +15,13 @@ class ResourceSignal(Signal):
         self.rName = resource.name
         self.rType = resource.type
         self.rModifiedDate = resource.modifiedDate
+    
+    def __str__(self):
+        return "%s [%s]" % (type(self).__name__, self.resource)
 
+    def __repr__(self):
+        return "%s [%s]" % (type(self).__name__, self.resource)
+    
 
 class isResourceFilter(Validator):
 

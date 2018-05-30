@@ -92,6 +92,7 @@ class RuleManager(object):
         self._queue = []
 
     def _build_cache(self):
+        self.log.debug("rebuild rules cache")
         self._cache.clear()
 
         rules = self.core.find({

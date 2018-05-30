@@ -107,15 +107,15 @@ class ScriptEngine(object):
 
         out = json.loads('[%s]' % out)
 
-        sdterr = ''
+        stderr = ''
         for item in out:
             if item['type'] == 'stderr':
-                sdterr += item['chunk'].encode('utf8').decode('unicode_escape')
+                stderr += item['chunk'].encode('utf8').decode('unicode_escape')
 
         return {
             'executionTime': time_end - time_start,
             'output': out,
-            'sdterr': sdterr,
+            'stderr': stderr,
             'return_code': return_var,
             'ok': return_var == 0
         }

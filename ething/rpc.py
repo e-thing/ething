@@ -246,8 +246,9 @@ class RPC_SubClient(object):
             self.stop()
             return
 
-        self.log.debug("msg received topic=%s data=%s" %
-                       (resp.topic, str(resp.message)))
+        #self.log.debug("msg received topic=%s data=%s" %
+        #               (resp.topic, str(resp.message)))
+        
         return resp
 
 

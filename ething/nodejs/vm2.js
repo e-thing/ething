@@ -191,25 +191,25 @@ var stream = require('stream');
 
 const outStream = outFile==='-' ? process.stdout : fs.createWriteStream(outFile);
 
-var sdtoutStream = new stream.Writable();
+var stdoutStream = new stream.Writable();
 
-sdtoutStream._write = function (chunk, encoding, done) {
+stdoutStream._write = function (chunk, encoding, done) {
     outStream.write(JSON.stringify({
         type: 'stdout',
         chunk: chunk.toString()
     })+",\n", done);
 };
 
-var sdterrStream = new stream.Writable();
+var stderrStream = new stream.Writable();
 
-sdterrStream._write = function (chunk, encoding, done) {
+stderrStream._write = function (chunk, encoding, done) {
     outStream.write(JSON.stringify({
         type: 'stderr',
         chunk: chunk.toString()
     })+",\n", done);
 };
 
-const logger = new console.Console(sdtoutStream, sdterrStream);
+const logger = new console.Console(stdoutStream, stderrStream);
 
 process.on('uncaughtException', function(err){
 	if(verbose) console.error('Error in script:', err);

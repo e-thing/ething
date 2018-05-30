@@ -37,18 +37,18 @@ class SignalManager(object):
 
     def bind(self, event_types, handler):
         """Adds an event listener for event name"""
-        for event_type in ' '.split(event_types):
+        for event_type in event_types.split(' '):
             if not event_type:
                 continue
 
             if event_type not in self.handlers:
                 self.handlers[event_type] = []
-
+            
             self.handlers[event_type].append(handler)
 
     def unbind(self, event_types, handler):
         """removes previously added event listener"""
-        for event_type in ' '.split(event_types):
+        for event_type in event_types.split(' '):
             if not event_type:
                 continue
 
