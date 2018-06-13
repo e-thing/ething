@@ -1,7 +1,7 @@
 # coding: utf-8
 
 from .Resource import Resource, isResource, ResourceModelAdapter
-from .base import NestedAdapter, attr, READ_ONLY, isString, isAnything, isBool
+from .base import NestedAdapter, attr, READ_ONLY, isString, isAnything, isBool, isObject, isArray, isInteger
 from .ScriptEngine import ScriptEngine
 
 from . import event
@@ -23,9 +23,20 @@ class EventAdapter(NestedAdapter):
             'ething': data_object.ething
         }
 
+class isSchedulerItem(isObject):
+    
+    def __init__(self):
+        super(isSchedulerItem, self).__init__(start = isObject(weekDay = isInteger(min=0, max=6), hour = isInteger(min=0, max=24)), end = isObject(weekDay = isInteger(min=0, max=6), hour = isInteger(min=0, max=24)))
+
+class isScheduler(isArray):
+    
+    def __init__(self):
+        super(isScheduler, self).__init__(item = isSchedulerItem())
+
 
 @attr('event', validator=isEvent(), model_adapter=EventAdapter(), description="The event object describing when to execute this rule")
 @attr('enabled', validator=isBool(), default=True, description="If True (default), the rule is enabled")
+@attr('scheduler', validator=isArray(item = isObject(start = isObject(weekDay = isInteger(min=0, max=6), hour = isInteger(min=0, max=24)), end = isObject(weekDay = isInteger(min=0, max=6), hour = isInteger(min=0, max=24)))), default=[], description="Activate this rule only within certain periods of time")
 @attr('script', validator=isResource(accepted_types=('File',)), model_adapter=ResourceModelAdapter(), description="The JavaScript code to be executed")
 @attr('script_args', validator=isString(), default='', description="The arguments passed to the script of this rule")
 @attr('script_return_code', default=0, mode=READ_ONLY, description="The last exit code returned by the script of this rule")
@@ -39,6 +50,38 @@ class Rule(Resource):
             return False
 
         return self.run(signal)
+    
+    def _generateShedulerTimeIndex(weekDay, hour):
+        return (weekDay * 100) + hour
+    
+    @property
+    def is_active(self):
+        
+        if self.enabled:
+            
+            if self.scheduler:
+                
+                now = datetime.datetime.now()
+                weekday = now.weekday()
+                hour = now.hour
+                t = self._generateShedulerTimeIndex(weekday, hour)
+                
+                for item in self.scheduler:
+                    
+                    start = item.get('start', {})
+                    end = item.get('end', {})
+                    
+                    t_start = self._generateShedulerTimeIndex(start.get('weekDay', 0), start.get('hour', 0))
+                    t_end = self._generateShedulerTimeIndex(end.get('weekDay', 0), end.get('hour', 0))
+                    
+                    if t >= t_start and t < t_end:
+                        return True
+                
+                return False
+            
+            return True
+        
+        return False
 
     def run(self, signal=None):
 
