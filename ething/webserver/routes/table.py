@@ -424,7 +424,7 @@ def install(core, app, auth, **kwargs):
             raise Exception('No data.')
 
     table_statistics_args = {
-        'q': fields.Str(description="A query string to select the rows used for the statistics computation"),
+        'q': fields.Str(description="A query string to select the rows used for the statistics computation", missing=None),
         'key': fields.Str(required=True, description="the name of the key. Statistics can only be computed for a single key."),
     }
 

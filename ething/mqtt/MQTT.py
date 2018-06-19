@@ -46,7 +46,11 @@ class MQTT(Device):
                         if not isinstance(vv, string_types) or len(vv) == 0:
                             raise Exception(
                                 'topic: must be a non empty string')
-
+                    
+                    elif k == 'name':
+                        if not isinstance(vv, string_types) and vv is not None:
+                            raise Exception('name: must be a string')
+                    
                     elif k == 'jsonPath':
                         if not isinstance(vv, string_types) and vv is not None:
                             raise Exception('jsonPath: must be a string')
@@ -81,9 +85,9 @@ class MQTT(Device):
         for item in self.getSubscription():
 
             if item.get('topic') == topic:
-
-                json_path = item.get('jsonPath')
-
+                
+                name = item.get('name')
+                
                 if item.get('jsonPath'):
 
                     json_path = item.get('jsonPath')
@@ -102,8 +106,7 @@ class MQTT(Device):
                                 data = results[0]
 
                                 if isinstance(data, integer_types) or isinstance(data, float) or isinstance(data, string_types) or isinstance(data, bool):
-                                    self.store(os.path.basename(
-                                        topic), {'value': data})
+                                    self.store(name, {'value': data})
                                     continue
 
                     except ValueError:
@@ -130,7 +133,7 @@ class MQTT(Device):
                             break
 
                     if data is not None:
-                        self.store(os.path.basename(topic), {'value': data})
+                        self.store(name, {'value': data})
                         continue
 
                 elif item.get('xpath'):
@@ -153,8 +156,7 @@ class MQTT(Device):
                                 pass
 
                             if isinstance(data, integer_types) or isinstance(data, float) or isinstance(data, string_types) or isinstance(data, bool):
-                                self.store(os.path.basename(
-                                    topic), {'value': data})
+                                self.store(name, {'value': data})
                                 continue
 
                 self.ething.log.warning(

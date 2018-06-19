@@ -19,7 +19,8 @@ class Controller(object):
 
         self._log = device.ething.log
 
-        self._autoreconnect = False
+        self._autoreconnect = True
+        self._nextConnect = 0
 
         self._socket = None
 
@@ -90,7 +91,7 @@ class Controller(object):
             self.log.error("MQTT: connection refused : %s" %
                            _mqttClient.connack_string(rc))
             self._status = "disconnected"
-            self._autoreconnect = time.time() + Controller.AUTOCONNECT_PERIOD
+            self._nextConnect = time.time() + Controller.AUTOCONNECT_PERIOD
 
     def on_message(self, client, userdata, msg):
         self.log.debug("MQTT: new message for topic %s" % msg.topic)
@@ -106,7 +107,6 @@ class Controller(object):
     def on_disconnect(self, client, userdata, rc):
         if rc != 0:
             self.log.warn("MQTT: Unexpected disconnection")
-            self._autoreconnect = time.time()
 
         self._status = "disconnected"
         self.device.setConnectState(False)
@@ -134,7 +134,6 @@ class Controller(object):
                 self.device.auth['user'], password=self.device.auth['password'])
 
         self._status = "connecting"
-        self._autoreconnect = False
 
         self._mqttClient.connect(
             self.device.host, port=self.device.port, keepalive=Controller.KEEPALIVE)
@@ -153,7 +152,6 @@ class Controller(object):
             self.log.info("MQTT: disconnect")
             self._mqttClient.disconnect()
             self._status = "disconnected"
-            self._autoreconnect = False
             self.ething.socketManager.unregisterReadSocket(self._socket)
             self.ething.socketManager.unregisterWriteSocket(self._socket)
             self.device.setConnectState(False)
@@ -172,7 +170,7 @@ class Controller(object):
         now = time.time()
 
         # auto connect
-        if self._status == "disconnected" and self._autoreconnect and now > self._autoreconnect:
+        if self._status == "disconnected" and self._autoreconnect is True and (now > self._nextConnect):
             self.open()
 
         if self._status != "disconnected":
