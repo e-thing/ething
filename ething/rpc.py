@@ -7,6 +7,8 @@ import os
 import tempfile
 import traceback
 import errno
+import logging
+from threading import Thread
 
 if os.name == 'nt':
     EAGAIN = errno.WSAEWOULDBLOCK
@@ -15,7 +17,6 @@ else:
 
 
 class RPC_Response(object):
-
     def __init__(self, result=None, exception=None, args=None, kwargs=None, is_async=False, traceback=None):
         self.result = result
         self.args = args
@@ -26,7 +27,6 @@ class RPC_Response(object):
 
 
 class RPC_Request(object):
-
     def __init__(self, func, args, kwargs, response=True):
         self.func = func
         self.args = args
@@ -35,20 +35,17 @@ class RPC_Request(object):
 
 
 class RPC_Sub(object):
-
     def __init__(self, topic):
         self.topic = topic
 
 
 class RPC_Pub(object):
-
     def __init__(self, topic, message):
         self.topic = topic
         self.message = message
 
 
 class RPC_pubsubmsg(object):
-
     def __init__(self, topic, message):
         self.topic = topic
         self.message = message
@@ -59,14 +56,11 @@ default_address = ('127.0.0.1', 8042) if os.name == 'nt' else os.path.join(
 
 
 class RPC(object):
-
     _cmds = {}
 
-    def __init__(self, core, address=None):
-        self.core = core
-        self.log = core.log
-        self._address = address or core.config.get(
-            'rpc.address', default_address)
+    def __init__(self, address=default_address):
+        self.log = logging.getLogger('RPC')
+        self._address = address
 
         self.log.debug("RPC initiated, address = %s" % str(self._address))
 
@@ -74,7 +68,7 @@ class RPC(object):
     def address(self):
         return self._address
 
-    def start_server(self, manager):
+    def start_server(self):
 
         if isinstance(self._address, string_types):
 
@@ -85,7 +79,7 @@ class RPC(object):
                 if os.path.exists(self._address):
                     raise
 
-        server = RPC_Server(self, manager)
+        server = RPC_Server(self)
 
         server.start()
 
@@ -212,7 +206,6 @@ class RPC(object):
 
 
 class RPC_SubClient(object):
-
     def __init__(self, rpc, topic):
         self.rpc = rpc
         self.log = rpc.log
@@ -246,19 +239,17 @@ class RPC_SubClient(object):
             self.stop()
             return
 
-        #self.log.debug("msg received topic=%s data=%s" %
+        # self.log.debug("msg received topic=%s data=%s" %
         #               (resp.topic, str(resp.message)))
-        
+
         return resp
 
 
 class RPC_Server(object):
-
-    def __init__(self, rpc, manager):
+    def __init__(self, rpc):
         self.rpc = rpc
         self.log = rpc.log
         self.sock = None
-        self.manager = manager
         self._subs = {}
         self._n = 0
 
@@ -269,14 +260,25 @@ class RPC_Server(object):
 
         self._n = 0
         self.sock = self.rpc._create_socket()
-        self.sock.setblocking(False)
+        # self.sock.setblocking(False)
 
         # Bind the socket to the port
         self.sock.bind(self.rpc.address)
         self.log.info("start RPC server on %s" % str(self.rpc.address))
         self.sock.listen(100)
 
-        self.manager.registerReadSocket(self.sock, self._process)
+        # self.manager.registerReadSocket(self.sock, self._process)
+
+    def serve_forever(self):
+        while True:
+            self._process()
+
+    def serve(self, timeout = None):
+        try:
+            self.sock.settimeout(timeout)
+            self._process()
+        except socket.timeout:
+            pass
 
     def stop(self):
         if self.sock is not None:
@@ -289,10 +291,17 @@ class RPC_Server(object):
         # new client is connected
         self._n += 1
         client_sock, client_address = self.sock.accept()
-        # self.log.debug("new RPC client connected %s (%d)" % (str(client_address),self._n) )
+        self.log.debug("new RPC client connected %s (%d)" % (str(client_address),self._n) )
 
-        self.manager.registerReadSocket(
-            client_sock, self._process_client, (client_sock,))
+        Thread(target=self._thread_client, args=(client_sock, ), name="rpc.client").start()
+
+        #self.manager.registerReadSocket(
+        #    client_sock, self._process_client, (client_sock,))
+
+    def _thread_client(self, sock):
+        sock.settimeout(5.)
+        self._process_client(sock)
+
 
     def _process_client(self, sock):
         # a client send some data
@@ -301,9 +310,7 @@ class RPC_Server(object):
         req = rpc._read_obj(sock)
 
         if req is None:
-            self._n -= 1
-            # self.log.debug("RPC client disconnect")
-            self.manager.unregisterReadSocket(sock)
+            self._close_client(sock)
 
             # remove the socket from any pub
             for topic in self._subs:
@@ -328,9 +335,7 @@ class RPC_Server(object):
                             resp = RPC_Response(
                                 args=args, kwargs=kwargs, is_async=True)
                             rpc._send_obj(sock, resp)
-                            sock.close()
-                            self._n -= 1
-                            self.manager.unregisterReadSocket(sock)
+                            self._close_client(sock)
 
                         req.kwargs[callback_name] = cb
 
@@ -354,9 +359,8 @@ class RPC_Server(object):
             if resp is not None:
                 if req.response:
                     rpc._send_obj(sock, resp)
-                sock.close()
-                self._n -= 1
-                self.manager.unregisterReadSocket(sock)
+
+                self._close_client(sock)
 
         elif isinstance(req, RPC_Sub):
 
@@ -380,3 +384,12 @@ class RPC_Server(object):
                 for s in self._subs[topic]['sockets']:
                     if s is not sock:
                         rpc._send_obj(s, m)
+
+            self._close_client(sock)
+
+
+    def _close_client(self, sock):
+        self._n -= 1
+        sock.close()
+        self.log.debug("RPC client disconnect")
+        # self.manager.unregisterReadSocket(sock)

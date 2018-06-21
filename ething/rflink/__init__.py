@@ -5,9 +5,58 @@ from .Controller import Controller
 from .RFLinkGateway import RFLinkGateway, Device
 from .RFLinkSerialGateway import RFLinkSerialGateway
 from .RFLinkNode import RFLinkNode
-
+from ething.plugin import Plugin
 
 import serial
+
+
+
+class RFLink(Plugin):
+
+    def load(self):
+
+        gateways = self.core.find({
+            'type': {'$regex': '^RFLink.*Gateway$'}
+        })
+
+        for gateway in gateways:
+            try:
+                self._start_controller(gateway)
+            except Exception as e:
+                self.log.exception('unable to start the controller for the gateway %s' % gateway)
+
+        self.core.signalDispatcher.bind('ResourceCreated', self._on_resource_created)
+        self.core.signalDispatcher.bind('ResourceDeleted', self._on_resource_deleted)
+
+    def unload(self):
+        self.core.signalDispatcher.unbind('ResourceCreated', self._on_resource_created)
+        self.core.signalDispatcher.unbind('ResourceDeleted', self._on_resource_deleted)
+
+        # todo: remove all controllers
+
+    def _on_resource_created(self, signal):
+        device = self.core.get(signal['resource'])
+        if isinstance(device, RFLinkGateway):
+            self._start_controller(device)
+
+    def _on_resource_deleted(self, signal):
+        device = self.core.get(signal['resource'])
+        if isinstance(device, RFLinkGateway):
+            self._stop_controller(device)
+
+    def _start_controller(self, device):
+
+        self.log.info("starting RFLink controller '%s' id=%s type=%s" % (device.name, device.id, device.type))
+
+        if isinstance(device, RFLinkSerialGateway):
+            controller = Controller(device, SerialTransport)
+
+
+
+        else:
+            raise Exception('Unknown gateway type "%s"' % type(device).__name__)
+
+
 
 
 class RFLink(object):
