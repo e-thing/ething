@@ -38,6 +38,7 @@ from .mqtt import mqtt
 from .yeelight import Yeelight
 from .mihome import Mihome
 from .zigate import Zigate
+from .blea import blea
 from .device.Http import Http
 from .device.RTSP import RTSP
 from .device.SSH import SSH
@@ -133,6 +134,12 @@ class Core(object):
                 self.mqtt.stop_all_controllers()
             except Exception as e:
                 self.log.exception("error while shutting down mqtt")
+        
+        if hasattr(self, "blea"):
+            try:
+                self.blea.stop_all_controllers()
+            except Exception as e:
+                self.log.exception("error while shutting down blea")
 
         if hasattr(self, "yeelight"):
             try:
@@ -211,6 +218,7 @@ class Core(object):
         self.yeelight = Yeelight(self)
         self.mihome = Mihome(self)
         self.zigate = Zigate(self)
+        self.blea = blea(self)
 
         self.scheduler.at(self._tick, '*', '*')  # every minute
 
