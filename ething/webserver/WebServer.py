@@ -11,7 +11,7 @@ class WebServer(Plugin):
         self.process.start()
 
     def unload(self):
-        if self.process:
+        if hasattr(self, 'process'):
             self.process.stop()
 
 

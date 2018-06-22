@@ -68,6 +68,8 @@ class RFLink(Plugin):
             controller = RFLinkSerialController(device)
             self.controllers[device.id] = controller
             controller.start()
+            
+            self.core.rpc.register('process.%s.send' % device.id, controller.send, callback_name = 'callback')
         else:
             raise Exception('Unknown gateway type "%s"' % type(device).__name__)
 
@@ -77,10 +79,12 @@ class RFLink(Plugin):
             controller = self.controllers[id]
             controller.stop()
             del self.controllers[id]
+            self.core.rpc.unregister('process.%s.send' % id)
 
     def stop_all_controllers(self):
-        for id in list(self.controllers):
-            self._stop_controller(id)
+        if hasattr(self, 'controllers'):
+            for id in list(self.controllers):
+                self._stop_controller(id)
 
 
 
@@ -221,7 +225,7 @@ class RFLinkProtocol(LineReader):
 
         self.log.debug("RFLink: send message '%s'" % message)
 
-        self.transport.write_line(message)
+        self.write_line(message)
 
         if waitResponse:
 
@@ -277,7 +281,7 @@ class RFLinkSerialController(TransportProcess):
                 baudrate = gateway.baudrate
             ),
 
-            protocol = RFLinkProtocol(self)
+            protocol = RFLinkProtocol(gateway)
         )
         self.gateway = gateway
 

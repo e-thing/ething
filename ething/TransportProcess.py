@@ -24,14 +24,14 @@ class Transport(object):
 class SerialTransport(Transport):
 
     def __init__(self, port, baudrate):
-        Super(SerialTransport, self).__init__()
+        super(SerialTransport, self).__init__()
         self._lock = threading.Lock()
         self.serial = None
         self.port = port
         self.baudrate = baudrate
 
     def open(self, process):
-        Super(SerialTransport, self).open(process)
+        super(SerialTransport, self).open(process)
         self.serial = serial.serial_for_url(self.port, baudrate=self.baudrate, timeout=1)
         self.log.info("(serial) connected to port=%s baudrate=%d" % (self.port, self.baudrate))
 
@@ -53,14 +53,14 @@ class SerialTransport(Transport):
 class NetTransport(Transport):
 
     def __init__(self, host, port):
-        Super(NetTransport, self).__init__()
+        super(NetTransport, self).__init__()
         self._lock = threading.Lock()
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.host = host
         self.port = port
 
     def open(self, process):
-        Super(NetTransport, self).open(process)
+        super(NetTransport, self).open(process)
         self.sock.connect((self.host, self.port))
         self.sock.settimeout(1)
         self.log.info("(net) connected to host=%s port=%d" % (self.host, self.port))
@@ -88,7 +88,7 @@ class Protocol(object):
 
     def connection_made(self, process):
         self.process = process
-        self.protocol = process.protocol
+        self.transport = process.transport
         self.log = process.log
 
     def data_received(self, data):

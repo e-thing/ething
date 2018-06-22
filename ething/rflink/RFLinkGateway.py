@@ -58,7 +58,7 @@ class RFLinkGateway(Device):
     # note: not all request has a response !
 
     def sendMessageWaitResponse(self, message):
-        return self.ething.rpc.request('device.rflink.sendWaitResponse', self.id, message)
+        return self.ething.rpc.request('process.%s.send' % self.id, message, waitResponse = True)
 
     def reboot(self):
         """
