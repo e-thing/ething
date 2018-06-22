@@ -171,7 +171,7 @@ def createDaemon():
 
 def init_logger(console_log=False):
 
-    frm = logging.Formatter("%(asctime)s :: %(levelname)s :: %(message)s")
+    frm = logging.Formatter("%(asctime)s :: %(name)s :: %(levelname)s :: %(message)s")
     log = logging.getLogger('ething')
 
     if console_log:
@@ -316,7 +316,7 @@ def main():
 
         core.start()
 
-        core.signalManager.bind(
+        core.signalDispatcher.bind(
             'ConfigUpdated', lambda _: core.config.save(CONFIG_FILE))
 
         core.loop_forever()

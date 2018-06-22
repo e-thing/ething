@@ -1,64 +1,29 @@
 # coding: utf-8
-import os
-import signal
 
-is_thread = os.name == "nt"
-
-if is_thread:
-    from threading import Thread
-else:
-    from multiprocessing import Process
+from ething.plugin import Plugin
+from ething.Process import Process
 
 
-class WebServer(object):
+class WebServer(Plugin):
+
+    def load(self):
+        self.process = WebServerProcess(self.core)
+        self.process.start()
+
+    def unload(self):
+        if self.process:
+            self.process.stop()
+
+
+class WebServerProcess(Process):
 
     def __init__(self, core):
-
+        super(WebServerProcess, self).__init__('webserver')
         self.core = core
-        self.p = None
 
-    @property
-    def is_started(self):
-        return self.p is not None and self.p.is_alive()
+    def main(self):
 
-    def __proc(self):
+        from ething.webserver.server import run
 
-        # remove any signal handlers set by the parents
-        if not is_thread:
-            signal.signal(signal.SIGINT, signal.SIG_IGN)
-            signal.signal(signal.SIGTERM, signal.SIG_DFL)
+        run(self.core)
 
-        self.core.log.info("webserver process started, pid = %d" % os.getpid())
-
-        self.core._init_database()
-
-        try:
-            from ething.webserver.server import run
-
-            run(self.core)
-        except:
-            self.core.log.exception("webserver stopped")
-
-        self.core.log.info("webserver process ended")
-
-    def start(self):
-        if self.is_started:
-            raise Exception('the webserver is already running !')
-
-        # run webserver in another process
-        if is_thread:
-            self.p = Thread(target=self.__proc, args=())
-        else:
-            self.p = Process(target=self.__proc, args=())
-
-        self.p.daemon = True
-        self.p.start()
-
-    def stop(self):
-        if self.is_started:
-            if not is_thread:
-                self.core.log.info("stopping webserver")
-                self.p.terminate()
-                self.p.join()
-                self.core.log.info("webserver stopped")
-                self.p = None

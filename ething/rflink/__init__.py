@@ -1,19 +1,22 @@
 # coding: utf-8
-from future.utils import string_types
-
-from .Controller import Controller
-from .RFLinkGateway import RFLinkGateway, Device
+from .RFLinkGateway import RFLinkGateway
 from .RFLinkSerialGateway import RFLinkSerialGateway
 from .RFLinkNode import RFLinkNode
 from ething.plugin import Plugin
-
-import serial
-
+from ething.TransportProcess import LineReader, TransportProcess, SerialTransport
+from ething.Scheduler import Scheduler
+from .helpers import convertSwitchId, getSubType
+import time
+import re
 
 
 class RFLink(Plugin):
 
+
+
     def load(self):
+
+        self.controllers = {}
 
         gateways = self.core.find({
             'type': {'$regex': '^RFLink.*Gateway$'}
@@ -27,12 +30,14 @@ class RFLink(Plugin):
 
         self.core.signalDispatcher.bind('ResourceCreated', self._on_resource_created)
         self.core.signalDispatcher.bind('ResourceDeleted', self._on_resource_deleted)
+        self.core.signalDispatcher.bind('ResourceMetaUpdated', self._on_resource_updated)
 
     def unload(self):
         self.core.signalDispatcher.unbind('ResourceCreated', self._on_resource_created)
         self.core.signalDispatcher.unbind('ResourceDeleted', self._on_resource_deleted)
+        self.core.signalDispatcher.unbind('ResourceMetaUpdated', self._on_resource_updated)
 
-        # todo: remove all controllers
+        self.stop_all_controllers()
 
     def _on_resource_created(self, signal):
         device = self.core.get(signal['resource'])
@@ -42,199 +47,242 @@ class RFLink(Plugin):
     def _on_resource_deleted(self, signal):
         device = self.core.get(signal['resource'])
         if isinstance(device, RFLinkGateway):
-            self._stop_controller(device)
+            self._stop_controller(device.id)
+
+    def _on_resource_updated(self, signal):
+        id = signal['resource']
+        if id in self.controllers:
+            controller = self.controllers[id]
+            gateway = controller.gateway
+            if signal['rModifiedDate'] > gateway.modifiedDate:
+                gateway.refresh()
+
+            for attr in signal['attributes']:
+                if attr in controller.RESET_ATTR:
+                    self._stop_controller(id)
+                    self._start_controller(gateway)
+                    break
 
     def _start_controller(self, device):
-
-        self.log.info("starting RFLink controller '%s' id=%s type=%s" % (device.name, device.id, device.type))
-
         if isinstance(device, RFLinkSerialGateway):
-            controller = Controller(device, SerialTransport)
-
-
-
+            controller = RFLinkSerialController(device)
+            self.controllers[device.id] = controller
+            controller.start()
         else:
             raise Exception('Unknown gateway type "%s"' % type(device).__name__)
 
+    def _stop_controller(self, id):
 
-
-
-class RFLink(object):
-
-    def __init__(self, core):
-        self.core = core
-        self.log = core.log
-        self.rpc = core.rpc
-
-        self.controllers = {}
-
-        self.rpc.register('device.rflink.send',
-                          self.controller_send, callback_name='callback')
-        self.rpc.register('device.rflink.sendWaitResponse',
-                          self.controller_send_wait_response, callback_name='callback')
-
-        self.core.signalManager.bind(
-            'ResourceCreated', self.on_resource_created)
-        self.core.signalManager.bind(
-            'ResourceDeleted', self.on_resource_deleted)
-
-        devices = self.core.find({
-            'type': {'$regex': '^RFLink.*Gateway$'}
-        })
-
-        for device in devices:
-            try:
-                self.start_controller(device)
-            except Exception as e:
-                self.log.error(e)
-
-    def on_resource_created(self, signal):
-        device = self.core.get(signal['resource'])
-        if isinstance(device, RFLinkGateway):
-            self.start_controller(device)
-
-    def on_resource_deleted(self, signal):
-        device = self.core.get(signal['resource'])
-        if isinstance(device, RFLinkGateway):
-            self.stop_controller(device)
-
-    def start_controller(self, device):
-
-        if isinstance(device, string_types):
-            device = self.core.get(device)
-
-        if not device or not isinstance(device, RFLinkGateway):
-            raise Exception(
-                "the device %s does not exist or has the wrong type" % str(device))
-
-        # remove any previous stream from this device
-        self.stop_controller(device)
-
-        self.log.info("starting RFLink controller '%s' id=%s type=%s" %
-                      (device.name, device.id, device.type))
-
-        controller = Controller(device, SerialTransport)
-
-        self.controllers[device.id] = controller
-
-        return controller
-
-    def stop_controller(self, device):
-
-        if isinstance(device, Device):
-            device = device.id
-
-        if device in self.controllers:
-            controller = self.controllers[device]
-            self.log.info("stopping RFLink controller '%s' id=%s type=%s" % (
-                controller.gateway.name, controller.gateway.id, controller.gateway.type))
-            controller.destroy()
-            del self.controllers[device]
+        if id in self.controllers:
+            controller = self.controllers[id]
+            controller.stop()
+            del self.controllers[id]
 
     def stop_all_controllers(self):
         for id in list(self.controllers):
-            self.stop_controller(id)
-        self.controllers = {}
-
-    def controller_send(self, gatewayId, message, callback):
-
-        if gatewayId in self.controllers:
-
-            controller = self.controllers[gatewayId]
-
-            controller.send(message, callback=callback)
-
-        else:
-            raise Exception(
-                "unknown RFLink instance for device id %s" % gatewayId)
-
-    def controller_send_wait_response(self, gatewayId, message, callback):
-
-        if gatewayId in self.controllers:
-
-            controller = self.controllers[gatewayId]
-
-            controller.send(message, callback=callback, waitResponse=True)
-
-        else:
-            raise Exception(
-                "unknown RFLink instance for device id %s" % gatewayId)
+            self._stop_controller(id)
 
 
-class SerialTransport(object):
 
-    def __init__(self, controller):
-        self._buffer = b""
-        self._serial = None
-        self._controller = controller
-        self._socketManager = controller.ething.socketManager
-        self.log = controller.log
+class RFLinkProtocol(LineReader):
 
-    def open(self):
+    RESPONSE_TIMEOUT = 10  # seconds
 
-        self._buffer = b""
+    def __init__(self, gateway):
+        super(RFLinkProtocol, self).__init__()
+        self.gateway = gateway
+        # response management
+        self._responseListeners = []
+        self.scheduler = Scheduler()
 
-        port = self._controller.gateway.port
-        baudrate = self._controller.gateway.baudrate
+        self.scheduler.setInterval(0.5, self.check_response_timeout)
 
-        # open serial port
-        self._serial = serial.Serial(port, baudrate, timeout=0)
+    def connection_made(self, process):
+        super(RFLinkProtocol, self).connection_made(process)
+        self._responseListeners = []
 
-        self._socketManager.registerReadSocket(self._serial, self.onRead)
+    # exemple of messages :
+    #     20;00;Nodo RadioFrequencyLink - RFLink Gateway V1.1 - R46;
+    #     20;01;MySensors=OFF;NO NRF24L01;
+    #     20;02;setGPIO=ON;
+    #     20;03;Cresta;ID=8301;WINDIR=0005;WINSP=0000;WINGS=0000;WINTMP=00c3;WINCHL=00c3;BAT=LOW;
+    #     20;04;Cresta;ID=3001;TEMP=00b4;HUM=50;BAT=OK;
+    #     20;05;Cresta;ID=2801;TEMP=00af;HUM=53;BAT=OK;
+    #     20;06;NewKaku;ID=008440e6;SWITCH=1;CMD=OFF;
+    #     20;02;VER=1.1;REV=46;BUILD=0c;
+    def handle_line(self, line):
+        self.log.debug('read: %s' % line)
 
-        self.log.info("[serial]: port opened : %s baudrate: %d" %
-                      (port, baudrate))
+        with self.gateway as gateway:
 
-        return True
+            gateway.setConnectState(True)
 
-    def close(self):
-        if self._serial:
-            self._socketManager.unregisterReadSocket(self._serial)
-            self._serial.close()
-            self._serial = None
-            self.log.info("[serial]: port closed")
+            words = line.rstrip(';').split(';')
+            wordsCount = len(words)
 
-    def write(self, data):
-        if self._serial:
-            return self._serial.write(data)
-        else:
-            return 0
+            if wordsCount < 3:
+                self.log.warn("RFLink: invalid message received '%s'" % line)
+                return
 
-    def read(self):
-        if self._serial:
-            chunk = self._serial.read(1024)  # return as bytes
+            # keep only messages destined to the gateway
+            if words[0] != "20":
+                return
 
-            if not chunk:
-                self.log.warn("[serial]: link broken... close")
-                self._controller.close()
-                return None
+            if wordsCount == 3 or words[2][0:4] == 'VER=':
+                # system command/response
 
-            return chunk
-        else:
-            return None
+                # does a user request wait for a response
+                for responseListener in self._responseListeners:
+                    responseListener['callback'](False, line)
+                self._responseListeners = []
 
-    def readlines(self):
-        l = []
-        chunk = self.read()
-        if chunk:
-            self._buffer += chunk
-
-            while True:
-                p = self._buffer.find(b"\n")
-                if p >= 0:
-                    line = self._buffer[0:p]
-                    self._buffer = self._buffer[p+1:]
-                    l.append(line.rstrip())
+                matches = re.search(
+                    'Nodo RadioFrequencyLink - RFLink Gateway V([\d\.]+) - R([\d]+)', words[2])
+                if matches:
+                    gateway._version = matches.group(1)
+                    gateway._revision = matches.group(2)
+                    self.log.info("RFLink: ver:%s rev:%s" %
+                                  (matches.group(1), matches.group(2)))
                 else:
-                    break
+                    matches = re.search(
+                        ';VER=([\d\.]+);REV=([\d]+);BUILD=([0-9a-fA-F]+);', line)
+                    if matches:
+                        gateway._version = matches.group(1)
+                        gateway._revision = matches.group(2)
+                        gateway._build = matches.group(3)
+                        self.log.info("RFLink: ver:%s rev:%s build:%s" % (
+                            matches.group(1), matches.group(2), matches.group(3)))
 
-        return l
+            else:
 
-    def onRead(self):
-        for line in self.readlines():
-            try:
-                self._controller.processLine(line)
-            except Exception as e:
-                # skip the line
-                self.log.exception(
-                    "[serial]: unable to handle the message %s , error: %s" % (line, str(e)))
+                protocol = words[2]
+                args = {}
+
+                for i in range(3, wordsCount):
+                    sepi = words[i].find('=')
+                    if sepi >= 0:
+                        # key value pair
+                        key = words[i][0:sepi]
+                        value = words[i][sepi + 1:]
+                        args[key] = value
+
+                if 'ID' in args:
+
+                    switchId = convertSwitchId(
+                        args['SWITCH']) if 'SWITCH' in args else None
+
+                    device = gateway.getNode({
+                        'nodeId': args['ID'],
+                        'protocol': protocol,
+                        'switchId': switchId
+                    })
+
+                    if not device:
+                        if gateway.data.get('inclusion', False):
+                            # the device does not exist !
+
+                            subType = getSubType(protocol, args)
+
+                            # find the best subType suited from the protocol and args
+                            if subType:
+
+                                # create it !
+                                device = RFLinkNode.createDeviceFromMessage(
+                                    subType, protocol, args, gateway)
+
+                                if device:
+                                    self.log.info(
+                                        "RFLink: new node (%s) from %s" % (subType, line))
+                                else:
+                                    self.log.error(
+                                        "RFLink: fail to create the node (%s) from %s" % (subType, line))
+
+                            else:
+                                self.log.warn(
+                                    "RFLink: unable to handle the message %s" % line)
+
+                        else:
+                            self.log.warn(
+                                "RFLink: new node from %s, rejected because inclusion=False" % line)
+
+                    if device:
+                        with device:
+                            device.setConnectState(True)
+                            device.processMessage(protocol, args)
+
+                else:
+                    self.log.warn(
+                        "RFLink: unable to handle the message %s, no id." % line)
+
+    # $message message to send
+    # $callback (optional) function(error, messageSent, messageReceived = None)
+    # $waitResponse (optional) true|false wait for a response or not
+    def send(self, message, callback=None, waitResponse=False):
+
+        self.log.debug("RFLink: send message '%s'" % message)
+
+        self.transport.write_line(message)
+
+        if waitResponse:
+
+            def cb(error, messageReceived):
+                if callable(callback):
+                    callback(error, message, messageReceived)
+
+            # wait for a response
+            self._responseListeners.append({
+                'callback': cb,
+                'ts': time.time(),
+                'messageSent': message
+            })
+
+        else:
+            if callable(callback):
+                callback(False, message, None)
+
+    def connection_lost(self, exc):
+
+        self.gateway.setConnectState(False)
+
+        for responseListener in self._responseListeners:
+            responseListener['callback']('disconnected', None)
+        self._responseListeners = []
+
+        super(RFLinkProtocol, self).connection_lost(exc)
+
+    def check_response_timeout(self):
+        # check for timeout !
+        now = time.time()
+        i = 0
+        while i < len(self._responseListeners):
+            responseListener = self._responseListeners[i]
+
+            if now - responseListener['ts'] > self.RESPONSE_TIMEOUT:
+                # remove this item
+                self._responseListeners.pop(i)
+                i -= 1
+
+                responseListener['callback']('response timeout', None)
+
+            i += 1
+
+class RFLinkSerialController(TransportProcess):
+    RESET_ATTR = ['port', 'baudrate']
+
+    def __init__(self, gateway):
+        super(RFLinkSerialController, self).__init__(
+            'rflink',
+            transport = SerialTransport(
+                port = gateway.port,
+                baudrate = gateway.baudrate
+            ),
+
+            protocol = RFLinkProtocol(self)
+        )
+        self.gateway = gateway
+
+    def send(self, *args, **kwargs):
+        self.protocol.send(*args, **kwargs)
+
+
+

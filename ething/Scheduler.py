@@ -5,12 +5,12 @@ import datetime
 import logging
 
 import threading
-from utils.weak_ref import weak_ref
+from ething.utils.weak_ref import weak_ref
 
 class Scheduler(object):
 
     def __init__(self, **kwargs):
-        self.log = logging.getLogger('Scheduler')
+        self.log = logging.getLogger('ething.Scheduler')
         super(Scheduler, self).__init__(**kwargs)
         self.tasks = []
         self.r_lock = threading.RLock()

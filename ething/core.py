@@ -6,20 +6,14 @@
 """
 
 from future.utils import string_types
-from .webserver.WebServer import WebServer
 import pymongo
 from .DbFs import DbFs
 from .ResourceQueryParser import ResourceQueryParser
 from .Config import Config
-from .SignalManager import SignalManager
-from .SocketManager import SocketManager
-from .RuleManager import RuleManager
-from .MqttDispatcher import MqttDispatcher
-from .TaskManager import TaskManager
-from .Scheduler import Scheduler
-from .Mail import Mail
+from .SignalDispatcher import SignalDispatcher
 from .rpc import RPC
 from .version import __version__
+from .plugin import instanciate_plugins
 import logging
 import sys
 import os
@@ -28,16 +22,18 @@ import re
 
 from .meta import get_resource_class, get_signal_class
 
+from .webserver.WebServer import WebServer
+
 from .File import File
 from .Table import Table
 from .Rule import Rule
 
 from .rflink import RFLink
-from .mysensors import MySensors
-from .mqtt import mqtt
-from .yeelight import Yeelight
-from .mihome import Mihome
-from .zigate import Zigate
+# from .mysensors import MySensors
+# from .mqtt import mqtt
+# from .yeelight import Yeelight
+# from .mihome import Mihome
+# from .zigate import Zigate
 from .device.Http import Http
 from .device.RTSP import RTSP
 from .device.SSH import SSH
@@ -60,6 +56,7 @@ class Core(object):
         self._init_logger()
         self._init_database()
         self._init_rpc()
+        self._init_plugins()
 
         Core.__instance = self
 
@@ -68,10 +65,8 @@ class Core(object):
         self.log.setLevel(
             getattr(logging, self.config['log']['level'].upper(), logging.INFO))
 
-    def _init_webserver(self):
-        if self.config['webserver']['enabled']:
-            self.webserver = WebServer(self)
-            self.webserver.start()
+    def _init_plugins(self):
+        self.plugins = instanciate_plugins(self)
 
     def _init_database(self):
 
@@ -80,7 +75,11 @@ class Core(object):
                 self.config['db']['host'] + ':' + \
                 str(self.config['db']['port'])
             mongoClient = pymongo.MongoClient(
-                server, username=self.config['db']['user'], password=self.config['db']['password'], connect=False)
+                server, username=self.config['db']['user'], password=self.config['db']['password'], connect=True, serverSelectionTimeoutMS=5)
+
+            info = mongoClient.server_info()
+
+            self.mongoClient = mongoClient
             self.db = mongoClient[self.config['db']['database']]
             if self.db is None:
                 raise Exception('unable to connect to the database')
@@ -94,7 +93,7 @@ class Core(object):
         self.resourceQueryParser = ResourceQueryParser()
 
     def _init_rpc(self):
-        self.rpc = RPC(self)
+        self.rpc = RPC(self.config.get('rpc.address'))
 
     def stop(self):
         self.log.info("stopping ...")
@@ -110,59 +109,13 @@ class Core(object):
 
         self.running = False
 
-        # if hasattr(self, "webserver"):
-        #    try:
-        #        self.webserver.stop()
-        #    except Exception as e:
-        #        self.log.exception("error while shutting down webserver")
-
-        if hasattr(self, "rflink"):
+        for plugin in self.plugins:
+            plugin_name = type(plugin).__name__
             try:
-                self.rflink.stop_all_controllers()
+                plugin.unload()
+                self.log.info('plugin %s unloaded' % plugin_name)
             except Exception as e:
-                self.log.exception("error while shutting down rflink")
-
-        if hasattr(self, "mysensors"):
-            try:
-                self.mysensors.stop_all_controllers()
-            except Exception as e:
-                self.log.exception("error while shutting down mysensors")
-
-        if hasattr(self, "mqtt"):
-            try:
-                self.mqtt.stop_all_controllers()
-            except Exception as e:
-                self.log.exception("error while shutting down mqtt")
-
-        if hasattr(self, "yeelight"):
-            try:
-                self.yeelight.stop_all_controllers()
-            except Exception as e:
-                self.log.exception("error while shutting down yeelight")
-
-        if hasattr(self, "mihome"):
-            try:
-                self.mihome.stop_controller()
-            except Exception as e:
-                self.log.exception("error while shutting down mihome")
-
-        if hasattr(self, "taskManager"):
-            try:
-                self.taskManager.terminate()
-            except Exception as e:
-                self.log.exception("error while shutting down taskManager")
-
-        if hasattr(self, "mqttDispatcher"):
-            try:
-                self.mqttDispatcher.destroy()
-            except Exception as e:
-                self.log.exception("error while shutting down mqttDispatcher")
-
-        if hasattr(self, "ruleManager"):
-            try:
-                self.ruleManager.destroy()
-            except Exception as e:
-                self.log.exception("error while shutting down ruleManager")
+                self.log.exception("error while unload plugin %s" % plugin_name)
 
         if hasattr(self, "rpc_server"):
             try:
@@ -181,86 +134,34 @@ class Core(object):
         self.log.info("Starting ething %s" % self.version)
         self.log.info("Using home directory: %s" % os.getcwd())
 
-        self.scheduler = Scheduler(self)
-        self.taskManager = TaskManager(self, initialize=self._init_database)
-        self.signalManager = SignalManager(self)
-        self.socketManager = SocketManager(self)
-        self.ruleManager = RuleManager(self)
-        if self.config.get('mqtt.host'):
-            self.mqttDispatcher = MqttDispatcher(self)
-        self.mail = Mail(self)
+        self.signalDispatcher = SignalDispatcher()
 
         self.rpc.register('stop', self.stop)
         self.rpc.register('version', self.version)
-
-        def _notify(*args, **kwargs):
-            self.taskManager.run(self.mail.send, args=args,
-                                 kwargs=kwargs, name='mail')
-
-        self.rpc.register('notify', _notify)
+        self.rpc.register('signal', self.signalDispatcher.dispatch)
 
         # rpc
-        self.rpc_server = self.rpc.start_server(self.socketManager)
+        self.rpc_server = self.rpc.start_server()
 
-        self._init_webserver()
+        # load the plugins
+        for plugin in self.plugins:
+            plugin_name = type(plugin).__name__
+            try:
+                plugin.load()
+                self.log.info('plugin %s loaded' % plugin_name)
+            except Exception:
+                self.log.exception('unable to load the plugin %s' % plugin_name)
 
-        # load the controllers
-        self.rflink = RFLink(self)
-        self.mysensors = MySensors(self)
-        self.mqtt = mqtt(self)
-        self.yeelight = Yeelight(self)
-        self.mihome = Mihome(self)
-        self.zigate = Zigate(self)
-
-        self.scheduler.at(self._tick, '*', '*')  # every minute
-
-        self.scheduler.at(self._ping, '*', '*')  # every minute
-
-        self.signalManager.addDispatcher(
-            lambda signal: self.rpc.publish('signal', signal))
+        self.signalDispatcher.bind('*', lambda signal: self.rpc.publish('signal', signal))
 
         self.running = True
 
     def loop(self, timeout=1):
-        self.socketManager.loop(timeout)
-        self.scheduler.update()
-        self.taskManager.loop()
+        self.rpc_server.serve(timeout)
 
     def loop_forever(self):
         while self.running:
             self.loop(1)
-
-    def _tick(self):
-        """
-        dispatch the tick event
-        """
-        self.log.debug("tick...")
-        self.dispatchSignal('Tick')
-
-    def _ping(self):
-        """
-        ping all devices to see if there are still connected !
-        """
-
-        self.log.debug("ping...")
-
-        for task in self.taskManager.tasks:
-            if task.name == 'ping':
-                if (not task.is_started) or task.is_running:
-                    self.log.warning("ping task stil running")
-                    return  # this task is still running
-
-        def ping():
-            devices = self.find({
-                'extends': 'Device'
-            })
-
-            for device in devices:
-                if hasattr(device, 'ping'):
-                    if (device.lastSeenDate is None) or (device.lastSeenDate < datetime.datetime.utcnow()-datetime.timedelta(seconds=45)):
-                        device.ping()
-
-        self.taskManager.run(ping, name='ping')
 
     #
     # Resources

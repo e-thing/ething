@@ -2,12 +2,12 @@
 
 import logging
 import threading
-from utils.weak_ref import weak_ref
+from ething.utils.weak_ref import weak_ref
 
 class SignalDispatcher(object):
 
     def __init__(self):
-        self.log = logging.getLogger('SignalManager')
+        self.log = logging.getLogger('ething.SignalDispatcher')
 
         self.r_lock = threading.RLock()
 

@@ -29,7 +29,7 @@ class Plugin(with_metaclass(PluginMount, object)):
 
     def __init__(self, core, **kwargs):
         self.core = core
-        self.log = logging.getLogger(self.__class__.__name__)
+        self.log = logging.getLogger("ething.%s" % self.__class__.__name__)
 
     @classmethod
     def register(cls):

@@ -7,6 +7,7 @@ import logging
 import json
 import re
 import copy
+from hashlib import md5
 
 CONF_VERSION = 1
 
@@ -166,7 +167,7 @@ class Config(object):
                     if not(isinstance(value, string_types) and re.match("^.{4,}$", value)):
                         raise Exception(
                             name+' must be a string (min. length = 4 cahracters)')
-                    value = md5(value)
+                    value = md5(value).hexdigest()
                 elif name == 'script.timeout':
                     if not(isinstance(value, integer_types) and value >= 0):
                         raise Exception(name+' must be an integer >= 0')

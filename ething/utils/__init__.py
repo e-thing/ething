@@ -29,6 +29,9 @@ def get_info(core):
             },
             'nodejs': {
                 'version': (is_nodejs_installed(core) or "not found")
+            },
+            'mongodb': {
+                'version': core.mongoClient.server_info().get('version') if hasattr(core, 'mongoClient') else None
             }
         }
 
@@ -48,6 +51,9 @@ def print_info(core, printer):
     platform_info = info.get('platform', {})
     printer("PLATFORM  : %s" % (platform_info.get('name')))
     printer("SYSTEM    : %s" % (platform_info.get('version')))
+
+    mongodb_info = info.get('mongodb', {})
+    printer("MONGODB   : %s" % (mongodb_info.get('version')))
 
     nodejs_info = info.get('nodejs', {})
     printer("NODE.JS   : %s" % (nodejs_info.get('version')))

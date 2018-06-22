@@ -74,14 +74,13 @@ def create(core):
     return app
 
 
-def toto():
-    return 2
-
 
 def run(core):
     app = create(core)
+    port = core.config['webserver']['port']
+    core.log.info("webserver: started at http://localhost:%d" % port)
     app.run(host='0.0.0.0',
-            port=core.config['webserver']['port'], threaded=True)
+            port=port, threaded=True)
     return app
 
 

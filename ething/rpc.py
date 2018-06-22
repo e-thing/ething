@@ -58,9 +58,9 @@ default_address = ('127.0.0.1', 8042) if os.name == 'nt' else os.path.join(
 class RPC(object):
     _cmds = {}
 
-    def __init__(self, address=default_address):
-        self.log = logging.getLogger('RPC')
-        self._address = address
+    def __init__(self, address=None):
+        self.log = logging.getLogger('ething.RPC')
+        self._address = address or default_address
 
         self.log.debug("RPC initiated, address = %s" % str(self._address))
 
@@ -291,7 +291,7 @@ class RPC_Server(object):
         # new client is connected
         self._n += 1
         client_sock, client_address = self.sock.accept()
-        self.log.debug("new RPC client connected %s (%d)" % (str(client_address),self._n) )
+        # self.log.debug("new RPC client connected %s (%d)" % (str(client_address),self._n) )
 
         Thread(target=self._thread_client, args=(client_sock, ), name="rpc.client").start()
 
@@ -391,5 +391,5 @@ class RPC_Server(object):
     def _close_client(self, sock):
         self._n -= 1
         sock.close()
-        self.log.debug("RPC client disconnect")
+        # self.log.debug("RPC client disconnect")
         # self.manager.unregisterReadSocket(sock)
