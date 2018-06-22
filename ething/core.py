@@ -29,10 +29,10 @@ from .Table import Table
 from .Rule import Rule
 
 from .rflink import RFLink
-# from .mysensors import MySensors
-# from .mqtt import mqtt
-# from .yeelight import Yeelight
-# from .mihome import Mihome
+from .mysensors import MySensors
+from .mqtt import mqtt
+from .yeelight import Yeelight
+from .mihome import Mihome
 # from .zigate import Zigate
 from .device.Http import Http
 from .device.RTSP import RTSP

@@ -21,7 +21,7 @@ class YeelightDevice (Device, Light):
     def sendMessage(self, message):
         if isinstance(message, string_types):
             message = json.loads(message)
-        return self.ething.rpc.request('device.yeelight.send', self.id, message)
+        return self.ething.rpc.request('process.%s.send' % self.id, message)
 
     # send a message and wait for the response.
     # note: not all request has a response !
@@ -29,7 +29,7 @@ class YeelightDevice (Device, Light):
     def sendMessageWaitResponse(self, message):
         if isinstance(message, string_types):
             message = json.loads(message)
-        return self.ething.rpc.request('device.yeelight.sendWaitResponse', self.id, message)
+        return self.ething.rpc.request('process.%s.send' % self.id, message, waitResponse=True)
 
     # def getState(self):
     #    error, message, response = self.sendMessage('{"method":"get_prop","params":["power"]}', waitResponse = True)

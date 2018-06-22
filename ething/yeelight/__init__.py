@@ -1,108 +1,282 @@
 # coding: utf-8
-from future.utils import string_types
-
-from .Controller import Controller
-from .YeelightDevice import YeelightDevice, Device
+from .YeelightDevice import YeelightDevice
 from .YeelightBulbRGBW import YeelightBulbRGBW
+from ething.plugin import Plugin
+from ething.TransportProcess import LineReader, TransportProcess, NetTransport
+from ething.Scheduler import Scheduler
+from . import yeelight
+import time
+import random
+import json
 
 
-class Yeelight(object):
+class Yeelight(Plugin):
 
-    def __init__(self, core):
-        self.core = core
-        self.log = core.log
-        self.rpc = core.rpc
+    def load(self):
 
         self.controllers = {}
 
-        self.rpc.register('device.yeelight.send',
-                          self.controller_send, callback_name='callback')
-        self.rpc.register('device.yeelight.sendWaitResponse',
-                          self.controller_send_wait_response, callback_name='callback')
-
-        self.core.signalManager.bind(
-            'ResourceCreated', self.on_resource_created)
-        self.core.signalManager.bind(
-            'ResourceDeleted', self.on_resource_deleted)
-
-        devices = self.core.find({
+        gateways = self.core.find({
             'type': {'$regex': '^Yeelight.*$'}
         })
 
-        for device in devices:
+        for gateway in gateways:
             try:
-                self.start_controller(device)
+                self._start_controller(gateway)
             except Exception as e:
-                self.log.error(e)
+                self.log.exception('unable to start the controller for the device %s' % gateway)
 
-    def on_resource_created(self, signal):
+        self.core.signalDispatcher.bind('ResourceCreated', self._on_resource_created)
+        self.core.signalDispatcher.bind('ResourceDeleted', self._on_resource_deleted)
+        self.core.signalDispatcher.bind('ResourceMetaUpdated', self._on_resource_updated)
+
+    def unload(self):
+        self.core.signalDispatcher.unbind('ResourceCreated', self._on_resource_created)
+        self.core.signalDispatcher.unbind('ResourceDeleted', self._on_resource_deleted)
+        self.core.signalDispatcher.unbind('ResourceMetaUpdated', self._on_resource_updated)
+
+        self.stop_all_controllers()
+
+    def _on_resource_created(self, signal):
         device = self.core.get(signal['resource'])
         if isinstance(device, YeelightDevice):
-            self.start_controller(device)
+            self._start_controller(device)
 
-    def on_resource_deleted(self, signal):
+    def _on_resource_deleted(self, signal):
         device = self.core.get(signal['resource'])
         if isinstance(device, YeelightDevice):
-            self.stop_controller(device)
+            self._stop_controller(device.id)
 
-    def start_controller(self, device):
+    def _on_resource_updated(self, signal):
+        id = signal['resource']
+        if id in self.controllers:
+            controller = self.controllers[id]
+            gateway = controller.gateway
+            if signal['rModifiedDate'] > gateway.modifiedDate:
+                gateway.refresh()
 
-        if isinstance(device, string_types):
-            device = self.core.get(device)
+            for attr in signal['attributes']:
+                if attr in controller.RESET_ATTR:
+                    self._stop_controller(id)
+                    self._start_controller(gateway)
+                    break
 
-        if not device or not isinstance(device, YeelightDevice):
-            raise Exception(
-                "the device %s does not exist or has the wrong type" % str(device))
-
-        # remove any previous stream from this device
-        self.stop_controller(device)
-
-        self.log.info("starting Yeelight controller '%s' id=%s type=%s" %
-                      (device.name, device.id, device.type))
-
+    def _start_controller(self, device):
         controller = Controller(device)
-
         self.controllers[device.id] = controller
+        controller.start()
 
-        return controller
+        self.core.rpc.register('process.%s.send' % device.id, controller.send, callback_name='callback')
 
-    def stop_controller(self, device):
+    def _stop_controller(self, id):
 
-        if isinstance(device, Device):
-            device = device.id
-
-        if device in self.controllers:
-            controller = self.controllers[device]
-            self.log.info("stopping Yeelight controller '%s' id=%s type=%s" % (
-                controller.device.name, controller.device.id, controller.device.type))
-            controller.destroy()
-            del self.controllers[device]
+        if id in self.controllers:
+            controller = self.controllers[id]
+            controller.stop()
+            del self.controllers[id]
+            self.core.rpc.unregister('process.%s.send' % id)
 
     def stop_all_controllers(self):
-        for id in list(self.controllers):
-            self.stop_controller(id)
-        self.controllers = {}
+        if hasattr(self, 'controllers'):
+            for id in list(self.controllers):
+                self._stop_controller(id)
 
-    def controller_send(self, device_id, message, callback):
 
-        if device_id in self.controllers:
+class YeelightProtocol(LineReader):
+    RESPONSE_TIMEOUT = 10  # seconds
 
-            controller = self.controllers[device_id]
+    def __init__(self, gateway):
+        super(YeelightProtocol, self).__init__(terminator = b'\n')
+        self.gateway = gateway
+        # response management
+        self._responseListeners = []
+        self.scheduler = Scheduler()
 
-            controller.send(message, callback=callback)
+        self.scheduler.setInterval(0.5, self.check_response_timeout)
+
+    def connection_made(self, process):
+        super(YeelightProtocol, self).connection_made(process)
+        self._responseListeners = []
+        self.gateway.setConnectState(True)
+
+    def handle_line(self, line):
+        self.log.debug('read: %s' % line)
+
+        try:
+            # must be json
+            message = json.loads(line.decode('utf8'))
+        except Exception as e:
+            # skip the line
+            self.log.exception(
+                "Yeelight: unable to handle the message %s" % line)
+            return
+
+        with self.gateway as device:
+
+            device.setConnectState(True)
+
+            if "id" in message:
+
+                responseId = int(message["id"])
+                responseResult = message["result"] if "result" in message else [
+                ]
+
+                i = 0
+                while i < len(self._responseListeners):
+                    responseListener = self._responseListeners[i]
+
+                    if responseListener['id'] == responseId:
+
+                        # remove this item
+                        self._responseListeners.pop(i)
+                        i -= 1
+
+                        if callable(responseListener['callback']):
+                            responseListener['callback'](False, responseResult)
+
+                        break
+
+                    i += 1
+
+            elif ("method" in message) and ("params" in message):
+                # notification
+
+                method = message["method"]
+                params = message["params"]
+
+                if method == "props":
+                    if params:
+                        device.storeData(params)
+
+                else:
+                    raise Exception('unknown method %s' % str(method))
+
+            else:
+                raise Exception('unable to parse the message')
+
+
+    def refresh(self):
+
+        device = self.gateway
+
+        requestedProperties = [
+            "power", "bright", "ct", "rgb", "hue", "sat",
+            "color_mode", "flowing", "delayoff", "flow_params",
+            "music_on", "name"
+        ]
+
+        def cb(error, messageSent, response):
+
+            if not error and isinstance(response, list) and len(response) == len(requestedProperties):
+
+                # some formatting
+                for i in range(0, len(response)):
+                    v = response[i]
+                    try:
+                        response[i] = int(response[i])
+                    except ValueError:
+                        pass
+
+                params = dict(zip(requestedProperties, response))
+
+                device.storeData(params)
+
+        self.send({
+            "method": "get_prop",
+            "params": requestedProperties
+        }, cb, True)
+
+
+
+    def send(self, message, callback=None, waitResponse=None):
+        """
+         $message message to send
+         $callback (optional) function($error, $messageSent, $messageReceived = null)
+         $waitResponse (optional) true|false wait for a response or not
+        """
+
+        if self.process.is_open:
+
+            message['id'] = random.randint(1, 9999)
+
+            self.log.debug("Yeelight: message send %s" % str(message))
+
+            self._lastActivity = time.time()
+
+            self.write_line(json.dumps(message).encode('utf8'))
+
+            if waitResponse:
+                # wait for a response
+
+                def cb(error, messageReceived):
+                    if callable(callback):
+                        callback(error, message, messageReceived)
+
+                self._responseListeners.append({
+                    'callback': cb,
+                    'ts': time.time(),
+                    'messageSent': message,
+                    'id': message['id']
+                })
+
+            else:
+                if callable(callback):
+                    callback(False, message, None)
+
+            return
 
         else:
-            raise Exception(
-                "unknown Yeelight instance for device id %s" % device_id)
 
-    def controller_send_wait_response(self, device_id, message, callback):
+            if callable(callback):
+                callback('not connected', message, None)
 
-        if device_id in self.controllers:
+            return
 
-            controller = self.controllers[device_id]
+    def connection_lost(self, exc):
 
-            controller.send(message, callback=callback, waitResponse=True)
+        self.gateway.setConnectState(False)
 
-        else:
-            raise Exception(
-                "unknown Yeelight instance for device id %s" % device_id)
+        for responseListener in self._responseListeners:
+            responseListener['callback']('disconnected', None)
+        self._responseListeners = []
+
+        super(YeelightProtocol, self).connection_lost(exc)
+
+    def check_response_timeout(self):
+        # check for timeout !
+        now = time.time()
+        i = 0
+        while i < len(self._responseListeners):
+            responseListener = self._responseListeners[i]
+
+            if now - responseListener['ts'] > Controller.RESPONSE_TIMEOUT:
+                # remove this item
+                self._responseListeners.pop(i)
+                i -= 1
+
+                responseListener['callback']('response timeout', None)
+
+            i += 1
+
+
+class Controller(TransportProcess):
+    RESET_ATTR = ['host']
+
+    def __init__(self, gateway):
+        super(Controller, self).__init__(
+            'yeelight',
+            transport=NetTransport(
+                host=gateway.host,
+                port=yeelight.PORT,
+                baudrate=gateway.baudrate
+            ),
+
+            protocol=YeelightProtocol(gateway)
+        )
+        self.gateway = gateway
+
+    def send(self, *args, **kwargs):
+        self.protocol.send(*args, **kwargs)
+
+
+

@@ -4,6 +4,7 @@ from .Process import Process
 import threading
 import serial
 import socket
+import struct
 
 class Transport(object):
 
@@ -79,9 +80,60 @@ class NetTransport(Transport):
 
     def close(self):
         with self._lock:
-            self.socket.close()
+            self.sock.close()
             self.log.info("(net) closed from host=%s port=%d" % (self.host, self.port))
 
+
+class UdpTransport(Transport):
+
+    def __init__(self, host, port):
+        super(UdpTransport, self).__init__()
+        self._lock = threading.Lock()
+        self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)  # UDP
+        self.host = host
+        self.port = port
+
+    def open(self, process):
+        super(UdpTransport, self).open(process)
+
+        self.sock.bind(("0.0.0.0", self.port))
+
+        mreq = struct.pack("=4sl", socket.inet_aton(
+            self.host), socket.INADDR_ANY)
+        self.sock.setsockopt(socket.IPPROTO_IP, socket.IP_MULTICAST_TTL, 32)
+        self.sock.setsockopt(socket.IPPROTO_IP, socket.IP_MULTICAST_LOOP, 1)
+        self.sock.setsockopt(socket.SOL_SOCKET,
+                        socket.SO_RCVBUF, 1024)
+        # allow multiple processes to bind to the same address
+        self.sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        # join multicast group and bind to port
+        self.sock.setsockopt(socket.IPPROTO_IP, socket.IP_ADD_MEMBERSHIP, mreq)
+        self.sock.settimeout(1)
+
+        self.log.info("(udp): connection opened, host: %s , port: %d" % (
+            str(self.host), self.port))
+
+
+    def read(self):
+        try:
+            data, addr = self.sock.recvfrom(1024)  # return as bytes
+        except socket.timeout:
+            pass
+        else:
+            if data:
+                return data, addr
+            else:
+                # socket closed !
+                self.process.stop()
+
+    def write(self, data, to):
+        with self._lock:
+            self.sock.sendto(data)
+
+    def close(self):
+        with self._lock:
+            self.sock.close()
+            self.log.info("(udp) closed from host=%s port=%d" % (self.host, self.port))
 
 
 class Protocol(object):

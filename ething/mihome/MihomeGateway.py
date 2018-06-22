@@ -57,7 +57,7 @@ class MihomeGateway(Device, RGBWLight):
                 self.store('illumination', illumination)
 
     def sendCommand(self, cmd):
-        return self.ething.rpc.request('device.mihome.send', self.id, cmd)
+        return self.ething.rpc.request('mihome.send', self.id, cmd)
 
     def getLevel(self):
         return self.data.get('brightness', 0)

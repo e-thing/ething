@@ -12,8 +12,6 @@ import re
 
 class RFLink(Plugin):
 
-
-
     def load(self):
 
         self.controllers = {}
@@ -104,6 +102,7 @@ class RFLinkProtocol(LineReader):
     def connection_made(self, process):
         super(RFLinkProtocol, self).connection_made(process)
         self._responseListeners = []
+        self.gateway.setConnectState(True)
 
     # exemple of messages :
     #     20;00;Nodo RadioFrequencyLink - RFLink Gateway V1.1 - R46;

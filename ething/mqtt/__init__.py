@@ -1,92 +1,155 @@
 # coding: utf-8
-from future.utils import string_types
 
-from .Controller import Controller
-from .MQTT import MQTT, Device
+from .MQTT import MQTT
+from ething.plugin import Plugin
+from ething.Process import Process
+import paho.mqtt.client as mqttClient
 
 
-class mqtt(object):
+class mqtt(Plugin):
 
-    def __init__(self, core):
-        self.core = core
-        self.log = core.log
-        self.rpc = core.rpc
+    def load(self):
 
         self.controllers = {}
 
-        self.rpc.register('device.mqtt.send', self.controller_send)
-
-        self.core.signalManager.bind(
-            'ResourceCreated', self.on_resource_created)
-        self.core.signalManager.bind(
-            'ResourceDeleted', self.on_resource_deleted)
-
-        devices = self.core.find({
+        gateways = self.core.find({
             'type': 'MQTT'
         })
 
-        for device in devices:
+        for gateway in gateways:
             try:
-                self.start_controller(device)
+                self._start_controller(gateway)
+            except Exception as e:
+                self.log.exception('unable to start the controller for the device %s' % gateway)
+
+        self.core.signalDispatcher.bind('ResourceCreated', self._on_resource_created)
+        self.core.signalDispatcher.bind('ResourceDeleted', self._on_resource_deleted)
+        self.core.signalDispatcher.bind('ResourceMetaUpdated', self._on_resource_updated)
+
+    def unload(self):
+        self.core.signalDispatcher.unbind('ResourceCreated', self._on_resource_created)
+        self.core.signalDispatcher.unbind('ResourceDeleted', self._on_resource_deleted)
+        self.core.signalDispatcher.unbind('ResourceMetaUpdated', self._on_resource_updated)
+
+        self.stop_all_controllers()
+
+    def _on_resource_created(self, signal):
+        device = self.core.get(signal['resource'])
+        if isinstance(device, MQTT):
+            self._start_controller(device)
+
+    def _on_resource_deleted(self, signal):
+        device = self.core.get(signal['resource'])
+        if isinstance(device, MQTT):
+            self._stop_controller(device.id)
+
+    def _on_resource_updated(self, signal):
+        id = signal['resource']
+        if id in self.controllers:
+            controller = self.controllers[id]
+            gateway = controller.gateway
+            if signal['rModifiedDate'] > gateway.modifiedDate:
+                gateway.refresh()
+
+            for attr in signal['attributes']:
+                if attr in controller.RESET_ATTR:
+                    self._stop_controller(id)
+                    self._start_controller(gateway)
+                    break
+
+    def _start_controller(self, device):
+        controller = Controller(device)
+        self.controllers[device.id] = controller
+        controller.start()
+
+        self.core.rpc.register('process.%s.publish' % device.id, controller.publish)
+
+    def _stop_controller(self, id):
+
+        if id in self.controllers:
+            controller = self.controllers[id]
+            controller.stop()
+            del self.controllers[id]
+            self.core.rpc.unregister('process.%s.publish' % id)
+
+    def stop_all_controllers(self):
+        if hasattr(self, 'controllers'):
+            for id in list(self.controllers):
+                self._stop_controller(id)
+
+
+class Controller(Process):
+    RESET_ATTR = ['port', 'host', 'auth', 'subscription']
+    KEEPALIVE = 60  # seconds
+
+    def __init__(self, gateway):
+        super(Controller, self).__init__('mqtt')
+        self.device = gateway
+
+    def main(self):
+        self._mqttClient = mqttClient.Client(client_id=self.device.id, clean_session=True)
+
+        self._mqttClient.on_connect = self.on_connect
+        self._mqttClient.on_message = self.on_message
+        self._mqttClient.on_disconnect = self.on_disconnect
+
+        self.log.info("MQTT: connecting to %s:%d" % (self.device.host, self.device.port))
+
+        if self.device.auth:
+            self._mqttClient.username_pw_set(self.device.auth['user'], password=self.device.auth['password'])
+
+        self._mqttClient.connect(self.device.host, port=self.device.port, keepalive=self.KEEPALIVE)
+
+        while not self.stopped():
+            self._mqttClient.loop(1.0)
+
+        self.log.info("MQTT: disconnect")
+        self._mqttClient.disconnect()
+        self.device.setConnectState(False)
+
+    def on_connect(self, client, userdata, flags, rc):
+
+        if rc == 0:
+            self.log.info("MQTT: connected")
+
+            self.device.setConnectState(True)
+
+            # subscribe
+            topics = []
+            for item in self.device.getSubscription():
+                topic = item['topic']
+                self.log.info("MQTT: subscribing to topic %s" % topic)
+                topics.append((topic, 0))
+
+            if topics:
+                self._mqttClient.subscribe(topics)
+
+        else:
+            # unable to connect
+            self.log.error("MQTT: connection refused : %s" %
+                           mqttClient.connack_string(rc))
+            self.stop()
+
+    def on_message(self, client, userdata, msg):
+        self.log.debug("MQTT: new message for topic %s" % msg.topic)
+
+        with self.device as device:
+            device.setConnectState(True)
+
+            try:
+                device.processPayload(msg.topic, msg.payload)
             except Exception as e:
                 self.log.error(e)
 
-    def on_resource_created(self, signal):
-        device = self.core.get(signal['resource'])
-        if isinstance(device, MQTT):
-            self.start_controller(device)
+    def on_disconnect(self, client, userdata, rc):
+        self.device.setConnectState(False)
 
-    def on_resource_deleted(self, signal):
-        device = self.core.get(signal['resource'])
-        if isinstance(device, MQTT):
-            self.stop_controller(device)
-
-    def start_controller(self, device):
-
-        if isinstance(device, string_types):
-            device = self.core.get(device)
-
-        if not device or not isinstance(device, MQTT):
-            raise Exception(
-                "the device %s does not exist or has the wrong type" % str(device))
-
-        # remove any previous stream from this device
-        self.stop_controller(device)
-
-        self.log.info("starting MQTT controller '%s' id=%s type=%s" %
-                      (device.name, device.id, device.type))
-
-        controller = Controller(device)
-
-        self.controllers[device.id] = controller
-
-        return controller
-
-    def stop_controller(self, device):
-
-        if isinstance(device, Device):
-            device = device.id
-
-        if device in self.controllers:
-            controller = self.controllers[device]
-            self.log.info("stopping MQTT controller '%s' id=%s type=%s" % (
-                controller.device.name, controller.device.id, controller.device.type))
-            controller.destroy()
-            del self.controllers[device]
-
-    def stop_all_controllers(self):
-        for id in list(self.controllers):
-            self.stop_controller(id)
-        self.controllers = {}
-
-    def controller_send(self, device_id, topic, payload):
-
-        if device_id in self.controllers:
-
-            controller = self.controllers[device_id]
-
-            controller.publish(topic, payload)
-
+        if rc != 0:
+            self.log.warn("MQTT: Unexpected disconnection")
+            self._mqttClient.reconnect()
         else:
-            raise Exception(
-                "unknown MQTT instance for device id %s" % device_id)
+            self.stop()
+
+    def publish(self, topic, payload, retain=False):
+        self.log.debug("MQTT: publish to topic %s" % topic)
+        self._mqttClient.publish(topic, payload, 0, retain)

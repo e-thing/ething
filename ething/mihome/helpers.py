@@ -8,7 +8,6 @@ import json
 MULTICAST_ADDRESS = '224.0.0.50'
 MULTICAST_PORT = 9898
 SERVER_PORT = 4321
-SOCKET_BUFSIZE = 1024
 
 IV = "\x17\x99\x6d\x09\x3d\x28\xdd\xb3\xba\x69\x5a\x2e\x6f\x58\x56\x2e"
 
