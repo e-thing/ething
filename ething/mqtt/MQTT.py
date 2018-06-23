@@ -23,7 +23,7 @@ class MQTT(Device):
     @method.arg('topic', type='string', minLength=1)
     @method.arg('payload', payload='string')
     def publish(self, topic, payload=''):
-        return self.ething.rpc.request('device.mqtt.send', self.id, topic, payload)
+        return self.ething.rpc.request('process.%s.publish' % self.id, topic, payload)
 
     def getSubscription(self):
         spec = self.ething.fs.retrieveFile(self._subscription)

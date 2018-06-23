@@ -8,6 +8,7 @@ import datetime
 from .Helpers import reraise
 from future.utils import iteritems
 import copy
+import threading
 
 
 class Validator(object):
@@ -591,6 +592,7 @@ class DataObject(with_metaclass(MetaDataObject, object)):
         object.__setattr__(self, '_DataObject__no_save', 0)
         object.__setattr__(self, '_DataObject__d', data or {})
         object.__setattr__(self, '_DataObject__dirtyFields', set())
+        object.__setattr__(self, '_DataObject__lock', threading.Lock())
 
         if data is None:
             attributes = getattr(self, '__attributes', {})
@@ -766,6 +768,7 @@ class DataObject(with_metaclass(MetaDataObject, object)):
             self.__d.update(doc)
 
     def __enter__(self):
+        self.__lock.acquire()
         # necessary to take into account nested with statements
         object.__setattr__(self, '_DataObject__no_save', self.__no_save + 1)
         return self
@@ -774,6 +777,7 @@ class DataObject(with_metaclass(MetaDataObject, object)):
         # necessary to take into account nested with statements
         object.__setattr__(self, '_DataObject__no_save', self.__no_save - 1)
         self.save()
+        self.__lock.release()
 
     @classmethod
     def schema(cls, flatted=True, helper=None):

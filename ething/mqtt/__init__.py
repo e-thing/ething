@@ -48,7 +48,7 @@ class mqtt(Plugin):
         id = signal['resource']
         if id in self.controllers:
             controller = self.controllers[id]
-            gateway = controller.gateway
+            gateway = controller.device
             if signal['rModifiedDate'] > gateway.modifiedDate:
                 gateway.refresh()
 

@@ -70,13 +70,13 @@ class MySensorsGateway(Device):
         else:
             message = Message(nodeId, sensorId, type, ack, subtype, payload)
 
-        return self.ething.rpc.request('device.%s.send' % self.id, message)
+        return self.ething.rpc.request('process.%s.send' % self.id, message)
 
     # send a message and wait for the response.
     # note: not all request has a response !
 
     def sendMessageWaitResponse(self, message):
-        return self.ething.rpc.request('device.%s.send' % self.id, message, waitResponse=True)
+        return self.ething.rpc.request('process.%s.send' % self.id, message, waitResponse=True)
 
     @method.return_type('string')
     def getVersion(self):

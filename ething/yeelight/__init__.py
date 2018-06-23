@@ -94,10 +94,13 @@ class YeelightProtocol(LineReader):
 
         self.scheduler.setInterval(0.5, self.check_response_timeout)
 
-    def connection_made(self, process):
-        super(YeelightProtocol, self).connection_made(process)
+    def connection_made(self):
+        super(YeelightProtocol, self).connection_made()
         self._responseListeners = []
         self.gateway.setConnectState(True)
+    
+    def loop(self):
+        self.scheduler.process()
 
     def handle_line(self, line):
         self.log.debug('read: %s' % line)
@@ -267,10 +270,8 @@ class Controller(TransportProcess):
             'yeelight',
             transport=NetTransport(
                 host=gateway.host,
-                port=yeelight.PORT,
-                baudrate=gateway.baudrate
+                port=yeelight.PORT
             ),
-
             protocol=YeelightProtocol(gateway)
         )
         self.gateway = gateway

@@ -5,13 +5,17 @@ import threading
 import serial
 import socket
 import struct
+import time
 
 class Transport(object):
 
-    def open(self, process):
+    def init(self, process):
         self.process = process
         self.protocol = process.protocol
         self.log = process.log
+    
+    def open(self):
+        pass
 
     def read(self):
         raise NotImplementedError()
@@ -31,8 +35,8 @@ class SerialTransport(Transport):
         self.port = port
         self.baudrate = baudrate
 
-    def open(self, process):
-        super(SerialTransport, self).open(process)
+    def open(self):
+        super(SerialTransport, self).open()
         self.serial = serial.serial_for_url(self.port, baudrate=self.baudrate, timeout=1)
         self.log.info("(serial) connected to port=%s baudrate=%d" % (self.port, self.baudrate))
 
@@ -44,6 +48,7 @@ class SerialTransport(Transport):
 
     def write(self, data):
         with self._lock:
+            # self.log.debug("(serial) write to port=%s baudrate=%d data=%s" % (self.port, self.baudrate, data))
             self.serial.write(data)
 
     def close(self):
@@ -60,22 +65,28 @@ class NetTransport(Transport):
         self.host = host
         self.port = port
 
-    def open(self, process):
-        super(NetTransport, self).open(process)
+    def open(self):
+        super(NetTransport, self).open()
         self.sock.connect((self.host, self.port))
         self.sock.settimeout(1)
         self.log.info("(net) connected to host=%s port=%d" % (self.host, self.port))
 
     def read(self):
-        data = self.sock.recv(1024)  # return as bytes
-        if data:
-            return data
+        try:
+            data = self.sock.recv(1024)  # return as bytes
+            # self.log.debug("(net) read from host=%s port=%d data=%s" % (self.host, self.port, data))
+        except socket.timeout:
+            pass
         else:
-            # socket closed !
-            self.process.stop()
+            if data:
+                return data
+            else:
+                # socket closed !
+                self.process.stop()
 
     def write(self, data):
         with self._lock:
+            # self.log.debug("(net) write to host=%s port=%d data=%s" % (self.host, self.port, data))
             self.sock.send(data)
 
     def close(self):
@@ -93,8 +104,8 @@ class UdpTransport(Transport):
         self.host = host
         self.port = port
 
-    def open(self, process):
-        super(UdpTransport, self).open(process)
+    def open(self):
+        super(UdpTransport, self).open()
 
         self.sock.bind(("0.0.0.0", self.port))
 
@@ -137,18 +148,24 @@ class UdpTransport(Transport):
 
 
 class Protocol(object):
-
-    def connection_made(self, process):
+    
+    def init(self, process):
         self.process = process
         self.transport = process.transport
         self.log = process.log
+    
+    def connection_made(self):
+        pass
 
     def data_received(self, data):
         """Called with snippets received from the serial port"""
+    
+    def loop(self):
+        pass
 
     def connection_lost(self, exc):
         if isinstance(exc, Exception):
-            raise exc
+            self.log.error(exc)
 
 class Packetizer(Protocol):
     """
@@ -189,55 +206,75 @@ class LineReader(Packetizer):
         """Process one line - to be overridden by subclassing"""
         raise NotImplementedError()
 
-    def write_line(self, text):
+    def write_line(self, text, encode = True):
         """
         Write text to the transport. ``text`` is a Unicode string and the encoding
         is applied before sending ans also the newline is append.
         """
+        if encode:
+            text = text.encode(self.encoding, self.unicode_handling)
         # + is not the best choice but bytes does not support % or .format in py3 and we want a single write call
-        self.transport.write(text.encode(self.encoding, self.unicode_handling) + self.terminator)
+        self.transport.write(text + self.terminator)
 
 class TransportProcess(Process):
 
-    def __init__(self, name, transport, protocol, **kwargs):
+    def __init__(self, name, transport, protocol, reconnect = True, reconnect_delay = 15, **kwargs):
         super(TransportProcess, self).__init__(name, **kwargs)
         self.transport = transport
         self.protocol = protocol
+        self.reconnect = reconnect
+        self.reconnect_delay = reconnect_delay
         self.is_open = False
 
     def main(self):
-
-        error = None
-
-        self.transport.open(self)
-
-        self.is_open = True
-
-        try:
-            self.protocol.connection_made(self)
-        except Exception as e:
-            error = e
-
-        while not error and not self.stopped():
+        
+        self.protocol.init(self)
+        self.transport.init(self)
+        
+        while not self.stopped():
+        
+            error = None
+            
             try:
-                # read all that is there or wait for one byte (blocking)
-                data = self.transport.read()
+                self.transport.open()
+                
+                self.is_open = True
+                
+                self.protocol.connection_made()
             except Exception as e:
-                # probably some I/O problem such as disconnected USB serial
-                # adapters -> exit
                 error = e
-            else:
-                if data:
-                    # make a separated try-except for called used code
-                    try:
-                        self.protocol.data_received(data)
-                    except Exception as e:
-                        error = e
 
-        self.is_open = False
+            while not error and not self.stopped():
+                try:
+                    # used mainly for regular check such as timeout...
+                    self.protocol.loop()
+                    
+                    # read all that is there or wait for one byte (blocking)
+                    data = self.transport.read()
+                except Exception as e:
+                    # probably some I/O problem such as disconnected USB serial
+                    # adapters -> exit
+                    error = e
+                else:
+                    if data:
+                        # make a separated try-except for called used code
+                        try:
+                            self.protocol.data_received(data)
+                        except Exception as e:
+                            error = e
 
-        self.transport.close()
+            if self.is_open:
+                self.transport.close()
+            
+            self.is_open = False
 
-        self.protocol.connection_lost(error)
-
+            self.protocol.connection_lost(error)
+            
+            if not self.reconnect:
+                break
+            
+            if self.reconnect_delay > 0:
+                t_end = time.time() + self.reconnect_delay
+                while not self.stopped() and time.time() < t_end:
+                    time.sleep(0.5)
 

@@ -147,7 +147,7 @@ class MySensorsProtocol(LineReader):
     STREAM_TIMEOUT = 10  # in seconds, max allowed time between 2 blocks of data
 
     def __init__(self, gateway):
-        super(MySensorsProtocol, self).__init__()
+        super(MySensorsProtocol, self).__init__(terminator = b'\n')
         self.gateway = gateway
         self.scheduler = Scheduler()
 
@@ -171,14 +171,17 @@ class MySensorsProtocol(LineReader):
 
         self.scheduler.setInterval(0.5, self.check_timeout)
 
-    def connection_made(self, process):
-        super(MySensorsProtocol, self).connection_made(process)
+    def connection_made(self):
+        super(MySensorsProtocol, self).connection_made()
         self._responseListeners = []
         self._ackWaitingMessages = []
         self._pendingMessages = []
         self._pendingFirmware = {}
         self._pendingStreams = {}
         self.gateway.setConnectState(True)
+    
+    def loop(self):
+        self.scheduler.process()
 
     def createNode(self, nodeId):
         gateway = self.gateway
@@ -749,7 +752,7 @@ class MySensorsProtocol(LineReader):
                     'ts': ts
                 })
 
-            wb = self.write_line(message.raw()) # todo : rraw() returns binary string instead of text
+            wb = self.write_line(message.raw(), encode = False) # raw() returns binary, no need to encode
 
             if message.ack != REQUEST_ACK and cb:
                 cb(False, message)

@@ -99,10 +99,13 @@ class RFLinkProtocol(LineReader):
 
         self.scheduler.setInterval(0.5, self.check_response_timeout)
 
-    def connection_made(self, process):
-        super(RFLinkProtocol, self).connection_made(process)
+    def connection_made(self):
+        super(RFLinkProtocol, self).connection_made()
         self._responseListeners = []
         self.gateway.setConnectState(True)
+    
+    def loop(self):
+        self.scheduler.process()
 
     # exemple of messages :
     #     20;00;Nodo RadioFrequencyLink - RFLink Gateway V1.1 - R46;

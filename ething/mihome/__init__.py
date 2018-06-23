@@ -45,9 +45,12 @@ class MihomeProtocol(Protocol):
         self._activities = {}
 
         self.scheduler.setInterval(0.5, self.check_timeout)
+    
+    def loop(self):
+        self.scheduler.process()
 
-    def connection_made(self, process):
-        super(MihomeProtocol, self).connection_made(process)
+    def connection_made(self):
+        super(MihomeProtocol, self).connection_made()
         self._responseListeners = []
 
 

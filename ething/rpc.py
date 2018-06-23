@@ -8,7 +8,7 @@ import tempfile
 import traceback
 import errno
 import logging
-from threading import Thread
+from threading import Thread, Lock
 
 if os.name == 'nt':
     EAGAIN = errno.WSAEWOULDBLOCK
@@ -252,6 +252,7 @@ class RPC_Server(object):
         self.sock = None
         self._subs = {}
         self._n = 0
+        self._lock = Lock()
 
     def start(self):
 
@@ -259,12 +260,13 @@ class RPC_Server(object):
             raise Exception('a socket is already opened')
 
         self._n = 0
+        self._subs = {}
         self.sock = self.rpc._create_socket()
         # self.sock.setblocking(False)
 
         # Bind the socket to the port
         self.sock.bind(self.rpc.address)
-        self.log.info("start RPC server on %s" % str(self.rpc.address))
+        self.log.info("RPC server started on %s" % str(self.rpc.address))
         self.sock.listen(100)
 
         # self.manager.registerReadSocket(self.sock, self._process)
@@ -284,8 +286,7 @@ class RPC_Server(object):
         if self.sock is not None:
             self.sock.close()
             self.sock = None
-            self._subs = {}
-            self.log.debug("stop RPC server")
+            self.log.debug("RPC server stopped")
 
     def _process(self):
         # new client is connected
@@ -313,9 +314,10 @@ class RPC_Server(object):
             self._close_client(sock)
 
             # remove the socket from any pub
-            for topic in self._subs:
-                if sock in self._subs[topic]:
-                    self._subs[topic].remove(sock)
+            with self._lock:
+                for topic in self._subs:
+                    if sock in self._subs[topic]:
+                        self._subs[topic].remove(sock)
 
             return
 
@@ -365,13 +367,14 @@ class RPC_Server(object):
         elif isinstance(req, RPC_Sub):
 
             topic = req.topic
+            
+            with self._lock:
+                if topic not in self._subs:
+                    self._subs[topic] = {
+                        'sockets': []
+                    }
 
-            if topic not in self._subs:
-                self._subs[topic] = {
-                    'sockets': []
-                }
-
-            self._subs[topic]['sockets'].append(sock)
+                self._subs[topic]['sockets'].append(sock)
 
         elif isinstance(req, RPC_Pub):
             topic = req.topic
@@ -380,8 +383,11 @@ class RPC_Server(object):
             if topic in self._subs:
 
                 m = RPC_pubsubmsg(topic, message)
-
-                for s in self._subs[topic]['sockets']:
+                
+                with self._lock:
+                    sockets = self._subs[topic]['sockets']
+                
+                for s in sockets:
                     if s is not sock:
                         rpc._send_obj(s, m)
 
