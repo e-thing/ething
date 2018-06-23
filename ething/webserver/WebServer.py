@@ -13,6 +13,7 @@ class WebServer(Plugin):
     def unload(self):
         if hasattr(self, 'process'):
             self.process.stop()
+            del self.process
 
 
 class WebServerProcess(Process):

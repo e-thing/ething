@@ -2,6 +2,7 @@
 from future.utils import string_types
 
 import smtplib
+import logging
 from email import encoders
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
@@ -17,7 +18,7 @@ class Mail(object):
     def __init__(self, core):
 
         self.core = core
-        self.log = core.log
+        self.log = logging.getLogger('ething.mail')
 
         self.host = core.config('notification.smtp.host')
         self.port = core.config('notification.smtp.port')

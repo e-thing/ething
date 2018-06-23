@@ -4,6 +4,7 @@ from .MQTT import MQTT
 from ething.plugin import Plugin
 from ething.Process import Process
 import paho.mqtt.client as mqttClient
+import threading
 
 
 class mqtt(Plugin):
@@ -85,6 +86,7 @@ class Controller(Process):
     def __init__(self, gateway):
         super(Controller, self).__init__('mqtt')
         self.device = gateway
+        self._lock = threading.Lock()
 
     def main(self):
         self._mqttClient = mqttClient.Client(client_id=self.device.id, clean_session=True)
@@ -143,13 +145,11 @@ class Controller(Process):
 
     def on_disconnect(self, client, userdata, rc):
         self.device.setConnectState(False)
-
         if rc != 0:
             self.log.warn("MQTT: Unexpected disconnection")
             self._mqttClient.reconnect()
-        else:
-            self.stop()
 
     def publish(self, topic, payload, retain=False):
-        self.log.debug("MQTT: publish to topic %s" % topic)
-        self._mqttClient.publish(topic, payload, 0, retain)
+        with self._lock:
+            self.log.debug("MQTT: publish to topic %s" % topic)
+            self._mqttClient.publish(topic, payload, 0, retain)

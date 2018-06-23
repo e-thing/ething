@@ -11,6 +11,7 @@ from .DbFs import DbFs
 from .ResourceQueryParser import ResourceQueryParser
 from .Config import Config
 from .SignalDispatcher import SignalDispatcher
+from .Mail import Mail
 from .rpc import RPC
 from .version import __version__
 from .plugin import instanciate_plugins
@@ -23,6 +24,7 @@ import re
 from .meta import get_resource_class, get_signal_class
 
 from .webserver.WebServer import WebServer
+from .RuleManager import RuleManager
 
 from .File import File
 from .Table import Table
@@ -45,7 +47,7 @@ class Core(object):
     __instance = None
 
     @staticmethod
-    def getInstance():
+    def get_instance():
         return Core.__instance
 
     def __init__(self, config=None):
@@ -135,10 +137,12 @@ class Core(object):
         self.log.info("Using home directory: %s" % os.getcwd())
 
         self.signalDispatcher = SignalDispatcher()
+        self.mail = Mail(self)
 
         self.rpc.register('stop', self.stop)
         self.rpc.register('version', self.version)
         self.rpc.register('signal', self.signalDispatcher.dispatch)
+        self.rpc.register('notify', self.mail.send)
 
         # rpc
         self.rpc_server = self.rpc.start_server()
