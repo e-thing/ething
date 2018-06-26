@@ -1,4 +1,5 @@
 from future.utils import with_metaclass
+from .Config import Config
 import logging
 
 
@@ -18,6 +19,12 @@ class PluginMount(type):
     def register_plugin(cls, plugin):
         """Add the plugin to the plugin list and perform any registration logic"""
 
+        if not hasattr(plugin, 'name'):
+            plugin.name = cls.__name__
+
+        if hasattr(plugin, 'CONFIG_DEFAULTS'):
+            Config.DEFAULT[plugin.name] = plugin.CONFIG_DEFAULTS
+
         # save the plugin reference
         cls.plugins.append(plugin)
 
@@ -29,7 +36,8 @@ class Plugin(with_metaclass(PluginMount, object)):
 
     def __init__(self, core, **kwargs):
         self.core = core
-        self.log = logging.getLogger("ething.%s" % self.__class__.__name__)
+        self.log = logging.getLogger("ething.%s" % self.name)
+        self.config = core.config[self.name] or {}
 
     @classmethod
     def register(cls):

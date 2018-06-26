@@ -13,14 +13,12 @@ def uniqid(prefix=''):
 
 class Session(object):
 
-    def __init__(self, core):
-        self.core = core
+    def __init__(self, config):
+        self.config = config
 
     def authenticate(self, login, password, request, response):
-        # if self.core.config['auth']['localonly']:
-        #    pass
 
-        if login == self.core.config['auth']['username'] and password == self.core.config['auth']['password']:
+        if login == self.config['auth']['username'] and password == self.config['auth']['password']:
 
             self.generate(request, response)
 
@@ -30,7 +28,7 @@ class Session(object):
 
     def generate(self, request, response, sessionData=None):
         # set session cookie (httponly)
-        expireAt = int(time.time() + self.core.config['session']['expiration'])
+        expireAt = int(time.time() + self.config['session']['expiration'])
 
         path = re.sub('/auth/.*$', '', str(request.url_rule))
         if not path:
@@ -46,13 +44,13 @@ class Session(object):
 
         sessionData['exp'] = expireAt
 
-        csrf_token = hmac.new(self.core.config['session']['secret'].encode(
+        csrf_token = hmac.new(self.config['session']['secret'].encode(
             'utf8'), sessionData['sessionId'].encode('utf8'), hashlib.md5).hexdigest()
 
-        token = jwt.encode(sessionData, self.core.config['session']['secret'])
+        token = jwt.encode(sessionData, self.config['session']['secret'])
 
         try:
-            response.set_cookie(self.core.config['session']['cookie_name'], token,
+            response.set_cookie(self.config['session']['cookie_name'], token,
                                 expires=expireAt, domain=request.host, path=path, secure=secure, httponly=True)
             response.set_cookie('Csrf-token', csrf_token, expires=expireAt,
                                 domain=request.host, path=path, secure=secure, httponly=False)
@@ -68,7 +66,7 @@ class Session(object):
 
             try:
                 sessionData = jwt.decode(
-                    token, self.core.config['session']['secret'])
+                    token, self.config['session']['secret'])
             except jwt.exceptions.InvalidTokenError:
                 return False
 
@@ -94,7 +92,7 @@ class Session(object):
         return False
 
     def get_token(self, request):
-        return request.cookies.get(self.core.config['session']['cookie_name'])
+        return request.cookies.get(self.config['session']['cookie_name'])
 
     def isAuthenticated(self, request, checkCsrf=None):
 
@@ -105,7 +103,7 @@ class Session(object):
 
             try:
                 sessionData = jwt.decode(
-                    token, self.core.config['session']['secret'])
+                    token, self.config['session']['secret'])
 
                 if 'sessionId' in sessionData:
                     return sessionData
@@ -125,7 +123,7 @@ class Session(object):
         # remove the session cookie
         try:
             response.set_cookie(
-                self.core.config['session']['cookie_name'], '', expires=0, domain=request.host, path=path)
+                self.config['session']['cookie_name'], '', expires=0, domain=request.host, path=path)
             response.set_cookie('Csrf-token', '', expires=0,
                                 domain=request.host, path=path)
         except:

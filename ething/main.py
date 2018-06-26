@@ -310,6 +310,9 @@ def main():
     signal.signal(signal.SIGINT, stop)
     signal.signal(signal.SIGTERM, stop)
 
+    def save_config(signal):
+        core.config.save(CONFIG_FILE)
+
     try:
 
         writePidFile()
@@ -317,7 +320,7 @@ def main():
         core.start()
 
         core.signalDispatcher.bind(
-            'ConfigUpdated', lambda _: core.config.save(CONFIG_FILE))
+            'ConfigUpdated', save_config)
 
         core.loop_forever()
 

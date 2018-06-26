@@ -4,6 +4,9 @@
 from flask import request, Response
 from ..server_utils import *
 import os
+import random
+import string
+from werkzeug.http import unquote_etag
 
 from ething.meta import resource_classes, interfaces_classes, event_classes, iface
 from ething.base import READ_ONLY
@@ -104,6 +107,8 @@ def install(core, app, auth, **kwargs):
     # META
     #
 
+    definitions_etag = ''.join(random.choice(string.ascii_uppercase + string.digits) for _ in range(16))
+
     @app.route('/api/utils/definitions')
     @auth.required()
     def definitions():
@@ -115,7 +120,9 @@ def install(core, app, auth, **kwargs):
                 "interfaces": {},
                 "scopes": Scope.list,
                 "events": {},
-                "info": get_info(core)
+                "info": get_info(core),
+                "plugins":{},
+                "config": core.config.SCHEMA
             }
 
             for name in list(resource_classes):
@@ -175,16 +182,6 @@ def install(core, app, auth, **kwargs):
 
                 _meta['interfaces'][name] = schema
 
-            # for name in list(event_classes):
-            #    event_cls = event_classes[name]
-            #
-            #    schema = event_cls.schema(helper = attr_helper)
-            #
-            #    if event_cls.is_abstract():
-            #        schema['virtual'] = True
-            #
-            #    _meta['events'][name] = schema
-
             for name in list(event_classes):
                 event_cls = event_classes[name]
 
@@ -212,4 +209,22 @@ def install(core, app, auth, **kwargs):
 
                 _meta['events'][name] = schema
 
-        return jsonify(_meta)
+            for plugin in core.plugins:
+                name = plugin.name
+                schema = getattr(plugin, 'CONFIG_SCHEMA', None)
+                definition = {}
+
+                if schema:
+                    definition['schema'] = schema
+
+                if definition:
+                    _meta['plugins'][name] = definition
+        else:
+            req_etag = request.headers.get('If-None-Match')
+            if req_etag and definitions_etag == unquote_etag(req_etag)[0]:
+                return Response(status=304)
+
+        resp = jsonify(_meta)
+        resp.set_etag(definitions_etag)
+        resp.headers['Cache-Control'] = 'must-revalidate'
+        return resp

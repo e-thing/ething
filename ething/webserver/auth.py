@@ -46,9 +46,10 @@ class AuthContext(object):
 
 class Auth(object):
 
-    def __init__(self, core):
+    def __init__(self, core, config):
         self.core = core
-        self.session = Session(core)
+        self.config = config
+        self.session = Session(config)
 
     def required(self, *args, **type_specific_perms):
 
@@ -111,7 +112,7 @@ class Auth(object):
         auth = request.authorization
 
         if auth:
-            if auth.username == self.core.config('auth.username') and auth.password == self.core.config('auth.password'):
+            if auth.username == self.config['auth']['username'] and auth.password == self.config['auth']['password']:
                 return AuthContext('basic')
             else:
                 raise ServerException('invalid credentials', 401)
@@ -131,11 +132,11 @@ class Auth(object):
                     return AuthContext('public', scope='resource:read resource:write')
 
 
-def install_auth(core, app, **kwargs):
+def install_auth(core, app, config, **kwargs):
 
-    auth = Auth(core)
+    auth = Auth(core, config)
 
-    if core.config['auth']['localonly']:
+    if config['auth']['localonly']:
         @app.before_request
         def check_local_only():
 

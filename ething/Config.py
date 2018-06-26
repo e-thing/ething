@@ -36,13 +36,7 @@ class Config(object):
             #    'user' : '<username>@gmail.com',
             #    'password' : '<password>'
 
-            'smtp': False
-        },
-
-        'auth': {
-            'username': 'ething',
-            'password': 'admin',
-            'localonly': False
+            'smtp': None
         },
 
         # debug information is given in the error messages send through HTTP requests
@@ -53,14 +47,8 @@ class Config(object):
             'level': 'INFO'
         },
 
-        'session': {
-            'expiration': 86400,  # in seconds, the time after which a session is expired
-            'cookie_name': 'ething_session',
-            'secret': 'taupesecretstring'  # must not be shared
-        },
-
         # "mqtt" : {
-        #    #"host" : "localhost", # disabled by default
+        #    "host" : "localhost", # disabled by default
         #    "port" : 1883,
         #    "clientId" : "ething",
         #    "rootTopic" : "ething/"
@@ -68,11 +56,6 @@ class Config(object):
 
         'script': {
             'timeout': 300000  # in millisecondes
-        },
-
-        'webserver': {
-            'enabled': True,
-            'port': 8000
         },
 
         'nodejs': {
@@ -84,6 +67,74 @@ class Config(object):
             'target': ''  # http://localhost:1880
         },
 
+    }
+
+    SCHEMA = {
+      "type": "object",
+      "properties": {
+        "log": {
+          "type": "object",
+          "properties": {
+            "level": {
+              "type": "string",
+              "enum": ['DEBUG', 'INFO', 'WARNING', 'ERROR']
+            }
+          }
+        },
+        "script": {
+          "type": "object",
+          "properties": {
+            "timeout": {
+              "description": "Expressed in milliseconds. 0 means unlimited.",
+              "type": "integer",
+              "minimum": 0
+            }
+          }
+        },
+        "notification": {
+          "type": "object",
+          "properties": {
+            "smtp": {
+              "anyOf": [{
+                  "type": "object",
+                  "required": ['host', 'port', 'user', 'password'],
+                  "properties": {
+                    "host": {
+                      "type": "string",
+                      "minLength": 1,
+                      "default": 'smtp.gmail.com'
+                    },
+                    "port": {
+                      "type": "integer",
+                      "title": "The Port Schema ",
+                      'type': 'integer',
+                      'minimum': 1,
+                      'maximum': 65535,
+                      "default": 587
+                    },
+                    "user": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "password": {
+                      "type": "string",
+                      "minLength": 1
+                    }
+                  }
+                },{
+                "type": "null"
+                }]
+            },
+            "emails": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1
+              }
+            }
+          }
+        }
+      }
     }
 
     def __init__(self, core, config=None):
@@ -136,17 +187,17 @@ class Config(object):
                     return default
             return p
 
-    def set(self, name, value=None):
+    def _set(self, name, value=None):
 
         if isinstance(name, dict):
             for key in name:
-                self.attr(key, name[key])
+                self._set(key, name[key])
 
         else:
 
             if value is not None and isinstance(value, dict):
                 for key in value:
-                    self.attr("%s.%s" % (name, key), value[key])
+                    self._set("%s.%s" % (name, key), value[key])
 
             else:
 
@@ -174,9 +225,13 @@ class Config(object):
                 elif name == 'notification' or name == 'notification.smtp' or name == 'log' or name == 'mqtt':
                     if value is not None:
                         raise Exception(name+" is invalid")
-                elif (name == 'db.host' or name == 'db.user' or name == 'db.password' or name == 'db.database'
-                      or name == 'notification.smtp.host' or name == 'notification.smtp.user' or name == 'notification.smtp.password'
-                      or name == 'mqtt.host' or name == 'mqtt.user' or name == 'mqtt.password' or name == 'mqtt.clientId'):
+                elif (name == 'db.user' or name == 'db.password' or name == 'notification.smtp.user' or name == 'notification.smtp.password'
+                      or name == 'mqtt.user' or name == 'mqtt.password'):
+                    if (not isinstance(value, string_types) or not value) and value is not None:
+                        raise Exception(name+" must be a non empty string")
+                elif (name == 'db.host' or name == 'db.database'
+                      or name == 'notification.smtp.host'
+                      or name == 'mqtt.host' or name == 'mqtt.clientId'):
                     if not isinstance(value, string_types) or not value:
                         raise Exception(name+" must be a non empty string")
                 elif name == 'mqtt.rootTopic' or name == 'node-red.target':
@@ -206,6 +261,8 @@ class Config(object):
 
                 p[last] = value
 
+    def set(self, name, value=None):
+        self._set(name, value)
         self.core.dispatchSignal('ConfigUpdated')
 
     def __call__(self, *args):

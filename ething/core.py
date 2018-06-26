@@ -23,7 +23,7 @@ import re
 
 from .meta import get_resource_class, get_signal_class
 
-from .webserver.WebServer import WebServer
+from .webserver.server import WebServer
 from .RuleManager import RuleManager
 from .PingService import PingService
 
@@ -36,7 +36,7 @@ from .mysensors import MySensors
 from .mqtt import mqtt
 from .yeelight import Yeelight
 from .mihome import Mihome
-from .blea import Blea
+# from .blea import Blea
 # from .zigate import Zigate
 from .device.Http import Http
 from .device.RTSP import RTSP
