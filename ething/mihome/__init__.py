@@ -24,9 +24,10 @@ class Mihome(Plugin):
         self.core.rpc.register('mihome.send', self.controller.send, callback_name='callback')
 
     def _stop_controller(self):
-        self.controller.stop()
-        self.core.rpc.unregister('mihome.send')
-        self.controller = None
+        if hasattr(self, 'controller'):
+            self.controller.stop()
+            self.core.rpc.unregister('mihome.send')
+            del self.controller
 
 
 class MihomeProtocol(Protocol):
@@ -63,10 +64,9 @@ class MihomeProtocol(Protocol):
         ip = addr[0]
 
         response = json.loads(data)
-        response_data = json.loads(response.get('data', '{}'))
 
         if isinstance(response, dict):
-
+            
             sid = response.get('sid')
             cmd = response.get('cmd')
 
@@ -91,6 +91,7 @@ class MihomeProtocol(Protocol):
                     })
 
                     if not gatewayDevice:
+                        response_data = json.loads(response.get('data', '{}'))
                         ip = ip or response_data.get('ip')
 
                         if ip:

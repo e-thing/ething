@@ -25,6 +25,7 @@ class Scheduler(object):
                     'callback': weak_ref(callback),
                     'args': args,
                     'kwargs': kwargs,
+                    'name': callback.__name__
                 })
                 return True
 
@@ -44,6 +45,7 @@ class Scheduler(object):
                     'running': False,
                     'args': args,
                     'kwargs': kwargs,
+                    'name': callback.__name__
                 })
                 return True
 
@@ -61,6 +63,7 @@ class Scheduler(object):
                     't0': time.time(),
                     'args': args,
                     'kwargs': kwargs,
+                    'name': callback.__name__
                 })
                 return True
 
@@ -79,6 +82,7 @@ class Scheduler(object):
                     't0': time.time(),
                     'args': args,
                     'kwargs': kwargs,
+                    'name': callback.__name__
                 })
                 return True
 
@@ -95,7 +99,7 @@ class Scheduler(object):
                 callback(*task['args'], **task['kwargs'])
             except:
                 self.log.exception(
-                    '[scheduler] exception in task "%s"' % task['callback'].__name__)
+                    '[scheduler] exception in task "%s"' % task['name'])
             return True
         else: # lost reference
             pass

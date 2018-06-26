@@ -5,10 +5,6 @@ from ething.Device import Device, method, attr, isString, isObject, isInteger, i
 from ething.utils import pingable
 from ething.interfaces import Camera
 import subprocess
-try:
-    from urllib.parse import urlparse
-except ImportError:
-    from urlparse import urlparse
 
 
 @pingable('url')
@@ -39,7 +35,7 @@ class RTSP(Device, Camera):
         """
         return a video stream (mp4).
         """
-
+        
         cmd = ["avconv -rtsp_transport %s -i %s -an" %
                (self.transport, self.url)]
 

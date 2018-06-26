@@ -9,7 +9,7 @@ import datetime
 from .ShortId import ShortId
 from .Helpers import dict_recursive_update
 from .meta import MetaResource
-from .base import attr, DataObject, isBool, isString, isNone, isNumber, isObject, isEnum, READ_ONLY, PRIVATE, ModelAdapter, Validator
+from .base import attr, DataObject, isBool, isString, isNone, isNumber, isObject, isEnum, READ_ONLY, PRIVATE, ModelAdapter, Validator, synchronized
 from future.utils import iteritems
 
 
@@ -109,7 +109,7 @@ class Resource(with_metaclass(MetaResource, DataObject)):
 
     def getData(self, name, default=None):
         return self.data.get(name, default)
-
+    
     def setData(self, name, value=None):
         if isinstance(name, dict):
             self.data.update(name)
@@ -120,7 +120,7 @@ class Resource(with_metaclass(MetaResource, DataObject)):
 
     def hasData(self, name):
         return name in self.data
-
+    
     def removeData(self, name):
         try:
             self.data.pop(name)
@@ -141,13 +141,12 @@ class Resource(with_metaclass(MetaResource, DataObject)):
             }
 
         return self.ething.find(q)
-
+    
     def removeParent(self):
         self.createdBy = None
         self.save()
-
+    
     def remove(self, removeChildren=False):
-
         id = self.id
         children = self.children()
 

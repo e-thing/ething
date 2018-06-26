@@ -146,26 +146,27 @@ def install(core, app, auth, **kwargs):
             data = request.get_json()
 
             if isinstance(data, dict):
+                
+                with r:
+                    content = None
 
-                content = None
-
-                if r.type == 'Http':
-                    content = data.pop('specification', None)
-                elif r.type == 'MQTT':
-                    content = data.pop('subscription', None)
-
-                for key, value in iteritems(data):
-                    setattr(r, key, value)
-
-                r.save()
-
-                if content:
                     if r.type == 'Http':
-                        r.setSpecification(content)
+                        content = data.pop('specification', None)
                     elif r.type == 'MQTT':
-                        r.setSubscription(content)
+                        content = data.pop('subscription', None)
 
-                return jsonify(r)
+                    for key, value in iteritems(data):
+                        setattr(r, key, value)
+
+                    r.save()
+
+                    if content:
+                        if r.type == 'Http':
+                            r.setSpecification(content)
+                        elif r.type == 'MQTT':
+                            r.setSubscription(content)
+
+                    return jsonify(r)
 
             raise Exception('Invalid request')
 

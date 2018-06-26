@@ -11,7 +11,7 @@ class StoppableThread(threading.Thread):
 
     def stop(self):
         self._stop_evt.set()
-        self.join(2)
+        self.join(5)
 
     def stopped(self):
         return self._stop_evt.isSet()

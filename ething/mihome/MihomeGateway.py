@@ -32,7 +32,7 @@ class MihomeGateway(Device, RGBWLight):
         return binascii.hexlify(ciphertext).decode('utf8')
 
     def processData(self, response):
-
+        
         if 'token' in response:
             self._token = response['token']
 

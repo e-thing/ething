@@ -139,7 +139,7 @@ class UdpTransport(Transport):
 
     def write(self, data, to):
         with self._lock:
-            self.sock.sendto(data)
+            self.sock.sendto(data, to)
 
     def close(self):
         with self._lock:

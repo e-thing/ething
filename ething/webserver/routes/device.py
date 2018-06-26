@@ -163,7 +163,7 @@ def install(core, app, auth, **kwargs):
         if request.method == 'GET':
 
             for arg_name in list(set(list(request.args)).intersection(list(method.args))):
-                kwargs[arg_name] = method.args[arg_name]
+                kwargs[arg_name] = request.args[arg_name]
 
         elif request.method == 'POST':
             try:

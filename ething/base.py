@@ -9,6 +9,7 @@ from .Helpers import reraise
 from future.utils import iteritems
 import copy
 import threading
+from functools import wraps
 
 
 class Validator(object):
@@ -579,6 +580,12 @@ class MetaDataObject(type):
         if hasattr(cls, '__abstract'):
             setattr(cls, '__abstract', False)
 
+def synchronized(function):
+    @wraps(function)
+    def wrapper(self, *args, **kwargs):
+        with self._lock:
+            return function(self, *args, **kwargs)
+    return wrapper
 
 class DataObject(with_metaclass(MetaDataObject, object)):
 
@@ -592,7 +599,7 @@ class DataObject(with_metaclass(MetaDataObject, object)):
         object.__setattr__(self, '_DataObject__no_save', 0)
         object.__setattr__(self, '_DataObject__d', data or {})
         object.__setattr__(self, '_DataObject__dirtyFields', set())
-        object.__setattr__(self, '_DataObject__lock', threading.Lock())
+        object.__setattr__(self, '_lock', threading.RLock())
 
         if data is None:
             attributes = getattr(self, '__attributes', {})
@@ -601,7 +608,7 @@ class DataObject(with_metaclass(MetaDataObject, object)):
                 if 'default' in attribute:
                     attribute['model_adapter'].set(
                         self, self.__d, attribute['model_key'], attribute['default'](self.__class__))
-
+    
     def toJson(self):
         j = {}
         attributes = getattr(self, '__attributes', {})
@@ -618,7 +625,6 @@ class DataObject(with_metaclass(MetaDataObject, object)):
         return j
 
     def __getattr__(self, name):
-
         priv_access = False
 
         if name.startswith('_'):
@@ -645,7 +651,6 @@ class DataObject(with_metaclass(MetaDataObject, object)):
         return model_adapter.get(self, self.__d, attribute['model_key'])
 
     def __setattr__(self, name, value):
-
         priv_access = False
 
         if name.startswith('_'):
@@ -700,7 +705,6 @@ class DataObject(with_metaclass(MetaDataObject, object)):
         return self.__dirtyFields
 
     def save(self, attributes=None):
-
         if attributes is not None:
             for key, value in iteritems(attributes):
                 setattr(self, key, value)
@@ -768,7 +772,7 @@ class DataObject(with_metaclass(MetaDataObject, object)):
             self.__d.update(doc)
 
     def __enter__(self):
-        self.__lock.acquire()
+        self._lock.acquire()
         # necessary to take into account nested with statements
         object.__setattr__(self, '_DataObject__no_save', self.__no_save + 1)
         return self
@@ -777,7 +781,7 @@ class DataObject(with_metaclass(MetaDataObject, object)):
         # necessary to take into account nested with statements
         object.__setattr__(self, '_DataObject__no_save', self.__no_save - 1)
         self.save()
-        self.__lock.release()
+        self._lock.release()
 
     @classmethod
     def schema(cls, flatted=True, helper=None):

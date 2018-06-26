@@ -1,7 +1,10 @@
 # coding: utf-8
 from scapy.sendrecv import sr1
 from scapy.layers.inet import IP, ICMP
-
+try:
+    from urllib.parse import urlparse
+except ImportError:
+    from urlparse import urlparse
 
 def pingable(attr='host'):
     def d(cls):
@@ -11,7 +14,17 @@ def pingable(attr='host'):
             online = False
 
             if host:
-                online = ping(host, *args, **kwargs)
+                
+                # host may be an url
+                if '/' in host:
+                    if '//' not in host:
+                        host = '//' + host
+                    host = urlparse(host).hostname
+                
+                if host == 'localhost' or host == '127.0.0.1':
+                    online = True
+                else:
+                    online = ping(host, *args, **kwargs)
 
             self.setConnectState(online)
 

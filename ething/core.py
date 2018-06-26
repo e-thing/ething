@@ -25,6 +25,7 @@ from .meta import get_resource_class, get_signal_class
 
 from .webserver.WebServer import WebServer
 from .RuleManager import RuleManager
+from .PingService import PingService
 
 from .File import File
 from .Table import Table
@@ -35,6 +36,7 @@ from .mysensors import MySensors
 from .mqtt import mqtt
 from .yeelight import Yeelight
 from .mihome import Mihome
+from .blea import Blea
 # from .zigate import Zigate
 from .device.Http import Http
 from .device.RTSP import RTSP
@@ -156,7 +158,7 @@ class Core(object):
             except Exception:
                 self.log.exception('unable to load the plugin %s' % plugin_name)
 
-        self.signalDispatcher.bind('*', lambda signal: self.rpc.publish('signal', signal))
+        self.signalDispatcher.bind('*', self._signal_publish)
 
         self.running = True
 
@@ -166,7 +168,10 @@ class Core(object):
     def loop_forever(self):
         while self.running:
             self.loop(1)
-
+    
+    def _signal_publish(self, signal):
+        self.rpc.publish('signal', signal)
+    
     #
     # Resources
     #
@@ -307,7 +312,7 @@ class Core(object):
                 self.log.exception('signal instanciate error')
 
         try:
-            #self.log.debug('dispatchSignal %s' % signal)
+            # self.log.debug('dispatchSignal %s' % signal)
             self.rpc.send('signal', signal)
         except:
             pass
