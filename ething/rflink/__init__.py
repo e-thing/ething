@@ -8,6 +8,7 @@ from ething.Scheduler import Scheduler
 from .helpers import convertSwitchId, getSubType
 import time
 import re
+import datetime
 
 
 class RFLink(Plugin):
@@ -93,11 +94,13 @@ class RFLinkProtocol(LineReader):
     def __init__(self, gateway):
         super(RFLinkProtocol, self).__init__()
         self.gateway = gateway
+        self.core = gateway.ething
         # response management
         self._responseListeners = []
         self.scheduler = Scheduler()
 
         self.scheduler.setInterval(0.5, self.check_response_timeout)
+        self.scheduler.setInterval(60, self.check_disconnect)
 
     def connection_made(self):
         super(RFLinkProtocol, self).connection_made()
@@ -271,6 +274,19 @@ class RFLinkProtocol(LineReader):
                 responseListener['callback']('response timeout', None)
 
             i += 1
+    
+    def check_disconnect(self):
+        devices = self.core.find({
+            'extends': 'RFLinkNode',
+            'subType': { '$in': ['thermometer', 'weatherStation', 'multimeter'] }
+        })
+        
+        now = datetime.datetime.utcnow()
+        
+        for device in devices:
+            if device.lastSeenDate and now - device.lastSeenDate > datetime.timedelta(seconds=1800):
+                device.setConnectState(False)
+    
 
 class RFLinkSerialController(TransportProcess):
     RESET_ATTR = ['port', 'baudrate']

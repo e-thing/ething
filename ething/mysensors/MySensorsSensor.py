@@ -126,18 +126,17 @@ class MySensorsSensor (Device):
                     storage.write(data)
 
     @method.arg('type', type='integer', minimum=0, maximum=4)
-    @method.arg('ack', type='bool', default=False)
     @method.arg('subtype', type='integer', minimum=0, maximum=255)
     @method.arg('payload', type='string', maxLength=25)
     @method.return_type('application/json')
-    def sendMessage(self, type, ack, subtype, payload=''):
+    def sendMessage(self, type, subtype, payload=''):
         """
         send a message.
         """
-        return self.node.sendMessage(self.sensorId, type, ack, subtype, payload)
+        return self.node.sendMessage(self.sensorId, type, subtype, payload)
 
     def set_value(self, type, value, store=True):
-        res = self.sendMessage(SET, NO_ACK, type, value)
+        res = self.sendMessage(SET, type, value)
         if res and store:
             self.storeData(type, value)
 

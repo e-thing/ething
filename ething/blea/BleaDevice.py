@@ -1,10 +1,11 @@
 # coding: utf-8
 from future.utils import string_types, integer_types, iteritems
-from ething.Device import Device, method, attr, isString, abstract
+from ething.Device import Device, method, attr, isString, abstract, READ_ONLY
 from .connector import Connector
 
 @abstract
 @attr('mac', validator=isString(allow_empty=False, regex='^([0-9A-Fa-f]{2}:){5}([0-9A-Fa-f]{2})$'), description="The MAC address of the device.")
+@attr('rssi', mode=READ_ONLY, default=None, description="The last received signal strength indicator of this device.")
 class BleaDevice(Device):
     """
     BLEA Device resource representation
@@ -43,5 +44,10 @@ class BleaDevice(Device):
                 ething.log.warning("BLEA: skipping device creation (learning=false) mac:%s name:%s" % (mac, name))
         #else:
         #    ething.log.debug("BLEA: device already exists mac:%s name:%s , %s" % (mac, name, device))
+        
+        if device:
+            with device:
+                device._rssi = rssi
+                device.setConnectState(True)
         
         return device

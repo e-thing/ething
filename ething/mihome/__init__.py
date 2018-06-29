@@ -1,5 +1,5 @@
 # coding: utf-8
-from future.utils import iteritems, string_types
+from future.utils import string_types
 from .MihomeGateway import MihomeGateway
 from .MihomeSensorHT import MihomeSensorHT
 from ething.plugin import Plugin
@@ -8,6 +8,7 @@ from ething.Scheduler import Scheduler
 from .helpers import *
 import time
 import re
+import datetime
 
 
 class Mihome(Plugin):
@@ -42,10 +43,8 @@ class MihomeProtocol(Protocol):
         # response management
         self._responseListeners = []
 
-        # activity management
-        self._activities = {}
-
         self.scheduler.setInterval(0.5, self.check_timeout)
+        self.scheduler.setInterval(60, self.check_disconnect)
     
     def loop(self):
         self.scheduler.process()
@@ -69,8 +68,6 @@ class MihomeProtocol(Protocol):
             
             sid = response.get('sid')
             cmd = response.get('cmd')
-
-            self._activities[sid] = time.time()
 
             if cmd == 'heartbeat' or cmd == 'report' or cmd == 'read_ack':
 
@@ -225,20 +222,17 @@ class MihomeProtocol(Protocol):
                     'response timeout', responseListener['command'], None)
 
             i += 1
-
-        # _activities check
-        for sid, lastActivity in iteritems(self._activities):
-            if now - lastActivity > self.ACTIVITY_TIMEOUT:
-
-                # remove this item
-                del self._activities[sid]
-
-                device = self.core.findOne({
-                    'sid': sid
-                })
-
-                if device:
-                    device.setConnectState(False)
+    
+    def check_disconnect(self):
+        devices = self.core.find({
+            'extends': 'MihomeDevice'
+        })
+        
+        now = datetime.datetime.utcnow()
+        
+        for device in devices:
+            if device.lastSeenDate and now - device.lastSeenDate > datetime.timedelta(seconds=self.ACTIVITY_TIMEOUT):
+                device.setConnectState(False)
 
 
 class Controller(TransportProcess):

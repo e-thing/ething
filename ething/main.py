@@ -10,6 +10,7 @@ import time
 import json
 from codecs import open
 import logging
+from logging.handlers import RotatingFileHandler
 import signal
 import tempfile
 
@@ -86,7 +87,7 @@ def quitInstance():
         t = time.time()
         print("waiting for ething to quit")
 
-        while os.path.exists(PID_FILE) and t + 10 > time.time():
+        while os.path.exists(PID_FILE) and t + 20 > time.time():
             time.sleep(0.25)
 
         if not os.path.exists(PID_FILE):
@@ -180,8 +181,8 @@ def init_logger(console_log=False):
         log.addHandler(console)
 
     if not os.access(LOG_FILE, os.F_OK) or os.access(LOG_FILE, os.W_OK):
-        file_handler = logging.FileHandler(LOG_FILE, encoding="utf8")
-        #file_handler = logging.handlers.RotatingFileHandler(LOG_FILE, encoding="utf8", maxBytes=10 * 1024 * 1024, backupCount=5)
+        # file_handler = logging.FileHandler(LOG_FILE, encoding="utf8")
+        file_handler = RotatingFileHandler(LOG_FILE, encoding="utf8", maxBytes=10 * 1024 * 1024, backupCount=5)
         file_handler.setFormatter(frm)
         log.addHandler(file_handler)
     else:

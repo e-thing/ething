@@ -17,11 +17,7 @@ import re
 import random
 import math
 import binascii
-try:
-    from urllib.parse import urlparse
-except ImportError:
-    from urlparse import urlparse
-
+import datetime
 
 
 class MySensors(Plugin):
@@ -149,6 +145,7 @@ class MySensorsProtocol(LineReader):
     def __init__(self, gateway):
         super(MySensorsProtocol, self).__init__(terminator = b'\n')
         self.gateway = gateway
+        self.core = gateway.ething
         self.scheduler = Scheduler()
 
         self.gatewayReady = False
@@ -170,6 +167,8 @@ class MySensorsProtocol(LineReader):
         self._responseListeners = []
 
         self.scheduler.setInterval(0.5, self.check_timeout)
+        self.scheduler.setInterval(60, self.check_disconnect)
+        
 
     def connection_made(self):
         super(MySensorsProtocol, self).connection_made()
@@ -186,7 +185,7 @@ class MySensorsProtocol(LineReader):
     def createNode(self, nodeId):
         gateway = self.gateway
 
-        node = self.gateway.core.create('MySensorsNode', {
+        node = self.core.create('MySensorsNode', {
             'nodeId': nodeId,
             'name': '%s/node-%d' % (gateway.name, nodeId),
             'createdBy': gateway
@@ -201,7 +200,7 @@ class MySensorsProtocol(LineReader):
 
     def createSensor(self, node, sensorId, sensorType=S_UNK):
 
-        sensor = self.gateway.core.create('MySensorsSensor', {
+        sensor = self.core.create('MySensorsSensor', {
             'name': ('%s/sensor-%d' % (node.name, sensorId)) if sensorType == S_UNK else sensorTypeToName(sensorType),
             'sensorId': sensorId,
             'sensorType': sensorType,
@@ -267,12 +266,12 @@ class MySensorsProtocol(LineReader):
                             # get sensor
                             if sensor:
                                 sensor.sensorType = sensorType  # update type
-                                sensor.description = message.getValue()
+                                sensor.description = message.value
 
                             elif node:
                                 # node internal sensor (id=0xFF)
                                 # library version (node device)
-                                node._libVersion = message.getValue()
+                                node._libVersion = message.value
 
                         elif message.messageType == SET:
 
@@ -289,7 +288,7 @@ class MySensorsProtocol(LineReader):
                                     sensor.setData(datatype, message.payload)
 
                                     sensor.storeData(
-                                        datatype, message.getValue())
+                                        datatype, message.value)
 
                                 else:
                                     self.log.warn(
@@ -305,7 +304,7 @@ class MySensorsProtocol(LineReader):
                                     value = sensor.getData(datatype)
                                     if value is not None:
                                         response = Message(
-                                            nodeId, sensorId, SET, NO_ACK, message.subType, payload=value)
+                                            nodeId, sensorId, SET, message.subType, payload=value)
                                         self.send(response)
                                     else:
                                         # no value stored ! No response
@@ -322,21 +321,21 @@ class MySensorsProtocol(LineReader):
                                 self.log.info("info: gateway ready")
 
                             elif message.subType == I_VERSION:
-                                self.gatewayLibVersion = message.getValue()
-                                gateway._libVersion = message.getValue()
+                                self.gatewayLibVersion = message.value
+                                gateway._libVersion = message.value
                                 self.log.info(
                                     "MySensors: gateway version = %s" % self.gatewayLibVersion)
 
                             elif message.subType == I_TIME:
                                 # return current time
                                 response = Message(
-                                    message.nodeId, message.childSensorId, INTERNAL, NO_ACK, I_TIME, int(time.time()))
+                                    message.nodeId, message.childSensorId, INTERNAL, I_TIME, int(time.time()))
                                 self.send(response)
 
                             elif message.subType == I_CONFIG:
                                 # return M (metric) or I (Imperial)
                                 response = Message(
-                                    message.nodeId, message.childSensorId, INTERNAL, NO_ACK, I_CONFIG,
+                                    message.nodeId, message.childSensorId, INTERNAL, I_CONFIG,
                                     'M' if gateway.isMetric else 'I')
                                 self.send(response)
 
@@ -351,14 +350,14 @@ class MySensorsProtocol(LineReader):
 
                                 if f is not None:
                                     response = Message(
-                                        BROADCAST_ADDRESS, INTERNAL_CHILD, INTERNAL, NO_ACK, I_ID_RESPONSE, f)
+                                        BROADCAST_ADDRESS, INTERNAL_CHILD, INTERNAL, I_ID_RESPONSE, f)
                                     self.send(response)
                                 else:
                                     raise Exception('No free id available')
 
                             elif message.subType == I_SKETCH_NAME:
                                 if node:
-                                    sketchName = message.getValue() or ''
+                                    sketchName = message.value or ''
                                     node._sketchName = sketchName
                                     # if the default name has not been changed by the user, overwrite it with the sketch name
                                     if re.search('^.+/node-[0-9]+$', node.name) and sketchName:
@@ -366,7 +365,7 @@ class MySensorsProtocol(LineReader):
 
                             elif message.subType == I_SKETCH_VERSION:
                                 if node:
-                                    node._sketchVersion = message.getValue()
+                                    node._sketchVersion = message.value
 
                             elif message.subType == I_BATTERY_LEVEL:
                                 if node:
@@ -398,7 +397,7 @@ class MySensorsProtocol(LineReader):
 
                             elif message.subType == I_LOG_MESSAGE:
                                 self.log.info("MySensors: nodeId=%d sensorId=%d %s" % (
-                                    message.nodeId, message.childSensorId, message.getValue()))
+                                    message.nodeId, message.childSensorId, message.value))
 
                             else:
                                 self.log.warn(
@@ -491,7 +490,7 @@ class MySensorsProtocol(LineReader):
                                         chunk = self._pendingFirmware[nodeId]['firmware'][
                                                 iBlock * self.FIRMWARE_BLOCK_SIZE:(
                                                                                                 iBlock + 1) * self.FIRMWARE_BLOCK_SIZE]
-                                        response = Message(message.nodeId, INTERNAL_CHILD, STREAM, NO_ACK,
+                                        response = Message(message.nodeId, INTERNAL_CHILD, STREAM,
                                                            ST_FIRMWARE_CONFIG_RESPONSE, pack(
                                                 type, version, iBlock) + chunk)
 
@@ -617,6 +616,7 @@ class MySensorsProtocol(LineReader):
 
                 else:
                     # ack message
+                    self.log.debug("ack message received")
 
                     i = 0
                     while i < len(self._ackWaitingMessages):
@@ -631,13 +631,15 @@ class MySensorsProtocol(LineReader):
                             # remove this item
                             self._ackWaitingMessages.pop(i)
                             i -= 1
+                            
+                            self.log.debug("ack match")
 
                             if callable(ackWaitingMessage['callback']):
                                 ackWaitingMessage['callback'](
                                     False, originalMessage)
 
                             break
-
+                        
                         i += 1
 
         return r
@@ -650,6 +652,9 @@ class MySensorsProtocol(LineReader):
          $waitResponse (optional) true|false wait for a response or not
         """
         cb = None
+        
+        if not message.ack_set:
+            message.ack = self.gateway.ackEnabled
 
         if smartSleep is None:
             smartSleep = False
@@ -718,8 +723,8 @@ class MySensorsProtocol(LineReader):
 
                 cb = nowaitresp_cb
 
-        self.log.debug("MySensors: message send nodeId=%d sensorId=%d messageType=%d smartSleep=%s" % (
-            message.nodeId, message.childSensorId, message.messageType, str(smartSleep)))
+        self.log.debug("MySensors: message send nodeId=%d sensorId=%d messageType=%d smartSleep=%s msg=%s" % (
+            message.nodeId, message.childSensorId, message.messageType, str(smartSleep), message))
 
         ts = time.time()
 
@@ -780,7 +785,7 @@ class MySensorsProtocol(LineReader):
             'crc': crc
         }
 
-        message = Message(node.nodeId, INTERNAL_CHILD, STREAM, NO_ACK,
+        message = Message(node.nodeId, INTERNAL_CHILD, STREAM,
                           ST_FIRMWARE_CONFIG_RESPONSE, pack('nnnn', type, version, nbBlocks, crc))
 
         def cb(error, messageSent, messageReceived):
@@ -872,10 +877,23 @@ class MySensorsProtocol(LineReader):
                     responseListener['callback']('response timeout', None)
 
             i += 1
+    
+    def check_disconnect(self):
+        devices = self.core.find({
+            'extends': 'MySensorsNode'
+        })
+        
+        now = datetime.datetime.utcnow()
+        
+        for device in devices:
+            if device.lastSeenDate and now - device.lastSeenDate > datetime.timedelta(seconds=1800):
+                device.setConnectState(False)
+                for sensor in device.getSensors():
+                    sensor.setConnectState(False)
 
 
 class MySensorsController(TransportProcess):
-    RESET_ATTR = ['port', 'baudrate', 'address']
+    RESET_ATTR = ['port', 'baudrate', 'host']
 
     def __init__(self, gateway):
 
@@ -885,10 +903,9 @@ class MySensorsController(TransportProcess):
                 baudrate=gateway.baudrate
             )
         elif isinstance(gateway, MySensorsEthernetGateway):
-            o = urlparse('tcp://' + gateway.address)
             transport = NetTransport(
-                host=o.hostname,
-                port=o.port
+                host=gateway.host,
+                port=gateway.port
             )
         else:
             raise RuntimeError('invalid gateway type %s' % type(gateway).__name__)

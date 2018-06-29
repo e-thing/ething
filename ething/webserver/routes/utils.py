@@ -60,6 +60,12 @@ def install(core, app, auth, **kwargs):
     def net_list():
         import ething.utils.net_scan
         return jsonify(ething.utils.net_scan.scan(), indent=4)
+    
+    @app.route('/api/utils/bluetooth_list')
+    @auth.required()
+    def bluetooth_list():
+        from ething.utils.bluetooth import list_bluetooth_interfaces
+        return jsonify(list_bluetooth_interfaces(), indent=4)
 
     read_log_args = {
         'line': fields.Int(validate=validate.Range(min=0), missing=50),
@@ -217,8 +223,7 @@ def install(core, app, auth, **kwargs):
                 if schema:
                     definition['schema'] = schema
 
-                if definition:
-                    _meta['plugins'][name] = definition
+                _meta['plugins'][name] = definition
         else:
             req_etag = request.headers.get('If-None-Match')
             if req_etag and definitions_etag == unquote_etag(req_etag)[0]:

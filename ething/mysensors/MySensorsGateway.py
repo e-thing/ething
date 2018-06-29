@@ -10,6 +10,7 @@ from .Message import Message
 
 @abstract
 @attr('isMetric', validator=isBool(), default=True, description="Set the unit to Metric(default) instead of Imperial.")
+@attr('ackEnabled', validator=isBool(), default=False, description="If set, every message sent must be acknowledged.")
 @attr('libVersion', default=None, mode=READ_ONLY, description="The version of the MySensors library used.")
 class MySensorsGateway(Device):
     """
@@ -52,11 +53,10 @@ class MySensorsGateway(Device):
     @method.arg('nodeId', type='integer', minimum=0, maximum=255, required=True)
     @method.arg('sensorId', type='integer', minimum=0, maximum=255, required=True)
     @method.arg('type', type='integer', minimum=0, maximum=4, required=True)
-    @method.arg('ack', type='bool', default=False)
     @method.arg('subtype', type='integer', minimum=0, maximum=255, required=True)
     @method.arg('payload', type='string', default="", maxLength=25)
     @method.return_type('application/json')
-    def sendMessage(self, nodeId, sensorId=None, type=None, ack=None, subtype=None, payload=None):
+    def sendMessage(self, nodeId, sensorId=None, type=None, subtype=None, payload=None):
         """
         send a message.
         """
@@ -68,7 +68,7 @@ class MySensorsGateway(Device):
         elif isinstance(nodeId, string_types):
             message = Message.parse(nodeId)
         else:
-            message = Message(nodeId, sensorId, type, ack, subtype, payload)
+            message = Message(nodeId, sensorId, type, subtype, value = payload)
 
         return self.ething.rpc.request('process.%s.send' % self.id, message)
 
@@ -84,7 +84,7 @@ class MySensorsGateway(Device):
         request gateway version.
         """
         error, _, resp = self.sendMessageWaitResponse(
-            Message(GATEWAY_ADDRESS, INTERNAL_CHILD, INTERNAL, NO_ACK, I_VERSION))
+            Message(GATEWAY_ADDRESS, INTERNAL_CHILD, INTERNAL, I_VERSION))
         if error:
             raise Exception(error)
         return resp.payload
@@ -95,4 +95,4 @@ class MySensorsGateway(Device):
         Request gateway to reboot.
         """
         self.sendMessage(
-            Message(GATEWAY_ADDRESS, INTERNAL_CHILD, INTERNAL, NO_ACK, I_REBOOT))
+            Message(GATEWAY_ADDRESS, INTERNAL_CHILD, INTERNAL, I_REBOOT))

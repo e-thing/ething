@@ -61,12 +61,13 @@ class NetTransport(Transport):
     def __init__(self, host, port):
         super(NetTransport, self).__init__()
         self._lock = threading.Lock()
-        self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.sock = None
         self.host = host
         self.port = port
 
     def open(self):
         super(NetTransport, self).open()
+        self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.sock.connect((self.host, self.port))
         self.sock.settimeout(1)
         self.log.info("(net) connected to host=%s port=%d" % (self.host, self.port))
@@ -92,6 +93,7 @@ class NetTransport(Transport):
     def close(self):
         with self._lock:
             self.sock.close()
+            self.sock = None
             self.log.info("(net) closed from host=%s port=%d" % (self.host, self.port))
 
 
@@ -100,13 +102,14 @@ class UdpTransport(Transport):
     def __init__(self, host, port):
         super(UdpTransport, self).__init__()
         self._lock = threading.Lock()
-        self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)  # UDP
+        self.sock = None
         self.host = host
         self.port = port
 
     def open(self):
         super(UdpTransport, self).open()
-
+        
+        self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)  # UDP
         self.sock.bind(("0.0.0.0", self.port))
 
         mreq = struct.pack("=4sl", socket.inet_aton(
@@ -144,6 +147,7 @@ class UdpTransport(Transport):
     def close(self):
         with self._lock:
             self.sock.close()
+            self.sock = None
             self.log.info("(udp) closed from host=%s port=%d" % (self.host, self.port))
 
 
@@ -165,7 +169,7 @@ class Protocol(object):
 
     def connection_lost(self, exc):
         if isinstance(exc, Exception):
-            self.log.error(exc)
+            self.log.error("Exception in transport process: %s" % str(exc))
 
 class Packetizer(Protocol):
     """

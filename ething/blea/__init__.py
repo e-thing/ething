@@ -7,6 +7,7 @@ from .BleaGateway import BleaGateway
 import os
 import time
 import threading
+import datetime
 from bluepy.btle import Scanner, DefaultDelegate, BTLEException
 
 from .devices import devices
@@ -147,6 +148,7 @@ class Controller(Process):
         self.connected = False
         
         self.scheduler.setInterval(5, self._read, startInSec=30)
+        self.scheduler.setInterval(60, self._check)
 
     def main(self):
         
@@ -204,5 +206,15 @@ class Controller(Process):
                         read_thread = ReadThread(self, device)
                         read_thread.start()
     
-
+    def _check(self):
+        devices = self.core.find({
+            'extends': 'BleaDevice'
+        })
+        
+        now = datetime.datetime.utcnow()
+        
+        for device in devices:
+            if device.lastSeenDate and now - device.lastSeenDate > datetime.timedelta(seconds=300):
+                device.setConnectState(False)
+        
 

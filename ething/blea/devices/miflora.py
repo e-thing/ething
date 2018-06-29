@@ -2,12 +2,13 @@
 
 from ..BleaDevice import BleaDevice
 from ething.base import attr, READ_ONLY
+from ething.interfaces import Thermometer
 
 @attr('firmware', default='unknown', mode=READ_ONLY, description="The firmware version of this device.")
-class Miflora(BleaDevice):
+class Miflora(BleaDevice, Thermometer):
     
     name = 'miflora'
-    readPeriod = 60
+    readPeriod = 300
     
     @classmethod
     def isvalid(cls, name, manuf=''):
@@ -28,6 +29,7 @@ class Miflora(BleaDevice):
                 with self:
                     self._firmware = firmware
                     self.battery = battery
+                    self.setConnectState(True)
                     
                     conn.writeCharacteristic('0x36','0100',response=True)
                     
@@ -55,7 +57,7 @@ class Miflora(BleaDevice):
                 'temperature': temperature
             }
             
-            self.ething.log.debug(str(data))
+            # self.ething.log.debug(str(data))
             
             self.store('data', data)
 

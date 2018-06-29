@@ -7,39 +7,19 @@ from .helpers import *
 
 class Message(object):
 
-    def __init__(self, nodeId, childSensorId, messageType, ack, subType, value=None, payload=None):
-
-        self.nodeId = int(nodeId)
-        self.childSensorId = int(childSensorId)
-        self.messageType = int(messageType)
-        self.ack = int(ack)
+    def __init__(self, nodeId, childSensorId, messageType, subType, value=None, payload=None, ack = None):
+        
+        self.nodeId = nodeId
+        self.childSensorId = childSensorId
+        self.messageType = messageType
+        self.subType = subType
+        self.ack = ack if ack is not None else False
+        self.ack_set = (ack is not None)
+        
         self.payload = b''
 
-        if isinstance(subType, integer_types):
-            self.subType = subType
-        else:
-
-            if isinstance(subType, binary_type):
-                subType = subType.decode('utf8')
-
-            if isinstance(subType, string_types):
-
-                try:
-                    self.subType = int(subType)
-                except ValueError:
-                    if isSensorTypeStr(subType):
-                        self.subType = sensorTypeInt(subType)
-                    elif isValueTypeStr(subType):
-                        self.subType = valueTypeInt(subType)
-                    else:
-                        raise Exception(
-                            'invalid subType value : %s' % str(subType))
-
-            else:
-                raise Exception('invalid subType value : %s' % str(subType))
-
         if value is not None:
-            self.setValue(value)
+            self.value = value
         elif payload is not None:
 
             if isinstance(payload, text_type):
@@ -48,9 +28,68 @@ class Message(object):
             if isinstance(payload, binary_type):
                 self.payload = payload
             else:
-                raise Exception(
-                    'the payload must be a binary instance, got %s' % type(payload).__name__)
+                raise Exception('the payload must be a binary instance, got %s' % type(payload).__name__)
+    
+    @property
+    def nodeId(self):
+        return self._nodeId
+    
+    @nodeId.setter
+    def nodeId(self, value):
+        self._nodeId = int(value)
+    
+    @property
+    def childSensorId(self):
+        return self._childSensorId
+    
+    @childSensorId.setter
+    def childSensorId(self, value):
+        self._childSensorId = int(value)
+    
+    @property
+    def messageType(self):
+        return self._messageType
+    
+    @messageType.setter
+    def messageType(self, value):
+        self._messageType = int(value)
+    
+    @property
+    def subType(self):
+        return self._subType
+    
+    @subType.setter
+    def subType(self, value):
+        if isinstance(value, integer_types):
+            self._subType = value
+        else:
 
+            if isinstance(value, binary_type):
+                value = value.decode('utf8')
+
+            if isinstance(value, string_types):
+
+                try:
+                    self._subType = int(value)
+                except ValueError:
+                    if isSensorTypeStr(value):
+                        self._subType = sensorTypeInt(value)
+                    elif isValueTypeStr(value):
+                        self._subType = valueTypeInt(value)
+                    else:
+                        raise Exception('invalid subType value : %s' % str(value))
+
+            else:
+                raise Exception('invalid subType value : %s' % str(value))
+    
+    @property
+    def ack(self):
+        return self._ack
+    
+    @ack.setter
+    def ack(self, value):
+        self._ack = int(value)
+    
     @staticmethod
     def parse(message, encoding='utf8'):
 
@@ -66,9 +105,9 @@ class Message(object):
                 parts[0],
                 parts[1],
                 parts[2],
-                parts[3],
                 parts[4],
-                payload=parts[5]
+                ack = parts[3],
+                payload = parts[5]
             )
         else:
             raise Exception('invalid message')
@@ -123,8 +162,9 @@ class Message(object):
             "subType": self.subType,
             "payload": self.payload
         }
-
-    def getValue(self):
+    
+    @property
+    def value(self):
         if self.messageType == SET or self.messageType == REQ:
 
             datatype = valueTypeStr(self.subType)
@@ -144,8 +184,9 @@ class Message(object):
                         return False if (self.payload == b'0' or len(self.payload) == 0) else True
 
         return self.payload.decode('utf8') if len(self.payload) else None
-
-    def setValue(self, value):
+    
+    @value.setter
+    def value(self, value):
         if self.messageType == SET or self.messageType == REQ:
 
             datatype = valueTypeStr(self.subType)

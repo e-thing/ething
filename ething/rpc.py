@@ -61,6 +61,7 @@ class RPC(object):
     def __init__(self, address=None):
         self.log = logging.getLogger('ething.RPC')
         self._address = address or default_address
+        self._lock = Lock()
 
         self.log.debug("RPC initiated, address = %s" % str(self._address))
 
@@ -87,11 +88,13 @@ class RPC(object):
 
     def _send_obj(self, sock, obj):
         data = pickle.dumps(obj)
-        try:
-            sock.sendall(struct.pack('!i', len(data)))
-            sock.sendall(data)
-        except:
-            pass
+        with self._lock:
+            # self.log.debug('send obj len: %d' % len(data))
+            try:
+                sock.sendall(struct.pack('!i', len(data)))
+                sock.sendall(data)
+            except:
+                pass
 
     def _read_obj(self, sock):
         header = sock.recv(4)
@@ -99,17 +102,29 @@ class RPC(object):
             return None
 
         size = struct.unpack('!i', header)[0]
+        # self.log.debug('read obj len: %d' % size)
         try:
             data = sock.recv(size)
         except socket.error as err:
             data = None
             if err.errno != EAGAIN:
                 raise
-
-        if data is None or len(data) != size:
+        
+        if data is None:
+            self.log.error('err in read data')
             return None
-
-        return pickle.loads(data)
+        
+        if len(data) != size:
+            self.log.error('wrong size')
+            return None
+        
+        try:
+            res = pickle.loads(data)
+        except Exception:
+            self.log.exception('exception in pickle.loads(...)')
+            return None
+        else:
+            return res
 
     def _create_socket(self):
         if isinstance(self._address, string_types):
@@ -235,7 +250,7 @@ class RPC_SubClient(object):
         resp = self.rpc._read_obj(self.sock)
 
         if resp is None:
-            self.log.debug("rpc server disconnected")
+            self.log.debug("rpc sub client disconnected from server")
             self.stop()
             return
 

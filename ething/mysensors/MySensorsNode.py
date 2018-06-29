@@ -74,19 +74,18 @@ class MySensorsNode(Device):
 
     @method.arg('sensorId', type='integer', minimum=0, maximum=255)
     @method.arg('type', type='integer', minimum=0, maximum=4)
-    @method.arg('ack', type='bool', default=False)
     @method.arg('subtype', type='integer', minimum=0, maximum=255)
     @method.arg('payload', type='string', maxLength=25)
     @method.return_type('application/json')
-    def sendMessage(self, sensorId, type, ack, subtype, payload=''):
+    def sendMessage(self, sensorId, type, subtype, payload=''):
         """
         send a message.
         """
-        return self.gateway.sendMessage(self.nodeId, sensorId, type, ack, subtype, payload)
+        return self.gateway.sendMessage(self.nodeId, sensorId, type, subtype, payload)
 
     @method
     def reboot(self):
         """
         Request this node to reboot
         """
-        self.sendMessage(INTERNAL_CHILD, INTERNAL, NO_ACK, I_REBOOT)
+        self.sendMessage(INTERNAL_CHILD, INTERNAL, I_REBOOT)
