@@ -78,7 +78,7 @@ class ScriptEngine(object):
 
         if isinstance(globals, dict):
             cmd.append('--globals')
-            cmd.append('"%s"' % addslashes(toJson(globals)))
+            cmd.append('%s' % toJson(toJson(globals)))
 
         cmd.append('2>&1')
 
@@ -101,6 +101,9 @@ class ScriptEngine(object):
             outHdl.close()
 
         out = out.decode(sys.stdout.encoding or 'utf8')
+        
+        ething.log.debug("script return code : %d" % return_var)
+        ething.log.debug("script stdout : %s" % out)
 
         if len(out):
             out = out[:out.rfind(',')]

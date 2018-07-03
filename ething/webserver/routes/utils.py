@@ -69,6 +69,7 @@ def install(core, app, auth, **kwargs):
 
     read_log_args = {
         'line': fields.Int(validate=validate.Range(min=0), missing=50),
+        'filter': fields.Str(missing=None, description='a filter the log results'),
     }
 
     @app.route('/api/utils/read_log')
@@ -78,6 +79,7 @@ def install(core, app, auth, **kwargs):
         logfilename = None
         lines = []
         linenb = args['line']
+        filter = args['filter'] or None
 
         for h in core.log.handlers:
             try:
@@ -86,8 +88,8 @@ def install(core, app, auth, **kwargs):
             except:
                 pass
 
-        def tail(fname, lines):
-            bufsize = 8192
+        def tail(fname, linenb, filter = None):
+            bufsize = 32768 if filter else 8192
             fsize = os.stat(fname).st_size
 
             iter = 0
@@ -95,17 +97,24 @@ def install(core, app, auth, **kwargs):
             with open(fname) as f:
                 if bufsize > fsize:
                     bufsize = fsize-1
-                while True:
+                while iter < 10:
                     iter += 1
-                    f.seek(fsize-bufsize*iter)
-                    data.extend(f.readlines())
-                    if len(data) >= lines or f.tell() == 0:
+                    pos = fsize-bufsize*iter
+                    if pos < 0:
+                        break;
+                    f.seek(pos)
+                    lines = f.readlines()
+                    if filter:
+                        lines = [l for l in lines if filter in l]
+                    if len(lines):
+                        data.extend(lines)
+                    if len(data) >= linenb or f.tell() == 0:
                         break
 
-            return [l.strip() for l in data[-lines:]]
+            return [l.strip() for l in data[-linenb:]]
 
         if logfilename:
-            lines = tail(logfilename, linenb)
+            lines = tail(logfilename, linenb, filter)
 
         return jsonify(lines)
 

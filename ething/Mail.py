@@ -29,7 +29,7 @@ class Mail(object):
         if isinstance(self.to, string_types):
             self.to = [self.to]
 
-    def send(self, subject='notification', message=None, attachments=None, to=None):
+    def send(self, subject=None, message=None, attachments=None, to=None):
 
         if not self.host or not self.port or not self.user or not self.password:
             return False
@@ -47,7 +47,7 @@ class Mail(object):
 
         msg['From'] = self.user
         msg['To'] = ', '.join(to)
-        msg['Subject'] = subject
+        msg['Subject'] = subject or 'notification'
 
         body = message if message else ''
 

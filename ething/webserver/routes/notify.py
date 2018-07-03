@@ -7,8 +7,8 @@ from ..server_utils import *
 def install(core, app, auth, **kwargs):
 
     notify_args = {
-        'subject': fields.Str(required=True, location="json"),
-        'body': fields.Str(location="json"),
+        'subject': fields.Str(missing=None, location="json"),
+        'body': fields.Str(required=True, location="json"),
     }
 
     @app.route('/api/notification', methods=['POST'])
@@ -37,4 +37,6 @@ def install(core, app, auth, **kwargs):
             '200':
               description: The notification was successfully sent
         """
-        core.notify(args['subject'], args['body'])
+        core.notify(subject = args['subject'], message = args['body'])
+        
+        return '', 204

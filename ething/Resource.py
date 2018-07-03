@@ -56,10 +56,14 @@ class ResourceModelAdapter(ModelAdapter):
 class DataModelAdapter(ModelAdapter):
 
     def set(self, data_object, data, name, value):
+        if name not in data:
+            data[name] = {}
+        
         for k in list(value):
             if value[k] is None:
-                value.pop(k)
-        data[name] = value
+                data[name].pop(k)
+            else:
+                data[name][k] = value[k]
 
 
 @attr('name', validator=isString(allow_empty=False, regex='^[a-zA-Z0-9 !#$%&\'()+,\-.;=@^_`{    ]+(\\/[a-zA-Z0-9 !#$%&\'()+,\-.;=@^_`{    ]+)*$'), description="The name of the resource")

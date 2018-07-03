@@ -58,7 +58,8 @@ while(arguments.length){
 			try {
 				extend(globals,JSON.parse(arguments[0]));
 			} catch(e){
-				console.error("invalid JSON object given for the --globals argument");
+				console.error("invalid JSON object given for the --globals argument: ", e);
+                console.log(arguments[0])
 				process.exit(1);
 			}
 			break;
@@ -186,27 +187,38 @@ if(verbose) console.log('script stdout:',outFile);
 const vm = require('vm');
 
 
+function _exit(code) {
+    outStream.end(() => {
+        outStream.isOpen = false
+        process.exit(code);
+    })
+}
 
 var stream = require('stream');
 
-const outStream = outFile==='-' ? process.stdout : fs.createWriteStream(outFile);
+var outStream = outFile==='-' ? process.stdout : fs.createWriteStream(outFile);
+outStream.isOpen = true
 
 var stdoutStream = new stream.Writable();
 
 stdoutStream._write = function (chunk, encoding, done) {
-    outStream.write(JSON.stringify({
-        type: 'stdout',
-        chunk: chunk.toString()
-    })+",\n", done);
+    if (outStream.isOpen) {
+        outStream.write(JSON.stringify({
+            type: 'stdout',
+            chunk: chunk.toString()
+        })+",\n", done);
+    }
 };
 
 var stderrStream = new stream.Writable();
 
 stderrStream._write = function (chunk, encoding, done) {
-    outStream.write(JSON.stringify({
-        type: 'stderr',
-        chunk: chunk.toString()
-    })+",\n", done);
+    if (outStream.isOpen) {
+        outStream.write(JSON.stringify({
+            type: 'stderr',
+            chunk: chunk.toString()
+        })+",\n", done);
+    }
 };
 
 const logger = new console.Console(stdoutStream, stderrStream);
@@ -214,7 +226,13 @@ const logger = new console.Console(stdoutStream, stderrStream);
 process.on('uncaughtException', function(err){
 	if(verbose) console.error('Error in script:', err);
 	logger.error(err);
-	process.exit(1);
+	_exit(1);
+});
+
+process.on('unhandledRejection', err => {
+	if(verbose) console.error('Error in script:', err);
+	logger.error(err);
+	_exit(1);
 });
 
 extend(globals, {
@@ -260,7 +278,7 @@ try {
 } catch(e){
 	if(verbose) console.error('Error in script:', e);
 	logger.error(e);
-    process.exit(1);
+    _exit(1);
 }
 
 

@@ -15,6 +15,7 @@ from .Mail import Mail
 from .rpc import RPC
 from .version import __version__
 from .plugin import instanciate_plugins
+from .Scheduler import Scheduler
 import logging
 import sys
 import os
@@ -140,6 +141,9 @@ class Core(object):
 
         self.signalDispatcher = SignalDispatcher()
         self.mail = Mail(self)
+        self.scheduler = Scheduler()
+        
+        self.scheduler.setInterval(60, self._tick)
 
         self.rpc.register('stop', self.stop)
         self.rpc.register('version', self.version)
@@ -168,9 +172,13 @@ class Core(object):
     def loop_forever(self):
         while self.running:
             self.loop(1)
+            self.scheduler.process()
     
     def _signal_publish(self, signal):
         self.rpc.publish('signal', signal)
+    
+    def _tick(self):
+        self.dispatchSignal('Tick')
     
     #
     # Resources
