@@ -19,3 +19,4 @@ from . import DaemonStarted
 from . import DaemonStopped
 from . import DeviceDataSet
 from . import TableDataAdded
+from . import Notified

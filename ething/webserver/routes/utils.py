@@ -8,10 +8,11 @@ import random
 import string
 from werkzeug.http import unquote_etag
 
-from ething.meta import resource_classes, interfaces_classes, event_classes, iface
+from ething.meta import resource_classes, interfaces_classes, event_classes, action_classes, iface
 from ething.base import READ_ONLY
 from ething.Resource import Resource
 from ething.event import Event
+from ething.action import Action
 
 from ething.Scope import Scope
 
@@ -135,6 +136,7 @@ def install(core, app, auth, **kwargs):
                 "interfaces": {},
                 "scopes": Scope.list,
                 "events": {},
+                "actions": {},
                 "info": get_info(core),
                 "plugins":{},
                 "config": core.config.SCHEMA
@@ -223,6 +225,33 @@ def install(core, app, auth, **kwargs):
                     schema['virtual'] = True
 
                 _meta['events'][name] = schema
+
+            for name in list(action_classes):
+                action_cls = action_classes[name]
+
+                schema = action_cls.schema(flatted=False, helper=attr_helper)
+
+                # static inheritance
+                allOf = []
+                for b in action_cls.__bases__:
+
+                    if issubclass(b, Action):
+                        allOf.append({
+                            '$ref': '#/actions/%s' % b.__name__
+                        })
+
+                if len(allOf) > 0:
+                    if schema:
+                        allOf.append(schema)
+
+                    schema = {
+                        'allOf': allOf
+                    }
+
+                if action_cls.is_abstract():
+                    schema['virtual'] = True
+
+                _meta['actions'][name] = schema
 
             for plugin in core.plugins:
                 name = plugin.name

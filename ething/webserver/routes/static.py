@@ -1,8 +1,7 @@
 # coding: utf-8
 
 
-from flask import send_from_directory, redirect, url_for
-import os
+from flask import send_from_directory, redirect, url_for, request
 
 
 def install(core, app, auth, **kwargs):
@@ -12,15 +11,18 @@ def install(core, app, auth, **kwargs):
     @app.route('/favicon.ico')
     def favicon():
         return '', 404
-        # return send_from_directory(os.path.join(app.root_path, 'static'),'favicon.ico', mimetype='image/vnd.microsoft.icon')
 
     @app.route('/')
     def root():
-        return redirect(url_for('static_client', path='index.html'))
+        params = dict(request.args)  # keep query parameter in the redirected url
+        params['path'] = 'index.html'
+        return redirect(url_for('static_client', **params))
 
     @app.route('/client')
     def root_client():
-        return redirect(url_for('static_client', path='index.html'))
+        params = dict(request.args) # keep query parameter in the redirected url
+        params['path'] = 'index.html'
+        return redirect(url_for('static_client', **params))
 
     @app.route('/client/<path:path>')
     def static_client(path):

@@ -19,13 +19,17 @@ class Event(with_metaclass(MetaEvent, DataObject)):
 
     signal = None
 
-    def __init__(self, ething, data=None):
-        object.__setattr__(self, '_Event__ething', ething)
+    def __init__(self, parent, data=None):
+        object.__setattr__(self, '_Event__rule', parent)
         super(Event, self).__init__(data=data)
 
     @property
+    def rule(self):
+        return self.__rule
+
+    @property
     def ething(self):
-        return self.__ething
+        return self.rule.ething
 
     def filter(self, signal):
 

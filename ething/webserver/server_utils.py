@@ -221,7 +221,7 @@ def tb_extract_info():
             file = matches.group(1)
             lineno = int(matches.group(2))
 
-            if file.startswith(root_path):
+            if os.path.abspath(file).startswith(root_path):
                 break
 
     return file, lineno

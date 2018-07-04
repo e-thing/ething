@@ -627,6 +627,22 @@ class MetaEvent(MetaDataObject):
         event_classes[nom] = cls
 
 
+action_classes = {}
+
+
+def get_action_class(name):
+    return action_classes.get(name)
+
+
+class MetaAction(MetaDataObject):
+
+    """Action metaclass"""
+
+    def __init__(cls, nom, bases, dict):
+        MetaDataObject.__init__(cls, nom, bases, dict)
+        action_classes[nom] = cls
+
+
 signal_classes = {}
 
 

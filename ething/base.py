@@ -357,7 +357,9 @@ class isObject(Validator):
                 else:
                     validator = self.allow_extra
 
-            if validator:
+            if validator is True:
+                sanitized_value[k] = v
+            elif validator:
                 try:
                     sanitized_value[k] = validator.validate(v, object)
                 except Exception as e:
@@ -481,7 +483,9 @@ class NestedAdapter(ModelAdapter):
         self.cls = cls
 
     def _inherit(self, data_object):
-        return {}  # will be transmitted to the constructor !
+        return {
+            'parent': data_object
+        }  # will be transmitted to the constructor !
 
     def set(self, data_object, data, name, value):
 

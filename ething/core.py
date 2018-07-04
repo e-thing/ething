@@ -37,7 +37,10 @@ from .mysensors import MySensors
 from .mqtt import mqtt
 from .yeelight import Yeelight
 from .mihome import Mihome
-from .blea import Blea
+try:
+    from .blea import Blea
+except:
+    pass
 # from .zigate import Zigate
 from .device.Http import Http
 from .device.RTSP import RTSP
@@ -148,7 +151,7 @@ class Core(object):
         self.rpc.register('stop', self.stop)
         self.rpc.register('version', self.version)
         self.rpc.register('signal', self.signalDispatcher.dispatch)
-        self.rpc.register('notify', self.mail.send)
+        self.rpc.register('mail', self.mail.send)
 
         # rpc
         self.rpc_server = self.rpc.start_server()
@@ -328,9 +331,11 @@ class Core(object):
         # if hasattr(self, "signalManager"):
         #     self.signalManager.dispatch(signal)
 
-    def notify(self, *args, **kwargs):
+    def notify(self, message, subject = None):
 
-        self.rpc.send('notify', *args, **kwargs)
+        self.dispatchSignal('Notified', message = message, subject = subject)
+
+        self.rpc.send('mail', message = message, subject = subject)
 
         # if hasattr(self, "signalManager"):
         #     self.signalManager.dispatch(signal)

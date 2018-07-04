@@ -66,10 +66,13 @@ def install(core, app, auth, **kwargs):
     @auth.required()
     def auth_refresh():
 
+        resp = make_response(('', 204))
+
         if g.auth.type == 'session':
-            resp = make_response(('', 204))
             if auth.session.refresh(request, resp):
                 return resp
+        elif g.auth.type == 'localhost':
+            return resp
 
         raise ServerException('not authorized', 403)
 

@@ -568,7 +568,8 @@ setup(
         "apispec",  # http api
         "Jinja2",  # http api
         "xmltodict",
-        "python-magic"
+        "python-magic",
+        "bluepy"
     ],
 
     extras_require={
