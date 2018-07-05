@@ -569,7 +569,8 @@ setup(
         "Jinja2",  # http api
         "xmltodict",
         "python-magic",
-        "bluepy"
+        "bluepy",
+        "cherrypy"
     ],
 
     extras_require={

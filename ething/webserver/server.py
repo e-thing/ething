@@ -14,6 +14,11 @@ from .server_utils import ServerException, tb_extract_info, root_path
 from ething.plugin import Plugin
 from ething.Process import Process
 
+try:
+    from cheroot.wsgi import Server as WSGIServer
+except ImportError:
+    from cherrypy.wsgiserver import CherryPyWSGIServer as WSGIServer
+
 
 class WebServer(Plugin):
     CONFIG_DEFAULTS = {
@@ -123,7 +128,15 @@ class WebServerProcess(Process):
         port = self.config['port']
         self.log.info("webserver: started at http://%s:%d" % (current_ip or 'localhost', port))
 
-        app.run(host='0.0.0.0', port=port, threaded=True)
+        server = WSGIServer(
+            bind_addr=('0.0.0.0', port),
+            wsgi_app=app,
+            server_name=socket.gethostname()
+        )
+
+        server.start()
+
+        #app.run(host='0.0.0.0', port=port, threaded=True)
 
     def error_handler(self, e):
 
