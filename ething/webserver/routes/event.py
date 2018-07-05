@@ -3,7 +3,7 @@ from flask import Response, request
 from ething.Helpers import toJson
 
 
-def install(core, app, auth, **kwargs):
+def install(core, app, auth, server, **kwargs):
 
     # SSE "protocol" is described here: http://mzl.la/UPFyxY
     @app.route('/api/events')
@@ -19,10 +19,13 @@ def install(core, app, auth, **kwargs):
             client = core.rpc.subscribe('signal')
 
             try:
-                while True:
-                    msg = client.get()
+                while server.ready:
+                    msg = client.get(timeout = 1)
+                    if msg is False: # timeout
+                        continue
                     if msg is None:
                         # rpc server disconnected
+                        core.log.debug('SSE: rpc server disconnected')
                         break
                     signal = msg.message
 
@@ -35,7 +38,9 @@ def install(core, app, auth, **kwargs):
                     yield "\n".join(lines) + "\n\n"
 
             except GeneratorExit:  # Or maybe use flask signals
-                client.stop()
-                core.log.debug('SSE: stop listener %s' % remote_addr)
+                pass
+
+            client.stop()
+            core.log.debug('SSE: stop listener %s' % remote_addr)
 
         return Response(gen(), mimetype="text/event-stream")

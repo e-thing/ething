@@ -81,6 +81,12 @@ class WebServerProcess(Process):
         self.core = core
         self.config = config or {}
         self.debug = False
+        self.server = None
+
+    def stop(self):
+        if self.server:
+            self.server.stop()
+        self.server = None
 
     def main(self):
 
@@ -101,9 +107,16 @@ class WebServerProcess(Process):
         self.log.info("web server root path = %s" % root_path)
 
         self.debug = bool(self.config['debug'])
+        port = self.config['port']
 
         if self.debug:
             self.log.info('webserver: debug mode enabled')
+
+        self.server = WSGIServer(
+            bind_addr=('0.0.0.0', port),
+            wsgi_app=app,
+            server_name=socket.gethostname()
+        )
 
         @app.errorhandler(Exception)
         def unhandled_exception(e):
@@ -112,9 +125,9 @@ class WebServerProcess(Process):
         for cls in HTTPException.__subclasses__():
             app.register_error_handler(cls, self.error_handler)
 
-        auth = install_auth(core=self.core, app=app, config=self.config, debug=self.debug)
+        auth = install_auth(core=self.core, app=app, config=self.config, debug=self.debug, server = self.server)
 
-        install_routes(core=self.core, app=app, auth=auth, debug=self.debug)
+        install_routes(core=self.core, app=app, auth=auth, debug=self.debug, server = self.server)
 
         current_ip = None
         try:
@@ -125,16 +138,9 @@ class WebServerProcess(Process):
         except:
             pass
 
-        port = self.config['port']
         self.log.info("webserver: started at http://%s:%d" % (current_ip or 'localhost', port))
 
-        server = WSGIServer(
-            bind_addr=('0.0.0.0', port),
-            wsgi_app=app,
-            server_name=socket.gethostname()
-        )
-
-        server.start()
+        self.server.start()
 
         #app.run(host='0.0.0.0', port=port, threaded=True)
 

@@ -19,7 +19,7 @@ class Process(StoppableThread):
         except Exception:
             self.log.exception('Exception in process "%s"' % self.name)
 
-        self.log.info('Stop process "%s"' % self.name)
+        self.log.info('Process "%s" stopped' % self.name)
 
     def main(self):
         pass

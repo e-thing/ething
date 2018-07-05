@@ -243,11 +243,16 @@ class RPC_SubClient(object):
             self.sock = None
             self.log.debug("stop sub topic=%s" % self.topic)
 
-    def get(self):
+    def get(self, timeout = 0):
         """
         wait until a message arrive
         """
-        resp = self.rpc._read_obj(self.sock)
+        try:
+            if timeout is not None and timeout > 0:
+                self.sock.settimeout(timeout)
+            resp = self.rpc._read_obj(self.sock)
+        except socket.timeout:
+            resp = False
 
         if resp is None:
             self.log.debug("rpc sub client disconnected from server")
@@ -298,6 +303,12 @@ class RPC_Server(object):
             pass
 
     def stop(self):
+        with self._lock:
+            for topic in self._subs:
+                for sock in self._subs[topic]['sockets']:
+                    self._close_client(sock)
+            self._subs = {}
+
         if self.sock is not None:
             self.sock.close()
             self.sock = None
@@ -331,8 +342,8 @@ class RPC_Server(object):
             # remove the socket from any pub
             with self._lock:
                 for topic in self._subs:
-                    if sock in self._subs[topic]:
-                        self._subs[topic].remove(sock)
+                    if sock in self._subs[topic]['sockets']:
+                        self._subs[topic]['sockets'].remove(sock)
 
             return
 
