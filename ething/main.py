@@ -350,6 +350,10 @@ def main():
         remove_logger()
         deletePidFile()
 
+    if getattr(core, 'restart_flag', False):
+        print("restarting...")
+        os.execl(sys.executable, sys.executable, *sys.argv)
+
     sys.exit(exit_code)
 
 

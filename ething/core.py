@@ -132,10 +132,8 @@ class Core(object):
                 self.log.exception("error while shutting down rpc")
 
     def restart(self):
-        self.destroy()
-
-        os.execl(sys.executable, sys.executable, *sys.argv)
-        sys.exit(0)
+        self.stop()
+        self.restart_flag = True
 
     def start(self):
 

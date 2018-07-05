@@ -1,3 +1,3 @@
-from .main import main
+from ething.main import main
 
 main()

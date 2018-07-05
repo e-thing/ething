@@ -30,6 +30,13 @@ _meta = None
 
 def install(core, app, auth, **kwargs):
 
+    @app.route('/api/utils/restart')
+    @auth.required()
+    def restart():
+        core.restart()
+        return '', 204
+
+
     @app.route('/api/utils/serial_ports_list')
     @auth.required()
     def serial_ports_list():
