@@ -105,7 +105,7 @@ class Core(object):
 
         self.fs = DbFs(self.db)
 
-        self.resourceQueryParser = ResourceQueryParser(tz = str(self.ething.local_tz))
+        self.resourceQueryParser = ResourceQueryParser(tz = str(self.local_tz))
 
     def _init_rpc(self):
         self.rpc = RPC(self.config.get('rpc.address'))
@@ -171,6 +171,7 @@ class Core(object):
                 self.log.exception('unable to load the plugin %s' % plugin_name)
 
         self.signalDispatcher.bind('*', self._signal_publish)
+        self.signalDispatcher.bind('ConfigUpdated', self._on_config_updated)
 
         self.running = True
 
@@ -187,7 +188,15 @@ class Core(object):
     
     def _tick(self):
         self.dispatchSignal('Tick')
-    
+
+    def _on_config_updated(self, signal):
+        for change in signal.changes:
+            attr_name = change[0]
+            if attr_name.startswith("log."):
+                self._init_logger()
+            elif attr_name.startswith("notification."):
+                self.mail = Mail(self)
+
     #
     # Resources
     #
@@ -378,3 +387,4 @@ class Core(object):
             r.repair()
 
         return results
+

@@ -10,6 +10,7 @@ import copy
 from hashlib import md5
 from pytz import common_timezones
 from collections import OrderedDict
+import threading
 
 
 CONF_VERSION = 1
@@ -154,6 +155,8 @@ class Config(object):
 
         self.core = core
 
+        self._lock = threading.Lock()
+
         self._d = copy.deepcopy(Config.DEFAULT)
 
         if isinstance(config, string_types):
@@ -188,17 +191,18 @@ class Config(object):
     # get/set attribute
 
     def get(self, name=None, default=None):
-        if name is None:
-            return self._d
-        else:
-            parts = name.split('.')
-            p = self._d
-            for part in parts:
-                if isinstance(p, dict) and (part in p):
-                    p = p[part]
-                else:
-                    return default
-            return p
+        with self._lock:
+            if name is None:
+                return self._d
+            else:
+                parts = name.split('.')
+                p = self._d
+                for part in parts:
+                    if isinstance(p, dict) and (part in p):
+                        p = p[part]
+                    else:
+                        return default
+                return p
 
     def _set(self, name, value=None):
 
@@ -283,8 +287,9 @@ class Config(object):
         return changes
 
     def set(self, name, value=None):
-        changes = self._set(name, value)
-        self.core.dispatchSignal('ConfigUpdated', changes)
+        with self._lock:
+            changes = self._set(name, value)
+            self.core.dispatchSignal('ConfigUpdated', changes)
 
     def __call__(self, *args):
         args = list(args)
@@ -304,4 +309,5 @@ class Config(object):
         return self.get(name)
 
     def toJson(self):
-        return self._d
+        with self._lock:
+            return self._d
