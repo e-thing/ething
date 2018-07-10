@@ -42,7 +42,7 @@ def install(core, app, auth, **kwargs):
         if auth.scope is not None:
             d['scope'] = auth.scope
 
-        return jsonify(d)
+        return app.jsonify(d)
 
     @app.route('/auth/password', methods=['POST'])
     def auth_password():

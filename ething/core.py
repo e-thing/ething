@@ -21,12 +21,14 @@ import sys
 import os
 import datetime
 import re
+import pytz
 
 from .meta import get_resource_class, get_signal_class
 
 from .webserver.server import WebServer
 from .RuleManager import RuleManager
 from .PingService import PingService
+from .MqttDispatcher import MqttDispatcher
 
 from .File import File
 from .Table import Table
@@ -68,6 +70,11 @@ class Core(object):
 
         Core.__instance = self
 
+    @property
+    def local_tz (self):
+        local_tz = self.config.get('timezone', 'UTC')
+        return pytz.timezone(local_tz)
+
     def _init_logger(self):
         self.log = logging.getLogger('ething')
         self.log.setLevel(
@@ -98,7 +105,7 @@ class Core(object):
 
         self.fs = DbFs(self.db)
 
-        self.resourceQueryParser = ResourceQueryParser()
+        self.resourceQueryParser = ResourceQueryParser(tz = str(self.ething.local_tz))
 
     def _init_rpc(self):
         self.rpc = RPC(self.config.get('rpc.address'))
@@ -144,7 +151,7 @@ class Core(object):
         self.mail = Mail(self)
         self.scheduler = Scheduler()
         
-        self.scheduler.setInterval(60, self._tick)
+        self.scheduler.at(self._tick, hour='*', min='*')
 
         self.rpc.register('stop', self.stop)
         self.rpc.register('version', self.version)
@@ -285,7 +292,7 @@ class Core(object):
         }
 
     @staticmethod
-    def r_encode(data, showPrivateField=True):
+    def r_encode(data, showPrivateField=True, local_tz = None):
         o = {}
         for k in data:
 
@@ -301,7 +308,11 @@ class Core(object):
                     k = k[1:]
 
                 if isinstance(v, datetime.datetime):
-                    o[k] = v.isoformat()
+                    if local_tz is None:
+                        local_dt = v
+                    else:
+                        local_dt = v.replace(tzinfo=pytz.utc).astimezone(local_tz)
+                    o[k] = local_dt.isoformat()
                 elif isinstance(v, dict):
                     o[k] = Core.r_encode(v)
                 else:

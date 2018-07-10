@@ -12,7 +12,6 @@ except ImportError:
     Image = None
     ImageOps = None
 from io import BytesIO
-from .Helpers import dict_recursive_update
 from .base import attr, isBool, isString, isNone, isInteger, READ_ONLY, PRIVATE
 
 

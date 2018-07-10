@@ -158,7 +158,7 @@ def install(core, app, auth, **kwargs):
                 if content:
                     r.write(content)
 
-                response = jsonify(r)
+                response = app.jsonify(r)
                 response.status_code = 201
                 return response
             else:
@@ -229,7 +229,7 @@ def install(core, app, auth, **kwargs):
               schema:
                 $ref: '#/definitions/File'
         """
-        r = getResource(core, id, ['File'])
+        r = app.getResource(id, ['File'])
 
         if request.method == 'GET':
             return Response(r.read(), mimetype=r.mime)
@@ -243,12 +243,12 @@ def install(core, app, auth, **kwargs):
             else:
                 r.write(content)
 
-            return jsonify(r)
+            return app.jsonify(r)
 
     @app.route('/api/files/<id>/thumbnail')
     @auth.required('file:read resource:read')
     def file_thumb(id):
-        r = getResource(core, id, ['File'])
+        r = app.getResource(id, ['File'])
         thumb = r.readThumbnail()
 
         if not thumb:
@@ -264,7 +264,7 @@ def install(core, app, auth, **kwargs):
     @use_args(file_action_execute_args)
     @auth.required('file:read resource:read')
     def file_execute(args, id):
-        r = getResource(core, id, ['File'])
+        r = app.getResource(id, ['File'])
 
         if r.mime == 'application/javascript':
 
@@ -273,7 +273,7 @@ def install(core, app, auth, **kwargs):
             if not res:
                 raise Exception('Unable to execute')
 
-            return jsonify(res)
+            return app.jsonify(res)
 
         else:
             raise Exception('Not executable')

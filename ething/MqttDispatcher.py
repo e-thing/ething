@@ -1,36 +1,136 @@
+# coding: utf-8
 
+from .plugin import Plugin
+from .Process import Process
+import threading
 import paho.mqtt.client as mqttClient
 from ething.event import ResourceSignal
 import random
 import string
+import time
 from ething.Helpers import toJson
+from collections import OrderedDict
 
 
-class MqttDispatcher(object):
-    """
-    dispatch signals over MQTT
-    """
+class MqttDispatcher(Plugin):
+    CONFIG_DEFAULTS = {
+        'port': 1883,
+    }
 
-    AUTOCONNECT_PERIOD = 15
+    CONFIG_SCHEMA = {
+        'type': 'object',
+        'properties': OrderedDict([
+            ('host', {
+                'description': 'leave empty to disable this plugin',
+                'type': 'string',
+                'minLength': 1
+            }),
+            ('port', {
+                'type': 'integer',
+                'minimum': 1,
+                'maximum': 65535
+            }),
+            ('user', {
+                'type': 'string',
+                'minLength': 1
+            }),
+            ('password', {
+                'type': 'string',
+                'minLength': 4
+            })
+        ])
+    }
 
-    def __init__(self, core):
+    def load(self):
+        super(MqttDispatcher, self).load()
+        self.start_process()
+
+    def unload(self):
+        super(MqttDispatcher, self).unload()
+        self.stop_process()
+
+    def start_process(self):
+        if self.config.get('host'):
+            self.process = MqttDispatcherService(self.core, self.config)
+            self.process.start()
+
+    def stop_process(self):
+        if hasattr(self, 'process'):
+            self.process.stop()
+            del self.process
+
+    def on_config_change(self, changes):
+        self.stop_process()
+        self.start_process()
+
+
+
+class MqttDispatcherService(Process):
+
+    KEEPALIVE = 60  # seconds
+    RECONNECT_DELAY = 30
+
+    def __init__(self, core, config):
+        super(MqttDispatcherService, self).__init__('mqttDispatcher')
         self.core = core
-        self.log = core.log
-        self.socketManager = core.socketManager
+        self.config = config
+        self._lock = threading.Lock()
 
-        self._socket = None
-
-        self.mqttClient = mqttClient.Client(client_id='ething_%s' % ''.join(random.choice(
+    def main(self):
+        self._mqttClient = mqttClient.Client(client_id='ething_%s' % ''.join(random.choice(
             string.ascii_uppercase + string.digits) for _ in range(6)), clean_session=True)
-        self.mqttClient.on_connect = self.on_connect
-        self.mqttClient.on_disconnect = self.on_disconnect
 
-        self.core.scheduler.setInterval(1, self.update)
+        self._mqttClient.on_connect = self.on_connect
+        self._mqttClient.on_disconnect = self.on_disconnect
 
-        self.connect()
+        host = self.config.get('host')
+        port = self.config.get('port', 1883)
 
-    def destroy(self):
-        self.disconnect()
+        user = self.config.get('user')
+        password = self.config.get('password')
+        if user and password:
+            self._mqttClient.username_pw_set(user, password=password)
+
+        while not self.stopped():
+
+            try:
+                self._mqttClient.connect(host, port=port, keepalive=self.KEEPALIVE)
+            except Exception as e:
+                # unable to connect
+                self.log.error("Error: unable to connect to %s:%d" % (host, port))
+                # wait before retry
+                t_end = time.time() + self.RECONNECT_DELAY
+                while not self.stopped() and time.time() < t_end:
+                    time.sleep(0.5)
+                continue
+
+            self.log.info("connected to %s:%d" % (host, port))
+
+            while not self.stopped():
+                self._mqttClient.loop(1.0)
+
+            self.log.info("disconnect")
+            self._mqttClient.disconnect()
+
+    def on_connect(self, client, userdata, flags, rc):
+
+        if rc == 0:
+            self.log.info("connected")
+
+            self.core.signalDispatcher.bind('*', self.dispatchSignal)
+
+        else:
+            # unable to connect
+            self.log.error("connection refused : %s" %
+                           mqttClient.connack_string(rc))
+            self.stop()
+
+    def on_disconnect(self, client, userdata, rc):
+        if rc != 0:
+            self.log.warn("Unexpected disconnection")
+            self._mqttClient.reconnect()
+
+        self.core.signalDispatcher.unbind('*', self.dispatchSignal)
 
     def dispatchSignal(self, signal):
 
@@ -41,73 +141,14 @@ class MqttDispatcher(object):
         if isinstance(signal, ResourceSignal):
             topic += '/%s' % signal.resource
 
-        payload = toJson(signal.__dict__)
+        payload = toJson(signal)
 
-        self.log.debug("MqttDispatcher: publish topic=%s" % topic)
+        self.log.debug("publish topic=%s" % topic)
 
         self.mqttClient.publish(topic, payload, 0, True)
 
-        self.processWrite()
 
-    def connect(self):
 
-        host = self.core.config.get('mqtt.host')
-        port = self.core.config.get('mqtt.port', 1883)
 
-        if not host:
-            return
 
-        self.log.info("MqttDispatcher: connecting to %s:%d" % (host, port))
 
-        user = self.core.config.get('mqtt.user')
-        password = self.core.config.get('mqtt.password')
-        if user and password:
-            self.mqttClient.username_pw_set(user, password=password)
-
-        self.mqttClient.connect(host, port=port, keepalive=60)
-
-        self._socket = self.mqttClient.socket()
-        self.socketManager.registerReadSocket(self._socket, self.process)
-
-        self.processWrite()
-
-    def disconnect(self):
-        self.log.info("MqttDispatcher: disconnect")
-        self.mqttClient.disconnect()
-
-    def on_connect(self, client, userdata, flags, rc):
-
-        if rc == 0:
-            self.log.info("MqttDispatcher: connected")
-
-            self.core.signalManager.addDispatcher(self.dispatchSignal)
-
-        else:
-            # unable to connect
-            self.log.error("MqttDispatcher: connection refused : %s, reconnecting in %d secondes" %
-                           (mqttClient.connack_string(rc), self.AUTOCONNECT_PERIOD))
-            self.core.scheduler.delay(self.AUTOCONNECT_PERIOD, self.connect)
-
-    def on_disconnect(self, client, userdata, rc):
-        if rc != 0:
-            self.log.warn(
-                "MqttDispatcher: Unexpected disconnection, reconnecting in %d secondes" % self.AUTOCONNECT_PERIOD)
-            self.core.scheduler.delay(self.AUTOCONNECT_PERIOD, self.connect)
-
-        self.socketManager.unregisterReadSocket(self._socket)
-        self.socketManager.unregisterWriteSocket(self._socket)
-        self.core.signalManager.removeDispatcher(self.dispatchSignal)
-
-    def process(self):
-        self.mqttClient.loop_read()
-        self.processWrite()
-
-    def processWrite(self):
-        if self.mqttClient.want_write():
-            self.socketManager.registerWriteSocketOnce(
-                self._socket, self.mqttClient.loop_write)
-
-    def update(self):
-        self.mqttClient.loop_misc()
-
-        self.processWrite()

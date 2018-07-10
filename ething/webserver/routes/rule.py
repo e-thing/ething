@@ -55,7 +55,7 @@ def install(core, app, auth, **kwargs):
             r = core.create('Rule', attr)
 
             if r:
-                response = jsonify(r)
+                response = app.jsonify(r)
                 response.status_code = 201
                 return response
             else:
@@ -66,7 +66,7 @@ def install(core, app, auth, **kwargs):
     @app.route('/api/rules/<id>/execute')
     @auth.required('rule:read resource:read')
     def rule_execute(id):
-        r = getResource(core, id, ['Rule'])
+        r = app.getResource(id, ['Rule'])
 
         if not r.run():
             raise Exception('An error occurs during execution of the rule')

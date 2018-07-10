@@ -28,8 +28,8 @@ def build_resource_fields(parser):
 
 class ResourceQueryParser(Parser):
 
-    def __init__(self):
-        super(ResourceQueryParser, self).__init__()
+    def __init__(self, **kwargs):
+        super(ResourceQueryParser, self).__init__(**kwargs)
 
         build_resource_fields(self)
 

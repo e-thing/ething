@@ -5,7 +5,10 @@ from .Event import Event
 
 
 class ConfigUpdated(Signal):
-    pass
+
+    def __init__(self, changes):
+        super(ConfigUpdated, self).__init__()
+        self.changes = changes
 
 
 class ConfigUpdatedEvent(Event):

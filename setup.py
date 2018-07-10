@@ -506,6 +506,37 @@ def _translate_glob_part(pat):
 # setup
 # ----------------------
 
+requires = [
+    "future",
+    "pymongo==3.5.1",
+    "python-dateutil",
+    "pillow",
+    "shortid",
+    "python-magic",
+    "Flask",
+    "flask-cors",
+    "paramiko",
+    "jsonderef",
+    "pyserial",
+    "paho-mqtt",
+    "jsonpath-rw",
+    "croniter",
+    "dateparser",
+    "pyaes",
+    "scapy",
+    "PyJWT",
+    "netaddr",
+    "webargs",
+    "apispec",  # http api
+    "Jinja2",  # http api
+    "xmltodict",
+    "python-magic",
+    "cherrypy",
+    "pytz"
+]
+
+if os.name != "nt":
+    requires.append("bluepy")
 
 setup(
     name='ething',
@@ -544,34 +575,7 @@ setup(
     packages=find_packages(),
 
 
-    install_requires=[
-        "future",
-        "pymongo==3.5.1",
-        "python-dateutil",
-        "pillow",
-        "shortid",
-        "python-magic",
-        "Flask",
-        "flask-cors",
-        "paramiko",
-        "jsonderef",
-        "pyserial",
-        "paho-mqtt",
-        "jsonpath-rw",
-        "croniter",
-        "dateparser",
-        "pyaes",
-        "scapy",
-        "PyJWT",
-        "netaddr",
-        "webargs",
-        "apispec",  # http api
-        "Jinja2",  # http api
-        "xmltodict",
-        "python-magic",
-        "bluepy",
-        "cherrypy"
-    ],
+    install_requires=requires,
 
     extras_require={
         "dev": [

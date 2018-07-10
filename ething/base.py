@@ -10,6 +10,7 @@ from future.utils import iteritems
 import copy
 import threading
 from functools import wraps
+from collections import OrderedDict
 
 
 class Validator(object):
@@ -470,9 +471,11 @@ class ModelAdapter(object):
     def get(self, data_object, data, name):
         return data.get(name)
 
+    def get_json(self, data_object, data, name):
+        return self.get(data_object, data, name)
+
     def has(self, data_object, data, name):
         return name in data
-
 
 class NestedAdapter(ModelAdapter):
     """
@@ -516,11 +519,11 @@ default_model_adapter = ModelAdapter()
 def attr(name, validator=None, mode=None, **kwargs):
     def d(cls):
 
-        attributes = getattr(cls, '__attributes', {})
+        attributes = getattr(cls, '__attributes', OrderedDict())
 
         attributes_cls = getattr(cls, '__attributes_cls', None)
         if attributes_cls is not None and attributes_cls != cls.__name__:
-            copy_attr = {}
+            copy_attr = OrderedDict()
             for n in attributes:
                 copy_attr[n] = attributes[n].copy()
             attributes = copy_attr
@@ -614,7 +617,7 @@ class DataObject(with_metaclass(MetaDataObject, object)):
                         self, self.__d, attribute['model_key'], attribute['default'](self.__class__))
     
     def toJson(self):
-        j = {}
+        j = dict()
         attributes = getattr(self, '__attributes', {})
         for name in attributes:
             attribute = attributes[name]
@@ -622,7 +625,7 @@ class DataObject(with_metaclass(MetaDataObject, object)):
                 continue
             model_adapter = attribute['model_adapter']
             try:
-                j[name] = model_adapter.get(
+                j[name] = model_adapter.get_json(
                     self, self.__d, attribute['model_key'])
             except:
                 pass
@@ -791,7 +794,7 @@ class DataObject(with_metaclass(MetaDataObject, object)):
     def schema(cls, flatted=True, helper=None):
         schema = {
             "type": "object",
-            "properties": {}
+            "properties": OrderedDict()
         }
 
         required = []

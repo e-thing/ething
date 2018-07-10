@@ -1,6 +1,5 @@
 # coding: utf-8
 from flask import Response, request
-from ething.Helpers import toJson
 
 
 def install(core, app, auth, server, **kwargs):
@@ -29,7 +28,7 @@ def install(core, app, auth, server, **kwargs):
                         break
                     signal = msg.message
 
-                    data = toJson(signal)
+                    data = app.toJson(signal)
 
                     lines = ["data:{value}".format(
                         value=line) for line in data.splitlines()]

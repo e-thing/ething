@@ -1,8 +1,7 @@
 # coding: utf-8
 
-from .Resource import Resource, isResource, ResourceModelAdapter
-from .base import NestedAdapter, attr, READ_ONLY, isString, isAnything, isBool, isObject, isArray, isInteger
-from .ScriptEngine import ScriptEngine
+from .Resource import Resource
+from .base import NestedAdapter, attr, READ_ONLY, isAnything, isBool, isObject, isArray, isInteger
 
 from . import event
 from . import action
@@ -39,13 +38,19 @@ class isScheduler(isArray):
         super(isScheduler, self).__init__(item = isSchedulerItem())
 
 
-@attr('event', validator=isEvent(), model_adapter=NestedAdapter(event.Event), description="The event object describing when to execute this rule")
 @attr('action', validator=isAction(), model_adapter=NestedAdapter(action.Action), description="The event object describing when to execute this rule")
+@attr('event', validator=isEvent(), model_adapter=NestedAdapter(event.Event), description="The event object describing when to execute this rule")
 @attr('enabled', validator=isBool(), default=True, description="If True (default), the rule is enabled")
 @attr('scheduler', validator=isArray(item = isObject(start = isObject(weekDay = isInteger(min=0, max=6), hour = isInteger(min=0, max=24)), end = isObject(weekDay = isInteger(min=0, max=6), hour = isInteger(min=0, max=24)))), default=[], description="Activate this rule only within certain periods of time")
 @attr('execution_count', default=0, mode=READ_ONLY, description="The number of times this rule has been executed")
 @attr('execution_date', default=None, mode=READ_ONLY, description="The last time this rule has been executed")
 class Rule(Resource):
+    """
+    Rule dictate the action to perform when an event occurs.
+    Rules consist of two parts:
+     - The event part specifies the conditions that triggers the invocation of the rule
+     - The action part specifies what to execute in response to the event
+    """
 
     def trigger(self, signal):
 

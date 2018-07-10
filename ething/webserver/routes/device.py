@@ -80,7 +80,7 @@ def install(core, app, auth, **kwargs):
                     elif r.type == 'MQTT':
                         r.setSubscription(content)
 
-                response = jsonify(r)
+                response = app.jsonify(r)
                 response.status_code = 201
                 return response
             else:
@@ -102,8 +102,8 @@ def install(core, app, auth, **kwargs):
             '200':
               description: object describing the operations available for this device.
         """
-        r = getResource(core, id, ['Device'])
-        return jsonify(r.interface)
+        r = app.getResource(id, ['Device'])
+        return app.jsonify(r.interface)
 
     @app.route('/api/devices/<id>/api/<operationId>')
     @auth.required('device:read resource:read')
@@ -118,8 +118,8 @@ def install(core, app, auth, **kwargs):
             '200':
               description: object describing the operation.
         """
-        r = getResource(core, id, ['Device'])
-        return jsonify(r.interface.get_method(operationId))
+        r = app.getResource(id, ['Device'])
+        return app.jsonify(r.interface.get_method(operationId))
 
     @app.route('/api/devices/<id>/call/<operationId>', methods=['GET', 'POST'])
     @auth.required('device:write resource:write')
@@ -153,7 +153,7 @@ def install(core, app, auth, **kwargs):
             '200':
               description: The response of the device.
         """
-        r = getResource(core, id, ['Device'])
+        r = app.getResource(id, ['Device'])
 
         method = r.interface.get_method(operationId)
 
@@ -184,7 +184,7 @@ def install(core, app, auth, **kwargs):
             if re.search('^[^/]+/[^/]+$', return_type):
                 return Response(method.call(*args, **kwargs), mimetype=return_type)
             else:
-                return jsonify(method.call(*args, **kwargs))
+                return app.jsonify(method.call(*args, **kwargs))
 
         else:
             method.call(*args, **kwargs)
@@ -193,11 +193,11 @@ def install(core, app, auth, **kwargs):
     @app.route('/api/devices/<id>/specification')
     @auth.required('device:read resource:read')
     def device_http_specification(id):
-        r = getResource(core, id, ['Http'])
-        return jsonify(r.getSpecification())
+        r = app.getResource(id, ['Http'])
+        return app.jsonify(r.getSpecification())
 
     @app.route('/api/devices/<id>/subscription')
     @auth.required('device:read resource:read')
     def device_mqtt_subscription(id):
-        r = getResource(core, id, ['MQTT'])
-        return jsonify(r.getSubscription())
+        r = app.getResource(id, ['MQTT'])
+        return app.jsonify(r.getSubscription())

@@ -44,10 +44,24 @@ class Plugin(with_metaclass(PluginMount, object)):
         pass
 
     def load(self):
-        pass
+        self.core.signalDispatcher.bind('ConfigUpdated', self._on_core_config_updated)
 
     def unload(self):
+        self.core.signalDispatcher.unbind('ConfigUpdated', self._on_core_config_updated)
+
+    def on_config_change(self, changes):
         pass
+
+    def _on_core_config_updated(self, signal):
+
+        local_changes = []
+        for change in signal.changes:
+            attr_name = change[0]
+            if attr_name == self.name or attr_name.startswith("%s." % self.name):
+                local_changes.append(change)
+
+        if len(local_changes) > 0:
+            self.on_config_change(local_changes)
 
 
 def instanciate_plugins(core, **kwargs):

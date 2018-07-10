@@ -11,9 +11,7 @@ from dateutil.parser import parse
 from .ShortId import ShortId
 import bson
 import os
-import sys
 import pymongo
-from .Helpers import dict_recursive_update
 import csv
 from io import StringIO
 from .base import attr, isBool, isString, isNone, isInteger, READ_ONLY, PRIVATE
@@ -519,7 +517,7 @@ class Table(Resource):
     @property
     def parser(self):
         if Table._parser is None:
-            Table._parser = TableQueryParser()
+            Table._parser = TableQueryParser(tz = str(self.ething.local_tz))
         return Table._parser
 
     def find(self, query=None):
