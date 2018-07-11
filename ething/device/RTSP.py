@@ -12,7 +12,8 @@ import subprocess
 @attr('transport', validator=isString(allow_empty=False, enum=['udp', 'tcp', 'http']), default='tcp', description="Lower transport protocol. Allowed values are the ones defined for the flags for rtsp_transport (see https://libav.org/avconv.html).")
 class RTSP(Device, Camera):
     """
-    RTSP Device resource representation, usually IP camera
+    RTSP Device resource representation, usually IP camera.
+    avconv must be installed (apt-get install libav-tools)
     """
 
     @method.return_type('image/jpeg')
@@ -25,6 +26,9 @@ class RTSP(Device, Camera):
 
         p = subprocess.Popen(cmd, stdout=subprocess.PIPE, shell=True)
         out, err = p.communicate()
+        
+        if p.returncode != 0:
+            raise Exception('avconv error. The device may be unavailabled. Also check that avconv is installed.')
 
         return out
 

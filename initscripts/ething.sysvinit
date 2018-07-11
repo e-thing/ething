@@ -1,0 +1,108 @@
+#! /bin/sh
+### BEGIN INIT INFO
+# Provides:          ething
+# Required-Start:    $local_fs $time $syslog
+# Required-Stop:     $local_fs $time $syslog
+# Default-Start:     2 3 4 5
+# Default-Stop:      0 1 6
+# Short-Description: EThing daemon
+# Description:       This file should be used to construct scripts to be
+#                    placed in /etc/init.d.
+### END INIT INFO
+
+# Do NOT "set -e"
+
+# PATH should only include /usr/* if it runs after the mountnfs.sh script
+PATH=/sbin:/usr/sbin:/bin:/usr/bin:/usr/local/sbin:/usr/local/bin
+DESC="EThing daemon"
+NAME=ething
+PIDFILE=/var/run/$NAME.pid
+DAEMON=/usr/local/bin/$NAME
+DAEMON_ARGS="-d -p ${PIDFILE}"
+SCRIPTNAME=/etc/init.d/$NAME
+
+# Exit if the package is not installed
+[ -x "$DAEMON" ] || exit 0
+
+# Read configuration variable file if it is present
+[ -r /etc/default/$NAME ] && . /etc/default/$NAME 
+
+# Load the VERBOSE setting and other rcS variables
+. /lib/init/vars.sh
+
+# Define LSB log_* functions.
+# Depend on lsb-base (>= 3.2-14) to ensure that this file is present
+# and status_of_proc is working.
+. /lib/lsb/init-functions
+
+#
+# Function that starts the daemon/service
+#
+do_start()
+{
+	log_daemon_msg "Starting system $NAME daemon"
+    start-stop-daemon --start --pidfile $PIDFILE --startas $DAEMON -- $DAEMON_ARGS
+    log_end_msg $?
+}
+
+#
+# Function that stops the daemon/service
+#
+do_stop()
+{
+	log_daemon_msg "Stopping system $NAME daemon"
+    start-stop-daemon --stop --pidfile $PIDFILE --retry 30
+    log_end_msg $?
+}
+
+install() {
+  echo "Installing EThing Daemon service"
+  update-rc.d ething defaults
+}
+
+uninstall() {
+  echo "Are you really sure you want to uninstall this service? The INIT script will"
+  echo -n "also be deleted! That cannot be undone. [yes|No] "
+  local SURE
+  read SURE
+  if [ "$SURE" = "yes" ]; then
+    stop
+    update-rc.d -f ething remove
+    rm -fv "$0"
+    echo "EThing Daemon service has been removed. EThing is still installed."
+  fi
+}
+
+case "$1" in
+  start)
+	do_start
+    ;;
+  stop)
+	do_stop
+	;;
+  status)
+	status_of_proc "$DAEMON" "$NAME" && exit 0 || exit $?
+	;;
+  restart|force-reload)
+	#
+	# If the "reload" option is implemented then remove the
+	# 'force-reload' alias
+	#
+	log_daemon_msg "Restarting $DESC" "$NAME"
+	do_stop
+    do_start
+	;;
+  install)
+    install
+    ;;
+  uninstall)
+    uninstall
+    ;;
+  *)
+	#echo "Usage: $SCRIPTNAME {start|stop|restart|reload|force-reload}" >&2
+	echo "Usage: $SCRIPTNAME {start|stop|status|restart|force-reload}" >&2
+	exit 3
+	;;
+esac
+
+:

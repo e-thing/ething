@@ -208,6 +208,8 @@ def main():
     parser.add_argument('-c', '--config', type=str, help='set the config file')
     parser.add_argument('-p', '--pidfile', type=str,
                         help='set pid to the given file')
+    parser.add_argument('-q', '--quiet', action='store_true',
+                            help='Quiet mode, disable log messages written to the terminal')
     if os.name != 'nt':
         # not available on windows !
         parser.add_argument('-d', '--daemon', action='store_true',
@@ -270,7 +272,7 @@ def main():
     from .core import Core, Config
     from .utils import print_info
 
-    init_logger(not getattr(args, 'daemon', None))
+    init_logger(not (getattr(args, 'daemon', None) or getattr(args, 'quiet', False)))
 
     try:
         config = Config.load(CONFIG_FILE)

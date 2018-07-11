@@ -32,12 +32,10 @@ class Connector():
                 try:
                     if self.type == 'public':
                         connection = btle.Peripheral(self.mac, iface=self.iface)
-                        self.isconnected = True
-                        break
                     else:
                         connection = btle.Peripheral(self.mac, addrType = btle.ADDR_TYPE_RANDOM, iface=self.iface)
-                        self.isconnected = True
-                        break
+                    self.isconnected = True
+                    break
                 except Exception as e:
                     self.log.debug('CONNECTOR------'+str(e) + ' attempt ' + str(i) )
                     if i >= retry:
