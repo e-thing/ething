@@ -552,7 +552,7 @@ class Interface(object):
         return j
 
 
-interfaces_classes = {}
+interfaces_classes = OrderedDict()
 
 
 def get_interface_class(name):
@@ -611,7 +611,7 @@ class iface(with_metaclass(MetaInterface, object)):
         return inherited
 
 
-event_classes = {}
+event_classes = OrderedDict()
 
 
 def get_event_class(name):
@@ -627,7 +627,7 @@ class MetaEvent(MetaDataObject):
         event_classes[nom] = cls
 
 
-action_classes = {}
+action_classes = OrderedDict()
 
 
 def get_action_class(name):
@@ -643,7 +643,7 @@ class MetaAction(MetaDataObject):
         action_classes[nom] = cls
 
 
-signal_classes = {}
+signal_classes = OrderedDict()
 
 
 def get_signal_class(name):

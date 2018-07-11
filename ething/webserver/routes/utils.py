@@ -6,6 +6,7 @@ from ..server_utils import *
 import os
 import random
 import string
+from collections import OrderedDict
 from werkzeug.http import unquote_etag
 
 from ething.meta import resource_classes, interfaces_classes, event_classes, action_classes, iface
@@ -139,13 +140,13 @@ def install(core, app, auth, **kwargs):
 
         if _meta is None:
             _meta = {
-                "resources": {},
-                "interfaces": {},
+                "resources": OrderedDict(),
+                "interfaces": OrderedDict(),
                 "scopes": Scope.list,
-                "events": {},
-                "actions": {},
+                "events": OrderedDict(),
+                "actions": OrderedDict(),
                 "info": get_info(core),
-                "plugins":{},
+                "plugins":OrderedDict(),
                 "config": core.config.SCHEMA
             }
 

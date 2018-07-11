@@ -112,6 +112,7 @@ class Core(object):
 
     def stop(self):
         self.log.info("stopping ...")
+        self.dispatchSignal('DaemonStopped')
         self.running = False
 
     @property
@@ -174,6 +175,8 @@ class Core(object):
         self.signalDispatcher.bind('ConfigUpdated', self._on_config_updated)
 
         self.running = True
+
+        self.dispatchSignal('DaemonStarted')
 
     def loop(self, timeout=1):
         self.rpc_server.serve(timeout)

@@ -86,7 +86,7 @@ class isResourceFilter(Validator):
 
 
 @abstract
-@attr('resource', validator=isResourceFilter() | isNone(), default=None, description="filter the resource emitting the signal")
+@attr('resource', validator=isResourceFilter(), description="filter the resource emitting the signal")
 class ResourceEvent(Event):
 
     signal = ResourceSignal
