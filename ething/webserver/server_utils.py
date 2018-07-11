@@ -1,11 +1,6 @@
 # coding: utf-8
 from flask import request, Response, g
-from ething.ShortId import ShortId
-from ething.Table import Table
-from ething.Helpers import toJson
-import json as js
 import re
-import datetime
 import traceback
 import sys
 import os
@@ -125,67 +120,6 @@ def use_multi_args(**kwargs):
         return wrapper
 
     return d
-
-
-def jsonify(obj, **kwargs):
-
-    fields = request.args.get('fields')
-
-    if fields is not None:
-        fields = fields.replace(' ', ',').replace(
-            ';', ',').replace('|', ',').split(',')
-
-    return Response(toJson(obj, **kwargs), mimetype='application/json')
-
-
-def getResource(core, id, restrictToTypes=None):
-
-    message = 'resource with id="%s" not found or has not the right type' % id
-
-    authenticated = hasattr(g, 'auth')
-
-    if id == 'me' and authenticated and g.auth.resource:
-        # special case, needs api key auth
-        r = g.auth.resource
-    else:
-        r = core.get(id)
-
-    if r is None:
-        raise Exception(message)
-
-    if restrictToTypes is not None:
-        ok = False
-        for type in restrictToTypes:
-            if r.isTypeof(type):
-                ok = True
-                break
-        if not ok:
-            raise Exception(message)
-
-    if authenticated:
-        scope = g.auth.scope
-
-        if scope is not None:
-
-            scopes = filter(None, g.auth.scope.split(" "))
-
-            allowed_types = []
-            for scope in scopes:
-                type = scope.split(':')[0].capitalize()
-                if type not in allowed_types:
-                    allowed_types.append(type)
-
-            if 'Resource' not in allowed_types:
-                # restrict the search to the allowed_types
-                ok = False
-                for allowed_type in allowed_types:
-                    if r.isTypeof(allowed_type):
-                        ok = True
-                        break
-                if not ok:
-                    raise Exception(message)
-
-    return r
 
 
 def dict_intersect_keys(dict1, *dicts):

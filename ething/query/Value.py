@@ -11,7 +11,8 @@ from .utils import type_normalize, type_equals
 
 class Value(object):
 
-    def __init__(self, value=None):
+    def __init__(self, parser, value=None):
+        self.__parser = parser
         self.__value = value
 
     @property
@@ -36,7 +37,8 @@ class Value(object):
         if not hasattr(self, '__date'):
             self.__date = None
             try:
-                d = parse(self.__value, languages=['en'])
+                tz = self.__parser.tz or 'UTC'
+                d = parse(self.__value, languages=['en'], settings={'TIMEZONE': tz, 'TO_TIMEZONE': 'UTC'})
                 if isinstance(d, datetime.datetime):
                     self.__date = d
             except:

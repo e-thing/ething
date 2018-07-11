@@ -10,7 +10,7 @@ def install(core, app, auth, **kwargs):
     @app.route('/api/usage', methods=['GET'])
     @auth.required('resource:read')
     def usage():
-        return jsonify(core.usage())
+        return app.jsonify(core.usage())
 
     resources_args = {
         'q': fields.Str(missing=None, description='Query string for searching resources'),
@@ -73,7 +73,7 @@ def install(core, app, auth, **kwargs):
                 else:
                     query = typeQuery
 
-        return jsonify(core.find(query=query, **args))
+        return app.jsonify(core.find(query=query, **args))
 
     resource_delete_args = {
         'children': fields.Bool(missing=False)
@@ -136,10 +136,10 @@ def install(core, app, auth, **kwargs):
                 $ref: '#/definitions/Resource'
         """
 
-        r = getResource(core, id)
+        r = app.getResource(id)
 
         if request.method == 'GET':
-            return jsonify(r)
+            return app.jsonify(r)
 
         elif request.method == 'PATCH':
 
@@ -166,7 +166,7 @@ def install(core, app, auth, **kwargs):
                         elif r.type == 'MQTT':
                             r.setSubscription(content)
 
-                    return jsonify(r)
+                    return app.jsonify(r)
 
             raise Exception('Invalid request')
 

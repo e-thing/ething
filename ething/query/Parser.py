@@ -58,8 +58,9 @@ def get_type_from_json_schema(schema):
 
 class Parser(object):
 
-    def __init__(self, fields=None, constants=None):
+    def __init__(self, fields=None, constants=None, tz = None):
 
+        self.tz = tz
         self.rules = []
         self.fields = {}
         self.constants = {}
@@ -231,13 +232,13 @@ class Parser(object):
         if v:
             # quoted string
 
-            return Value(ast.literal_eval(v))
+            return Value(self, ast.literal_eval(v))
 
             # r = v[1:-1] # remove the quotes
             # if(v[0] == '"'):
             #    r = r.decode('string_escape')
             #
-            # return Value(r)
+            # return Value(self, r)
 
         else:
             v = stream.read('[a-zA-Z0-9\.\-_+]+')
@@ -246,27 +247,27 @@ class Parser(object):
             isNumber = False
             try:
                 c = float(v)
-                return Value(c)
+                return Value(self, c)
             except ValueError:
                 pass
 
             try:
                 c = unicodedata.numeric(v)
-                return Value(c)
+                return Value(self, c)
             except (TypeError, ValueError):
                 pass
 
             # boolean ?
             m = re.search('^True$', v, re.IGNORECASE)
             if m:
-                return Value(True)
+                return Value(self, True)
             m = re.search('^False$', v, re.IGNORECASE)
             if m:
-                return Value(False)
+                return Value(self, False)
 
             # maybe a CONSTANT
             if v in self.constants:
-                return Value(self.constants[v])
+                return Value(self, self.constants[v])
 
             raise InvalidQueryException("invalid value '%s'" % v, stream)
 

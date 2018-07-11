@@ -24,9 +24,9 @@ class TableQueryParser(Parser):
 
     fields = getDefaultFields()
 
-    def __init__(self):
+    def __init__(self, **kwargs):
 
-        super(TableQueryParser, self).__init__(TableQueryParser.fields)
+        super(TableQueryParser, self).__init__(fields = TableQueryParser.fields, **kwargs)
 
         self.setFieldFallback(self.fallback)
 

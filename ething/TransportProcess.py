@@ -41,20 +41,26 @@ class SerialTransport(Transport):
         self.log.info("(serial) connected to port=%s baudrate=%d" % (self.port, self.baudrate))
 
     def read(self):
-        if self.serial.is_open:
-            return self.serial.read(self.serial.in_waiting or 1)
-        else:
-            self.process.stop()
+        if self.serial is not None:
+            if self.serial.is_open:
+                return self.serial.read(self.serial.in_waiting or 1)
+            else:
+                self.process.stop()
 
     def write(self, data):
-        with self._lock:
-            # self.log.debug("(serial) write to port=%s baudrate=%d data=%s" % (self.port, self.baudrate, data))
-            self.serial.write(data)
+        if self.serial is not None:
+            with self._lock:
+                # self.log.debug("(serial) write to port=%s baudrate=%d data=%s" % (self.port, self.baudrate, data))
+                self.serial.write(data)
+        else:
+            raise Exception('Not connected')
 
     def close(self):
-        with self._lock:
-            self.serial.close()
-            self.log.info("(serial) closed from port=%s baudrate=%d" % (self.port, self.baudrate))
+        if self.serial is not None:
+            with self._lock:
+                self.serial.close()
+                self.serial = None
+                self.log.info("(serial) closed from port=%s baudrate=%d" % (self.port, self.baudrate))
 
 class NetTransport(Transport):
 
@@ -73,28 +79,33 @@ class NetTransport(Transport):
         self.log.info("(net) connected to host=%s port=%d" % (self.host, self.port))
 
     def read(self):
-        try:
-            data = self.sock.recv(1024)  # return as bytes
-            # self.log.debug("(net) read from host=%s port=%d data=%s" % (self.host, self.port, data))
-        except socket.timeout:
-            pass
-        else:
-            if data:
-                return data
+        if self.sock is not None:
+            try:
+                data = self.sock.recv(1024)  # return as bytes
+                # self.log.debug("(net) read from host=%s port=%d data=%s" % (self.host, self.port, data))
+            except socket.timeout:
+                pass
             else:
-                # socket closed !
-                self.process.stop()
+                if data:
+                    return data
+                else:
+                    # socket closed !
+                    self.process.stop()
 
     def write(self, data):
-        with self._lock:
-            # self.log.debug("(net) write to host=%s port=%d data=%s" % (self.host, self.port, data))
-            self.sock.send(data)
+        if self.sock is not None:
+            with self._lock:
+                # self.log.debug("(net) write to host=%s port=%d data=%s" % (self.host, self.port, data))
+                self.sock.send(data)
+        else:
+            raise Exception('Not connected')
 
     def close(self):
-        with self._lock:
-            self.sock.close()
-            self.sock = None
-            self.log.info("(net) closed from host=%s port=%d" % (self.host, self.port))
+        if self.sock is not None:
+            with self._lock:
+                self.sock.close()
+                self.sock = None
+                self.log.info("(net) closed from host=%s port=%d" % (self.host, self.port))
 
 
 class UdpTransport(Transport):
@@ -129,26 +140,31 @@ class UdpTransport(Transport):
 
 
     def read(self):
-        try:
-            data, addr = self.sock.recvfrom(1024)  # return as bytes
-        except socket.timeout:
-            pass
-        else:
-            if data:
-                return data, addr
+        if self.sock is not None:
+            try:
+                data, addr = self.sock.recvfrom(1024)  # return as bytes
+            except socket.timeout:
+                pass
             else:
-                # socket closed !
-                self.process.stop()
+                if data:
+                    return data, addr
+                else:
+                    # socket closed !
+                    self.process.stop()
 
     def write(self, data, to):
-        with self._lock:
-            self.sock.sendto(data, to)
+        if self.sock is not None:
+            with self._lock:
+                self.sock.sendto(data, to)
+        else:
+            raise Exception('Not connected')
 
     def close(self):
-        with self._lock:
-            self.sock.close()
-            self.sock = None
-            self.log.info("(udp) closed from host=%s port=%d" % (self.host, self.port))
+        if self.sock is not None:
+            with self._lock:
+                self.sock.close()
+                self.sock = None
+                self.log.info("(udp) closed from host=%s port=%d" % (self.host, self.port))
 
 
 class Protocol(object):

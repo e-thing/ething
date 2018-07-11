@@ -1,18 +1,23 @@
 # coding: utf-8
 
-from flask import Flask, Response
+from flask import Flask, Response, request, g
 from flask_cors import CORS
 from werkzeug.exceptions import HTTPException
 from .auth import install_auth
 from .routes import install_routes
-import json as js
+import json
 import traceback
 import logging
 import socket
+import datetime
+import pytz
+from future.utils import binary_type
 from .method_override import HTTPMethodOverrideMiddleware
 from .server_utils import ServerException, tb_extract_info, root_path
 from ething.plugin import Plugin
 from ething.Process import Process
+from ething.Helpers import filter_obj
+from collections import OrderedDict
 
 try:
     from cheroot.wsgi import Server as WSGIServer
@@ -38,41 +43,191 @@ class WebServer(Plugin):
 
     CONFIG_SCHEMA = {
         'type': 'object',
-        'properties': {
-            'port': {
+        'properties': OrderedDict([
+            ('port', {
                 'type': 'integer',
                 'minimum': 1,
                 'maximum': 65535
-            },
-            'auth': {
+            }),
+            ('auth', {
                 'type': 'object',
                 'required': ['username', 'password'],
-                'properties': {
-                    'username': {
+                'properties': OrderedDict([
+                    ('username', {
                         'type': 'string',
                         'minLength': 1
-                    },
-                    'password': {
+                    }),
+                    ('password', {
                         'type': 'string',
                         'minLength': 4
-                    },
-                    'localonly': {
+                    }),
+                    ('localonly', {
                         'type': 'boolean'
-                    }
-                }
-            }
-        }
+                    })
+                ])
+            })
+        ])
     }
 
     def load(self):
+        super(WebServer, self).load()
+        self.start_process()
+
+    def unload(self):
+        super(WebServer, self).unload()
+        self.stop_process()
+
+    def on_config_change(self, changes):
+        print(changes)
+        self.stop_process()
+        self.start_process()
+
+    def start_process(self):
         self.process = WebServerProcess(self.core, self.config)
         self.process.start()
 
-    def unload(self):
+    def stop_process(self):
         if hasattr(self, 'process'):
             self.process.stop()
             del self.process
 
+
+class FlaskApp(Flask):
+
+    def __init__(self, process, **kwargs):
+        kwargs.setdefault('static_url_path', '')
+        super(FlaskApp, self).__init__(__name__, **kwargs)
+
+        self.core = process.core
+        self.log = process.log
+
+        # for PATCH request
+        self.wsgi_app = HTTPMethodOverrideMiddleware(self.wsgi_app)
+
+        #CORS
+        cors_opt = {"origins": "*", "supports_credentials": True}
+
+        CORS(self, resources={
+            r"/api/*": cors_opt,
+            r"/auth/*": cors_opt
+        })
+
+        #logging
+        logging.getLogger('werkzeug').setLevel(logging.ERROR)
+
+        # debug
+        self.debug = bool(self.core.config['debug'])
+        if self.debug:
+            self.log.info('webserver: debug mode enabled')
+
+        #error handler
+        @self.errorhandler(Exception)
+        def unhandled_exception(e):
+            return self.error_handler(e)
+
+        for cls in HTTPException.__subclasses__():
+            self.register_error_handler(cls, self.error_handler)
+
+
+    def error_handler(self, e):
+
+        error = {
+            'message': str(e),
+            'code': 400
+        }
+
+        if isinstance(e, HTTPException):
+            error['code'] = e.get_response().status_code
+        elif isinstance(e, ServerException):
+            error['code'] = e.status_code
+
+        if self.debug:
+            file, line = tb_extract_info()
+            error['stack'] = traceback.format_exc()
+            error['file'] = file
+            error['line'] = line
+
+        return Response(json.dumps(error), status=error['code'], mimetype='application/json')
+
+    def jsonify(self, obj, **kwargs):
+
+        fields = request.args.get('fields')
+
+        if fields is not None:
+            fields = fields.replace(' ', ',').replace(
+                ';', ',').replace('|', ',').split(',')
+
+        return Response(self.toJson(obj, **kwargs), mimetype='application/json')
+
+    def toJson(self, obj, fields=None, **kwargs):
+
+        # filter by keys
+        if fields is not None:
+            if isinstance(obj, dict):
+                obj = filter_obj(obj, fields)
+            elif isinstance(obj, list):
+                obj = [filter_obj(o, fields) for o in obj]
+
+        return json.dumps(obj, default=self.serialize, **kwargs)
+
+    def serialize(self, obj):
+        """JSON serializer for objects not serializable by default json code"""
+        if hasattr(obj, 'toJson'):
+            return obj.toJson()
+        if isinstance(obj, datetime.datetime):
+            return obj.replace(tzinfo=pytz.utc).astimezone(self.core.local_tz).isoformat()
+        if isinstance(obj, binary_type):
+            return obj.decode('utf8')
+        return obj.__dict__
+
+    def getResource(self, id, restrictToTypes=None):
+
+        message = 'resource with id="%s" not found or has not the right type' % id
+
+        authenticated = hasattr(g, 'auth')
+
+        if id == 'me' and authenticated and g.auth.resource:
+            # special case, needs api key auth
+            r = g.auth.resource
+        else:
+            r = self.core.get(id)
+
+        if r is None:
+            raise Exception(message)
+
+        if restrictToTypes is not None:
+            ok = False
+            for type in restrictToTypes:
+                if r.isTypeof(type):
+                    ok = True
+                    break
+            if not ok:
+                raise Exception(message)
+
+        if authenticated:
+            scope = g.auth.scope
+
+            if scope is not None:
+
+                scopes = filter(None, g.auth.scope.split(" "))
+
+                allowed_types = []
+                for scope in scopes:
+                    type = scope.split(':')[0].capitalize()
+                    if type not in allowed_types:
+                        allowed_types.append(type)
+
+                if 'Resource' not in allowed_types:
+                    # restrict the search to the allowed_types
+                    ok = False
+                    for allowed_type in allowed_types:
+                        if r.isTypeof(allowed_type):
+                            ok = True
+                            break
+                    if not ok:
+                        raise Exception(message)
+
+        return r
 
 
 class WebServerProcess(Process):
@@ -90,40 +245,17 @@ class WebServerProcess(Process):
 
     def main(self):
 
-        app = Flask(__name__, static_url_path='', root_path=root_path)
-
-        app.wsgi_app = HTTPMethodOverrideMiddleware(app.wsgi_app)
-
-        cors_opt = {"origins": "*", "supports_credentials": True}
-
-        CORS(app, resources={
-            r"/api/*": cors_opt,
-            r"/auth/*": cors_opt
-        })
-
-        log = logging.getLogger('werkzeug')
-        log.setLevel(logging.ERROR)
+        app = FlaskApp(self, root_path=root_path)
 
         self.log.info("web server root path = %s" % root_path)
 
-        self.debug = bool(self.config['debug'])
         port = self.config['port']
-
-        if self.debug:
-            self.log.info('webserver: debug mode enabled')
 
         self.server = WSGIServer(
             bind_addr=('0.0.0.0', port),
             wsgi_app=app,
             server_name=socket.gethostname()
         )
-
-        @app.errorhandler(Exception)
-        def unhandled_exception(e):
-            return self.error_handler(e)
-
-        for cls in HTTPException.__subclasses__():
-            app.register_error_handler(cls, self.error_handler)
 
         auth = install_auth(core=self.core, app=app, config=self.config, debug=self.debug, server = self.server)
 
@@ -144,23 +276,4 @@ class WebServerProcess(Process):
 
         #app.run(host='0.0.0.0', port=port, threaded=True)
 
-    def error_handler(self, e):
-
-        error = {
-            'message': str(e),
-            'code': 400
-        }
-
-        if isinstance(e, HTTPException):
-            error['code'] = e.get_response().status_code
-        elif isinstance(e, ServerException):
-            error['code'] = e.status_code
-
-        if self.debug:
-            file, line = tb_extract_info()
-            error['stack'] = traceback.format_exc()
-            error['file'] = file
-            error['line'] = line
-
-        return Response(js.dumps(error), status=error['code'], mimetype='application/json')
 

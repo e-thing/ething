@@ -8,6 +8,10 @@ import json
 import re
 import copy
 from hashlib import md5
+from pytz import common_timezones
+from collections import OrderedDict
+import threading
+
 
 CONF_VERSION = 1
 
@@ -70,76 +74,88 @@ class Config(object):
     }
 
     SCHEMA = {
-      "type": "object",
-      "properties": {
-        "log": {
-          "type": "object",
-          "properties": {
-            "level": {
-              "type": "string",
-              "enum": ['DEBUG', 'INFO', 'WARNING', 'ERROR']
-            }
-          }
-        },
-        "script": {
-          "type": "object",
-          "properties": {
-            "timeout": {
-              "description": "Expressed in milliseconds. 0 means unlimited.",
-              "type": "integer",
-              "minimum": 0
-            }
-          }
-        },
-        "notification": {
-          "type": "object",
-          "properties": {
-            "smtp": {
-              "anyOf": [{
-                  "type": "object",
-                  "required": ['host', 'port', 'user', 'password'],
-                  "properties": {
-                    "host": {
-                      "type": "string",
-                      "minLength": 1,
-                      "default": 'smtp.gmail.com'
-                    },
-                    "port": {
-                      "type": "integer",
-                      "title": "The Port Schema ",
-                      'type': 'integer',
-                      'minimum': 1,
-                      'maximum': 65535,
-                      "default": 587
-                    },
-                    "user": {
-                      "type": "string",
-                      "minLength": 1
-                    },
-                    "password": {
-                      "type": "string",
-                      "minLength": 1
-                    }
-                  }
-                },{
-                "type": "null"
-                }]
-            },
-            "emails": {
-              "type": "array",
-              "items": {
-                "type": "string",
-                "minLength": 1
-              }
-            }
-          }
-        }
-      }
+        "type": "object",
+        "properties": OrderedDict([
+
+            ("debug", {
+                "type": "boolean",
+                "description": "Set the aplication in debug mode.",
+            }),
+            ("timezone", {
+                "enum": common_timezones,
+                "description": "Set the application timezone.",
+            }),
+
+            ("log", {
+                "type": "object",
+                "properties": OrderedDict([
+                    ("level", {
+                        "type": "string",
+                        "enum": ['DEBUG', 'INFO', 'WARNING', 'ERROR']
+                    })
+                ])
+            }),
+            ("script", {
+                "type": "object",
+                "properties": OrderedDict([
+                    ("timeout", {
+                        "description": "Expressed in milliseconds. 0 means unlimited.",
+                        "type": "integer",
+                        "minimum": 0
+                    })
+                ])
+            }),
+            ("notification", {
+                "type": "object",
+                "properties": OrderedDict([
+                    ("smtp", {
+                        "anyOf": [{
+                            "type": "object",
+                            "required": ['host', 'port', 'user', 'password'],
+                            "properties": OrderedDict([
+                                ("host", {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "default": 'smtp.gmail.com'
+                                }),
+                                ("port", {
+                                    "type": "integer",
+                                    "title": "The Port Schema ",
+                                    'type': 'integer',
+                                    'minimum': 1,
+                                    'maximum': 65535,
+                                    "default": 587
+                                }),
+                                ("user", {
+                                    "type": "string",
+                                    "minLength": 1
+                                }),
+                                ("password", {
+                                    "type": "string",
+                                    "minLength": 1
+                                })
+                            ])
+                        }, {
+                            "type": "null"
+                        }]
+                    }),
+                    ("emails", {
+                        "type": "array",
+                        "items": {
+                            "type": "string",
+                            "minLength": 1
+                        }
+                    })
+                ])
+            })
+        ])
     }
 
     def __init__(self, core, config=None):
 
         self.core = core
+
+        self._lock = threading.Lock()
 
         self._d = copy.deepcopy(Config.DEFAULT)
 
@@ -175,29 +191,32 @@ class Config(object):
     # get/set attribute
 
     def get(self, name=None, default=None):
-        if name is None:
-            return self._d
-        else:
-            parts = name.split('.')
-            p = self._d
-            for part in parts:
-                if isinstance(p, dict) and (part in p):
-                    p = p[part]
-                else:
-                    return default
-            return p
+        with self._lock:
+            if name is None:
+                return self._d
+            else:
+                parts = name.split('.')
+                p = self._d
+                for part in parts:
+                    if isinstance(p, dict) and (part in p):
+                        p = p[part]
+                    else:
+                        return default
+                return p
 
     def _set(self, name, value=None):
 
+        changes = []
+
         if isinstance(name, dict):
             for key in name:
-                self._set(key, name[key])
+                changes += self._set(key, name[key])
 
         else:
 
             if value is not None and isinstance(value, dict):
                 for key in value:
-                    self._set("%s.%s" % (name, key), value[key])
+                    changes += self._set("%s.%s" % (name, key), value[key])
 
             else:
 
@@ -259,11 +278,18 @@ class Config(object):
                         p[part] = {}
                     p = p[part]
 
+                old_value = p.get(last)
+                if old_value != value:
+                    changes.append((name, value, old_value))
+
                 p[last] = value
 
+        return changes
+
     def set(self, name, value=None):
-        self._set(name, value)
-        self.core.dispatchSignal('ConfigUpdated')
+        with self._lock:
+            changes = self._set(name, value)
+            self.core.dispatchSignal('ConfigUpdated', changes)
 
     def __call__(self, *args):
         args = list(args)
@@ -283,4 +309,5 @@ class Config(object):
         return self.get(name)
 
     def toJson(self):
-        return self._d
+        with self._lock:
+            return self._d

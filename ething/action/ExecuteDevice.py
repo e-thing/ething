@@ -5,9 +5,9 @@ from ething.Resource import isResource, ResourceModelAdapter
 from ething.base import attr, isString, isObject
 
 
-@attr('device', validator=isResource(accepted_types=('Device',)), model_adapter=ResourceModelAdapter(), description="The device on which the action is executed")
-@attr('method', validator=isString(), description="The method name")
 @attr('args', validator=isObject(allow_extra = True), default={}, description="The arguments passed to the method")
+@attr('method', validator=isString(), description="The method name")
+@attr('device', validator=isResource(accepted_types=('Device',)), model_adapter=ResourceModelAdapter(), description="The device on which the action is executed")
 class ExecuteDevice(Action):
 
     def run(self, signal):

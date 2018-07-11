@@ -11,6 +11,7 @@ from .Helpers import dict_recursive_update
 from .meta import MetaResource
 from .base import attr, DataObject, isBool, isString, isNone, isNumber, isObject, isEnum, READ_ONLY, PRIVATE, ModelAdapter, Validator, synchronized
 from future.utils import iteritems
+import pytz
 
 
 class isResource(isString):
@@ -66,16 +67,25 @@ class DataModelAdapter(ModelAdapter):
                 data[name][k] = value[k]
 
 
-@attr('name', validator=isString(allow_empty=False, regex='^[a-zA-Z0-9 !#$%&\'()+,\-.;=@^_`{    ]+(\\/[a-zA-Z0-9 !#$%&\'()+,\-.;=@^_`{    ]+)*$'), description="The name of the resource")
-@attr('id', default=lambda _: ShortId.generate(), mode=READ_ONLY, model_key='_id', description="The id of the resource")
-@attr('type', mode=READ_ONLY, default=lambda cls: str(cls.__name__), description="The type of the resource")
-@attr('extends', mode=READ_ONLY, default=lambda cls: [c.__name__ for c in cls.__mro__ if issubclass(c, Resource) and (c is not Resource)], description="An array of classes this resource is based on.")
-@attr('createdDate', default=lambda _: datetime.datetime.utcnow(), mode=READ_ONLY, description="Create time for this resource")
-@attr('modifiedDate', default=lambda _: datetime.datetime.utcnow(), mode=READ_ONLY, description="Last time this resource was modified")
-@attr('createdBy', validator=isResource() | isNone(), default=None, model_adapter=ResourceModelAdapter(), description="The id of the resource responsible of the creation of this resource, or null.")
-@attr('data', validator=isObject(allow_extra=isString() | isNumber() | isNone() | isBool()), default={}, model_adapter=DataModelAdapter(), description="A collection of arbitrary key-value pairs. Entries with null values are cleared in update. The keys must not be empty or longer than 64 characters, and must contain only the following characters : letters, digits, underscore and dash. Values must be either a string or a boolean or a number")
-@attr('description', validator=isString(), default='', description="A description of this resource.")
+#class DatetimeAdapter(ModelAdapter):
+#
+#    def get_json(self, data_object, data, name):
+#        date = self.get(data_object, data, name)
+#        if date:
+#            return date.replace(tzinfo=pytz.utc).astimezone(data_object.ething.local_tz).isoformat()
+#        return None
+
+
 @attr('public', validator=isEnum([False, 'readonly', 'readwrite']), default=False, description="False: this resource is not publicly accessible. 'readonly': this resource is accessible for reading by anyone. 'readwrite': this resource is accessible for reading and writing by anyone.")
+@attr('description', validator=isString(), default='', description="A description of this resource.")
+@attr('data', validator=isObject(allow_extra=isString() | isNumber() | isNone() | isBool()), default={}, model_adapter=DataModelAdapter(), description="A collection of arbitrary key-value pairs. Entries with null values are cleared in update. The keys must not be empty or longer than 64 characters, and must contain only the following characters : letters, digits, underscore and dash. Values must be either a string or a boolean or a number")
+@attr('createdBy', validator=isResource() | isNone(), default=None, model_adapter=ResourceModelAdapter(), description="The id of the resource responsible of the creation of this resource, or null.")
+@attr('modifiedDate', default=lambda _: datetime.datetime.utcnow(), mode=READ_ONLY, description="Last time this resource was modified")
+@attr('createdDate', default=lambda _: datetime.datetime.utcnow(), mode=READ_ONLY, description="Create time for this resource")
+@attr('extends', mode=READ_ONLY, default=lambda cls: [c.__name__ for c in cls.__mro__ if issubclass(c, Resource) and (c is not Resource)], description="An array of classes this resource is based on.")
+@attr('type', mode=READ_ONLY, default=lambda cls: str(cls.__name__), description="The type of the resource")
+@attr('id', default=lambda _: ShortId.generate(), mode=READ_ONLY, model_key='_id', description="The id of the resource")
+@attr('name', validator=isString(allow_empty=False, regex='^[a-zA-Z0-9 !#$%&\'()+,\-.;=@^_`{    ]+(\\/[a-zA-Z0-9 !#$%&\'()+,\-.;=@^_`{    ]+)*$'), description="The name of the resource")
 class Resource(with_metaclass(MetaResource, DataObject)):
     """
     The base representation of a resource object

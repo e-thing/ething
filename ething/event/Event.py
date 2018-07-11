@@ -36,7 +36,11 @@ class Event(with_metaclass(MetaEvent, DataObject)):
         if not isinstance(signal, type(self).signal):
             return False
 
-        return self._filter(signal)
+        try:
+            return self._filter(signal)
+        except:
+            self.ething.log.exception('error in event filter for : %s' % self)
+            return False
 
     def _filter(self, signal):
         return True

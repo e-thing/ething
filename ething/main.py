@@ -29,7 +29,6 @@ UMASK = 0o177
 # Default maximum for the number of available file descriptors.
 MAXFD = 1024
 
-
 def writePidFile():
     deletePidFile()
     pid = os.getpid()
@@ -39,11 +38,9 @@ def writePidFile():
     f.close()
     os.umask(old_umask)
 
-
 def deletePidFile():
     if checkPidFile():
         os.remove(PID_FILE)
-
 
 def checkPidFile():
     """ return pid as int or 0"""
@@ -55,18 +52,18 @@ def checkPidFile():
             return int(pid)
     return 0
 
-
 def isAlreadyRunning():
     pid = checkPidFile()
-    if not pid or os.name == "nt":
-        return False
-    try:
-        os.kill(pid, 0)  # 0 - default signal (does nothing)
-    except OSError as e:  # the process exist but no access
-        # if e.errno == errno.EACCES or e.errno == errno.EPERM:
-        pass
-    except:
-        return 0  # the process does not exist anymore !
+
+    if pid and os.name != "nt":
+        # check that the process still exists
+        try:
+            os.kill(pid, 0)  # 0 - default signal (does nothing)
+        except OSError as e:  # the process exist but no access
+            # if e.errno == errno.EACCES or e.errno == errno.EPERM:
+            pass
+        except:
+            return 0  # the process does not exist anymore !
 
     return pid
 
@@ -227,25 +224,26 @@ def main():
         print("v%s" % __version__)
         sys.exit()
 
-    if args.pidfile:
+    if hasattr(args, 'pidfile'):
         PID_FILE = args.pidfile
 
     if getattr(args, 'stop', None):
         quitInstance()
         sys.exit()
 
-    try:
-        pid = isAlreadyRunning()
-    except IOError as e:
-        pid = False
-        if e.errno == errno.EACCES or e.errno == errno.EPERM:
-            pid = True  # pid file exists but access denied
+    if PID_FILE:
+        try:
+            pid = isAlreadyRunning()
+        except IOError as e:
+            pid = False
+            if e.errno == errno.EACCES or e.errno == errno.EPERM:
+                pid = True  # pid file exists but access denied
 
-    if pid:
-        print("ething already running with pid=%s" %
-              (str(pid) if pid is not True else '<access_denied>'))
-        print("if it is not true, delete manually the file '%s' and try again." % PID_FILE)
-        sys.exit(1)
+        if pid:
+            print("ething already running with pid=%s" %
+                  (str(pid) if pid is not True else '<access_denied>'))
+            print("if it is not true, delete manually the file '%s' and try again." % PID_FILE)
+            sys.exit(1)
 
     if not os.path.exists(USER_DIR):
         # first start
@@ -318,7 +316,8 @@ def main():
 
     try:
 
-        writePidFile()
+        if PID_FILE:
+            writePidFile()
 
         core.start()
 
@@ -350,7 +349,8 @@ def main():
     finally:
         core.destroy()
         remove_logger()
-        deletePidFile()
+        if PID_FILE:
+            deletePidFile()
 
     if getattr(core, 'restart_flag', False):
         print("restarting...")

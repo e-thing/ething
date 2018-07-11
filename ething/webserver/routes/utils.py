@@ -6,6 +6,7 @@ from ..server_utils import *
 import os
 import random
 import string
+from collections import OrderedDict
 from werkzeug.http import unquote_etag
 
 from ething.meta import resource_classes, interfaces_classes, event_classes, action_classes, iface
@@ -61,19 +62,19 @@ def install(core, app, auth, **kwargs):
                 'interface': port.interface
             })
 
-        return jsonify(info, indent=4)
+        return app.jsonify(info, indent=4)
 
     @app.route('/api/utils/net_list')
     @auth.required()
     def net_list():
         import ething.utils.net_scan
-        return jsonify(ething.utils.net_scan.scan(), indent=4)
+        return app.jsonify(ething.utils.net_scan.scan(), indent=4)
     
     @app.route('/api/utils/bluetooth_list')
     @auth.required()
     def bluetooth_list():
         from ething.utils.bluetooth import list_bluetooth_interfaces
-        return jsonify(list_bluetooth_interfaces(), indent=4)
+        return app.jsonify(list_bluetooth_interfaces(), indent=4)
 
     read_log_args = {
         'line': fields.Int(validate=validate.Range(min=0), missing=50),
@@ -124,7 +125,7 @@ def install(core, app, auth, **kwargs):
         if logfilename:
             lines = tail(logfilename, linenb, filter)
 
-        return jsonify(lines)
+        return app.jsonify(lines)
 
     #
     # META
@@ -139,13 +140,13 @@ def install(core, app, auth, **kwargs):
 
         if _meta is None:
             _meta = {
-                "resources": {},
-                "interfaces": {},
+                "resources": OrderedDict(),
+                "interfaces": OrderedDict(),
                 "scopes": Scope.list,
-                "events": {},
-                "actions": {},
+                "events": OrderedDict(),
+                "actions": OrderedDict(),
                 "info": get_info(core),
-                "plugins":{},
+                "plugins":OrderedDict(),
                 "config": core.config.SCHEMA
             }
 
@@ -274,7 +275,7 @@ def install(core, app, auth, **kwargs):
             if req_etag and definitions_etag == unquote_etag(req_etag)[0]:
                 return Response(status=304)
 
-        resp = jsonify(_meta)
+        resp = app.jsonify(_meta)
         resp.set_etag(definitions_etag)
         resp.headers['Cache-Control'] = 'must-revalidate'
         return resp

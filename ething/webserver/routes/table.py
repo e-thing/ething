@@ -118,7 +118,7 @@ def install(core, app, auth, **kwargs):
                 if content:
                     r.importData(content)
 
-                response = jsonify(r)
+                response = app.jsonify(r)
                 response.status_code = 201
                 return response
             else:
@@ -285,7 +285,7 @@ def install(core, app, auth, **kwargs):
                 $ref: '#/definitions/Table'
         """
 
-        r = getResource(core, id, ['Table'])
+        r = app.getResource(id, ['Table'])
 
         if request.method == 'GET':
 
@@ -297,9 +297,9 @@ def install(core, app, auth, **kwargs):
                 args['parser'] = parser
 
             if fmt == "json":
-                return jsonify(r.select(**args))
+                return app.jsonify(r.select(**args))
             elif fmt == "json_pretty":
-                return jsonify(r.select(**args), indent=4)
+                return app.jsonify(r.select(**args), indent=4)
             elif fmt == "csv" or fmt == "csv_no_header":
                 args['show_header'] = (fmt == "csv")
 
@@ -319,7 +319,7 @@ def install(core, app, auth, **kwargs):
 
             if data:
                 r.importData(data, args['invalid_field'], args['skip_error'])
-                return jsonify(r)
+                return app.jsonify(r)
             else:
                 raise Exception('No data.')
 
@@ -329,7 +329,7 @@ def install(core, app, auth, **kwargs):
 
             if data:
                 r.insert(data, args['invalid_field'])
-                return jsonify(r)
+                return app.jsonify(r)
             else:
                 raise Exception('No data.')
 
@@ -353,7 +353,7 @@ def install(core, app, auth, **kwargs):
               schema:
                 $ref: '#/definitions/Table'
         """
-        r = getResource(core, id, ['Table'])
+        r = app.getResource(id, ['Table'])
         ids = args['ids'] or []
 
         if request.json:
@@ -376,7 +376,7 @@ def install(core, app, auth, **kwargs):
 
             if nb == len(ids):
                 # all the specified documents/rows were removed
-                return jsonify(r)
+                return app.jsonify(r)
             else:
                 # all or only certain documents/rows could not have been removed
                 raise Exception(
@@ -405,7 +405,7 @@ def install(core, app, auth, **kwargs):
                 $ref: '#/definitions/Table'
         """
 
-        r = getResource(core, id, ['Table'])
+        r = app.getResource(id, ['Table'])
         data = request.get_json()
 
         if data:
@@ -419,7 +419,7 @@ def install(core, app, auth, **kwargs):
 
             r.replaceRow(args['q'], data, args['invalid_field'],
                          args['upsert'], parser=parser)
-            return jsonify(r)
+            return app.jsonify(r)
         else:
             raise Exception('No data.')
 
@@ -445,8 +445,8 @@ def install(core, app, auth, **kwargs):
                 type: object
                 description: The statistics object.
         """
-        r = getResource(core, id, ['Table'])
-        return jsonify(r.computeStatistics(args['key'], args['q']))
+        r = app.getResource(id, ['Table'])
+        return app.jsonify(r.computeStatistics(args['key'], args['q']))
 
     table_cell_id_patch_args = {
         'invalid_field': fields.Str(validate=validate.OneOf(['rename', 'stop', 'skip', 'none']), missing='rename'),
@@ -457,7 +457,7 @@ def install(core, app, auth, **kwargs):
     @auth.required(GET='table:read resource:read', DELETE='table:write resource:write', PATCH='table:write resource:write')
     def table_cell_id(args, id, doc_id):
 
-        r = getResource(core, id, ['Table'])
+        r = app.getResource(id, ['Table'])
 
         if request.method == 'GET':
 
@@ -467,7 +467,7 @@ def install(core, app, auth, **kwargs):
                 raise Exception(
                     'The document with id=%s does not exist.' % doc_id)
 
-            return jsonify(doc)
+            return app.jsonify(doc)
 
         elif request.method == 'DELETE':
             r.remove_row(doc_id)
@@ -480,7 +480,7 @@ def install(core, app, auth, **kwargs):
             if data:
                 doc = r.replaceRowById(doc_id, data, args['invalid_field'])
                 if doc:
-                    return jsonify(doc)
+                    return app.jsonify(doc)
                 else:
                     raise Exception(
                         'The document with id=%s does not exist.' % doc_id)

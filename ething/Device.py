@@ -3,7 +3,6 @@ from future.utils import string_types, integer_types
 
 from future.utils import with_metaclass, listvalues
 from ething.Resource import Resource
-from ething.Helpers import dict_recursive_update
 from .meta import MetaDevice, interface, method, Interface, Method
 from .base import *
 import datetime

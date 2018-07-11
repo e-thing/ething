@@ -21,12 +21,14 @@ import sys
 import os
 import datetime
 import re
+import pytz
 
 from .meta import get_resource_class, get_signal_class
 
 from .webserver.server import WebServer
 from .RuleManager import RuleManager
 from .PingService import PingService
+from .MqttDispatcher import MqttDispatcher
 
 from .File import File
 from .Table import Table
@@ -68,6 +70,11 @@ class Core(object):
 
         Core.__instance = self
 
+    @property
+    def local_tz (self):
+        local_tz = self.config.get('timezone', 'UTC')
+        return pytz.timezone(local_tz)
+
     def _init_logger(self):
         self.log = logging.getLogger('ething')
         self.log.setLevel(
@@ -98,13 +105,14 @@ class Core(object):
 
         self.fs = DbFs(self.db)
 
-        self.resourceQueryParser = ResourceQueryParser()
+        self.resourceQueryParser = ResourceQueryParser(tz = str(self.local_tz))
 
     def _init_rpc(self):
         self.rpc = RPC(self.config.get('rpc.address'))
 
     def stop(self):
         self.log.info("stopping ...")
+        self.dispatchSignal('DaemonStopped')
         self.running = False
 
     @property
@@ -144,7 +152,7 @@ class Core(object):
         self.mail = Mail(self)
         self.scheduler = Scheduler()
         
-        self.scheduler.setInterval(60, self._tick)
+        self.scheduler.at(self._tick, hour='*', min='*')
 
         self.rpc.register('stop', self.stop)
         self.rpc.register('version', self.version)
@@ -164,8 +172,11 @@ class Core(object):
                 self.log.exception('unable to load the plugin %s' % plugin_name)
 
         self.signalDispatcher.bind('*', self._signal_publish)
+        self.signalDispatcher.bind('ConfigUpdated', self._on_config_updated)
 
         self.running = True
+
+        self.dispatchSignal('DaemonStarted')
 
     def loop(self, timeout=1):
         self.rpc_server.serve(timeout)
@@ -180,7 +191,15 @@ class Core(object):
     
     def _tick(self):
         self.dispatchSignal('Tick')
-    
+
+    def _on_config_updated(self, signal):
+        for change in signal.changes:
+            attr_name = change[0]
+            if attr_name.startswith("log."):
+                self._init_logger()
+            elif attr_name.startswith("notification."):
+                self.mail = Mail(self)
+
     #
     # Resources
     #
@@ -285,7 +304,7 @@ class Core(object):
         }
 
     @staticmethod
-    def r_encode(data, showPrivateField=True):
+    def r_encode(data, showPrivateField=True, local_tz = None):
         o = {}
         for k in data:
 
@@ -301,7 +320,11 @@ class Core(object):
                     k = k[1:]
 
                 if isinstance(v, datetime.datetime):
-                    o[k] = v.isoformat()
+                    if local_tz is None:
+                        local_dt = v
+                    else:
+                        local_dt = v.replace(tzinfo=pytz.utc).astimezone(local_tz)
+                    o[k] = local_dt.isoformat()
                 elif isinstance(v, dict):
                     o[k] = Core.r_encode(v)
                 else:
@@ -367,3 +390,4 @@ class Core(object):
             r.repair()
 
         return results
+

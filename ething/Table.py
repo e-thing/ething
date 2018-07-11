@@ -11,11 +11,17 @@ from dateutil.parser import parse
 from .ShortId import ShortId
 import bson
 import os
-import sys
 import pymongo
-from .Helpers import dict_recursive_update
 import csv
-from io import StringIO
+import sys
+import pytz
+
+if (sys.version_info > (3, 0)):
+    from io import StringIO
+else:
+    # cf: https://stackoverflow.com/questions/13120127/how-can-i-use-io-stringio-with-the-csv-module
+    from StringIO import StringIO
+
 from .base import attr, isBool, isString, isNone, isInteger, READ_ONLY, PRIVATE
 
 
@@ -42,9 +48,7 @@ class Table(Resource):
     _parser = None
 
     # return an object
-
-    @staticmethod
-    def docSerialize(doc, date_format=None):
+    def docSerialize(self, doc, date_format=None):
         if '_id' in doc:
             doc['id'] = doc['_id']
             del doc['_id']
@@ -55,7 +59,7 @@ class Table(Resource):
             elif date_format == Table.TIMESTAMP_MS:
                 doc['date'] = int(time.mktime(doc['date'].timetuple())) * 1000
             else:
-                doc['date'] = doc['date'].isoformat()
+                doc['date'] = doc['date'].replace(tzinfo=pytz.utc).astimezone(self.ething.local_tz).isoformat()
 
         return doc
 
@@ -332,7 +336,7 @@ class Table(Resource):
             self._contentModifiedDate = datetime.datetime.utcnow()
             self.save()
 
-            doc = Table.docSerialize(dataArray[0])
+            doc = self.docSerialize(dataArray[0])
             # generate an event
             self.dispatchSignal('TableDataAdded', self, doc)
             # mqtt publish
@@ -428,7 +432,7 @@ class Table(Resource):
         c = self.collection
         r = c.find_one({'_id': id}, projection=_fields)
 
-        return Table.docSerialize(r) if r is not None else None
+        return self.docSerialize(r) if r is not None else None
 
     def replaceRowById(self, row_id, data, invalidFields=INVALID_FIELD_RENAME):
         if data:
@@ -457,7 +461,7 @@ class Table(Resource):
                 self.setDirtyAttr('keys')
                 self.save()
 
-                return Table.docSerialize(dataArray[0])
+                return self.docSerialize(dataArray[0])
 
         return False
 
@@ -508,7 +512,7 @@ class Table(Resource):
                 self.setDirtyAttr('keys')
                 self.save()
 
-                return Table.docSerialize(dataArray[0])
+                return self.docSerialize(dataArray[0])
             else:
                 # not found !
                 if upsert:
@@ -519,7 +523,7 @@ class Table(Resource):
     @property
     def parser(self):
         if Table._parser is None:
-            Table._parser = TableQueryParser()
+            Table._parser = TableQueryParser(tz = str(self.ething.local_tz))
         return Table._parser
 
     def find(self, query=None):
@@ -609,7 +613,7 @@ class Table(Resource):
         # iterate
         items = []
         for doc in cursor:
-            items.append(Table.docSerialize(doc, date_format))
+            items.append(self.docSerialize(doc, date_format))
 
         return items
 
@@ -653,7 +657,7 @@ class Table(Resource):
         selection = self.select(**kwargs)
 
         if len(selection) > 0:
-            keys = ['id', 'date'] + list(self.keys)
+            keys = [u'id', u'date'] + list(self.keys)
             buffer = StringIO()
             csvw = csv.DictWriter(
                 buffer, keys, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
