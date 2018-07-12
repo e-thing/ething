@@ -474,6 +474,45 @@ class ModelAdapter(object):
     def has(self, data_object, data, name):
         return name in data
 
+class NestedArrayAdapter(ModelAdapter):
+    """
+    used to create nested model
+    """
+
+    def __init__(self, cls):
+        self.cls = cls
+
+    def _inherit(self, data_object):
+        return {
+            'parent': data_object
+        }  # will be transmitted to the constructor !
+
+    def set(self, data_object, data, name, value):
+        instances = []
+        data[name] = []
+        for item in value:
+
+            if isinstance(item, self.cls):
+                instance = item
+            else:
+                if not isinstance(item, dict):
+                    raise ValueError('must be an object')
+
+                instance = self.cls.create(
+                    item, **(self._inherit(data_object)))
+
+            data[name].append(instance.serialize())
+            instances.append(instance)
+
+        return instance
+
+    def get(self, data_object, data, name):
+        items_data = data.get(name)
+        instances = []
+        for item_data in items_data:
+            instances.append(self.cls.unserialize(item_data, **(self._inherit(data_object))))
+        return instances
+
 class NestedAdapter(ModelAdapter):
     """
     used to create nested model

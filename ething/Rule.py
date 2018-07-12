@@ -1,7 +1,7 @@
 # coding: utf-8
 
 from .Resource import Resource
-from .base import NestedAdapter, attr, READ_ONLY, isAnything, isBool, isObject, isArray, isInteger
+from .base import NestedArrayAdapter, attr, READ_ONLY, isAnything, isBool, isObject, isArray, isInteger
 
 from . import event
 from . import action
@@ -18,15 +18,6 @@ class isAction(isAnything):
     def schema(self):
         return {"$ref": "#/actions/Action"}
 
-class Adapter(NestedAdapter):
-    def __init__(self):
-        super(Adapter, self).__init__(event.Event)
-
-    def _inherit(self, data_object):
-        return {
-            'rule': data_object
-        }
-
 class isSchedulerItem(isObject):
     
     def __init__(self):
@@ -37,9 +28,8 @@ class isScheduler(isArray):
     def __init__(self):
         super(isScheduler, self).__init__(item = isSchedulerItem())
 
-
-@attr('action', validator=isAction(), model_adapter=NestedAdapter(action.Action), description="The event object describing when to execute this rule")
-@attr('event', validator=isEvent(), model_adapter=NestedAdapter(event.Event), description="The event object describing when to execute this rule")
+@attr('actions', validator=isArray(item = isAction(), min_len = 1), model_adapter=NestedArrayAdapter(action.Action), description="A list of actions describing a flow. Actions will be executed one after another.")
+@attr('events', validator=isArray(item = isEvent(), min_len = 1), model_adapter=NestedArrayAdapter(event.Event), description="A list of events describing when to execute this rule.")
 @attr('enabled', validator=isBool(), default=True, description="If True (default), the rule is enabled")
 @attr('scheduler', validator=isArray(item = isObject(start = isObject(weekDay = isInteger(min=0, max=6), hour = isInteger(min=0, max=24)), end = isObject(weekDay = isInteger(min=0, max=6), hour = isInteger(min=0, max=24)))), default=[], description="Activate this rule only within certain periods of time")
 @attr('execution_count', default=0, mode=READ_ONLY, description="The number of times this rule has been executed")
@@ -52,10 +42,25 @@ class Rule(Resource):
      - The action part specifies what to execute in response to the event
     """
 
+    def signal_match(self, signal):
+        with self:
+            events = self.events
+            dopass = False
+
+            for i in range(len(events)):
+                try:
+                    event = events[i]
+                    if event.filter(signal):
+                        dopass = True
+                except Exception as e:
+                    self.ething.log.exception('error while filtering the event[%d] %s of the rule %s' % (i, event, self))
+
+            return dopass
+
     def trigger(self, signal):
 
         with self:
-            if not self.event.filter(signal):
+            if not self.signal_match(signal):
                 return False
 
             return self.run(signal)
@@ -98,10 +103,15 @@ class Rule(Resource):
 
         self._execution_date = datetime.datetime.utcnow()
 
-        try:
-            self.action.run(signal)
-        except Exception as e:
-            self.ething.log.exception('error while running the action of the rule %s' % self)
+        actions = self.actions
+
+        for i in range(len(actions)):
+            try:
+                action = actions[i]
+                action.run(signal)
+            except Exception as e:
+                self.ething.log.exception('error while running the action[%d] %s of the rule %s' % (i, action, self))
+                break
 
         self.save()
 
