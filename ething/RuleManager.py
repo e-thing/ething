@@ -110,10 +110,13 @@ class RuleProcess(Process):
                 for signal in self._queue:
                     signal_type = type(signal).__name__
                     for rule in self._cache.get(signal_type, []):
-                        if rule.is_active and rule.event.filter(signal):
-                            self.log.debug(
-                                "process rule %s from signal %s" % (rule, signal_type))
-                            threading.Thread(target=self.process_signal, args=(signal, rule), name='rule').start()
+                        if rule.is_active:
+                            if rule.event.filter(signal):
+                                self.log.debug(
+                                    "process rule %s from signal %s" % (rule, signal_type))
+                                threading.Thread(target=self.process_signal, args=(signal, rule), name='rule').start()
+                            else:
+                                rule.save()
 
             self._queue = []
 
@@ -137,5 +140,5 @@ class RuleProcess(Process):
                 self._cache[signal].append(rule)
 
     def process_signal(self, signal, rule):
-        rule.refresh()  # need to be refreshed because some attributes may have changed since the last time the _cache has been updated
+        rule.refresh(keepDirtyFields = True)  # need to be refreshed because some attributes may have changed since the last time the _cache has been updated
         rule.run(signal)

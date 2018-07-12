@@ -54,10 +54,11 @@ class Rule(Resource):
 
     def trigger(self, signal):
 
-        if not self.event.filter(signal):
-            return False
+        with self:
+            if not self.event.filter(signal):
+                return False
 
-        return self.run(signal)
+            return self.run(signal)
     
     def _generateShedulerTimeIndex(weekDay, hour):
         return (weekDay * 100) + hour

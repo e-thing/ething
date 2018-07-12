@@ -67,14 +67,6 @@ class DataModelAdapter(ModelAdapter):
                 data[name][k] = value[k]
 
 
-#class DatetimeAdapter(ModelAdapter):
-#
-#    def get_json(self, data_object, data, name):
-#        date = self.get(data_object, data, name)
-#        if date:
-#            return date.replace(tzinfo=pytz.utc).astimezone(data_object.ething.local_tz).isoformat()
-#        return None
-
 
 @attr('public', validator=isEnum([False, 'readonly', 'readwrite']), default=False, description="False: this resource is not publicly accessible. 'readonly': this resource is accessible for reading by anyone. 'readwrite': this resource is accessible for reading and writing by anyone.")
 @attr('description', validator=isString(), default='', description="A description of this resource.")
@@ -194,9 +186,10 @@ class Resource(with_metaclass(MetaResource, DataObject)):
 
     def _save(self, data):
 
+        self._modifiedDate = datetime.datetime.utcnow()  # update the modification time
+
         self.ething.log.debug("Resource update : %s , dirtyFields: %s" % (
             str(self), self.getDirtyAttr()))
-        self._modifiedDate = datetime.datetime.utcnow()  # update the modification time
 
         c = self.ething.db["resources"]
         c.replace_one({'_id': self.id}, data)

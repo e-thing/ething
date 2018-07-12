@@ -159,6 +159,6 @@ class Device(with_metaclass(MetaDevice, Resource)):
         if save:
             self.save()
 
-    def refresh(self, keepDirtyFields=False):
-        super(Device, self).refresh(keepDirtyFields)
+    def refresh(self, **kwargs):
+        super(Device, self).refresh(**kwargs)
         object.__setattr__(self, '_Device__interface', Interface(self))

@@ -471,9 +471,6 @@ class ModelAdapter(object):
     def get(self, data_object, data, name):
         return data.get(name)
 
-    def get_json(self, data_object, data, name):
-        return self.get(data_object, data, name)
-
     def has(self, data_object, data, name):
         return name in data
 
@@ -508,6 +505,8 @@ class NestedAdapter(ModelAdapter):
                     value, **(self._inherit(data_object)))
 
         data[name] = instance.serialize()
+
+        return instance
 
     def get(self, data_object, data, name):
         return self.cls.unserialize(data.get(name), **(self._inherit(data_object)))
@@ -606,6 +605,7 @@ class DataObject(with_metaclass(MetaDataObject, object)):
         object.__setattr__(self, '_DataObject__no_save', 0)
         object.__setattr__(self, '_DataObject__d', data or {})
         object.__setattr__(self, '_DataObject__dirtyFields', set())
+        object.__setattr__(self, '_DataObject__nested_instances', {})
         object.__setattr__(self, '_lock', threading.RLock())
 
         if data is None:
@@ -625,7 +625,7 @@ class DataObject(with_metaclass(MetaDataObject, object)):
                 continue
             model_adapter = attribute['model_adapter']
             try:
-                j[name] = model_adapter.get_json(
+                j[name] = model_adapter.get(
                     self, self.__d, attribute['model_key'])
             except:
                 pass
@@ -655,7 +655,16 @@ class DataObject(with_metaclass(MetaDataObject, object)):
             else:  # mandatory but not set
                 raise AttributeError('attribute "%s" is not set' % name)
 
-        return model_adapter.get(self, self.__d, attribute['model_key'])
+        is_nested = isinstance(model_adapter, NestedAdapter)
+
+        if is_nested:
+            instance = self.__nested_instances.get(name)
+            if instance is None:
+                instance = model_adapter.get(self, self.__d, attribute['model_key'])
+                self.__nested_instances[name] = instance
+            return instance
+        else:
+            return model_adapter.get(self, self.__d, attribute['model_key'])
 
     def __setattr__(self, name, value):
         priv_access = False
@@ -696,9 +705,13 @@ class DataObject(with_metaclass(MetaDataObject, object)):
             on_change(self, value, old_value)
 
         try:
-            model_adapter.set(self, self.__d, attribute['model_key'], value)
+            instance = model_adapter.set(self, self.__d, attribute['model_key'], value)
         except ValueError as e:
             raise AttributeError('invalid attribute "%s": %s' % (name, str(e)))
+
+        is_nested = isinstance(model_adapter, NestedAdapter)
+        if is_nested:
+            self.__nested_instances[name] = instance
 
         self.setDirtyAttr(name)
 
@@ -706,21 +719,44 @@ class DataObject(with_metaclass(MetaDataObject, object)):
         self.__dirtyFields.add(name)
 
     def hasDirtyAttr(self):
-        return bool(len(self.__dirtyFields))
+        return bool(len(self.getDirtyAttr()))
 
     def getDirtyAttr(self):
-        return self.__dirtyFields
+
+        dirtyFields = set(self.__dirtyFields)
+
+        # also nested attributes
+        attributes = getattr(self, '__attributes', {})
+        for name in attributes:
+            model_adapter = attributes[name]['model_adapter']
+            if isinstance(model_adapter, NestedAdapter):
+                if name not in self.__dirtyFields:
+                    instance = getattr(self, name)
+                    if instance.hasDirtyAttr():
+                        dirtyFields.add(name)
+
+        return dirtyFields
+
+    def clearDirtyAttr(self):
+        self.__dirtyFields.clear()
+
+        # also nested attributes
+        attributes = getattr(self, '__attributes', {})
+        for name in attributes:
+            model_adapter = attributes[name]['model_adapter']
+            if isinstance(model_adapter, NestedAdapter):
+                getattr(self, name).clearDirtyAttr()
 
     def save(self, attributes=None):
         if attributes is not None:
             for key, value in iteritems(attributes):
                 setattr(self, key, value)
 
-        if len(self.__dirtyFields) == 0 and not self.__new:
-            return  # nothing to save
-
         if self.__no_save > 0:
             return
+
+        if not self.__new and not self.hasDirtyAttr():
+            return  # nothing to save
 
         # avoid infinit loop, if save() is called in _insert or _save
         object.__setattr__(self, '_DataObject__no_save', 1)
@@ -746,7 +782,7 @@ class DataObject(with_metaclass(MetaDataObject, object)):
             else:
                 self._save(self.__d)
 
-            self.__dirtyFields.clear()
+            self.clearDirtyAttr()
 
         except:
             raise
@@ -766,7 +802,7 @@ class DataObject(with_metaclass(MetaDataObject, object)):
         doc = self._refresh()
 
         if keepDirtyFields:
-            for field in self.__dirtyFields:
+            for field in self.getDirtyAttr():
                 try:
                     doc.pop(field)
                 except KeyError:
@@ -774,7 +810,7 @@ class DataObject(with_metaclass(MetaDataObject, object)):
 
             self.__d.update(doc)
         else:
-            self.__dirtyFields.clear()
+            self.clearDirtyAttr()
             self.__d.clear()
             self.__d.update(doc)
 
