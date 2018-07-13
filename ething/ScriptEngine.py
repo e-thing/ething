@@ -2,7 +2,7 @@
 
 from future.utils import string_types, text_type
 
-from .Helpers import dict_recursive_update, toJson
+from .Helpers import toJson
 
 import os
 import tempfile
@@ -13,6 +13,7 @@ import re
 import shlex
 import sys
 import json
+from collections import OrderedDict
 
 
 def addslashes(s):
@@ -22,6 +23,48 @@ def addslashes(s):
             s = s.replace(i, '\\'+i)
     return s
 
+
+class Output(object):
+
+    def __init__(self, chunked_output):
+        self._chunked_output = chunked_output
+        # cached
+        self._stderr = None
+        self._stdout = None
+        self._std = None
+
+    def __str__(self):
+        return self.std
+
+    @property
+    def chunked(self):
+        return self._chunked_output
+
+    @property
+    def stderr(self):
+        if self._stderr is None:
+            self._stderr = self._cat('stderr')
+        return self._stderr
+
+    @property
+    def stdout(self):
+        if self._stdout is None:
+            self._stdout = self._cat('stdout')
+        return self._stdout
+
+    @property
+    def std(self):
+        if self._std is None:
+            self._std = self._cat()
+        return self._std
+
+    def _cat(self, type = None):
+        strcat = ''
+        for item in self._chunked_output:
+            if type is not None and item['type'] != type:
+                continue
+            strcat += item['chunk'].encode('utf8').decode('unicode_escape', "replace")
+        return strcat
 
 class ScriptEngine(object):
 
@@ -103,22 +146,20 @@ class ScriptEngine(object):
         out = out.decode(sys.stdout.encoding or 'utf8')
         
         ething.log.debug("script return code : %d" % return_var)
-        ething.log.debug("script stdout : %s" % out)
+        # ething.log.debug("script stdout : %s" % out)
 
         if len(out):
             out = out[:out.rfind(',')]
 
-        out = json.loads('[%s]' % out)
+        out = Output(json.loads('[%s]' % out))
 
-        stderr = ''
-        for item in out:
-            if item['type'] == 'stderr':
-                stderr += item['chunk'].encode('utf8').decode('unicode_escape')
+        ething.log.debug("script output : \n%s" % out.std)
 
         return {
             'executionTime': time_end - time_start,
-            'output': out,
-            'stderr': stderr,
+            'output': out.chunked,
+            'stderr': out.stderr,
+            'out': out,
             'return_code': return_var,
             'ok': return_var == 0
         }
@@ -144,10 +185,23 @@ class ScriptEngine(object):
         if globals is None:
             globals = {}
 
+        args = OrderedDict()
+
+        for arg in argv:
+            m = re.search('^--?([^= ]+)(=(.*))?$', arg)
+            if m:
+                if m.group(2) is None:
+                    args[m.group(1)] = True
+                else:
+                    args[m.group(1)] = m.group(3)
+            else:
+                args[arg] = True
+
         globals.update({
             'script': script,
             'argv': argv,
-            'argc': len(argv)
+            'argc': len(argv),
+            'args': args
         })
 
         return ScriptEngine.run(script.ething, scriptcontent, scriptName=os.path.basename(script.name), globals=globals)

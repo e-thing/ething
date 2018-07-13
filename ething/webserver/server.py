@@ -78,7 +78,6 @@ class WebServer(Plugin):
         self.stop_process()
 
     def on_config_change(self, changes):
-        print(changes)
         self.stop_process()
         self.start_process()
 

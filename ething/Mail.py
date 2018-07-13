@@ -32,6 +32,7 @@ class Mail(object):
     def send(self, subject=None, message=None, attachments=None, to=None):
 
         if not self.host or not self.port or not self.user or not self.password:
+            self.log.debug('warning: no configuration set')
             return False
 
         if isinstance(to, string_types):
@@ -41,50 +42,55 @@ class Mail(object):
             to = self.to
 
         if not to or len(to) == 0:
+            self.log.warn('no recipient set')
             return False
 
-        msg = MIMEMultipart()
+        try:
+            msg = MIMEMultipart()
 
-        msg['From'] = self.user
-        msg['To'] = ', '.join(to)
-        msg['Subject'] = subject or 'notification'
+            msg['From'] = self.user
+            msg['To'] = ', '.join(to)
+            msg['Subject'] = subject or 'notification'
 
-        body = message if message else ''
+            body = message if message else ''
 
-        msg.attach(MIMEText(body, 'plain'))
+            msg.attach(MIMEText(body, 'plain'))
 
-        if attachments:
-            for attachment in attachments:
+            if attachments:
+                for attachment in attachments:
 
-                if isinstance(attachment, string_types):  # id
-                    attachment = self.core.get(attachment)
+                    if isinstance(attachment, string_types):  # id
+                        attachment = self.core.get(attachment)
 
-                if isinstance(attachment, dict):
-                    filename = attachment['name']
-                    content = attachment['content']
-                elif isinstance(attachment, File):
-                    filename = attachment.name
-                    content = attachment.read()
-                elif isinstance(attachment, Table):
-                    filename = attachment.name+'.csv'
-                    content = attachment.toCSV()
-                else:
-                    continue
+                    if isinstance(attachment, dict):
+                        filename = attachment['name']
+                        content = attachment['content']
+                    elif isinstance(attachment, File):
+                        filename = attachment.name
+                        content = attachment.read()
+                    elif isinstance(attachment, Table):
+                        filename = attachment.name+'.csv'
+                        content = attachment.toCSV()
+                    else:
+                        continue
 
-                part = MIMEBase('application', 'octet-stream')
-                part.set_payload(content)
-                encoders.encode_base64(part)
-                part.add_header('Content-Disposition',
-                                "attachment; filename= %s" % filename)
+                    part = MIMEBase('application', 'octet-stream')
+                    part.set_payload(content)
+                    encoders.encode_base64(part)
+                    part.add_header('Content-Disposition',
+                                    "attachment; filename= %s" % filename)
 
-                msg.attach(part)
+                    msg.attach(part)
 
-        server = smtplib.SMTP(self.host, self.port)
-        server.starttls()
-        server.login(self.user, self.password)
-        text = msg.as_string()
-        self.log.debug('sending a email "%s" to %s' % (subject, ','.join(to)))
-        server.sendmail(self.user, to, text)
-        server.quit()
+            server = smtplib.SMTP(self.host, self.port)
+            server.starttls()
+            server.login(self.user, self.password)
+            text = msg.as_string()
+            self.log.debug('sending a email "%s" to %s' % (subject, ','.join(to)))
+            server.sendmail(self.user, to, text)
+            server.quit()
+        except:
+            self.log.exception('unable to send mail')
+            return False
 
         return True

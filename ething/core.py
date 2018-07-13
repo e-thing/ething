@@ -193,12 +193,22 @@ class Core(object):
         self.dispatchSignal('Tick')
 
     def _on_config_updated(self, signal):
+        update_log = False
+        update_notification = False
+
         for change in signal.changes:
             attr_name = change[0]
             if attr_name.startswith("log."):
-                self._init_logger()
+                update_log = True
             elif attr_name.startswith("notification."):
-                self.mail = Mail(self)
+                update_notification = True
+
+        if update_log:
+            self.log.debug('log config updated')
+            self._init_logger()
+        if update_notification:
+            self.log.debug('notification config updated')
+            self.mail = Mail(self)
 
     #
     # Resources

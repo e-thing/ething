@@ -28,6 +28,11 @@ def install(core, app, auth, server, **kwargs):
                         break
                     signal = msg.message
 
+                    if hasattr(signal, 'resource'):
+                        r = core.get(signal.resource)
+                        if r:
+                            signal.resource_json = r
+
                     data = app.toJson(signal)
 
                     lines = ["data:{value}".format(
