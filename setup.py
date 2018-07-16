@@ -532,7 +532,8 @@ requires = [
     "xmltodict",
     "python-magic",
     "cherrypy",
-    "pytz"
+    "pytz",
+    "flask-compress"
 ]
 
 if os.name != "nt":

@@ -64,7 +64,7 @@ class RuleProcess(Process):
             self._build_cache()
 
     def onResourceMetaUpdated(self, signal):
-        if signal['rType'] == 'Rule' and 'events' in signal['attributes']:
+        if signal['rType'] == 'Rule' and ( 'events' in signal['attributes'] or 'enabled' in signal['attributes'] or 'scheduler' in signal['attributes']):
             self._build_cache()
 
     def dispatchSignal(self, signal):

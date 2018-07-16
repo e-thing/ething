@@ -2,6 +2,7 @@
 
 from flask import Flask, Response, request, g
 from flask_cors import CORS
+from flask_compress import Compress
 from werkzeug.exceptions import HTTPException
 from .auth import install_auth
 from .routes import install_routes
@@ -247,6 +248,9 @@ class WebServerProcess(Process):
         app = FlaskApp(self, root_path=root_path)
 
         self.log.info("web server root path = %s" % root_path)
+
+        compress = Compress()
+        compress.init_app(app)
 
         port = self.config['port']
 
