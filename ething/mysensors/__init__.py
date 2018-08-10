@@ -1,22 +1,28 @@
 # coding: utf-8
-from future.utils import bord, iteritems
-from .MySensorsGateway import MySensorsGateway, Device
+from future.utils import iteritems
+from .MySensorsGateway import MySensorsGateway
 from .MySensorsSerialGateway import MySensorsSerialGateway
 from .MySensorsEthernetGateway import MySensorsEthernetGateway
 from .MySensorsNode import MySensorsNode
 from .MySensorsSensor import MySensorsSensor
+
+from .MySensorsThermometer import MySensorsThermometer
+from .MySensorsHumiditySensor import MySensorsHumiditySensor
+from .MySensorsPressureSensor import MySensorsPressureSensor
+from .MySensorsBinary import MySensorsBinary
+from .MySensorsGenericSensor import MySensorsGenericSensor
+from .MySensorsRGB import MySensorsRGB
+from .MySensorsRGBW import MySensorsRGBW
+from .MySensorsDimmer import MySensorsDimmer
+
 from .helpers import *
 from .Message import Message
-from ething.Helpers import dict_recursive_update
 from ething.utils import NullContextManager
 from ething.plugin import Plugin
-from ething.TransportProcess import LineReader, TransportProcess, SerialTransport, NetTransport
+from ething.TransportProcess import LineReader, TransportProcess, SerialTransport, NetTransport, BaseResult
 from ething.Scheduler import Scheduler
 import time
 import re
-import random
-import math
-import binascii
 import datetime
 
 
@@ -27,13 +33,13 @@ class MySensors(Plugin):
         self.controllers = {}
 
         gateways = self.core.find({
-            'type': {'$regex': '^MySensors.*Gateway$'}
+            'extends': 'resources/MySensorsGateway'
         })
 
         for gateway in gateways:
             try:
                 self._start_controller(gateway)
-            except Exception as e:
+            except:
                 self.log.exception('unable to start the controller for the gateway %s' % gateway)
 
         self.core.signalDispatcher.bind('ResourceCreated', self._on_resource_created)
@@ -61,14 +67,10 @@ class MySensors(Plugin):
         id = signal['resource']
         if id in self.controllers:
             controller = self.controllers[id]
-            gateway = controller.gateway
-            if signal['rModifiedDate'] > gateway.modifiedDate:
-                gateway.refresh()
-
             for attr in signal['attributes']:
                 if attr in controller.RESET_ATTR:
                     self._stop_controller(id)
-                    self._start_controller(gateway)
+                    self._start_controller(controller.gateway)
                     break
 
     def _start_controller(self, device):
@@ -78,7 +80,6 @@ class MySensors(Plugin):
             controller.start()
 
             self.core.rpc.register('process.%s.send' % device.id, controller.send, callback_name='callback')
-            self.core.rpc.register('process.%s.updateFirmware' % device.id, controller.updateFirmware, callback_name='callback')
         else:
             raise Exception('Unknown gateway type "%s"' % type(device).__name__)
 
@@ -89,7 +90,6 @@ class MySensors(Plugin):
             controller.stop()
             del self.controllers[id]
             self.core.rpc.unregister('process.%s.send' % id)
-            self.core.rpc.unregister('process.%s.updateFirmware' % id)
 
     def stop_all_controllers(self):
         if hasattr(self, 'controllers'):
@@ -98,49 +98,73 @@ class MySensors(Plugin):
 
 
 
-def unpack(data, length=None):
 
-    out = []
+class Result(BaseResult):
+    INIT = 0
+    SMART_SLEEP = 1
+    SENDING = 2
+    WAIT_ACK = 3
+    WAIT_RESPONSE = 4
+    DONE = 5
 
-    if not isinstance(data, bytearray):
-        data = bytearray(data, 'utf-8')
+    def __init__(self, protocol, message, smartSleep=False, response=False, **kwargs):
+        super(Result, self).__init__(message, **kwargs)
+        self.protocol = protocol
+        self.smartSleep = smartSleep
+        self.response = response
+        self.ack = message.ack
+        self._current_state_index = 0
+        self._states = []
+        self._states.append(self.INIT)
 
-    l = length if length is not None else int(len(data)/2)
+        if self.smartSleep:
+            self._states.append(self.SMART_SLEEP)
 
-    for i in range(0, l):
+        self._states.append(self.SENDING)
 
-        first = data[2*i]
-        second = data[2*i+1]
+        if self.ack:
+            self._states.append(self.WAIT_ACK)
+        if self.response:
+            self._states.append(self.WAIT_RESPONSE)
 
-        value = (first << 8) | second
+        self._states.append(self.DONE)
 
-        out.append(value)
+    @property
+    def state(self):
+        return self._states[self._current_state_index]
 
-    return out
+    def next(self, **kwargs):
 
+        if self._current_state_index + 1 >= len(self._states):
+            return
 
-def pack(*args):
+        self._current_state_index += 1
 
-    o = []
+        current_state = self.state
 
-    for v in args:
+        if current_state == self.SMART_SLEEP:
+            pass
+        elif current_state == self.SENDING:
+            self.protocol.write_line(self.command.raw(), encode=False)  # raw() returns binary, no need to encode
+            self.next(**kwargs)
+        elif current_state == self.WAIT_ACK:
+            pass
+        elif current_state == self.WAIT_RESPONSE:
+            pass
+        elif current_state == self.DONE:
+            self.resolve(**kwargs)
 
-        first = (v & 0xFF00) >> 8
-        second = (v & 0x00FF)
+    def resolve(self, *args, **kwargs):
+        if self.state == self.DONE:
+            super(Result, self).resolve(*args, **kwargs)
 
-        o.append(first)
-        o.append(second)
+    def reject(self, *args, **kwargs):
+        self._current_state_index = len(self._states) - 1
+        super(Result, self).reject(*args, **kwargs)
 
-    return bytearray(o).decode("utf-8")
 
 class MySensorsProtocol(LineReader):
-    ACK_TIMEOUT = 5  # seconds (maybe float number)
-    PENDING_MESSAGE_TIMEOUT = 120  # seconds (maybe float number)
-    FIRMWARE_BLOCK_SIZE = 16  # in bytes
-    # in seconds, let the time for the node to restart and install the new firmware
-    FIRMWARE_UPDATE_TIMEOUT = 40
-    RESPONSE_TIMEOUT = 10
-    STREAM_TIMEOUT = 10  # in seconds, max allowed time between 2 blocks of data
+    TIMEOUT = 10  # seconds (maybe float number)
 
     def __init__(self, gateway):
         super(MySensorsProtocol, self).__init__(terminator = b'\n')
@@ -151,32 +175,15 @@ class MySensorsProtocol(LineReader):
         self.gatewayReady = False
         self.gatewayLibVersion = False
 
-        # ack management
-        self._ackWaitingMessages = []
-
-        # used for smartSleep
         self._pendingMessages = []
 
-        # firmware
-        self._pendingFirmware = {}
-
-        # streams
-        self._pendingStreams = {}
-
-        # response management
-        self._responseListeners = []
-
-        self.scheduler.setInterval(0.5, self.check_timeout)
+        self.scheduler.setInterval(1, self.check_timeout)
         self.scheduler.setInterval(60, self.check_disconnect)
         
 
     def connection_made(self):
         super(MySensorsProtocol, self).connection_made()
-        self._responseListeners = []
-        self._ackWaitingMessages = []
         self._pendingMessages = []
-        self._pendingFirmware = {}
-        self._pendingStreams = {}
         self.gateway.setConnectState(True)
     
     def loop(self):
@@ -185,10 +192,10 @@ class MySensorsProtocol(LineReader):
     def createNode(self, nodeId):
         gateway = self.gateway
 
-        node = self.core.create('MySensorsNode', {
+        node = self.core.create('resources/MySensorsNode', {
             'nodeId': nodeId,
             'name': '%s/node-%d' % (gateway.name, nodeId),
-            'createdBy': gateway
+            'createdBy': gateway.id
         })
 
         if not node:
@@ -198,14 +205,38 @@ class MySensorsProtocol(LineReader):
 
         return node
 
-    def createSensor(self, node, sensorId, sensorType=S_UNK):
+    def createSensor(self, node, sensorId, sensorType):
 
-        sensor = self.core.create('MySensorsSensor', {
-            'name': ('%s/sensor-%d' % (node.name, sensorId)) if sensorType == S_UNK else sensorTypeToName(sensorType),
+        attributes = {
+            'name':  sensorTypeToName(sensorType) or ('%s/sensor-%d' % (node.name, sensorId)),
             'sensorId': sensorId,
             'sensorType': sensorType,
-            'createdBy': node
-        })
+            'createdBy': node.id
+        }
+
+        if sensorType == S_TEMP:
+            sensor = self.core.create('resources/MySensorsThermometer', attributes)
+
+        elif sensorType == S_HUM:
+            sensor = self.core.create('resources/MySensorsHumiditySensor', attributes)
+
+        elif sensorType == S_BARO:
+            sensor = self.core.create('resources/MySensorsPressureSensor', attributes)
+
+        elif sensorType == S_BINARY or sensorType == S_SPRINKLER:
+            sensor = self.core.create('resources/MySensorsBinary', attributes)
+
+        elif sensorType == S_DIMMER:
+            sensor = self.core.create('resources/MySensorsDimmer', attributes)
+
+        elif sensorType == S_RGB_LIGHT:
+            sensor = self.core.create('resources/MySensorsRGB', attributes)
+
+        elif sensorType == S_RGBW_LIGHT:
+            sensor = self.core.create('resources/MySensorsRGBW', attributes)
+
+        else:
+            sensor = self.core.create('resources/MySensorsGenericSensor', attributes)
 
         if not sensor:
             raise Exception("fail to create the sensor nodeId=%d sensorId=%d sensorType=%s" % (
@@ -213,6 +244,7 @@ class MySensorsProtocol(LineReader):
 
         self.log.info("MySensors: new sensor nodeId=%d sensorId=%d sensorType=%s" % (
             node.nodeId, sensorId, sensorType))
+
         return sensor
 
     def handle_line(self, line):
@@ -239,9 +271,8 @@ class MySensorsProtocol(LineReader):
 
             if node and sensorId >= 0 and sensorId != INTERNAL_CHILD:
                 sensor = node.getSensor(sensorId)
-                if not sensor:
-                    sensor = self.createSensor(
-                        node, sensorId, message.subType if message.messageType == PRESENTATION else S_UNK)
+                if not sensor and message.messageType == PRESENTATION:
+                    sensor = self.createSensor(node, sensorId, message.subType)
 
             if not node:
                 node = NullContextManager()
@@ -261,17 +292,14 @@ class MySensorsProtocol(LineReader):
                     try:
 
                         if message.messageType == PRESENTATION:
-                            sensorType = message.subType
 
-                            # get sensor
-                            if sensor:
-                                sensor.sensorType = sensorType  # update type
-                                sensor.description = message.value
-
-                            elif node:
-                                # node internal sensor (id=0xFF)
-                                # library version (node device)
-                                node._libVersion = message.value
+                            if sensorId == INTERNAL_CHILD:
+                                # node presentation :
+                                if node:
+                                    node._libVersion = message.value
+                            else:
+                                if sensor:
+                                    sensor.description = message.value
 
                         elif message.messageType == SET:
 
@@ -285,13 +313,15 @@ class MySensorsProtocol(LineReader):
                                 if datatype:
 
                                     # save the raw data payload. used internally for REQ response (see below)
-                                    sensor.setData(datatype, message.payload)
+                                    sensor.data['_' + datatype] = message.payload
 
-                                    sensor.storeData(
-                                        datatype, message.value)
+                                    try:
+                                        sensor._set(message.subType, message.value)
+                                    except:
+                                        self.log.exception('error in sensor._set for sensor %s and datatype=%s' % (sensor, datatype))
 
                                 else:
-                                    self.log.warn(
+                                    self.log.warning(
                                         "MySensors: unknown value subtype %d" % message.subType)
 
                         elif message.messageType == REQ:
@@ -301,17 +331,17 @@ class MySensorsProtocol(LineReader):
                                 datatype = valueTypeStr(message.subType)
 
                                 if datatype:
-                                    value = sensor.getData(datatype)
-                                    if value is not None:
+                                    payload = sensor.data.get('_' + datatype)
+                                    if payload is not None:
                                         response = Message(
-                                            nodeId, sensorId, SET, message.subType, payload=value)
+                                            nodeId, sensorId, SET, message.subType, payload=payload)
                                         self.send(response)
                                     else:
                                         # no value stored ! No response
                                         pass
 
                                 else:
-                                    self.log.warn(
+                                    self.log.warning(
                                         "MySensors: unknown value subtype %d" % message.subType)
 
                         elif message.messageType == INTERNAL:
@@ -343,15 +373,12 @@ class MySensorsProtocol(LineReader):
                                 # get a free node id
 
                                 f = None
+                                occupied_node_id = map(lambda n: n.nodeId, gateway.getNodes())
                                 for i in range(1, 255):
-                                    if not gateway.getNode(i):
-                                        f = i
+                                    if i not in occupied_node_id:
+                                        self.send(Message(
+                                            BROADCAST_ADDRESS, INTERNAL_CHILD, INTERNAL, I_ID_RESPONSE, i))
                                         break
-
-                                if f is not None:
-                                    response = Message(
-                                        BROADCAST_ADDRESS, INTERNAL_CHILD, INTERNAL, I_ID_RESPONSE, f)
-                                    self.send(response)
                                 else:
                                     raise Exception('No free id available')
 
@@ -360,7 +387,7 @@ class MySensorsProtocol(LineReader):
                                     sketchName = message.value or ''
                                     node._sketchName = sketchName
                                     # if the default name has not been changed by the user, overwrite it with the sketch name
-                                    if re.search('^.+/node-[0-9]+$', node.name) and sketchName:
+                                    if re.search('/node-[0-9]+$', node.name) and sketchName:
                                         node.name = sketchName
 
                             elif message.subType == I_SKETCH_VERSION:
@@ -383,15 +410,10 @@ class MySensorsProtocol(LineReader):
                                 while i < len(self._pendingMessages):
                                     pendingMessage = self._pendingMessages[i]
 
-                                    originalMessage = pendingMessage['message']
-
-                                    if originalMessage.nodeId == message.nodeId:
-                                        # remove this item
-                                        self._pendingMessages.pop(i)
-                                        i -= 1
-
-                                        self.send(
-                                            originalMessage, smartSleep=False, callback=pendingMessage['callback'])
+                                    if pendingMessage.state == Result.SMART_SLEEP:
+                                        originalMessage = pendingMessage.command
+                                        if originalMessage.nodeId == message.nodeId:
+                                            pendingMessage.next()
 
                                     i += 1
 
@@ -400,191 +422,13 @@ class MySensorsProtocol(LineReader):
                                     message.nodeId, message.childSensorId, message.value))
 
                             else:
-                                self.log.warn(
+                                self.log.warning(
                                     "MySensors: message not processed : %s" % str(message))
 
-                        elif message.messageType == STREAM:
+                        #elif message.messageType == STREAM:
 
-                            if message.subType == ST_FIRMWARE_CONFIG_REQUEST:
-                                """
-                                the payload contains the folowing (encoded in hexadecimal):
-                                    uint16_t type;                                //!< Type of config
-                                    uint16_t version;                            //!< Version of config
-                                    uint16_t blocks;                            //!< Number of blocks
-                                    uint16_t crc;                                //!< CRC of block data
-                                    uint16_t BLVersion;                            //!< Bootloader version
-                                """
-
-                                parts = unpack(message.payload)
-                                if len(parts) >= 4:
-                                    type, version, nbBlocks, crc = parts
-
-                                    bootloaderVersion = parts[4] if len(
-                                        parts) > 4 else 0
-
-                                    self.log.info(
-                                        "MySensors: FW CONFIG : nodeId=%d type=%04X version=%04X blocks=%d crc=%04X BLVersion=%04X" % (
-                                            nodeId, type, version, nbBlocks, crc, bootloaderVersion))
-
-                                    if node:
-                                        node._firmware = {
-                                            'type': type,
-                                            'version': version,
-                                            'blocks': nbBlocks,
-                                            'crc': crc,
-                                            'BLVersion': bootloaderVersion
-                                        }
-
-                                    if nodeId in self._pendingFirmware:
-                                        # a firware has been updated
-                                        # this message is received after reboot
-
-                                        # check if the installed firmware was the one updated
-                                        firmwareInfo = self._pendingFirmware[nodeId]
-                                        ok = firmwareInfo['type'] == type and firmwareInfo['version'] == version and \
-                                             firmwareInfo[
-                                                 'blocks'] == nbBlocks and firmwareInfo['crc'] == crc
-
-                                        if ok:
-                                            self.log.info(
-                                                "MySensors: FW updated successfully : nodeId=%d type=%04X version=%04X blocks=%d crc=%04X" % (
-                                                    nodeId, type, version, nbBlocks, crc))
-                                        else:
-                                            self.log.warn(
-                                                "MySensors: FW update ERROR : nodeId=%d" % nodeId)
-
-                                        if callable(firmwareInfo['callback']):
-                                            firmwareInfo['callback'](
-                                                False if ok else 'error in firmware update')
-
-                                        del self._pendingFirmware[nodeId]
-
-                            elif message.subType == ST_FIRMWARE_CONFIG_RESPONSE:
-                                pass
-                            elif message.subType == ST_FIRMWARE_REQUEST:
-                                """
-                                return a peace of the FIRMWARE
-
-                                receive :
-                                uint16_t type;        //!< Type of config
-                                uint16_t version;    //!< Version of config
-                                uint16_t block;        //!< Block index
-
-                                send:
-                                uint16_t type;                        //!< Type of config
-                                uint16_t version;                    //!< Version of config
-                                uint16_t block;                        //!< Block index
-                                uint8_t data[FIRMWARE_BLOCK_SIZE];    //!< Block data
-                                """
-
-                                if len(message.payload) >= 6:
-
-                                    type, version, iBlock = unpack(
-                                        message.payload, 3)
-
-                                    self.log.warn("MySensors: FW GET : nodeId=%d type=%04X version=%04X block=%d" % (
-                                        nodeId, type, version, iBlock))
-
-                                    if nodeId in self._pendingFirmware:
-
-                                        chunk = self._pendingFirmware[nodeId]['firmware'][
-                                                iBlock * self.FIRMWARE_BLOCK_SIZE:(
-                                                                                                iBlock + 1) * self.FIRMWARE_BLOCK_SIZE]
-                                        response = Message(message.nodeId, INTERNAL_CHILD, STREAM,
-                                                           ST_FIRMWARE_CONFIG_RESPONSE, pack(
-                                                type, version, iBlock) + chunk)
-
-                                        if self._pendingFirmware[nodeId]['lastBlockSent'] != iBlock:
-                                            self._pendingFirmware[nodeId]['blockSent'] += 1
-                                            self._pendingFirmware[nodeId]['lastBlockSent'] = iBlock
-
-                                        self._pendingFirmware[nodeId]['ts'] = time.time(
-                                        )
-
-                                        self.send(response)
-
-                                    else:
-                                        self.log.warn(
-                                            "MySensors: FW GET : no firmware found")
-
-                            elif message.subType == ST_FIRMWARE_RESPONSE:
-                                pass
-
-                            elif message.subType == ST_SOUND or message.subType == ST_IMAGE:
-
-                                """
-                                the payload contains a piece of an image or sound
-
-                                payload :
-
-                                | 1byte | next bytes |
-                                |-------|------------|
-                                | index | data       |
-
-                                """
-                                payload = binascii.unhexlify(message.payload)
-                                if payload:
-                                    index = bord(payload[0])
-
-                                    if nodeId not in self._pendingStreams:
-                                        if index == 1:
-                                            # new stream
-                                            self._pendingStreams[nodeId] = {
-                                                't0': time.time(),
-                                                'ts': 0,
-                                                'lastIndex': 255,
-                                                'data': '',
-                                                'packetCount': 0,
-                                                'type': message.subType
-                                            }
-                                        else:
-                                            self.log.warn(
-                                                "MySensors: STREAM: first packet must start with index=1, got %s" % index)
-
-                                    if nodeId in self._pendingStreams:
-
-                                        stream = self._pendingStreams[nodeId]
-
-                                        if stream['type'] == message.subType:
-                                            expectedIndex = 1 if stream['lastIndex'] == 255 else stream['lastIndex'] + 1
-
-                                            if index == 0 or expectedIndex == index:
-                                                # append this chunk
-                                                stream['data'] += payload[1:]
-                                                stream['lastIndex'] = index
-                                                stream['packetCount'] += 1
-                                                stream['ts'] = time.time()
-
-                                                if index == 0:
-                                                    # end of the stream
-
-                                                    size = len(stream['data'])
-                                                    timeElapsed = time.time() - \
-                                                                  stream['t0']
-
-                                                    sensor.storeStream(
-                                                        stream['type'], stream['data'])
-
-                                                    # remove stream from list
-                                                    del self._pendingStreams[nodeId]
-
-                                                    self.log.warn(
-                                                        "MySensors: STREAM: end of stream, packetCount=%d , size(B)=%d , time(s)=%f" % (
-                                                            stream['packetCount'], size, timeElapsed))
-
-                                            else:
-                                                # remove on first error
-                                                del self._pendingStreams[nodeId]
-                                                self.log.warn(
-                                                    "MySensors: STREAM: index mismatch")
-
-                                        else:
-                                            self.log.warn(
-                                                "MySensors: STREAM: type mismatch")
-
-                            else:
-                                self.log.warn(
-                                    "MySensors: message not processed : %s" % str(message))
+                            # todo
+                            # self.handle_stream(...)
 
                         else:
                             raise Exception("unknown message %s" %
@@ -595,22 +439,24 @@ class MySensorsProtocol(LineReader):
                         r = False
 
                     i = 0
-                    while i < len(self._responseListeners):
-                        responseListener = self._responseListeners[i]
+                    while i < len(self._pendingMessages):
+                        pendingMessage = self._pendingMessages[i]
 
-                        if (('nodeId' not in responseListener) or responseListener['nodeId'] == message.nodeId) and \
-                                (('childSensorId' not in responseListener) or responseListener[
-                                    'childSensorId'] == message.childSensorId) and \
-                                (('messageType' not in responseListener) or responseListener[
-                                    'messageType'] == message.messageType) and \
-                                (('subType' not in responseListener) or responseListener['subType'] == message.subType):
+                        if pendingMessage.state == Result.WAIT_RESPONSE:
+                            originalMessage = pendingMessage.command
+                            if originalMessage.nodeId == message.nodeId and originalMessage.childSensorId == message.childSensorId:
 
-                            # remove this item
-                            self._responseListeners.pop(i)
-                            i -= 1
+                                response_filter = pendingMessage.response
+                                ok = True
 
-                            if callable(responseListener['callback']):
-                                responseListener['callback'](False, message)
+                                if isinstance(response_filter, dict):
+                                    if 'messageType' in response_filter and response_filter['messageType'] != message.messageType:
+                                        ok = False
+                                    if 'subType' in response_filter and response_filter['subType'] != message.subType:
+                                        ok = False
+
+                                if ok:
+                                    pendingMessage.next(data = message)
 
                         i += 1
 
@@ -619,24 +465,18 @@ class MySensorsProtocol(LineReader):
                     self.log.debug("ack message received")
 
                     i = 0
-                    while i < len(self._ackWaitingMessages):
-                        ackWaitingMessage = self._ackWaitingMessages[i]
-                        originalMessage = ackWaitingMessage['message']
+                    while i < len(self._pendingMessages):
+                        pendingMessage = self._pendingMessages[i]
+                        originalMessage = pendingMessage.command
 
                         if originalMessage.nodeId == message.nodeId and \
                                 originalMessage.childSensorId == message.childSensorId and \
                                 originalMessage.messageType == message.messageType and \
                                 originalMessage.subType == message.subType:
-
-                            # remove this item
-                            self._ackWaitingMessages.pop(i)
-                            i -= 1
                             
                             self.log.debug("ack match")
 
-                            if callable(ackWaitingMessage['callback']):
-                                ackWaitingMessage['callback'](
-                                    False, originalMessage)
+                            pendingMessage.next()
 
                             break
                         
@@ -644,167 +484,29 @@ class MySensorsProtocol(LineReader):
 
         return r
 
-    def send(self, message, smartSleep=None, callback=None, waitResponse=None):
-        """
-         $message message to send
-         $smartSleep (optional) true|false|null if a boolean is given, force or not the smartSleep feature
-         $callback (optional) function($error, $messageSent, $messageReceived = null)
-         $waitResponse (optional) true|false wait for a response or not
-        """
-        cb = None
-        
-        if not message.ack_set:
-            message.ack = self.gateway.ackEnabled
+    def send(self, message, smartSleep=None, done=None, err=None, response=None):
 
-        if smartSleep is None:
-            smartSleep = False
-            if message.nodeId != GATEWAY_ADDRESS and message.nodeId != BROADCAST_ADDRESS:
-                destinationNode = self.gateway.getNode(message.nodeId)
-                if destinationNode:
-                    smartSleep = destinationNode.smartSleep
+        self.log.debug("message send smartSleep=%s msg=%s" % (str(smartSleep), message))
 
-        if callable(callback):
-            if waitResponse:
+        result = Result(self, message, done = done, err = err, smartSleep=smartSleep, response=response)
 
-                filter = {}
+        if self.process.is_open:
+            result.next()
 
-                if message.messageType == REQ:
-                    filter['messageType'] = SET
-
-                elif message.messageType == INTERNAL:
-
-                    if message.subType == I_ID_REQUEST:
-                        filter['subType'] = I_ID_RESPONSE
-                    elif message.subType == I_NONCE_REQUEST:
-                        filter['subType'] = I_NONCE_RESPONSE
-                    elif message.subType == I_HEARTBEAT_REQUEST:
-                        filter['subType'] = I_HEARTBEAT_RESPONSE
-                    elif message.subType == I_DISCOVER_REQUEST:
-                        filter['subType'] = I_DISCOVER_RESPONSE
-                    elif message.subType == I_PING:
-                        filter['subType'] = I_PONG
-                    elif message.subType == I_REGISTRATION_REQUEST:
-                        filter['subType'] = I_REGISTRATION_RESPONSE
-                    elif message.subType == I_PRESENTATION:
-                        # todo
-                        # multiple response
-                        pass
-                    elif message.subType == I_DEBUG or message.subType == I_VERSION:
-                        filter['subType'] = message.subType
-
-                    if filter:
-                        filter['messageType'] = INTERNAL
-
-                def waitresp_cb(error, messageSent):
-                    if error:
-                        # an error occurs, the message could not have been sent
-                        callback(error, messageSent, None)
-                    else:
-                        # wait for a response
-
-                        def cb(error, messageReceived):
-                            callback(error, messageSent, messageReceived)
-
-                        self._responseListeners.append(dict_recursive_update({
-                            'callback': cb,
-                            'ts': time.time(),
-                            'nodeId': messageSent.nodeId,
-                            'childSensorId': messageSent.childSensorId,
-                            'messageType': messageSent.messageType,
-                            'subType': messageSent.subType
-                        }, filter))
-
-                cb = waitresp_cb
-
-            else:
-
-                def nowaitresp_cb(error, messageSent):
-                    callback(error, messageSent, None)
-
-                cb = nowaitresp_cb
-
-        self.log.debug("MySensors: message send nodeId=%d sensorId=%d messageType=%d smartSleep=%s msg=%s" % (
-            message.nodeId, message.childSensorId, message.messageType, str(smartSleep), message))
-
-        ts = time.time()
-
-        message.ts = ts
-
-        if not self.process.is_open:
-            if cb:
-                cb('not connected', message)
-
-            return
-
-        if smartSleep:
-            # buffer this message
-            # wait for a heartbeat message to send it !
-
-            self._pendingMessages.append({
-                'message': message,
-                'callback': cb,
-                'ts': ts
-            })
-
-            return
+            if result.state != Result.DONE:
+                self._pendingMessages.append(result)
         else:
+            result.reject('not connected')
 
-            if message.ack == REQUEST_ACK:
-                # ack requested
-                self._ackWaitingMessages.append({
-                    'message': message,
-                    'callback': cb,
-                    'ts': ts
-                })
-
-            wb = self.write_line(message.raw(), encode = False) # raw() returns binary, no need to encode
-
-            if message.ack != REQUEST_ACK and cb:
-                cb(False, message)
-
-            return
-
-    def updateFirmware(self, node, firmware, callback=None):
-
-        # tells the node, there is a new firmware
-        type = random.randint(1, 32767)
-        version = 256  # === 1.0 or 0100 in hex
-        nbBlocks = int(math.ceil(len(firmware) / self.FIRMWARE_BLOCK_SIZE))
-        crc = binascii.crc_hqx(firmware, 0)
-
-        self._pendingFirmware[node.nodeId] = {
-            'callback': callback,
-            'firmware': firmware,
-            'deviceId': node.id,
-            'ts': time.time(),
-            'lastBlockSent': -1,
-            'blockSent': 0,
-            'type': type,
-            'version': version,
-            'nbBlocks': nbBlocks,
-            'crc': crc
-        }
-
-        message = Message(node.nodeId, INTERNAL_CHILD, STREAM,
-                          ST_FIRMWARE_CONFIG_RESPONSE, pack('nnnn', type, version, nbBlocks, crc))
-
-        def cb(error, messageSent, messageReceived):
-            if error:
-                # free memory
-                del self._pendingFirmware[node.nodeId]
-
-                if callable(callback):
-                    callback(error)
-
-        self.send(message, callback=cb)
+        return result
 
     def connection_lost(self, exc):
 
         self.gateway.setConnectState(False)
 
-        for responseListener in self._responseListeners:
-            responseListener['callback']('disconnected', None)
-        self._responseListeners = []
+        for pendingMessages in self._pendingMessages:
+            pendingMessages.reject('disconnected')
+        self._pendingMessages = []
 
         super(MySensorsProtocol, self).connection_lost(exc)
 
@@ -812,75 +514,28 @@ class MySensorsProtocol(LineReader):
         # check for timeout !
         now = time.time()
 
-        # check for timeout ack messages
-        i = 0
-        while i < len(self._ackWaitingMessages):
-            ackWaitingMessage = self._ackWaitingMessages[i]
-
-            if now - ackWaitingMessage['ts'] > self.ACK_TIMEOUT:
-
-                # remove this item
-                self._ackWaitingMessages.pop(i)
-                i -= 1
-
-                if callable(ackWaitingMessage['callback']):
-                    ackWaitingMessage['callback'](
-                        'ack timeout', ackWaitingMessage['message'])
-
-            i += 1
-
         # check for pending message timeout
         i = 0
         while i < len(self._pendingMessages):
             pendingMessage = self._pendingMessages[i]
 
-            if now - pendingMessage['ts'] > self.PENDING_MESSAGE_TIMEOUT:
+            if now - pendingMessage.send_ts > self.TIMEOUT:
+                pendingMessage.reject('timeout')
+                remove = True
 
+            if pendingMessage.state == Result.DONE:
+                remove = True
+
+            if remove:
                 # remove this item
                 self._pendingMessages.pop(i)
                 i -= 1
-
-                if callable(pendingMessage['callback']):
-                    pendingMessage['callback'](
-                        'smartSleep timeout', pendingMessage['message'])
-
-            i += 1
-
-        # check firmware update timeout
-        for nodeId, firmwareInfo in iteritems(self._pendingFirmware):
-            if now - firmwareInfo['ts'] > self.FIRMWARE_UPDATE_TIMEOUT:
-
-                # remove this item
-                del self._pendingFirmware[nodeId]
-
-                if callable(firmwareInfo['callback']):
-                    firmwareInfo['callback']('firmware update timeout')
-
-        # check stream timeout
-        for nodeId, stream in iteritems(self._pendingStreams):
-            if now - stream['ts'] > self.STREAM_TIMEOUT:
-                # remove this item
-                del self._pendingStreams[nodeId]
-
-        # check response timeout
-        i = 0
-        while i < len(self._responseListeners):
-            responseListener = self._responseListeners[i]
-
-            if now - responseListener['ts'] > self.RESPONSE_TIMEOUT:
-
-                # remove this item
-                self._responseListeners.pop(i)
-                i -= 1
-
-                if callable(responseListener['callback']):
-                    responseListener['callback']('response timeout', None)
 
             i += 1
     
     def check_disconnect(self):
         devices = self.core.find({
-            'extends': 'MySensorsNode'
+            'extends': 'resources/MySensorsNode'
         })
         
         now = datetime.datetime.utcnow()
@@ -911,7 +566,7 @@ class MySensorsController(TransportProcess):
             raise RuntimeError('invalid gateway type %s' % type(gateway).__name__)
 
         super(MySensorsController, self).__init__(
-            'mysensors',
+            'mysensors.%s' % gateway.id,
             transport=transport,
             protocol=MySensorsProtocol(gateway)
         )
@@ -919,7 +574,4 @@ class MySensorsController(TransportProcess):
 
     def send(self, *args, **kwargs):
         self.protocol.send(*args, **kwargs)
-
-    def updateFirmware(self, *args, **kwargs):
-        self.protocol.updateFirmware(*args, **kwargs)
 

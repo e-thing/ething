@@ -127,7 +127,7 @@ class MqttDispatcherService(Process):
 
     def on_disconnect(self, client, userdata, rc):
         if rc != 0:
-            self.log.warn("Unexpected disconnection")
+            self.log.warning("Unexpected disconnection")
             self._mqttClient.reconnect()
 
         self.core.signalDispatcher.unbind('*', self.dispatchSignal)

@@ -12,7 +12,7 @@ class ZigateGateway(Device):
 
     def getDevices(self, filter=None):
         q = {
-            'extends': 'ZigateDevice',
+            'extends': 'resources/ZigateDevice',
             'createdBy': self.id
         }
 
@@ -25,7 +25,7 @@ class ZigateGateway(Device):
 
     def getDevice(self, addr):
         return self.ething.findOne({
-            'extends': 'ZigateDevice',
+            'extends': 'resources/ZigateDevice',
             'createdBy': self.id,
             'address': addr
         })

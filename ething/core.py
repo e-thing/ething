@@ -1,12 +1,8 @@
 # coding: utf-8
 
-"""
- @author Adrien Mezerette <a.mezerette@gmail.com>
- @package ething
-"""
-
 from future.utils import string_types
-import pymongo
+
+from .reg import get_registered_class
 from .DbFs import DbFs
 from .ResourceQueryParser import ResourceQueryParser
 from .Config import Config
@@ -16,38 +12,15 @@ from .rpc import RPC
 from .version import __version__
 from .plugin import instanciate_plugins
 from .Scheduler import Scheduler
+from .ResourceDbCache import ResourceDbCache
+
+import pymongo
 import logging
 import sys
 import os
 import datetime
 import re
 import pytz
-
-from .meta import get_resource_class, get_signal_class
-
-from .webserver.server import WebServer
-from .RuleManager import RuleManager
-from .PingService import PingService
-from .MqttDispatcher import MqttDispatcher
-
-from .File import File
-from .Table import Table
-from .Rule import Rule
-
-from .rflink import RFLink
-from .mysensors import MySensors
-from .mqtt import mqtt
-from .yeelight import Yeelight
-from .mihome import Mihome
-try:
-    from .blea import Blea
-except:
-    pass
-# from .zigate import Zigate
-from .device.Http import Http
-from .device.RTSP import RTSP
-from .device.SSH import SSH
-from .device.Denon import Denon
 
 
 class Core(object):
@@ -98,6 +71,10 @@ class Core(object):
             self.db = mongoClient[self.config['db']['database']]
             if self.db is None:
                 raise Exception('unable to connect to the database')
+
+            self.log.info('connected to database: %s' % server)
+
+            self.resource_db_cache = ResourceDbCache(self)
 
         except:
             raise Exception(
@@ -215,44 +192,7 @@ class Core(object):
     #
 
     def find(self, query=None, limit=None, skip=None, sort=None):
-
-        if query is None:
-            query = {}
-
-        if isinstance(query, string_types):
-            # parse the query string
-            query = self.resourceQueryParser.parse(query)
-
-        c = self.db["resources"]
-
-        resources = []
-
-        opt = {}
-
-        if limit is None:
-            limit = 0
-        if skip is None:
-            skip = 0
-
-        if isinstance(sort, string_types):
-            m = re.search('^([+-]?)(.+)$', sort)
-            if m is not None:
-                sort = [(m.group(2), pymongo.ASCENDING if m.group(
-                    1) != '-' else pymongo.DESCENDING)]
-            else:
-                sort = None
-
-        if sort is None:
-            sort = [('modifiedDate', pymongo.DESCENDING)]
-
-        cursor = c.find(query, skip=skip, limit=limit, sort=sort)
-
-        for doc in cursor:
-            cl = get_resource_class(doc['type'])
-            if cl is not None:
-                resources.append(cl(self, doc))
-
-        return resources
+        return self.resource_db_cache.find(query = query, limit = limit, skip = skip, sort = sort)
 
     def findOne(self, query=None):
         r = self.find(query, 1)
@@ -261,10 +201,10 @@ class Core(object):
     def get(self, id):
         if not isinstance(id, string_types):
             raise ValueError('id must be a string')
-        return self.findOne({'_id': id})
+        return self.resource_db_cache.get(id)
 
     def create(self, type, attributes):
-        cl = get_resource_class(type)
+        cl = get_registered_class(type)
         if cl is not None:
             return cl.create(attributes, ething=self)
         else:
@@ -346,7 +286,7 @@ class Core(object):
 
         if isinstance(signal, string_types):
             try:
-                cls = get_signal_class(signal)
+                cls = get_registered_class('signals/' + signal)
                 if not cls:
                     return
                 signal = cls(*args, **kwargs)

@@ -3,7 +3,7 @@
 from .Signal import Signal
 from .Event import Event
 from croniter import croniter
-from ething.base import attr, isString
+from ething.reg import attr, String
 import pytz
 import datetime
 
@@ -12,7 +12,7 @@ class Tick(Signal):
     pass
 
 
-@attr('cron_expression', validator=isString(allow_empty=False))
+@attr('cron_expression', type=String(allow_empty=False))
 class Timer(Event):
     """
     is emitted periodically at fixed times, dates, or intervals

@@ -1,15 +1,15 @@
 # coding: utf-8
 
 
-from ething.Device import Device, method, attr, isString, isObject, isInteger, isNone
+from ething.Device import *
 import paramiko
 from ething.utils import pingable
 
 
 @pingable()
-@attr('host', validator=isString(allow_empty=False), description="The ip address or hostname of the device to connect to.")
-@attr('port', validator=isInteger(min=0, max=65535), default=22, description="The port number of the device to connect to. The default port number is 22.")
-@attr('auth', validator=isObject(user=isString(allow_empty=False), password=isString(allow_empty=False)) | isNone(), default=None, description="An object describing the credentials to use.")
+@attr('auth', type=Dict(mapping = OrderedDict([('user', String(allow_empty=False)), ('password', String(allow_empty=False))])), description="An object describing the credentials to use.")
+@attr('port', type=Integer(min=0, max=65535), default=22, description="The port number of the device to connect to. The default port number is 22.")
+@attr('host', type=String(allow_empty=False), description="The ip address or hostname of the device to connect to.")
 class SSH(Device):
     """
     SSH Device resource representation

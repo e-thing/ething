@@ -52,7 +52,7 @@ def install(core, app, auth, **kwargs):
         if attr is not None:
             attr.setdefault('createdBy', g.auth.resource)
 
-            r = core.create('Rule', attr)
+            r = core.create('resources/Rule', attr)
 
             if r:
                 response = app.jsonify(r)

@@ -1,10 +1,11 @@
 # coding: utf-8
 
 from . import Signal, Event
-from ething.base import attr, Validator, isNone, abstract
+from ething.reg import *
 from ething.ShortId import ShortId
 from ething.ResourceQueryParser import ResourceQueryParser
 from future.utils import string_types
+from ething.core import Core
 
 
 class ResourceSignal(Signal):
@@ -23,9 +24,10 @@ class ResourceSignal(Signal):
         return "%s [%s]" % (type(self).__name__, self.resource)
     
 
-class isResourceFilter(Validator):
+class ResourceFilter(Basetype):
 
-    def __init__(self, onlyTypes=None):
+    def __init__(self, onlyTypes=None, **attributes):
+        super(ResourceFilter, self).__init__(**attributes)
         self.onlyTypes = onlyTypes
 
     def _checkId(self, id, ething):
@@ -42,10 +44,10 @@ class isResourceFilter(Validator):
                 raise ValueError("the resource %s must be one of the following types : %s" % (
                     str(resource), ', '.join(self.onlyTypes)))
 
-    def validate(self, value, object):
+    def validate(self, value):
 
         resourceFilter = value
-        ething = object.ething
+        ething = Core.get_instance()
 
         if isinstance(resourceFilter, string_types):
             # can either be an id or an expression
@@ -75,18 +77,18 @@ class isResourceFilter(Validator):
 
         return value
 
-    def schema(self):
-        return {
-            "type": "array",
-            "items": {
-                "type": "string"
-            },
-            "onlyTypes": self.onlyTypes
+    def toSchema(self, **kwargs):
+        schema = super(ResourceFilter, self).toSchema(**kwargs)
+        schema['type'] = "array"
+        schema['items'] = {
+            "type": "string"
         }
+        schema['onlyTypes'] = self.onlyTypes
+        return schema
 
 
 @abstract
-@attr('resource', validator=isResourceFilter(), description="filter the resource emitting the signal")
+@attr('resource', type=ResourceFilter(), description="filter the resource emitting the signal")
 class ResourceEvent(Event):
 
     signal = ResourceSignal

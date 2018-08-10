@@ -11,10 +11,12 @@ import datetime
 class PingPlugin(Plugin):
 
     def load(self):
+        super(PingPlugin, self).load()
         self.service = PingService(self.core)
         self.service.start()
 
     def unload(self):
+        super(PingPlugin, self).unload()
         if hasattr(self, 'service'):
             self.service.stop()
             del self.service
@@ -39,7 +41,7 @@ class PingService(Process):
         """
 
         devices = self.core.find({
-            'extends': 'Device'
+            'extends': 'resources/Device'
         })
 
         for device in devices:

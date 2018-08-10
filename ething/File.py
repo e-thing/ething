@@ -2,6 +2,7 @@
 
 from future.utils import text_type, bord
 from .Resource import Resource
+from .entity import *
 import datetime
 import os
 from ething.utils.mime import content_to_mime, ext_to_mime
@@ -12,20 +13,19 @@ except ImportError:
     Image = None
     ImageOps = None
 from io import BytesIO
-from .base import attr, isBool, isString, isNone, isInteger, READ_ONLY, PRIVATE
 
 
-@attr('expireAfter', validator=isInteger(min=1) | isNone(), default=None, description="The amount of time (in seconds) after which this resource will be removed.")
+@attr('expireAfter', type=Nullable(Integer(min=1)), default=None, description="The amount of time (in seconds) after which this resource will be removed.")
 @attr('content', default=None, mode=PRIVATE)
 @attr('thumb', default=None, mode=PRIVATE)
 @attr('size', default=0, mode=READ_ONLY, description="The size of this resource in bytes")
 @attr('isText', default=True, mode=READ_ONLY, description="True if this file has text based content.")
 @attr('mime', default='text/plain', mode=READ_ONLY, description="The MIME type of the file (automatically detected from the content).")
-@attr('contentModifiedDate', default=datetime.datetime.utcnow(), mode=READ_ONLY, description="Last time the content of this file was modified (formatted RFC 3339 timestamp).")
+@attr('contentModifiedDate', default=lambda _: datetime.datetime.utcnow(), mode=READ_ONLY, description="Last time the content of this file was modified (formatted RFC 3339 timestamp).")
 class File(Resource):
 
-    def toJson(self):
-        o = super(File, self).toJson()
+    def toJson(self, **kwargs):
+        o = super(File, self).toJson(**kwargs)
         o['hasThumbnail'] = bool(self._thumb)
         return o
 
@@ -47,7 +47,6 @@ class File(Resource):
             self.updateMeta(File.META_MIME | File.META_TEXT)
 
     # must be called regularly by the core
-
     def checkExpiredData(self):
         # remove the file if the data has expired
         if self.isExpired():
@@ -74,27 +73,26 @@ class File(Resource):
 
     def write(self, bytes, encoding=None):
 
-        if isinstance(bytes, text_type):
-            if encoding is None:
-                raise Exception('No encoding specified')
-            bytes = bytes.encode(encoding)
+        with self:
+            if isinstance(bytes, text_type):
+                if encoding is None:
+                    raise Exception('No encoding specified')
+                bytes = bytes.encode(encoding)
 
-        # remove that file if it exists
-        self.ething.fs.removeFile(self._content)
-        self._content = None
-        self._size = 0
+            # remove that file if it exists
+            self.ething.fs.removeFile(self._content)
+            self._content = None
+            self._size = 0
 
-        if bytes:
-            self._content = self.ething.fs.storeFile('File/%s/content' % self.id, bytes, {
-                'parent': self.id
-            })
-            self._size = self.ething.fs.getFileSize(self._content)
+            if bytes:
+                self._content = self.ething.fs.storeFile('File/%s/content' % self.id, bytes, {
+                    'parent': self.id
+                })
+                self._size = self.ething.fs.getFileSize(self._content)
 
-        self._contentModifiedDate = datetime.datetime.utcnow()
+            self._contentModifiedDate = datetime.datetime.utcnow()
 
-        self.updateMeta(File.META_ALL, bytes)
-
-        self.save()
+            self.updateMeta(File.META_ALL, bytes)
 
         # generate an event
         self.dispatchSignal('FileDataModified', self)
@@ -121,72 +119,72 @@ class File(Resource):
 
     def updateMeta(self, opt=META_ALL, content=None):
 
-        if opt & File.META_MIME:
-            """ try to find the correct mime type according to the extension first, then if not found, by the content """
+        with self:
+            if opt & File.META_MIME:
+                """ try to find the correct mime type according to the extension first, then if not found, by the content """
 
-            mime = None
-            filename, ext = os.path.splitext(self.name)
-            ext = ext[1:]
+                mime = None
+                filename, ext = os.path.splitext(self.name)
+                ext = ext[1:]
 
-            if ext:
-                mime = ext_to_mime(ext)
+                if ext:
+                    mime = ext_to_mime(ext)
 
-            if mime is None:
-                # try to get the mime type from the content
-                if content is None:
-                    content = self.read()
-                if content:
-                    mime = content_to_mime(content)
-            
-            if mime is None:
-                mime = 'text/plain' # default
+                if mime is None:
+                    # try to get the mime type from the content
+                    if content is None:
+                        content = self.read()
+                    if content:
+                        mime = content_to_mime(content)
 
-            self._mime = mime
+                if mime is None:
+                    mime = 'text/plain' # default
 
-        if opt & File.META_TEXT:
+                self._mime = mime
 
-            isText = None
-            mime = self.mime
-            m = re.search('^text', mime.lower())
-            if m is not None:
-                isText = True
-            else:
-                m = re.search('^(image|audio|video)', mime.lower())
+            if opt & File.META_TEXT:
+
+                isText = None
+                mime = self.mime
+                m = re.search('^text', mime.lower())
                 if m is not None:
-                    isText = False
+                    isText = True
+                else:
+                    m = re.search('^(image|audio|video)', mime.lower())
+                    if m is not None:
+                        isText = False
 
-            # other mime type are undetermined
-            if isText is None:
+                # other mime type are undetermined
+                if isText is None:
+                    if not content:
+                        content = self.read()
+
+                    isText = File.isPrintable(content)
+
+                self._isText = isText
+
+            if opt & File.META_THUMB:
+
                 if not content:
                     content = self.read()
 
-                isText = File.isPrintable(content)
+                thumb = None
+                mime = self.mime
+                m = re.search('^image', mime.lower())
+                if content and m is not None:
+                    try:
+                        thumb = File.createThumb(content, 128)
+                    except:
+                        pass
 
-            self._isText = isText
+                self.ething.fs.removeFile(self._thumb)
+                self._thumb = None
 
-        if opt & File.META_THUMB:
+                if thumb:
+                    self._thumb = self.ething.fs.storeFile('App/%s/thumb' % self.id, thumb, {
+                        'parent': self.id
+                    })
 
-            if not content:
-                content = self.read()
-
-            thumb = None
-            mime = self.mime
-            m = re.search('^image', mime.lower())
-            if content and m is not None:
-                try:
-                    thumb = File.createThumb(content, 128)
-                except:
-                    pass
-
-            self.ething.fs.removeFile(self._thumb)
-            self._thumb = None
-
-            if thumb:
-                self._thumb = self.ething.fs.storeFile('App/%s/thumb' % self.id, thumb, {
-                    'parent': self.id
-                })
-
-        self.save()
 
     @staticmethod
     def isPrintable(content, limit=1000):

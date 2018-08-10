@@ -43,7 +43,7 @@ class MihomeProtocol(Protocol):
         # response management
         self._responseListeners = []
 
-        self.scheduler.setInterval(0.5, self.check_timeout)
+        self.scheduler.setInterval(1, self.check_timeout)
         self.scheduler.setInterval(60, self.check_disconnect)
     
     def loop(self):
@@ -52,6 +52,8 @@ class MihomeProtocol(Protocol):
     def connection_made(self):
         super(MihomeProtocol, self).connection_made()
         self._responseListeners = []
+
+        self.search()
 
 
     def data_received(self, from_tupple):
@@ -68,139 +70,120 @@ class MihomeProtocol(Protocol):
             
             sid = response.get('sid')
             cmd = response.get('cmd')
+            model = response.get('model')
+            device = None
 
-            if cmd == 'heartbeat' or cmd == 'report' or cmd == 'read_ack':
+            #
+            # 1 - retrieve the device from the sid
+            #
+            if sid:
+                device = self.core.findOne({
+                    'extends': 'resources/MihomeBase',
+                    'sid': sid
+                })
 
-                """
-                 {"cmd":"report","model":"gateway","sid":"34ce00fb61a9","short_id":0,"data":"{\"rgb\":0,\"illumination\":503}"}
-                 {"cmd":"report","model":"weather.v1","sid":"158d0001a4b64a","short_id":22319,"data":"{\"temperature\":\"1983\"}"}
-                 {"cmd":"report","model":"weather.v1","sid":"158d0001a4b64a","short_id":22319,"data":"{\"humidity\":\"3914\"}"}
-                 {"cmd":"heartbeat","model":"gateway","sid":"34ce00fb61a9","short_id":"0","token":"JxtPXoxj2FmBrTqA","data":"{\"ip\":\"192.168.1.8\"}"}
-                 {"cmd":"heartbeat","model":"sensor_magnet.aq2","sid":"158d0001d84e77","short_id":10731,"data":"{\"voltage\":2965,\"status\":\"close\"}"}
-                """
+                if not device and model is not None:
+                    # try to create a new device from the incoming data !
+                    # we only need sid and model.
 
-                if response.get('model') == 'gateway':
-                    # concerning a gateway
+                    attributes = {
+                        'sid': sid,
+                        'model': model,
+                        'short_id': response.get('short_id', 0),
+                        'name': model
+                    }
 
-                    gatewayDevice = self.core.findOne({
-                        'type': 'MihomeGateway',
-                        'sid': sid
-                    })
+                    if model == 'gateway':
+                        # concerning a gateway
+                        attributes.update({'ip': ip})
+                        device = self.core.create('resources/MihomeGateway', attributes)
 
-                    if not gatewayDevice:
-                        response_data = json.loads(response.get('data', '{}'))
-                        ip = ip or response_data.get('ip')
+                    else:
+                        # concerning a device
 
-                        if ip:
-                            gatewayDevice = self.core.create('MihomeGateway', {
-                                'name': 'gateway',
-                                'sid': sid,
-                                'ip': ip
+                        gateway = self.core.findOne({
+                            'type': 'resources/MihomeGateway',
+                            'ip': ip
+                        })
+
+                        if gateway:
+
+                            attributes.update({
+                                'createdBy': gateway.id,
                             })
-                            if not gatewayDevice:
-                                self.log.error(
-                                    "Mihome: unable to create the gateway sid:%s" % sid)
 
-                    if gatewayDevice:
-                        with gatewayDevice:
-                            gatewayDevice.setConnectState(True)
-                            gatewayDevice.processData(response)
+                            if model == 'sensor_ht' or model == 'weather.v1':
+                                attributes.update({
+                                    'createdBy': gateway.id,
+                                })
 
-                else:
-                    # concerning a device
-
-                    device = self.core.findOne({
-                        'extends': 'MihomeDevice',
-                        'sid': sid
-                    })
+                                device = self.core.create('resources/MihomeSensorHT', attributes)
+                        else:
+                            self.log.warning(
+                                "Mihome: gateway not found with ip=%s" % (ip))
 
                     if not device:
+                        self.log.error(
+                            "Mihome: unable to create the device model: %s , sid:%s" % (model, sid))
 
-                        model = response.get('model')
 
-                        if model == 'sensor_ht' or model == 'weather.v1':
-                            device = self.core.create('MihomeSensorHT', {
-                                'name': 'thermometer',
-                                'sid': sid
-                            })
+                #
+                # 2 - parse the packet
+                #
+                if device:
+                    with device:
+                        device.setConnectState(True)
+                        device._processData(response)
 
-                        if not device:
-                            self.log.error(
-                                "Mihome: unable to create the device model: %s , sid:%s" % (model, sid))
+                if '_ack' in cmd:
 
-                    if device:
-                        with device:
-                            device.setConnectState(True)
-                            device.processData(response)
+                    # response ?
 
-            elif cmd == 'write_ack':
-                pass
-            else:
-                self.log.warn("Mihome: received unk command %s" % cmd)
+                    i = 0
+                    while i < len(self._responseListeners):
+                        responseListener = self._responseListeners[i]
 
-            if cmd in ['read_ack', 'write_ack', 'get_id_list_ack']:
+                        if responseListener.command.get('sid') == sid and responseListener.ack == cmd:
 
-                # response ?
+                            # remove this item
+                            self._responseListeners.pop(i)
+                            i -= 1
 
-                i = 0
-                while i < len(self._responseListeners):
-                    responseListener = self._responseListeners[i]
+                            responseListener.resolve(response, args = (device, ))
 
-                    if responseListener['sid'] == sid and responseListener['ack'] == cmd:
+                        i += 1
 
-                        # remove this item
-                        self._responseListeners.pop(i)
-                        i -= 1
+    def send(self, command, ip = None, port = None, done = None, ack = True, err = None):
+        ip = ip or MULTICAST_ADDRESS
+        port = port or MULTICAST_PORT
 
-                        if callable(responseListener['callback']):
-                            responseListener['callback'](
-                                False, responseListener['command'], response)
+        if ack is True:
+            ack = command.get('cmd', '') + '_ack'
 
-                    i += 1
-
-    def send(self, gateway, command, callback=None):
-
-        if isinstance(gateway, string_types):
-            gateway = self.core.get(gateway)
-
-        if command.get('cmd') == 'write' and isinstance(command.get('data'), dict):
-            command['data']['key'] = gateway.getGatewayKey()
-
-        return self.sendCommand(command, callback, gateway.ip)
-
-    def sendCommand(self, command, callback=None, addr=MULTICAST_ADDRESS):
-        commandStr = json.dumps(command).encode("utf-8")
+        result = Result(ack, command=command, done=done, err=err)
 
         if self.process.is_open:
 
-            self.log.debug("Mihome: send data to %s : %s" % (addr, commandStr))
+            self.log.debug("command send %s" % str(command))
 
             try:
-                self.transport.write(commandStr, (addr, MULTICAST_PORT))
+                self.transport.write(json.dumps(command).encode("utf-8"), (ip, port))
             except:
-                if callable(callback):
-                    callback('send error', command, None)
+                result.reject('send error')
             else:
-                if callable(callback):
-                    cmd = command.get('cmd')
-                    sid = command.get('sid')
-
-                    self._responseListeners.append({
-                        'callback': callback,
-                        'ts': time.time(),
-                        'sid': sid,
-                        'ack': cmd + '_ack',
-                        'command': command
-                    })
-
+                if ack:
+                    self._responseListeners.append(result)
+                else:
+                    result.resolve()
         else:
-            if callable(callback):
-                callback('not connected', command, None)
+            result.reject('not connected')
+
+        return result
 
     def connection_lost(self, exc):
 
         for responseListener in self._responseListeners:
-            responseListener['callback']('disconnected', None)
+            responseListener.reject('disconnected')
         self._responseListeners = []
 
         super(MihomeProtocol, self).connection_lost(exc)
@@ -213,19 +196,20 @@ class MihomeProtocol(Protocol):
         while i < len(self._responseListeners):
             responseListener = self._responseListeners[i]
 
-            if now - responseListener['ts'] > self.RESPONSE_TIMEOUT:
+            if now - responseListener.send_ts > self.RESPONSE_TIMEOUT:
                 # remove this item
                 self._responseListeners.pop(i)
                 i -= 1
 
-                responseListener['callback'](
-                    'response timeout', responseListener['command'], None)
+                self.log.debug("command timeout for : %s" % str(responseListener.command.get('cmd')))
+
+                responseListener.reject('response timeout')
 
             i += 1
     
     def check_disconnect(self):
         devices = self.core.find({
-            'extends': 'MihomeDevice'
+            'extends': 'resources/MihomeDevice'
         })
         
         now = datetime.datetime.utcnow()
@@ -233,6 +217,10 @@ class MihomeProtocol(Protocol):
         for device in devices:
             if device.lastSeenDate and now - device.lastSeenDate > datetime.timedelta(seconds=self.ACTIVITY_TIMEOUT):
                 device.setConnectState(False)
+
+    def search(self):
+        self.log.debug('search...')
+        self.send({"cmd":"whois"}, port = SERVER_PORT, ack = False)
 
 
 class Controller(TransportProcess):

@@ -1,13 +1,13 @@
 # coding: utf-8
 
 from .Action import Action
-from ething.Resource import isResource, ResourceModelAdapter
-from ething.base import attr, READ_ONLY, isString
+from ething.Resource import ResourceType
+from ething.reg import *
 from ething.ScriptEngine import ScriptEngine
 
 
-@attr('script', validator=isResource(accepted_types=('File',)), model_adapter=ResourceModelAdapter(), description="The JavaScript code to be executed")
-@attr('args', validator=isString(), default='', description="The arguments passed to the script")
+@attr('script', type=ResourceType(accepted_types=('resources/File',)), description="The JavaScript code to be executed")
+@attr('args', type=String(), default='', description="The arguments passed to the script")
 @attr('return_code', default=0, mode=READ_ONLY, description="The last exit code returned by the script")
 class RunScript(Action):
 

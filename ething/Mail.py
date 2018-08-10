@@ -9,9 +9,6 @@ from email.mime.multipart import MIMEMultipart
 from email.mime.base import MIMEBase
 
 
-from .Table import Table
-from .File import File
-
 
 class Mail(object):
 
@@ -30,6 +27,8 @@ class Mail(object):
             self.to = [self.to]
 
     def send(self, subject=None, message=None, attachments=None, to=None):
+        from .Table import Table
+        from .File import File
 
         if not self.host or not self.port or not self.user or not self.password:
             self.log.debug('warning: no configuration set')
@@ -42,7 +41,7 @@ class Mail(object):
             to = self.to
 
         if not to or len(to) == 0:
-            self.log.warn('no recipient set')
+            self.log.warning('no recipient set')
             return False
 
         try:

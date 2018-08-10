@@ -24,7 +24,7 @@ class BleaDevice(Device):
         
         # does the device already exist !
         device = ething.findOne({
-            'extends': 'BleaDevice',
+            'extends': 'resources/BleaDevice',
             'mac': mac
         })
         
@@ -33,7 +33,7 @@ class BleaDevice(Device):
                 device = ething.create(cls.__name__, {
                     'name': name or cls.name or 'dev',
                     'mac': mac,
-                    'createdBy': gateway
+                    'createdBy': gateway.id
                 })
                 
                 if device:

@@ -1,97 +1,70 @@
 # coding: utf-8
 
-from future.utils import with_metaclass, string_types
-import string
-import re
-import sys
-import copy
+from .ShortId import ShortId, Id
+from .dbentity import *
+from .core import Core
 import datetime
-from .ShortId import ShortId
-from .Helpers import dict_recursive_update
-from .meta import MetaResource
-from .base import attr, DataObject, isBool, isString, isNone, isNumber, isObject, isEnum, READ_ONLY, PRIVATE, ModelAdapter, Validator, synchronized
-from future.utils import iteritems
-import pytz
 
 
-class isResource(isString):
+class ResourceType(Id):
 
-    def __init__(self, accepted_types=None):
-        super(isResource, self).__init__(regex='^[-_a-zA-Z0-9]{7}$')
+    def __init__(self, accepted_types=None, **attributes):
+        super(ResourceType, self).__init__(**attributes)
         self.accepted_types = accepted_types
 
-    def validate(self, value, object):
-        if isinstance(value, string_types):
-            try:
-                value = super(isResource, self).validate(value, object)
-            except ValueError:
-                raise ValueError('not an id')
+    def check_existance(self, value):
+        ething = Core.get_instance()
+        r = ething.get(value)
 
-            r = object.ething.get(value)
-
-            if r is None:
-                raise ValueError('the resource id=%s does not exist' % value)
-
-            value = r
-
-        elif not isinstance(value, Resource):
-            raise ValueError('not a Resource')
+        if r is None:
+            raise ValueError('the resource id=%s does not exist' % value)
 
         if self.accepted_types is not None:
             for t in self.accepted_types:
-                if value.isTypeof(t):
+                if r.isTypeof(t):
                     break
             else:
                 raise ValueError('the Resource does not match the following types: %s' % ','.join(
                     self.accepted_types))
 
+    def fromJson(self, value, **kwargs):
+        value = super(ResourceType, self).fromJson(value)
+        self.check_existance(value)
         return value
 
 
-class ResourceModelAdapter(ModelAdapter):
-
-    def set(self, data_object, data, name, value):
-        data[name] = value.id if isinstance(value, Resource) else value
-
-
-class DataModelAdapter(ModelAdapter):
-
-    def set(self, data_object, data, name, value):
-        if name not in data:
-            data[name] = {}
-        
-        for k in list(value):
-            if value[k] is None:
-                data[name].pop(k)
-            else:
-                data[name][k] = value[k]
-
-
-
-@attr('public', validator=isEnum([False, 'readonly', 'readwrite']), default=False, description="False: this resource is not publicly accessible. 'readonly': this resource is accessible for reading by anyone. 'readwrite': this resource is accessible for reading and writing by anyone.")
-@attr('description', validator=isString(), default='', description="A description of this resource.")
-@attr('data', validator=isObject(allow_extra=isString() | isNumber() | isNone() | isBool()), default={}, model_adapter=DataModelAdapter(), description="A collection of arbitrary key-value pairs. Entries with null values are cleared in update. The keys must not be empty or longer than 64 characters, and must contain only the following characters : letters, digits, underscore and dash. Values must be either a string or a boolean or a number")
-@attr('createdBy', validator=isResource() | isNone(), default=None, model_adapter=ResourceModelAdapter(), description="The id of the resource responsible of the creation of this resource, or null.")
+@path('resources')
+@attr('public', type=Enum([False, 'readonly', 'readwrite']), default=False, description="False: this resource is not publicly accessible. 'readonly': this resource is accessible for reading by anyone. 'readwrite': this resource is accessible for reading and writing by anyone.")
+@attr('description', type=String(), default='', description="A description of this resource.")
+@attr('data', type=Dict(allow_extra=True), default={}, description="A collection of arbitrary key-value pairs. Entries with null values are cleared in update. The keys must not be empty or longer than 64 characters, and must contain only the following characters : letters, digits, underscore and dash. Values must be either a string or a boolean or a number")
+@attr('createdBy', type=Nullable(Id()), default=None, description="The id of the resource responsible of the creation of this resource, or null.")
 @attr('modifiedDate', default=lambda _: datetime.datetime.utcnow(), mode=READ_ONLY, description="Last time this resource was modified")
 @attr('createdDate', default=lambda _: datetime.datetime.utcnow(), mode=READ_ONLY, description="Create time for this resource")
-@attr('extends', mode=READ_ONLY, default=lambda cls: [c.__name__ for c in cls.__mro__ if issubclass(c, Resource) and (c is not Resource)], description="An array of classes this resource is based on.")
-@attr('type', mode=READ_ONLY, default=lambda cls: str(cls.__name__), description="The type of the resource")
+@attr('extends', mode=READ_ONLY, default=lambda cls: [get_definition_pathname(c) for c in cls.__mro__ if issubclass(c, Resource) and (c is not Resource)], description="An array of classes this resource is based on.")
+@attr('type', mode=READ_ONLY, default=lambda cls: get_definition_pathname(cls), description="The type of the resource")
 @attr('id', default=lambda _: ShortId.generate(), mode=READ_ONLY, model_key='_id', description="The id of the resource")
-@attr('name', validator=isString(allow_empty=False, regex='^[a-zA-Z0-9 !#$%&\'()+,\-.;=@^_`{    ]+(\\/[a-zA-Z0-9 !#$%&\'()+,\-.;=@^_`{    ]+)*$'), description="The name of the resource")
-class Resource(with_metaclass(MetaResource, DataObject)):
+@attr('name', type=String(allow_empty=False, regex='^[a-zA-Z0-9 !#$%&\'()+,\-.;=@^_`{    ]+(\\/[a-zA-Z0-9 !#$%&\'()+,\-.;=@^_`{    ]+)*$'), description="The name of the resource")
+class Resource(DbEntity):
     """
     The base representation of a resource object
     """
 
-    def __init__(self, ething, data=None):
+    def __init__(self, data, create, ething):
+
+        if isinstance(data.get('createdBy'), Resource):
+            data['createdBy'] = data.get('createdBy').id
+
+        super(Resource, self).__init__(data, create)
         object.__setattr__(self, '_Resource__ething', ething)
-        super(Resource, self).__init__(data=data)
 
     def __str__(self):
         return '%s(id=%s, name=%s)' % (self.type, self.id, self.name)
 
     def __repr__(self):
         return '%s(id=%s, name=%s)' % (self.type, self.id, self.name)
+
+    def __hash__(self):
+        return hash(self.id)
 
     @property
     def ething(self):
@@ -111,31 +84,6 @@ class Resource(with_metaclass(MetaResource, DataObject)):
     def dispatchSignal(self, signal, *args, **kwargs):
         self.ething.dispatchSignal(signal, *args, **kwargs)
 
-    """ internal data getter/setter    """
-
-    def getData(self, name, default=None):
-        return self.data.get(name, default)
-    
-    def setData(self, name, value=None):
-        if isinstance(name, dict):
-            self.data.update(name)
-        else:
-            self.data[name] = value
-        self.setDirtyAttr('data')
-        self.save()
-
-    def hasData(self, name):
-        return name in self.data
-    
-    def removeData(self, name):
-        try:
-            self.data.pop(name)
-        except KeyError:
-            return
-        else:
-            self.setDirtyAttr('data')
-            self.save()
-
     def children(self, filter=None):
         q = {
             'createdBy': self.id
@@ -147,21 +95,16 @@ class Resource(with_metaclass(MetaResource, DataObject)):
             }
 
         return self.ething.find(q)
-    
+
     def removeParent(self):
-        self.createdBy = None
-        self.save()
-    
+        with self:
+            self.createdBy = None
+
     def remove(self, removeChildren=False):
-        id = self.id
+
         children = self.children()
 
-        c = self.ething.db["resources"]
-        c.delete_one({'_id': id})
-
-        self.ething.log.debug("Resource deleted : %s" % str(self))
-
-        self.ething.dispatchSignal('ResourceDeleted', self)
+        super(Resource, self).remove()
 
         for child in children:
             if removeChildren:
@@ -170,36 +113,94 @@ class Resource(with_metaclass(MetaResource, DataObject)):
                 # remove the relationship
                 child.removeParent()
 
-    def _insert(self, data):
+    def _remove(self, removeChildren=False):
+        ##id = self.id
+
+        self.ething.resource_db_cache.remove(self)
+        #c = self.ething.db["resources"]
+        #c.delete_one({'_id': id})
+
+        self.ething.log.debug("Resource deleted : %s" % str(self))
+
+        self.ething.dispatchSignal('ResourceDeleted', self)
+
+    def _insert(self):
 
         # insertion
-        c = self.ething.db["resources"]
-        try:
-            c.insert_one(data)
-        except:
-            # code 11000 on duplicate error
-            raise Exception('internal error: doc insertion failed')
+        self.ething.resource_db_cache.insert(self)
+        #c = self.ething.db["resources"]
+        #try:
+        #    c.insert_one(self.serialize())
+        #except:
+        #    # code 11000 on duplicate error
+        #    raise Exception('internal error: doc insertion failed')
 
         self.ething.dispatchSignal('ResourceCreated', self)
 
         self.ething.log.debug("Resource created : %s" % str(self))
 
-    def _save(self, data):
-
+    def _before_save(self):
         self._modifiedDate = datetime.datetime.utcnow()  # update the modification time
 
-        self.ething.log.debug("Resource update : %s , dirtyFields: %s" % (
-            str(self), self.getDirtyAttr()))
+    def _save(self, dirty_attrs):
 
-        c = self.ething.db["resources"]
-        c.replace_one({'_id': self.id}, data)
+        dirty_keys = [a.name for a in dirty_attrs]
+
+        self.ething.log.debug("Resource update : %s , dirtyFields: %s" % (
+            str(self), dirty_keys))
+
+        self.ething.resource_db_cache.save(self)
+        #c = self.ething.db["resources"]
+        #c.replace_one({'_id': self.id}, self.serialize())
+
+        history_data = {}
+
+        for a in dirty_attrs:
+            if a.get('history'):
+                name = a.get('history_name', a.name)
+                if name not in history_data:
+                    history_data[name] = {
+                        'length': a.get('history_length', 5000),
+                        'data': {}
+                    }
+
+                value = self._get(a)
+                if isinstance(value, MutableMapping):
+                    history_data[name]['data'].update(value)
+                else:
+                    history_data[name]['data'][a.name] = value
+
+        for table_name in history_data:
+
+            history_data_item = history_data[table_name]
+
+            try:
+                table = self.ething.findOne({
+                    'name': table_name,
+                    'type': 'resources/Table',
+                    'createdBy': self.id
+                })
+
+                if not table:
+                    # create it !
+                    table = self.ething.create('resources/Table', {
+                        'name': table_name,
+                        'createdBy': self.id,
+                        'maxLength': history_data_item['length']
+                    })
+
+                if table:
+                    table.insert(history_data_item['data'])
+            except:
+                self.log.exception('history error for %s' % table_name)
 
         self.ething.dispatchSignal(
-            'ResourceMetaUpdated', self, list(self.getDirtyAttr()))
+            'ResourceMetaUpdated', self, list(dirty_keys))
 
-    def _refresh(self):
-        c = self.ething.db["resources"]
-        return c.find_one({'_id': self.id})
+    #def _refresh(self):
+    #    #c = self.ething.db["resources"]
+    #    #return c.find_one({'_id': self.id})
+    #    return {}
 
     def match(self, expression):
         return self.ething.find_one({

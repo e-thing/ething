@@ -1,0 +1,13 @@
+# coding: utf-8
+
+from .MySensorsSensor import MySensorsSensor
+from ething.interfaces import HumiditySensor
+from .helpers import *
+
+
+class MySensorsHumiditySensor (MySensorsSensor, HumiditySensor):
+
+    def _set(self, datatype, value):
+        super(MySensorsHumiditySensor, self)._set(datatype, value)
+        if datatype == V_HUM:
+            self._humidity = value

@@ -1,11 +1,11 @@
 # coding: utf-8
 
-from ething.meta import interface, method, iface
+from ething.Interface import Interface
 from ething.utils.mime import content_to_ext
+from ething.reg import *
 
 
-@interface
-class Camera(iface):
+class Camera(Interface):
     
     @method.return_type('image/*')
     def snapshot(self):
@@ -28,7 +28,7 @@ class Camera(iface):
                 # get extension from content
                 filename = "image.%s" % content_to_ext(data, 'jpg')
             
-            storage = self.ething.create('File', {
+            storage = self.ething.create('resources/File', {
                 'name': filename,
                 'createdBy': self
             })

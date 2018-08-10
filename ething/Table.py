@@ -3,6 +3,7 @@ from future.utils import string_types, integer_types
 
 
 from .Resource import Resource
+from .entity import *
 from .TableQueryParser import TableQueryParser
 import datetime
 import time
@@ -22,14 +23,12 @@ else:
     # cf: https://stackoverflow.com/questions/13120127/how-can-i-use-io-stringio-with-the-csv-module
     from StringIO import StringIO
 
-from .base import attr, isBool, isString, isNone, isInteger, READ_ONLY, PRIVATE
 
-
-@attr('maxLength', validator=isNone() | isInteger(min=1), default=5000, description="The maximum of records allowed in this table. When this number is reached, the oldest records will be removed to insert the new ones (first in, first out). Set it to null or 0 to disable this feature.")
-@attr('expireAfter', validator=isNone() | isInteger(min=1), default=None, description="The amount of time (in seconds) after which a records will be automatically removed. Set it to null or 0 to disable this feature.")
+@attr('maxLength', type=Nullable(Integer(min=1)), default=5000, description="The maximum of records allowed in this table. When this number is reached, the oldest records will be removed to insert the new ones (first in, first out). Set it to null or 0 to disable this feature.")
+@attr('expireAfter', type=Nullable(Integer(min=1)), default=None, description="The amount of time (in seconds) after which a records will be automatically removed. Set it to null or 0 to disable this feature.")
 @attr('length', default=0, mode=READ_ONLY, description="The number of records in the table")
-@attr('keys', default={}, mode=READ_ONLY, description="A key/value object where the keys correspond to the fields available in this table, and the corresponding value is the number of rows where the field is set. __The default keys ('_id' and 'date' are not listed)__")
-@attr('contentModifiedDate', default=datetime.datetime.utcnow(), mode=READ_ONLY, description="Last time the content of this table was modified.")
+@attr('keys', type=Dict(), default={}, mode=READ_ONLY, description="A key/value object where the keys correspond to the fields available in this table, and the corresponding value is the number of rows where the field is set. __The default keys ('_id' and 'date' are not listed)__")
+@attr('contentModifiedDate', default=lambda _: datetime.datetime.utcnow(), mode=READ_ONLY, description="Last time the content of this table was modified.")
 class Table(Resource):
 
     FIELD_VALID_CHAR = 'a-zA-Z0-9_\-'
@@ -80,17 +79,16 @@ class Table(Resource):
         super(Table, self).remove(removeChildren)
 
     def clear(self):
+        with self:
+            # remove all the data from this table
+            try:
+                self.collection.drop()
+            except:
+                pass
 
-        # remove all the data from this table
-        try:
-            self.collection.drop()
-        except:
-            pass
-
-        self._length = 0
-        self._keys = {}
-        self._contentModifiedDate = datetime.datetime.utcnow()
-        self.save()
+            self._length = 0
+            self._keys = {}
+            self._contentModifiedDate = datetime.datetime.utcnow()
 
     # is called regularly
 
@@ -116,25 +114,25 @@ class Table(Resource):
 
     def updateMeta(self):
 
-        keys = {}
-        length = 0
+        with self:
+            keys = {}
+            length = 0
 
-        c = self.collection
-        cursor = c.find(projection={
-            '_id': 0,
-            'date': 0
-        })
+            c = self.collection
+            cursor = c.find(projection={
+                '_id': 0,
+                'date': 0
+            })
 
-        for doc in cursor:
-            for k in doc:
-                if k not in keys:
-                    keys[k] = 0
-                keys[k] += 1
-            length += 1
+            for doc in cursor:
+                for k in doc:
+                    if k not in keys:
+                        keys[k] = 0
+                    keys[k] += 1
+                length += 1
 
-        self._length = length
-        self._keys = keys
-        self.save()
+            self._length = length
+            self._keys = keys
 
     def repair(self):
         self.updateMeta()
@@ -143,37 +141,36 @@ class Table(Resource):
 
     def remove_rows(self, row_ids):
 
-        nb = 0
+        with self:
+            nb = 0
 
-        c = self.collection
+            c = self.collection
 
-        keys = self.keys
+            keys = self.keys
 
-        for row_id in row_ids:
+            for row_id in row_ids:
 
-            try:
-                removedDoc = c.find_one_and_delete({
-                    '_id': row_id
-                })
+                try:
+                    removedDoc = c.find_one_and_delete({
+                        '_id': row_id
+                    })
 
-                # update the key count
-                if removedDoc:
-                    for field in removedDoc:
-                        if field in keys:
-                            keys[field] -= 1
-                            if keys[field] <= 0:
-                                del keys[field]
+                    # update the key count
+                    if removedDoc:
+                        for field in removedDoc:
+                            if field in keys:
+                                keys[field] -= 1
+                                if keys[field] <= 0:
+                                    del keys[field]
 
-                    nb += 1
+                        nb += 1
 
-            except:
-                pass  # invalid id or unable to remove the document
+                except:
+                    pass  # invalid id or unable to remove the document
 
-        if nb > 0:
-            self._length = self.length - nb
-            self.setDirtyAttr('keys')
-            self._contentModifiedDate = datetime.datetime.utcnow()
-            self.save()
+            if nb > 0:
+                self._length = self.length - nb
+                self._contentModifiedDate = datetime.datetime.utcnow()
 
         return nb
 
@@ -284,63 +281,59 @@ class Table(Resource):
 
     def insert(self, data, invalidFields=INVALID_FIELD_RENAME):
         if data:
+            with self:
+                keys = self.keys
+                length = self.length
+                maxLength = self.maxLength
 
-            keys = self.keys
-            length = self.length
-            maxLength = self.maxLength
+                # sanitize the incoming data
+                dataArray = [data]
+                length += Table.sanitizeData(dataArray, keys, invalidFields, False)
 
-            # sanitize the incoming data
-            dataArray = [data]
-            length += Table.sanitizeData(dataArray, keys, invalidFields, False)
+                # add meta data
+                for d in dataArray:
+                    d['_id'] = ShortId.generate()
 
-            # add meta data
-            for d in dataArray:
-                d['_id'] = ShortId.generate()
-
-            # insert the data
-            c = self.collection
-            c.insert_one(dataArray[0])
-            # remove extra rows
-            if maxLength and length > maxLength:
-
-                removed_docs = []
-                remove_length = length - maxLength
-
+                # insert the data
+                c = self.collection
+                c.insert_one(dataArray[0])
                 # remove extra rows
-                if remove_length == 1:
-                    # remove the oldest document
-                    removed_doc = c.find_one_and_delete(
-                        {}, sort=[('date', pymongo.ASCENDING)])
-                    removed_docs.append(removed_doc)
-                elif remove_length > 1:
-                    # multiple docs
-                    removed_docs = list(
-                        c.find({}, sort=[('date', pymongo.ASCENDING)], limit=remove_length))
-                    removed_docs_ids = [doc['_id'] for doc in removed_docs]
-                    c.delete_many({
-                        '_id': {'$in': removed_docs_ids}
-                    })
+                if maxLength and length > maxLength:
 
-                length -= len(removed_docs)
+                    removed_docs = []
+                    remove_length = length - maxLength
 
-                # update the key count
-                for removed_doc in removed_docs:
-                    for field in removed_doc:
-                        if field in keys:
-                            keys[field] -= 1
-                            if keys[field] <= 0:
-                                del keys[field]
+                    # remove extra rows
+                    if remove_length == 1:
+                        # remove the oldest document
+                        removed_doc = c.find_one_and_delete(
+                            {}, sort=[('date', pymongo.ASCENDING)])
+                        removed_docs.append(removed_doc)
+                    elif remove_length > 1:
+                        # multiple docs
+                        removed_docs = list(
+                            c.find({}, sort=[('date', pymongo.ASCENDING)], limit=remove_length))
+                        removed_docs_ids = [doc['_id'] for doc in removed_docs]
+                        c.delete_many({
+                            '_id': {'$in': removed_docs_ids}
+                        })
 
-            self._length = length
-            self.setDirtyAttr('keys')
-            self._contentModifiedDate = datetime.datetime.utcnow()
-            self.save()
+                    length -= len(removed_docs)
+
+                    # update the key count
+                    for removed_doc in removed_docs:
+                        for field in removed_doc:
+                            if field in keys:
+                                keys[field] -= 1
+                                if keys[field] <= 0:
+                                    del keys[field]
+
+                self._length = length
+                self._contentModifiedDate = datetime.datetime.utcnow()
 
             doc = self.docSerialize(dataArray[0])
             # generate an event
             self.dispatchSignal('TableDataAdded', self, doc)
-            # mqtt publish
-            #self.ething.mqttPublish("resource/table/%s/data" % self.id, doc, True)
 
             return doc
 
@@ -348,20 +341,50 @@ class Table(Resource):
 
     def importData(self, dataArray, invalidFields=INVALID_FIELD_RENAME, skipError=True):
 
-        maxLength = self.maxLength
+        with self:
+            maxLength = self.maxLength
 
-        # remove extra row
-        if maxLength and len(dataArray) > maxLength:
-            dataArray = dataArray[0:maxLength]
+            # remove extra row
+            if maxLength and len(dataArray) > maxLength:
+                dataArray = dataArray[0:maxLength]
 
-        # remove any previous content
-        self.clear()
+            # remove any previous content
+            self.clear()
 
-        # sanitize the incoming data
-        keys = {}
-        length = Table.sanitizeData(dataArray, keys, invalidFields, skipError)
+            # sanitize the incoming data
+            keys = {}
+            length = Table.sanitizeData(dataArray, keys, invalidFields, skipError)
 
-        if dataArray:
+            if dataArray:
+                # add meta data
+                for d in dataArray:
+                    d['_id'] = ShortId.generate()
+
+                # insert the data
+                c = self.collection
+                c.insert_many(dataArray, ordered=False)
+
+            self._keys = keys
+            self._length = length
+
+        return True
+
+    # no sanitize is made, internal purpose only
+
+    def __importRaw(self, dataArray, keys):
+        with self:
+            if not dataArray:
+                return True
+
+            maxLength = self.maxLength
+
+            # remove extra row
+            if maxLength and len(dataArray) > maxLength:
+                dataArray = dataArray[0:maxLength]
+
+            # remove any previous content
+            self.clear()
+
             # add meta data
             for d in dataArray:
                 d['_id'] = ShortId.generate()
@@ -370,48 +393,16 @@ class Table(Resource):
             c = self.collection
             c.insert_many(dataArray, ordered=False)
 
-        self._keys = keys
-        self._length = length
+            # update the metadata
+            self._length = len(dataArray)
+            keys_ = self.keys
 
-        self.save()
+            for k in keys:
+                if k not in keys_:
+                    keys_[k] = 0
+                keys_[k] += keys[k]
 
-        return True
-
-    # no sanitize is made, internal purpose only
-
-    def __importRaw(self, dataArray, keys):
-        if not dataArray:
-            return True
-
-        maxLength = self.maxLength
-
-        # remove extra row
-        if maxLength and len(dataArray) > maxLength:
-            dataArray = dataArray[0:maxLength]
-
-        # remove any previous content
-        self.clear()
-
-        # add meta data
-        for d in dataArray:
-            d['_id'] = ShortId.generate()
-
-        # insert the data
-        c = self.collection
-        c.insert_many(dataArray, ordered=False)
-
-        # update the metadata
-        self._length = len(dataArray)
-        keys_ = self.keys
-
-        for k in keys:
-            if k not in keys_:
-                keys_[k] = 0
-            keys_[k] += keys[k]
-
-        self.setDirtyAttr('keys')
-        self._contentModifiedDate = datetime.datetime.utcnow()
-        self.save()
+            self._contentModifiedDate = datetime.datetime.utcnow()
 
         return True
 
@@ -436,60 +427,7 @@ class Table(Resource):
 
     def replaceRowById(self, row_id, data, invalidFields=INVALID_FIELD_RENAME):
         if data:
-
-            keys = self.keys
-
-            # sanitize the incoming data
-            dataArray = [data]
-            Table.sanitizeData(dataArray, keys, invalidFields, False)
-
-            # add meta data
-            dataArray[0]['_id'] = row_id
-
-            # insert the data
-            c = self.collection
-            original = c.find_one_and_replace({'_id': row_id}, dataArray[0])
-
-            if original is not None:
-                for field in original:
-                    if field in keys:
-                        keys[field] -= 1
-                        if keys[field] <= 0:
-                            del keys[field]
-
-                self._contentModifiedDate = datetime.datetime.utcnow()
-                self.setDirtyAttr('keys')
-                self.save()
-
-                return self.docSerialize(dataArray[0])
-
-        return False
-
-    # replace only one row
-
-    def replaceRow(self, query, data, invalidFields=INVALID_FIELD_RENAME, upsert=False, parser=None):
-        if data:
-
-            if isinstance(query, string_types):
-
-                if parser is None:
-                    parser = self.parser
-
-                # parse the query string
-                q = parser.parse(query)
-
-            elif isinstance(query, dict):
-                q = query
-            else:
-                q = {}
-
-            c = self.collection
-
-            original = c.find_one(q)
-
-            if original is not None:
-                # the document was found !
-
+            with self:
                 keys = self.keys
 
                 # sanitize the incoming data
@@ -497,26 +435,75 @@ class Table(Resource):
                 Table.sanitizeData(dataArray, keys, invalidFields, False)
 
                 # add meta data
-                dataArray[0]['_id'] = original['_id']  # keep the same id !
+                dataArray[0]['_id'] = row_id
 
-                # replace it !
-                c.replace_one({'_id': original['_id']}, dataArray[0])
+                # insert the data
+                c = self.collection
+                original = c.find_one_and_replace({'_id': row_id}, dataArray[0])
 
-                for field in original:
-                    if field in keys:
-                        keys[field] -= 1
-                        if keys[field] <= 0:
-                            del keys[field]
+                if original is not None:
+                    for field in original:
+                        if field in keys:
+                            keys[field] -= 1
+                            if keys[field] <= 0:
+                                del keys[field]
 
-                self._contentModifiedDate = datetime.datetime.utcnow()
-                self.setDirtyAttr('keys')
-                self.save()
+                    self._contentModifiedDate = datetime.datetime.utcnow()
 
-                return self.docSerialize(dataArray[0])
-            else:
-                # not found !
-                if upsert:
-                    return self.insert(data, invalidFields)
+                    return self.docSerialize(dataArray[0])
+
+        return False
+
+    # replace only one row
+
+    def replaceRow(self, query, data, invalidFields=INVALID_FIELD_RENAME, upsert=False, parser=None):
+        if data:
+            with self:
+                if isinstance(query, string_types):
+
+                    if parser is None:
+                        parser = self.parser
+
+                    # parse the query string
+                    q = parser.parse(query)
+
+                elif isinstance(query, dict):
+                    q = query
+                else:
+                    q = {}
+
+                c = self.collection
+
+                original = c.find_one(q)
+
+                if original is not None:
+                    # the document was found !
+
+                    keys = self.keys
+
+                    # sanitize the incoming data
+                    dataArray = [data]
+                    Table.sanitizeData(dataArray, keys, invalidFields, False)
+
+                    # add meta data
+                    dataArray[0]['_id'] = original['_id']  # keep the same id !
+
+                    # replace it !
+                    c.replace_one({'_id': original['_id']}, dataArray[0])
+
+                    for field in original:
+                        if field in keys:
+                            keys[field] -= 1
+                            if keys[field] <= 0:
+                                del keys[field]
+
+                    self._contentModifiedDate = datetime.datetime.utcnow()
+
+                    return self.docSerialize(dataArray[0])
+                else:
+                    # not found !
+                    if upsert:
+                        return self.insert(data, invalidFields)
 
         return False
 

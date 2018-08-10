@@ -1,24 +1,18 @@
 # coding: utf-8
 
-from ething.meta import interface, method, iface
+from ething.Interface import Interface
+from ething.reg import *
 
 
-@interface
-class Switch(iface):
+@attr('state', type = Boolean(), default = False, mode = READ_ONLY, history = True, description = "the state of the switch")
+class Switch(Interface):
 
-    @method.return_type('bool')
-    def getState(self):
-        """
-        return the current state of the switch
-        """
-        return self.getData('state', False)
-
-    @method.arg('state', type='bool')
+    @method.arg('state', type=Boolean())
     def setState(self, state):
         """
         set the current state of the switch
         """
-        raise NotImplementedError()
+        self._state = state
 
     @method
     def on(self):
@@ -39,4 +33,4 @@ class Switch(iface):
         """
         toggle the switch
         """
-        self.setState(not self.getState())
+        self.setState(not self.state)

@@ -5,6 +5,7 @@ from flask import request, Response
 from ..server_utils import *
 import re
 from future.utils import text_type
+from ething.reg import get_registered_methods
 
 
 def install(core, app, auth, **kwargs):
@@ -61,24 +62,11 @@ def install(core, app, auth, **kwargs):
                 raise Exception(
                     'the "type" attribute is mandatory and must be a non empty string')
 
-            content = None
-
-            if type == 'Http':
-                content = attr.pop('specification', None)
-            elif type == 'MQTT':
-                content = attr.pop('subscription', None)
-
             attr.setdefault('createdBy', g.auth.resource)
 
             r = core.create(type, attr)
 
             if r:
-
-                if content:
-                    if r.type == 'Http':
-                        r.setSpecification(content)
-                    elif r.type == 'MQTT':
-                        r.setSubscription(content)
 
                 response = app.jsonify(r)
                 response.status_code = 201
@@ -88,38 +76,6 @@ def install(core, app, auth, **kwargs):
                     'Unable to create the device (type = %s)' % type)
 
         raise Exception('Invalid request')
-
-    @app.route('/api/devices/<id>/api')
-    @auth.required('device:read resource:read')
-    def device_apis(id):
-        """
-        ---
-        get:
-          tags:
-            - device
-          description: Retrieves an object describing the operations available for this device.
-          responses:
-            '200':
-              description: object describing the operations available for this device.
-        """
-        r = app.getResource(id, ['Device'])
-        return app.jsonify(r.interface)
-
-    @app.route('/api/devices/<id>/api/<operationId>')
-    @auth.required('device:read resource:read')
-    def device_api(id, operationId):
-        """
-        ---
-        get:
-          tags:
-            - device
-          description: Retrieves an object describing the operation identified by operationId.
-          responses:
-            '200':
-              description: object describing the operation.
-        """
-        r = app.getResource(id, ['Device'])
-        return app.jsonify(r.interface.get_method(operationId))
 
     @app.route('/api/devices/<id>/call/<operationId>', methods=['GET', 'POST'])
     @auth.required('device:write resource:write')
@@ -155,7 +111,7 @@ def install(core, app, auth, **kwargs):
         """
         r = app.getResource(id, ['Device'])
 
-        method = r.interface.get_method(operationId)
+        method = get_registered_methods(r, operationId)
 
         args = []
         kwargs = {}

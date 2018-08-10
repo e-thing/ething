@@ -5,8 +5,10 @@ from future.utils import string_types
 from shortid import ShortId as ShortIdlib
 import re
 
-from .base import isString
+from .type import String
 
+
+id_re = '^[-_a-zA-Z0-9]{7}$'
 
 class ShortId(object):
 
@@ -33,13 +35,13 @@ class ShortId(object):
         return False
 
 
-class isId(isString):
+class Id(String):
 
-    def __init__(self):
-        super(isId, self).__init__(regex='^[-_a-zA-Z0-9]{7}$')
+    def __init__(self, **attributes):
+        super(Id, self).__init__(regex=id_re, **attributes)
 
-    def validate(self, value, object):
+    def validate(self, value):
         try:
-            return super(isId, self).validate(value, object)
+            return super(Id, self).validate(value)
         except ValueError:
             raise ValueError('not an id')

@@ -146,7 +146,7 @@ class Controller(Process):
     def on_disconnect(self, client, userdata, rc):
         self.device.setConnectState(False)
         if rc != 0:
-            self.log.warn("MQTT: Unexpected disconnection")
+            self.log.warning("MQTT: Unexpected disconnection")
             self._mqttClient.reconnect()
 
     def publish(self, topic, payload, retain=False):

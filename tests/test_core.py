@@ -7,7 +7,7 @@ def test_core(core):
     content = b'hello world'
 
     def create_file():
-        f = core.create('File', {
+        f = core.create('resources/File', {
             'name': 'file1.txt'
         })
 

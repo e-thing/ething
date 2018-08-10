@@ -8,7 +8,7 @@ except ImportError:
 
 def test_device_http(core):
 
-    device = core.create('Http', {
+    device = core.create('resources/Http', {
         'name': 'dev',
         'url': 'http://localhost'
     })
@@ -25,7 +25,7 @@ def test_device_http(core):
 
 def test_device_http_interface(core):
 
-    device = core.create('Http', {
+    device = core.create('resources/Http', {
         'name': 'dev',
         'url': 'http://localhost'
     })

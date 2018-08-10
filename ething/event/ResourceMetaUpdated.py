@@ -2,7 +2,7 @@
 
 
 from . import ResourceSignal, ResourceEvent
-from ething.base import attr, isString, isArray, isNone
+from ething.reg import *
 
 
 class ResourceMetaUpdated(ResourceSignal):
@@ -12,7 +12,7 @@ class ResourceMetaUpdated(ResourceSignal):
         self.attributes = attributes
 
 
-@attr('attributes', validator=isArray(min_len=1, item=isString(allow_empty=False)) | isNone(), default=None)
+@attr('attributes', type=Nullable(Array(min_len=1, item=String(allow_empty=False))), default=None)
 class ResourceMetaUpdatedEvent(ResourceEvent):
     """
     is emitted each time a resource attribute has been updated

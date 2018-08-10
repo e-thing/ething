@@ -7,7 +7,7 @@ import requests
 def test_file_create(core):
     content = b'hello world'
 
-    f = core.create('File', {
+    f = core.create('resources/File', {
         'name': 'file1.txt'
     })
 
@@ -30,7 +30,7 @@ def test_file_image(core):
         'https://www.w3schools.com/w3css/img_fjords.jpg', stream=True)
     if r.status_code == 200:
 
-        f = core.create('File', {
+        f = core.create('resources/File', {
             'name': 'image.jpg'
         })
 
@@ -48,7 +48,7 @@ def test_file_image(core):
 def test_file_encoding(core):
     content = u'bonjour rémi'
 
-    f = core.create('File', {
+    f = core.create('resources/File', {
         'name': 'file1.txt'
     })
 

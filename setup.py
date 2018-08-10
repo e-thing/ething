@@ -533,7 +533,8 @@ requires = [
     "python-magic",
     "cherrypy",
     "pytz",
-    "flask-compress"
+    "flask-compress",
+    'wmi'
 ]
 
 if os.name != "nt":

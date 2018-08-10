@@ -148,23 +148,8 @@ def install(core, app, auth, **kwargs):
             if isinstance(data, dict):
                 
                 with r:
-                    content = None
 
-                    if r.type == 'Http':
-                        content = data.pop('specification', None)
-                    elif r.type == 'MQTT':
-                        content = data.pop('subscription', None)
-
-                    for key, value in iteritems(data):
-                        setattr(r, key, value)
-
-                    r.save()
-
-                    if content:
-                        if r.type == 'Http':
-                            r.setSpecification(content)
-                        elif r.type == 'MQTT':
-                            r.setSubscription(content)
+                    r.updateFromJson(data)
 
                     return app.jsonify(r)
 

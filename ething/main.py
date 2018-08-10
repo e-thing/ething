@@ -1,4 +1,10 @@
 # coding: utf-8
+
+"""
+ @author Adrien Mezerette <a.mezerette@gmail.com>
+ @package ething
+"""
+
 from __future__ import print_function
 from .version import __version__
 
@@ -267,7 +273,7 @@ def main():
     if getattr(args, 'daemon', None):
         createDaemon()
 
-    from .core import Core, Config
+    from .Config import Config
     from .utils import print_info
 
     init_logger(not (getattr(args, 'daemon', None) or getattr(args, 'quiet', False)))
@@ -276,6 +282,35 @@ def main():
         config = Config.load(CONFIG_FILE)
     except:
         raise
+
+    from .core import Core
+
+    # load the plugins here !
+    from .webserver.server import WebServer
+    # from .RuleManager import RuleManager
+    # from .PingService import PingService
+    # from .MqttDispatcher import MqttDispatcher
+
+    # load the modules here
+    from .File import File
+    from .Table import Table
+    from .Rule import Rule
+
+    from .rflink import RFLink
+    from .mysensors import MySensors
+    # from .mqtt import mqtt
+    from .yeelight import Yeelight
+    from .mihome import Mihome
+    # try:
+    #    from .blea import Blea
+    # except:
+    #    pass
+    # from .zigate import Zigate
+    # from .device.Http import Http
+    from .device.RTSP import RTSP
+    from .device.SSH import SSH
+    from .device.CPUTemp import CPUTempPlugin
+    # from .device.Denon import Denon
 
     core = Core(config)
 

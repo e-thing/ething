@@ -1,11 +1,13 @@
 # coding: utf-8
 
-from ething.meta import MetaSignal
+from ething.reg import *
 from future.utils import with_metaclass
 import time
 
 
-class Signal(with_metaclass(MetaSignal, object)):
+@path('signals')
+@abstract
+class Signal(with_metaclass(MetaReg, object)):
 
     def __init__(self):
         super(Signal, self).__setattr__('_Signal__ts', time.time())

@@ -2,7 +2,7 @@
 
 from .Signal import Signal
 from .Event import Event
-from ething.base import attr, isString
+from ething.reg import *
 
 
 class Custom(Signal):
@@ -12,7 +12,7 @@ class Custom(Signal):
         self.name = name
 
 
-@attr('name', validator=isString(allow_empty=False), description="The name of the custom signal")
+@attr('name', type=String(allow_empty=False), description="The name of the custom signal")
 class CustomEvent(Event):
 
     signal = Custom

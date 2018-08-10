@@ -2,7 +2,6 @@
 
 from .Event import Event
 from .Signal import Signal
-
 from .ResourceEvent import ResourceSignal, ResourceEvent
 
 from . import Timer

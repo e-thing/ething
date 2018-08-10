@@ -249,7 +249,7 @@ def RGBW_encoder(value):
 
 def RGBW_decoder(value):
     color = "#" + value[0:6]
-    level = int(value[6:8], 16) / 255.0
+    level = 100. * int(value[6:8], 16) / 255.0
     return color, level
 
 
@@ -445,8 +445,6 @@ def sensorTypeToName(sensorType):
     sensorType = sensorTypeStr(sensorType)
     if sensorType and sensorType in sensorTypes:
         return sensorTypes[sensorType][1]
-
-    return sensorTypes['S_UNK'][1]
 
 
 def valueTypeStr(valueType):

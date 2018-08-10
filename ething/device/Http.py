@@ -3,10 +3,10 @@ from future.utils import string_types
 
 
 from future.utils import iteritems
-from ething.Device import Device, method, attr, isString, isNone, isObject, READ_ONLY, PRIVATE, Validator
+from ething.Device import *
 from ething.utils import pingable
 from ething.Helpers import dict_recursive_update
-from ething.Scope import Scope, ScopeValidator
+from ething.Scope import Scope, ScopeType
 from ething.ApiKey import ApiKey
 import json
 from ething.swagger import Reader
@@ -19,9 +19,9 @@ except ImportError:
 
 
 @pingable('url')
-@attr('url', validator=isString(allow_empty=False, regex='^https?://'), description="The URL of the device.")
-@attr('scope', validator=ScopeValidator(), default='', description="The allowed scopes for this device (space separated list). Restrict the Http api access. Default to an empty string (no access).")
-@attr('auth', validator=isObject(user=isString(allow_empty=False), password=isString(allow_empty=False), type=isString(enum=['basic', 'digest'])) | isNone(), default=None, description="An object describing the authentication method to use on HTTP request.")
+@attr('url', type=String(allow_empty=False, regex='^https?://'), description="The URL of the device.")
+@attr('scope', type=ScopeType(), default='', description="The allowed scopes for this device (space separated list). Restrict the Http api access. Default to an empty string (no access).")
+@attr('auth', type=Nullable(Dict(mapping = { 'user': String(allow_empty=False), 'password': String(allow_empty=False), 'type': String(enum=['basic', 'digest']) })), default=None, description="An object describing the authentication method to use on HTTP request.")
 @attr('apikey', default=lambda _: ApiKey.generate(), mode=READ_ONLY, description="The apikey for authenticating this device.")
 @attr('specification', default=None, mode=PRIVATE)
 class Http(Device):

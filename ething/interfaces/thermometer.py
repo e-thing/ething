@@ -1,14 +1,9 @@
 # coding: utf-8
 
-from ething.meta import interface, method, iface
+from ething.Interface import Interface
+from ething.reg import *
 
 
-@interface
-class Thermometer(iface):
-
-    @method.return_type('float')
-    def getTemperature(self):
-        """
-        return the current temperature (in degree Celsius)
-        """
-        return self.getData('temperature')
+@attr('temperature', type = Number(), default = 0, mode = READ_ONLY, history = True, description = "the temperature of the sensor")
+class Thermometer(Interface):
+    pass

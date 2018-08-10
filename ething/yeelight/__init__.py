@@ -2,12 +2,13 @@
 from .YeelightDevice import YeelightDevice
 from .YeelightBulbRGBW import YeelightBulbRGBW
 from ething.plugin import Plugin
-from ething.TransportProcess import LineReader, TransportProcess, NetTransport
+from ething.TransportProcess import LineReader, TransportProcess, NetTransport, UdpTransport, Protocol
 from ething.Scheduler import Scheduler
 from . import yeelight
 import time
 import random
 import json
+import re
 
 
 class Yeelight(Plugin):
@@ -17,7 +18,7 @@ class Yeelight(Plugin):
         self.controllers = {}
 
         gateways = self.core.find({
-            'type': {'$regex': '^Yeelight.*$'}
+            'extends': 'resources/YeelightDevice'
         })
 
         for gateway in gateways:
@@ -30,12 +31,19 @@ class Yeelight(Plugin):
         self.core.signalDispatcher.bind('ResourceDeleted', self._on_resource_deleted)
         self.core.signalDispatcher.bind('ResourceMetaUpdated', self._on_resource_updated)
 
+        self.advertisement_controller = AdvertisementController(self.core)
+        self.advertisement_controller.start()
+
     def unload(self):
         self.core.signalDispatcher.unbind('ResourceCreated', self._on_resource_created)
         self.core.signalDispatcher.unbind('ResourceDeleted', self._on_resource_deleted)
         self.core.signalDispatcher.unbind('ResourceMetaUpdated', self._on_resource_updated)
 
         self.stop_all_controllers()
+
+        if hasattr(self, 'advertisement_controller'):
+            self.advertisement_controller.stop()
+            del self.advertisement_controller
 
     def _on_resource_created(self, signal):
         device = self.core.get(signal['resource'])
@@ -51,14 +59,10 @@ class Yeelight(Plugin):
         id = signal['resource']
         if id in self.controllers:
             controller = self.controllers[id]
-            gateway = controller.gateway
-            if signal['rModifiedDate'] > gateway.modifiedDate:
-                gateway.refresh()
-
             for attr in signal['attributes']:
                 if attr in controller.RESET_ATTR:
                     self._stop_controller(id)
-                    self._start_controller(gateway)
+                    self._start_controller(controller.gateway)
                     break
 
     def _start_controller(self, device):
@@ -89,14 +93,14 @@ class YeelightProtocol(LineReader):
         super(YeelightProtocol, self).__init__(terminator = b'\n')
         self.gateway = gateway
         # response management
-        self._responseListeners = []
+        self._pending_cmds = {}
         self.scheduler = Scheduler()
 
         self.scheduler.setInterval(0.5, self.check_response_timeout)
 
     def connection_made(self):
         super(YeelightProtocol, self).connection_made()
-        self._responseListeners = []
+        self._pending_cmds.clear()
         self.gateway.setConnectState(True)
     
     def loop(self):
@@ -107,7 +111,7 @@ class YeelightProtocol(LineReader):
 
         try:
             # must be json
-            message = json.loads(line.decode('utf8'))
+            message = json.loads(line)
         except Exception as e:
             # skip the line
             self.log.exception(
@@ -119,27 +123,15 @@ class YeelightProtocol(LineReader):
             device.setConnectState(True)
 
             if "id" in message:
+                # result / response
 
-                responseId = int(message["id"])
-                responseResult = message["result"] if "result" in message else [
-                ]
+                id = int(message["id"])
 
-                i = 0
-                while i < len(self._responseListeners):
-                    responseListener = self._responseListeners[i]
+                if id in self._pending_cmds:
+                    result = self._pending_cmds[id]
+                    result.resolve(message, args = (device,))
 
-                    if responseListener['id'] == responseId:
-
-                        # remove this item
-                        self._responseListeners.pop(i)
-                        i -= 1
-
-                        if callable(responseListener['callback']):
-                            responseListener['callback'](False, responseResult)
-
-                        break
-
-                    i += 1
+                    del self._pending_cmds[id]
 
             elif ("method" in message) and ("params" in message):
                 # notification
@@ -149,7 +141,7 @@ class YeelightProtocol(LineReader):
 
                 if method == "props":
                     if params:
-                        device.storeData(params)
+                        device._update(params)
 
                 else:
                     raise Exception('unknown method %s' % str(method))
@@ -160,106 +152,76 @@ class YeelightProtocol(LineReader):
 
     def refresh(self):
 
-        device = self.gateway
-
         requestedProperties = [
             "power", "bright", "ct", "rgb", "hue", "sat",
             "color_mode", "flowing", "delayoff", "flow_params",
-            "music_on", "name"
+            "music_on", "name", "bg_power", "bg_flowing", "bg_flow_params",
+            "bg_ct", "bg_lmode", "bg_bright", "bg_rgb", "bg_hue", "bg_sat", "nl_br"
         ]
 
-        def cb(error, messageSent, response):
+        def done(result, device):
+            if len(result.data) == len(requestedProperties):
 
-            if not error and isinstance(response, list) and len(response) == len(requestedProperties):
+                params = {}
 
-                # some formatting
-                for i in range(0, len(response)):
-                    v = response[i]
-                    try:
-                        response[i] = int(response[i])
-                    except ValueError:
-                        pass
+                for i in range(len(requestedProperties)):
+                    prop = requestedProperties[i]
+                    value = result.data[i]
+                    if i == '':
+                        continue
+                    params[prop.lower()] = value
 
-                params = dict(zip(requestedProperties, response))
+                device._update(params)
 
-                device.storeData(params)
+        return self.send("get_prop", requestedProperties, done = done)
 
-        self.send({
-            "method": "get_prop",
-            "params": requestedProperties
-        }, cb, True)
+    def send(self, method, params = [], done = None, err = None):
 
+        id = random.randint(1, 9999)
 
+        command = {
+            'id': id,
+            'method': method,
+            'params': params
+        }
 
-    def send(self, message, callback=None, waitResponse=None):
-        """
-         $message message to send
-         $callback (optional) function($error, $messageSent, $messageReceived = null)
-         $waitResponse (optional) true|false wait for a response or not
-        """
+        result = yeelight.Result(command, done = done, err = err)
 
         if self.process.is_open:
 
-            message['id'] = random.randint(1, 9999)
+            self.log.debug("Yeelight: message send %s" % str(command))
 
-            self.log.debug("Yeelight: message send %s" % str(message))
+            self.write_line(json.dumps(command))
 
-            self._lastActivity = time.time()
-
-            self.write_line(json.dumps(message).encode('utf8'))
-
-            if waitResponse:
-                # wait for a response
-
-                def cb(error, messageReceived):
-                    if callable(callback):
-                        callback(error, message, messageReceived)
-
-                self._responseListeners.append({
-                    'callback': cb,
-                    'ts': time.time(),
-                    'messageSent': message,
-                    'id': message['id']
-                })
-
-            else:
-                if callable(callback):
-                    callback(False, message, None)
-
-            return
+            self._pending_cmds[id] = result
 
         else:
+            result.reject('not connected', args = (self.gateway,))
 
-            if callable(callback):
-                callback('not connected', message, None)
+        return result
 
-            return
 
     def connection_lost(self, exc):
 
         self.gateway.setConnectState(False)
 
-        for responseListener in self._responseListeners:
-            responseListener['callback']('disconnected', None)
-        self._responseListeners = []
+        for id in self._pending_cmds:
+            self._pending_cmds[id].reject('disconnected', args = (self.gateway,))
+
+        self._pending_cmds.clear()
 
         super(YeelightProtocol, self).connection_lost(exc)
 
     def check_response_timeout(self):
         # check for timeout !
         now = time.time()
-        i = 0
-        while i < len(self._responseListeners):
-            responseListener = self._responseListeners[i]
 
-            if now - responseListener['ts'] > Controller.RESPONSE_TIMEOUT:
-                # remove this item
-                self._responseListeners.pop(i)
-                i -= 1
+        for id in list(self._pending_cmds):
+            result = self._pending_cmds[id]
 
-                responseListener['callback']('response timeout', None)
-
-            i += 1
+            if now - result.send_ts > Controller.RESPONSE_TIMEOUT:
+                result.reject('response timeout', args = (self.gateway,))
+                del self._pending_cmds[id]
 
 
 class Controller(TransportProcess):
@@ -267,7 +229,7 @@ class Controller(TransportProcess):
 
     def __init__(self, gateway):
         super(Controller, self).__init__(
-            'yeelight',
+            'yeelight.%s' % gateway.id,
             transport=NetTransport(
                 host=gateway.host,
                 port=yeelight.PORT
@@ -278,6 +240,106 @@ class Controller(TransportProcess):
 
     def send(self, *args, **kwargs):
         self.protocol.send(*args, **kwargs)
+
+
+
+class YeelightAdvertisementProtocol(Protocol):
+
+    def __init__(self, core):
+        self.core = core
+
+    def connection_made(self):
+        self.search()
+
+    def data_received(self, from_tupple):
+        data, remote_ip_port = from_tupple
+
+        data = data.decode('utf-8', 'replace')
+
+        self.log.debug('rec %s : %s' % (remote_ip_port, data))
+
+        if data[:15] == "HTTP/1.1 200 OK":
+
+            dev_info = {
+                'ip': remote_ip_port[0],
+                'port': remote_ip_port[1]
+            }
+
+            for line in data.splitlines():
+
+                matches = re.search('^([^:]+):\s*(.+)\s*$', line)
+                if matches:
+                    value = matches.group(2)
+                    dev_info[matches.group(1).lower()] = value
+
+            self.process_device_info(dev_info)
+
+    def search(self):
+        self.log.debug('search...')
+        package = "M-SEARCH * HTTP/1.1\r\nST:wifi_bulb\r\nMAN:\"ssdp:discover\"\r\n"
+        self.transport.write(package, (yeelight.MULTICAST_ADDRESS, yeelight.MULTICAST_PORT))
+
+    def process_device_info(self, dev_info):
+
+        self.log.debug('device info : %s' % (dev_info))
+
+        id = dev_info.get('id')
+        model = dev_info.get('model')
+
+        device = self.core.find({
+            'extends': 'resources/YeelightDevice',
+            'dev_id': id,
+            'model': model
+        })
+
+        if not device:
+            self.log.debug('new device : id = %s, model = %s' % (id, model))
+
+            attributes = {
+                'dev_id': id,
+                'model': model,
+                'fw_ver': dev_info.get('fw_ver'),
+                'name': dev_info.get('name', model),
+                'host': dev_info.get('ip')
+            }
+
+            if model == "color":
+                device = self.core.create('resources/YeelightBulbRGBW', attributes)
+
+            if not device:
+                self.log.warning('unable to create the device : id = %s, model = %s' % (id, model))
+
+        if device:
+            with device:
+                device.setConnectState(True)
+                device._update(dev_info)
+
+
+
+
+
+
+
+
+
+class AdvertisementController(TransportProcess):
+
+    def __init__(self, core):
+        super(AdvertisementController, self).__init__(
+            'yeelight.adv',
+            transport=UdpTransport(
+                host=yeelight.MULTICAST_ADDRESS,
+                port=yeelight.MULTICAST_PORT
+            ),
+            protocol=YeelightAdvertisementProtocol(core),
+            reconnect_delay=60
+        )
+
+    def search(self, *args, **kwargs):
+        self.protocol.search(*args, **kwargs)
+
+
+
 
 
 

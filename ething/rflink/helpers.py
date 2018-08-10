@@ -1,19 +1,9 @@
 # coding: utf-8
-
+from ething.TransportProcess import BaseResult
 
 specialCtrlCmds = ['OK', 'REBOOT', 'PING', 'PONG', 'VERSION', 'RFDEBUG', 'RFUDEBUG',
                    'QRFDEBUG', 'TRISTATEINVERT', 'RTSCLEAN', 'RTSRECCLEAN', 'RTSSHOW', 'RTSINVERT', 'RTSLONGTX']
 
-
-subTypes = [
-    'switch',
-    'light',
-    'door',
-    'motion',
-    'thermometer',
-    'weatherStation',
-    'multimeter'
-]
 
 switchProtocols = [
     "X10",
@@ -140,9 +130,6 @@ switchCmds = [
 ]
 
 
-def convertCmd(value):
-    return "on" in value.lower()
-
 
 def convertTemperature(value):
     value = int(value, 16)
@@ -267,81 +254,107 @@ def convertBattery(value):
     return None
 
 
-NO_STORE = 0
-STORE = 1
-STORE_SEPARATE = 2
 
 attrMap = {
-    'CMD': ("state", convertCmd, STORE),
-    'KWATT': ("watt", convertKWatt, STORE),
-    'WATT': ("watt", convertWatt, STORE),
-    'CURRENT': ("current", convertCurrent, STORE),
-    'CURRENT2': ("current2", convertCurrent, STORE),
-    'CURRENT3': ("current3", convertCurrent, STORE),
-    'VOLT': ("voltage", convertVoltage, STORE),
-    'FREQ': ("frequency", convertFreq, STORE),
-    'PF': ("power factor", convertPowerFactor, STORE),
-    'ENERGY': ("energy", convertEnergy, STORE),
-    'TEMP': ("temperature", convertTemperature, STORE),
-    'HUM': ("humidity", convertHum, STORE),
-    'BARO': ("pressure", convertBaro, STORE),
-    'UV': ("UV", convertUV, STORE),
-    'RAIN': ("rain", convertRain, STORE),
-    'RAINRATE': ("rain rate", convertRainRate, STORE),
-    'WINSP': ("wind", convertWindSpeed, STORE),
-    'AWINSP': ("average wind", convertWindSpeed, STORE),
-    'WINGS': ("gust", convertWindGust, STORE),
-    'WINDIR': ("wind direction", convertWindDirection, STORE),
-    'WINCHL': ("wind chill", convertTemperature, STORE),  # wind chill
+    'KWATT': ("watt", convertKWatt),
+    'WATT': ("watt", convertWatt),
+    'CURRENT': ("current", convertCurrent),
+    'CURRENT2': ("current2", convertCurrent),
+    'CURRENT3': ("current3", convertCurrent),
+    'VOLT': ("voltage", convertVoltage),
+    'FREQ': ("frequency", convertFreq),
+    'PF': ("power factor", convertPowerFactor),
+    'ENERGY': ("energy", convertEnergy),
+    'TEMP': ("temperature", convertTemperature),
+    'HUM': ("humidity", convertHum),
+    'BARO': ("pressure", convertBaro),
+    'UV': ("UV", convertUV),
+    'RAIN': ("rain", convertRain),
+    'RAINRATE': ("rain rate", convertRainRate),
+    'WINSP': ("wind", convertWindSpeed),
+    'AWINSP': ("average wind", convertWindSpeed),
+    'WINGS': ("gust", convertWindGust),
+    'WINDIR': ("wind direction", convertWindDirection),
+    'WINCHL': ("wind chill", convertTemperature),  # wind chill
     # Wind meter temperature reading
-    'WINTMP': ("wind temperature", convertTemperature, STORE),
-    'LUX': ("lux", convertLux, STORE),
+    'WINTMP': ("wind temperature", convertTemperature),
+    'LUX': ("lux", convertLux),
     # : (0=Normal, 1=Comfortable, 2=Dry, 3=Wet
-    'HSTATUS': ("status", convertHygroStatus, STORE),
+    'HSTATUS': ("status", convertHygroStatus),
     # : (0=No Info/Unknown, 1=Sunny, 2=Partly Cloudy, 3=Cloudy, 4=Rain
-    'BFORECAST': ("forecast", convertForecast, STORE),
-    'BAT': ("battery", convertBattery, NO_STORE)
+    'BFORECAST': ("forecast", convertForecast),
 }
 
-
-def getAttrName(attr):
-    return attrMap[attr][0] if attr in attrMap else attr
 
 
 def convertAttrValue(attr, value):
     return attrMap[attr][1](value) if attr in attrMap else value
 
 
-def getSubType(protocol, args):
 
-    if protocol == 'Debug' or not args:
-        return
-
-    # 20;83;Oregon Rain2;ID=2a19;RAIN=002a;RAINTOT=0054;BAT=OK
-    if len([x for x in ['RAIN', 'RAINRATE', 'WINSP', 'AWINSP', 'WINGS', 'WINDIR', 'WINCHL', 'WINTMP', 'UV', 'LUX', 'HSTATUS', 'BFORECAST'] if x in args]) > 0:
-        # generic Weather Station
-        return 'weatherStation'
-
-    # 20;1F;OregonV1;ID=000A;TEMP=00cd;BAT=LOW
-    if 'ID' in args and 'TEMP' in args:
-        # generic thermometer
-        return 'thermometer'
-
-    # 20;12;NewKaku;ID=000002;SWITCH=2;CMD=OFF
-    if 'ID' in args and 'SWITCH' in args and 'CMD' in args and args['CMD'] in ['ON', 'OFF', 'ALLON', 'ALLOFF']:
-        # generic switch
-        return 'switch'
-
-    if len([x for x in ['KWATT', 'WATT', 'CURRENT', 'CURRENT2', 'CURRENT3', 'VOLT', 'FREQ', 'PF', 'ENERGY'] if x in args]) > 0:
-        # generic Weather Station
-        return 'multimeter'
-
-    return  # unknow !
+# key: protocol, value: Data_Formatter instance
+data_formatters = {}
 
 
-def convertSwitchId(value):
-    # remove leading 0
-    value = value.lstrip('0')
-    if len(value) == 0:
-        value = '0'
-    return value
+class Data_Formatter(object):
+
+    def write(self, protocol, **data):
+        raise NotImplementedError()
+
+    def parse(self, protocol, message):
+        raise NotImplementedError()
+
+
+class Default_Data_Formatter(Data_Formatter):
+
+    def write(self, protocol, **data):
+        return '%s;%s;%s;' % (data.get('ID', 0), data.get('SWITCH', 0), data.get('CMD'))
+
+    def parse(self, protocol, message):
+        items = message.split(';')
+        data = {}
+
+        for item in items:
+            kv = item.split('=', 2)
+            if len(kv) == 1:
+                kv.append(True)
+            data[kv[0]] = convertAttrValue(kv[0], kv[1])
+
+        return data
+
+
+default_data_formatter = Default_Data_Formatter()
+
+
+def format_transmitted_data(protocol, **data):
+
+    if protocol in data_formatters:
+        formatter = data_formatters[protocol]
+    else:
+        formatter = default_data_formatter
+
+    return '10;%s;%s' % (protocol, formatter.write(protocol, **data))
+
+def parse_incoming_data(protocol, message):
+
+    if protocol in data_formatters:
+        formatter = data_formatters[protocol]
+    else:
+        formatter = default_data_formatter
+
+    return formatter.parse(protocol, message)
+
+
+
+def is_protocol(protocol):
+    if '=' in protocol:
+        return False
+    if protocol == 'PONG':
+        return False
+    return True
+
+
+class Result (BaseResult):
+    def __init__(self, response, *args, **kwargs):
+        super(Result, self).__init__(*args, **kwargs)
+        self.response = response

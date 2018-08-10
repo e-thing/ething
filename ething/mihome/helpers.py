@@ -1,6 +1,6 @@
 # coding: utf-8
 
-
+from ething.TransportProcess import BaseResult
 import socket
 import struct
 import json
@@ -30,7 +30,7 @@ def scan():
         sock.sendto(message, (MULTICAST_ADDRESS, SERVER_PORT))
 
         while True:
-            data, addr = sock.recvfrom(SOCKET_BUFSIZE)
+            data, addr = sock.recvfrom(1024)
 
             if data:
                 response = json.loads(data.decode("utf-8"))
@@ -47,3 +47,10 @@ def scan():
         sock.close()
 
     return listvalues(gateways)
+
+
+class Result (BaseResult):
+    def __init__(self, ack, **kwargs):
+        super(Result, self).__init__(**kwargs)
+        self.ack = ack
+

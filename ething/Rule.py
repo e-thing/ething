@@ -1,37 +1,16 @@
 # coding: utf-8
 
 from .Resource import Resource
-from .base import NestedArrayAdapter, attr, READ_ONLY, isAnything, isBool, isObject, isArray, isInteger
+from .entity import *
 
 from . import event
 from . import action
 import datetime
 
-
-class isEvent(isAnything):
-
-    def schema(self):
-        return {"$ref": "#/events/Event"}
-
-class isAction(isAnything):
-
-    def schema(self):
-        return {"$ref": "#/actions/Action"}
-
-class isSchedulerItem(isObject):
-    
-    def __init__(self):
-        super(isSchedulerItem, self).__init__(start = isObject(weekDay = isInteger(min=0, max=6), hour = isInteger(min=0, max=24)), end = isObject(weekDay = isInteger(min=0, max=6), hour = isInteger(min=0, max=24)))
-
-class isScheduler(isArray):
-    
-    def __init__(self):
-        super(isScheduler, self).__init__(item = isSchedulerItem())
-
-@attr('actions', validator=isArray(item = isAction(), min_len = 1), model_adapter=NestedArrayAdapter(action.Action), description="A list of actions describing a flow. Actions will be executed one after another.")
-@attr('events', validator=isArray(item = isEvent(), min_len = 1), model_adapter=NestedArrayAdapter(event.Event), description="A list of events describing when to execute this rule.")
-@attr('enabled', validator=isBool(), default=True, description="If True (default), the rule is enabled")
-@attr('scheduler', validator=isArray(item = isObject(start = isObject(weekDay = isInteger(min=0, max=6), hour = isInteger(min=0, max=24)), end = isObject(weekDay = isInteger(min=0, max=6), hour = isInteger(min=0, max=24)))), default=[], description="Activate this rule only within certain periods of time")
+@attr('actions', type=Array(action.Action, min_len = 1), description="A list of actions describing a flow. Actions will be executed one after another.")
+@attr('events', type=Array(event.Event, min_len = 1), description="A list of events describing when to execute this rule.")
+@attr('enabled', type=Boolean(), default=True, description="If True (default), the rule is enabled")
+@attr('scheduler', type=Array(Dict(mapping = { 'start': Dict(mapping = { 'weekDay': Integer(min=0, max=6), 'hour': Integer(min=0, max=24) }), 'end': Dict(mapping = { 'weekDay': Integer(min=0, max=6), 'hour': Integer(min=0, max=24) })})), default=[], description="Activate this rule only within certain periods of time")
 @attr('execution_count', default=0, mode=READ_ONLY, description="The number of times this rule has been executed")
 @attr('execution_date', default=None, mode=READ_ONLY, description="The last time this rule has been executed")
 class Rule(Resource):
@@ -99,19 +78,18 @@ class Rule(Resource):
 
     def run(self, signal=None):
 
-        self._execution_count = self.execution_count + 1
+        with self:
+            self._execution_count = self.execution_count + 1
 
-        self._execution_date = datetime.datetime.utcnow()
+            self._execution_date = datetime.datetime.utcnow()
 
-        actions = self.actions
+            actions = self.actions
 
-        for i in range(len(actions)):
-            try:
-                action = actions[i]
-                action.run(signal)
-            except Exception as e:
-                self.ething.log.exception('error while running the action[%d] %s of the rule %s' % (i, action, self))
-                break
-
-        self.save()
+            for i in range(len(actions)):
+                try:
+                    action = actions[i]
+                    action.run(signal)
+                except Exception as e:
+                    self.ething.log.exception('error while running the action[%d] %s of the rule %s' % (i, action, self))
+                    break
 

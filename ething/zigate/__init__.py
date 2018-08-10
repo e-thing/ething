@@ -29,7 +29,7 @@ class Zigate(object):
             'ResourceDeleted', self.on_resource_deleted)
 
         devices = self.core.find({
-            'extends': 'ZigateGateway'
+            'extends': 'resources/ZigateGateway'
         })
 
         for device in devices:
@@ -146,7 +146,7 @@ class SerialTransport(object):
             chunk = self._serial.read(1024)  # return as bytes
 
             if not chunk:
-                self.log.warn("[serial]: link broken... close")
+                self.log.warning("[serial]: link broken... close")
                 self._controller.close()
                 return None
 

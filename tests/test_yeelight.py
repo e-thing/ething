@@ -17,7 +17,7 @@ def test_yeelight_controller(core_extended):
     assert device.interface.is_a('Light')
 
     table = device.children({
-        'type': 'Table'
+        'type': 'resources/Table'
     })[0]
 
     print(table)

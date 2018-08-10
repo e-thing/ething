@@ -22,19 +22,19 @@ def test_mysensors_message():
 
 def test_mysensors_sensors(core):
 
-    gateway = core.create('MySensorsEthernetGateway', {
+    gateway = core.create('resources/MySensorsEthernetGateway', {
         'name': 'gateway',
         'address': '127.0.0.1'
     })
 
-    d = core.create('MySensorsSensor', {
+    d = core.create('resources/MySensorsSensor', {
         'name': 'foobar',
         'sensorId': 4,
         'sensorType': 'S_TEMP',
         'data': {
             'temperature': 45,
         },
-        'createdBy': gateway
+        'createdBy': gateway.id
     })
 
     assert d.interface.is_a('Thermometer')
@@ -103,7 +103,7 @@ def test_mysensors_controller(core_extended):
     print(sensor.data)
 
     table = sensor.children({
-        'type': 'Table'
+        'type': 'resources/Table'
     })[0]
 
     print(table)

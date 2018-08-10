@@ -121,14 +121,14 @@ class UdpTransport(Transport):
         super(UdpTransport, self).open()
         
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)  # UDP
+
         self.sock.bind(("0.0.0.0", self.port))
 
-        mreq = struct.pack("=4sl", socket.inet_aton(
+        mreq = struct.pack("4sl", socket.inet_aton(
             self.host), socket.INADDR_ANY)
         self.sock.setsockopt(socket.IPPROTO_IP, socket.IP_MULTICAST_TTL, 32)
         self.sock.setsockopt(socket.IPPROTO_IP, socket.IP_MULTICAST_LOOP, 1)
-        self.sock.setsockopt(socket.SOL_SOCKET,
-                        socket.SO_RCVBUF, 1024)
+        self.sock.setsockopt(socket.SOL_SOCKET, socket.SO_RCVBUF, 4096)
         # allow multiple processes to bind to the same address
         self.sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         # join multicast group and bind to port
@@ -142,7 +142,7 @@ class UdpTransport(Transport):
     def read(self):
         if self.sock is not None:
             try:
-                data, addr = self.sock.recvfrom(1024)  # return as bytes
+                data, addr = self.sock.recvfrom(4096)  # return as bytes
             except socket.timeout:
                 pass
             else:
@@ -298,3 +298,49 @@ class TransportProcess(Process):
                 while not self.stopped() and time.time() < t_end:
                     time.sleep(0.5)
 
+
+class BaseResult (object):
+
+    def __init__(self, command = None, done = None, err = None):
+        self.__command = command
+        self.__on_done = done
+        self.__on_err = err
+        self.__event = threading.Event()
+        self.__data = None
+        self.__error = None
+        self.__send_ts = time.time()
+
+    @property
+    def command(self):
+        return self.__command
+
+    @property
+    def data(self):
+        return self.__data
+
+    @property
+    def error(self):
+        return self.__error
+
+    @property
+    def send_ts(self):
+        return self.__send_ts
+
+    def resolve(self, data = None, args = (), kwargs = {}):
+        if not self.__event.is_set():
+            self.__data = data
+            if self.__on_done:
+                self.__on_done(self, *args, **kwargs)
+            self.__event.set()
+
+    def reject(self, error, args = (), kwargs = {}):
+        if not self.__event.is_set():
+            self.__error = error
+
+            if self.__on_err:
+                self.__on_err(self, *args, **kwargs)
+
+            self.__event.set()
+
+    def wait(self, timeout = None):
+        self.__event.wait(timeout)

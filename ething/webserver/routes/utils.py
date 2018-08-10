@@ -9,21 +9,12 @@ import string
 from collections import OrderedDict
 from werkzeug.http import unquote_etag
 
-from ething.meta import resource_classes, interfaces_classes, event_classes, action_classes, iface
-from ething.base import READ_ONLY
-from ething.Resource import Resource
-from ething.event import Event
-from ething.action import Action
+from ething.reg import build_schema_definitions
+from ething.dbentity import DbEntity, Entity
 
 from ething.Scope import Scope
 
 from ething.utils import get_info
-
-
-def attr_helper(schema, name, attribute):
-
-    if attribute.get('mode') == READ_ONLY:
-        schema['readOnly'] = True
 
 
 _meta = None
@@ -140,126 +131,12 @@ def install(core, app, auth, **kwargs):
 
         if _meta is None:
             _meta = {
-                "resources": OrderedDict(),
-                "interfaces": OrderedDict(),
+                "definitions": build_schema_definitions(skip=(DbEntity, Entity)),
                 "scopes": Scope.list,
-                "events": OrderedDict(),
-                "actions": OrderedDict(),
                 "info": get_info(core),
                 "plugins":OrderedDict(),
                 "config": core.config.SCHEMA
             }
-
-            for name in list(resource_classes):
-                resource_cls = resource_classes[name]
-
-                schema = resource_cls.schema(flatted=False, helper=attr_helper)
-
-                # static inheritance
-                allOf = []
-                for b in resource_cls.__bases__:
-
-                    if issubclass(b, Resource):
-                        allOf.append({
-                            '$ref': '#/resources/%s' % b.__name__
-                        })
-                    elif issubclass(b, iface):
-
-                        for i in b.get_inherited_interfaces():
-                            allOf.append({
-                                '$ref': '#/interfaces/%s' % i.__name__
-                            })
-
-                if len(allOf) > 0:
-                    if schema:
-                        allOf.append(schema)
-
-                    schema = {
-                        'allOf': allOf
-                    }
-
-                if resource_cls.is_abstract():
-                    schema['virtual'] = True
-
-                _meta['resources'][name] = schema
-
-            for name in list(interfaces_classes):
-                interface_cls = interfaces_classes[name]
-
-                # static inheritance
-                allOf = []
-
-                for b in interface_cls.__bases__:
-                    if issubclass(b, iface):
-                        for i in b.get_inherited_interfaces():
-                            allOf.append({
-                                '$ref': '#/interfaces/%s' % i.__name__
-                            })
-
-                if len(allOf) > 0:
-                    schema = {
-                        'allOf': allOf
-                    }
-                else:
-                    schema = {
-                        'type': 'object'
-                    }
-
-                _meta['interfaces'][name] = schema
-
-            for name in list(event_classes):
-                event_cls = event_classes[name]
-
-                schema = event_cls.schema(flatted=False, helper=attr_helper)
-
-                # static inheritance
-                allOf = []
-                for b in event_cls.__bases__:
-
-                    if issubclass(b, Event):
-                        allOf.append({
-                            '$ref': '#/events/%s' % b.__name__
-                        })
-
-                if len(allOf) > 0:
-                    if schema:
-                        allOf.append(schema)
-
-                    schema = {
-                        'allOf': allOf
-                    }
-
-                if event_cls.is_abstract():
-                    schema['virtual'] = True
-
-                _meta['events'][name] = schema
-
-            for name in list(action_classes):
-                action_cls = action_classes[name]
-
-                schema = action_cls.schema(flatted=False, helper=attr_helper)
-
-                # static inheritance
-                allOf = []
-                for b in action_cls.__bases__:
-
-                    if issubclass(b, Action):
-                        allOf.append({
-                            '$ref': '#/actions/%s' % b.__name__
-                        })
-
-                if len(allOf) > 0:
-                    if schema:
-                        allOf.append(schema)
-
-                    schema = {
-                        'allOf': allOf
-                    }
-
-                if action_cls.is_abstract():
-                    schema['virtual'] = True
-
-                _meta['actions'][name] = schema
 
             for plugin in core.plugins:
                 name = plugin.name

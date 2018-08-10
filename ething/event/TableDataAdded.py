@@ -1,7 +1,7 @@
 # coding: utf-8
 from future.utils import integer_types
-from .ResourceEvent import ResourceSignal, ResourceEvent, isResourceFilter, attr, isNone
-from ething.base import isString, isEnum, isNumber, isBool, PRIVATE
+from .ResourceEvent import ResourceSignal, ResourceEvent, ResourceFilter, attr
+from ething.reg import *
 
 class TableDataAdded(ResourceSignal):
     def __init__(self, resource, data):
@@ -9,7 +9,7 @@ class TableDataAdded(ResourceSignal):
         self.data = data
 
 
-@attr('resource', validator=isResourceFilter(onlyTypes=('Table',)) | isNone())
+@attr('resource', type=ResourceFilter(onlyTypes=('resources/Table',)))
 class TableDataAddedEvent(ResourceEvent):
     """
     is emitted each time a new value is appended to a table
@@ -17,11 +17,11 @@ class TableDataAddedEvent(ResourceEvent):
     signal = TableDataAdded
 
 
-@attr('repeat', validator=isBool(), default=False, description="If true, the rule will be triggered each time the value match the threshold condition. Else the rule is triggered only the first time the threshold condition is met, then the rule is disabled until the threshold condition is not met.")
-@attr('threshold_value', validator=isNumber())
-@attr('threshold_mode', validator=isEnum(('gt', 'ge', 'lt', 'le')))
-@attr('key', validator=isString(allow_empty = False), description="The name of the column in the table")
-@attr('resource', validator=isResourceFilter(onlyTypes=('Table',)))
+@attr('repeat', type=Boolean(), default=False, description="If true, the rule will be triggered each time the value match the threshold condition. Else the rule is triggered only the first time the threshold condition is met, then the rule is disabled until the threshold condition is not met.")
+@attr('threshold_value', type=Number())
+@attr('threshold_mode', type=Enum(('gt', 'ge', 'lt', 'le')))
+@attr('key', type=String(allow_empty = False), description="The name of the column in the table")
+@attr('resource', type=ResourceFilter(onlyTypes=('resources/Table',)))
 @attr('last_status', mode=PRIVATE, default=False)
 class TableDataThresholdEvent(ResourceEvent):
     """

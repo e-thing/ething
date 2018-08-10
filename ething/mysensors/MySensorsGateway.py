@@ -2,24 +2,28 @@
 
 
 from future.utils import string_types
-from ething.Device import Device, method, attr, abstract, isString, isBool, isNone, READ_ONLY
-from ething.Helpers import dict_recursive_update
+from ething.Device import Device
+from ething.reg import *
 from .helpers import *
 from .Message import Message
+from ething.Process import get_process
 
 
 @abstract
-@attr('isMetric', validator=isBool(), default=True, description="Set the unit to Metric(default) instead of Imperial.")
-@attr('ackEnabled', validator=isBool(), default=False, description="If set, every message sent must be acknowledged.")
+@attr('isMetric', type=Boolean(), default=True, description="Set the unit to Metric(default) instead of Imperial.")
 @attr('libVersion', default=None, mode=READ_ONLY, description="The version of the MySensors library used.")
 class MySensorsGateway(Device):
     """
     see https://www.mysensors.org
     """
 
+    @property
+    def controller(self):
+        return get_process('mysensors.%s' % self.id)
+
     def getNodes(self, filter=None):
         q = {
-            'type': 'MySensorsNode',
+            'type': 'resources/MySensorsNode',
             'createdBy': self.id
         }
 
@@ -32,7 +36,7 @@ class MySensorsGateway(Device):
 
     def getNode(self, nodeId):
         return self.ething.findOne({
-            'type': 'MySensorsNode',
+            'type': 'resources/MySensorsNode',
             'createdBy': self.id,
             'nodeId': nodeId
         })
@@ -50,49 +54,50 @@ class MySensorsGateway(Device):
         # remove the resource
         super(MySensorsGateway, self).remove(removeChildren)
 
-    @method.arg('nodeId', type='integer', minimum=0, maximum=255, required=True)
-    @method.arg('sensorId', type='integer', minimum=0, maximum=255, required=True)
-    @method.arg('type', type='integer', minimum=0, maximum=4, required=True)
-    @method.arg('subtype', type='integer', minimum=0, maximum=255, required=True)
-    @method.arg('payload', type='string', default="", maxLength=25)
+    @method.arg('nodeId', type=Integer(min=0, max=255), required=True)
+    @method.arg('sensorId', type=Integer(min=0, max=255), required=True)
+    @method.arg('type', type=Integer(min=0, max=4), required=True)
+    @method.arg('subtype', type=Integer(min=0, max=255), required=True)
+    @method.arg('payload', type=String(maxLength=25), default="")
     @method.return_type('application/json')
-    def sendMessage(self, nodeId, sensorId=None, type=None, subtype=None, payload=None):
+    def send(self, nodeId, sensorId=None, type=None, subtype=None, payload=None, **kwargs):
         """
         send a message.
         """
+        message = Message(nodeId, sensorId, type, subtype, value = payload, ack = kwargs.get('ack', True))
 
-        message = None
+        result = self.controller.send(message, **kwargs)
 
-        if isinstance(nodeId, Message):
-            message = nodeId
-        elif isinstance(nodeId, string_types):
-            message = Message.parse(nodeId)
-        else:
-            message = Message(nodeId, sensorId, type, subtype, value = payload)
+        result.wait()
 
-        return self.ething.rpc.request('process.%s.send' % self.id, message)
+        if result.error:
+            raise Exception(str(result.error))
+
+        return result
 
     # send a message and wait for the response.
     # note: not all request has a response !
-
-    def sendMessageWaitResponse(self, message):
-        return self.ething.rpc.request('process.%s.send' % self.id, message, waitResponse=True)
 
     @method.return_type('string')
     def getVersion(self):
         """
         request gateway version.
         """
-        error, _, resp = self.sendMessageWaitResponse(
-            Message(GATEWAY_ADDRESS, INTERNAL_CHILD, INTERNAL, I_VERSION))
-        if error:
-            raise Exception(error)
-        return resp.payload
+        result = self.send(GATEWAY_ADDRESS, INTERNAL_CHILD, INTERNAL, I_VERSION, response = {'subType': I_VERSION})
+        return result.data.value
 
     @method
     def reboot(self):
         """
         Request gateway to reboot.
         """
-        self.sendMessage(
-            Message(GATEWAY_ADDRESS, INTERNAL_CHILD, INTERNAL, I_REBOOT))
+        self.send(GATEWAY_ADDRESS, INTERNAL_CHILD, INTERNAL, I_REBOOT)
+
+    def ping(self):
+        result = self.send(GATEWAY_ADDRESS, INTERNAL_CHILD, INTERNAL, I_PING, response = {'subType': I_PONG})
+        return
+
+    @method
+    def heartbeat(self):
+        result = self.send(GATEWAY_ADDRESS, INTERNAL_CHILD, INTERNAL, I_HEARTBEAT_REQUEST, response = {'subType': I_HEARTBEAT_RESPONSE})
+        return result.data.value

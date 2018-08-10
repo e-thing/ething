@@ -16,7 +16,7 @@ def test_scriptengine_script(core):
 
     script_content = u'script instanceof EThing.Resource ? 1 : 0'
 
-    script = core.create('File', {
+    script = core.create('resources/File', {
         'name': 'script.js'
     })
 
@@ -34,7 +34,7 @@ def test_scriptengine_script_arg(core):
 
     script_content = u'argv.length'
 
-    script = core.create('File', {
+    script = core.create('resources/File', {
         'name': 'script.js'
     })
 

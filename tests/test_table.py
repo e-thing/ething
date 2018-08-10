@@ -15,7 +15,7 @@ def test_table_create(core):
         "a": 3
     }]
 
-    f = core.create('Table', {
+    f = core.create('resources/Table', {
         'name': 'table.tb'
     })
 
@@ -41,7 +41,7 @@ def test_table_unicode(core):
         "name": u"rémi"
     }]
 
-    f = core.create('Table', {
+    f = core.create('resources/Table', {
         'name': 'table.tb'
     })
 

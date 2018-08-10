@@ -19,19 +19,19 @@ def test_resourcequeryparser_valid(expr, valid):
 
 def test_resourcequeryparser(core):
 
-    core.create('File', {
+    core.create('resources/File', {
         'name': 'file1.txt',
         'expireAfter': 300
     })
 
-    core.create('File', {
+    core.create('resources/File', {
         'name': 'file2.txt',
         'data': {
             'foo': 'bar'
         }
     })
 
-    core.create('Table', {
+    core.create('resources/Table', {
         'name': 'table1'
     })
 

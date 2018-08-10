@@ -1,7 +1,7 @@
 # coding: utf-8
 from future.utils import string_types
 
-from .base import Validator
+from .type import String
 
 
 class Scope(object):
@@ -79,11 +79,9 @@ class Scope(object):
         return False
 
 
-class ScopeValidator(Validator):
-    def validate(self, value, object):
-        if (not isinstance(value, string_types)) or (not Scope.validate(value)):
-            raise ValueError('not a valid scope')
-        return value
+class ScopeType(String):
 
-    def schema(self):
-        return {"type": "string"}
+    def validate(self, value):
+        super(ScopeType, self).validate(value)
+        if not Scope.validate(value):
+            raise ValueError('not a valid scope')

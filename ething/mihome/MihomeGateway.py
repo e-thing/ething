@@ -1,101 +1,67 @@
 # coding: utf-8
-from future.utils import string_types
 
-
-from ething.Device import Device, method, attr, isString, isInteger, isNone, PRIVATE
-from ething.interfaces import RGBWLight
-from .helpers import IV
-import pyaes
-import binascii
-import math
+from ething.reg import *
+from ething.interfaces import RGBWLight, LightSensor
+from .MihomeBase import MihomeBase
 import json
 
-
-def just16(str):
-    return str.ljust(int(math.ceil(len(str)/16.))*16)
 
 
 musicMap = ["Police siren", "Police siren 2", "Accident tone", "Missle countdown", "Ghost", "Sniper", "War", "Air Strike", "Barking dogs", "Doorbell ring tone", "Knock on door",
             "Hilarious", "Alarm clock", "MiMix", "Enthusiastic", "GuitarClassic", "IceWorldPiano", "LeisureTime", "Childhood", "MorningStreamlet", "MusicBox", "Orange", "Thinker"]
 
 
-@attr('sid', validator=isString(allow_empty=False), description="The uniq sid of the gateway")
-@attr('ip', validator=isString(allow_empty=False), description="The IP address of the gateway")
-@attr('password', validator=isString(allow_empty=True), default="", description="The password of the gateway")
+@attr('ip', type=String(allow_empty=False), description="The IP address of the gateway")
+@attr('password', type=String(allow_empty=True), default="", description="The password of the gateway")
 @attr('token', mode=PRIVATE, default='')
-class MihomeGateway(Device, RGBWLight):
+class MihomeGateway(MihomeBase, RGBWLight, LightSensor):
 
-    def getGatewayKey(self):
-        aes = pyaes.AESModeOfOperationCBC(
-            just16(self.password).encode('utf8'), iv=IV)
-        ciphertext = aes.encrypt(just16(self._token))
-        return binascii.hexlify(ciphertext).decode('utf8')
+    def _get_gateway(self):
+        return self
 
-    def processData(self, response):
+    def _processData(self, response):
         
         if 'token' in response:
             self._token = response['token']
 
-        data = json.loads(response['data'])
-
-        if data:
+        if 'data' in response:
+            data = json.loads(response['data'])
 
             if 'rgb' in data:
                 rgb = data['rgb'] & 0xffffff
                 brightness = data['rgb'] >> 24
 
-                color = '#' + format(rgb, '06X')
-                brightness = brightness
-
-                self.store(None, {
-                    'color': color,
-                    'brightness': brightness
-                }, history=False)
+                self._color = '#' + format(rgb, '06X')
+                self._level = int(brightness)
 
             if 'illumination' in data:
-                illumination = int(data['illumination']) - 300  # lm
-                self.store('illumination', illumination)
+                self._light_level = int(data['illumination']) - 300  # lm
 
-    def sendCommand(self, cmd):
-        return self.ething.rpc.request('mihome.send', self.id, cmd)
+        if response.get('cmd') == 'iam':
+            def read(result, gateway):
+                for sid in result.data:
+                    self.controller.send({"cmd": "read", "sid": sid}, ip=self.ip, ack = False)
 
-    def getLevel(self):
-        return self.data.get('brightness', 0)
+            self.controller.send({"cmd": "get_id_list", 'sid': self.sid}, ip=self.ip, done = read)
 
     def setLevel(self, level):
-        hrgb = int(self.data.get('color', '#FFFFFF')[1:], 16)
 
+        hrgb = int(self.color[1:], 16)
         hrgb = hrgb | (level << 24)
 
-        self.sendCommand({
-            "cmd": "write",
-            "model": "gateway",
-            "sid": self.sid,
-            "short_id": 0,
-            "data": {
-                "rgb": hrgb
-            }
-        })
-
-    def getColor(self):
-        return self.data.get('color', '#000000')
+        self._write({
+            "rgb": hrgb
+        }, done = lambda _, device : setattr(device, '_level', level))
 
     def setColor(self, color):
 
-        hrgb = int(color.replace('#', '').replace('0x', ''),
-                   16) if isinstance(color, string_types) else color
+        hrgb = int(color.replace('#', '').replace('0x', ''), 16)
 
-        hrgb = hrgb | (self.data.get('brightness', 100) << 24)
+        hrgb = hrgb | (self.level << 24)
 
-        self.sendCommand({
-            "cmd": "write",
-            "model": "gateway",
-            "sid": self.sid,
-            "short_id": 0,
-            "data": {
-                "rgb": hrgb
-            }
-        })
+        self._write({
+            "rgb": hrgb
+        }, done=lambda _, device: setattr(device, '_color', color))
 
     @method.arg('music', enum=musicMap)
     @method.arg('volume', minimum=0, maximum=100)
@@ -111,15 +77,9 @@ class MihomeGateway(Device, RGBWLight):
             else:
                 raise Exception('music unknown: %s' % music)
 
-        self.sendCommand({
-            "cmd": "write",
-            "model": "gateway",
-            "sid": self.sid,
-            "short_id": 0,
-            "data": {
-                "mid": music,
-                "vol": volume
-            }
+        self._write({
+            "mid": music,
+            "vol": volume
         })
 
     @method
@@ -127,13 +87,6 @@ class MihomeGateway(Device, RGBWLight):
         """
         stop the music
         """
-
-        self.sendCommand({
-            "cmd": "write",
-            "model": "gateway",
-            "sid": self.sid,
-            "short_id": 0,
-            "data": {
-                "mid": 10000
-            }
+        self._write({
+            "mid": 10000
         })

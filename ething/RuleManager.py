@@ -60,11 +60,11 @@ class RuleProcess(Process):
         self.core.signalDispatcher.unbind('*', self.dispatchSignal)
 
     def onResourceCreatedOrDeleted(self, signal):
-        if signal['rType'] == 'Rule':
+        if signal['rType'] == 'resources/Rule':
             self._build_cache()
 
     def onResourceMetaUpdated(self, signal):
-        if signal['rType'] == 'Rule' and ( 'events' in signal['attributes'] or 'enabled' in signal['attributes'] or 'scheduler' in signal['attributes']):
+        if signal['rType'] == 'resources/Rule' and ( 'events' in signal['attributes'] or 'enabled' in signal['attributes'] or 'scheduler' in signal['attributes']):
             self._build_cache()
 
     def dispatchSignal(self, signal):
@@ -127,7 +127,7 @@ class RuleProcess(Process):
             self._cache.clear()
 
             rules = self.core.find({
-                'type': 'Rule',
+                'type': 'resources/Rule',
                 'enabled': True
             })
 

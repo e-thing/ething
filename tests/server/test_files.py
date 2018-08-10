@@ -45,7 +45,7 @@ def test_put_file(core, webapp, webapp_auth_header):
         name = 'file1.txt'
         content = u'hello world,  I also accept accents éàç...'
 
-        f = core.create('File', {
+        f = core.create('resources/File', {
             'name': name
         })
 

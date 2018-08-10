@@ -198,7 +198,7 @@ class FlaskApp(Flask):
         if restrictToTypes is not None:
             ok = False
             for type in restrictToTypes:
-                if r.isTypeof(type):
+                if r.isTypeof('resources/' + type):
                     ok = True
                     break
             if not ok:
@@ -221,7 +221,7 @@ class FlaskApp(Flask):
                     # restrict the search to the allowed_types
                     ok = False
                     for allowed_type in allowed_types:
-                        if r.isTypeof(allowed_type):
+                        if r.isTypeof('resources/' + allowed_type):
                             ok = True
                             break
                     if not ok:

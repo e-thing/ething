@@ -7,17 +7,17 @@ def test_rule(core):
 
     script_content = u'console.log("toto")'
 
-    script = core.create('File', {
+    script = core.create('resources/File', {
         'name': 'script.js'
     })
 
     script.write(script_content, encoding='utf8')
 
-    rule = core.create('Rule', {
+    rule = core.create('resources/Rule', {
         'name': 'myrule',
         'script': script,
         'event': {
-            'type': 'CustomEvent',
+            'type': 'events/CustomEvent',
             'name': 'test'
         }
     })

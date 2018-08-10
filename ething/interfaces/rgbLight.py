@@ -1,26 +1,15 @@
 # coding: utf-8
 
+from ething.reg import *
 from .light import Light
-from ething.meta import method, interface
 
 
-def toHex(value):
-    return value
-
-
-@interface
+@attr('color', type = Color(), default = '#FFFFFF', mode = READ_ONLY, history = True, description = "the color of the light (#ffffff format)")
 class RGBLight (Light):
 
-    @method.return_type('string')
-    def getColor(self):
-        """
-        return the color of the light (#ffffff format)
-        """
-        return toHex(self.getData('color', '#FFFFFF'))
-
-    @method.arg('color', type='string', format='color')
+    @method.arg('color', type=Color(), format='color')
     def setColor(self, color):
         """
         set the color of the light (#ffffff format)
         """
-        raise NotImplementedError()
+        self._color = color

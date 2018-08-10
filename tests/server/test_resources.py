@@ -8,7 +8,7 @@ def test_get_resources(core, webapp, webapp_auth_header):
     content = b'hello world'
 
     def create_file():
-        f = core.create('File', {
+        f = core.create('resources/File', {
             'name': 'file1.txt'
         })
 

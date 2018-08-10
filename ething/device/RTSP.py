@@ -1,15 +1,15 @@
 # coding: utf-8
 
 
-from ething.Device import Device, method, attr, isString, isObject, isInteger, isNone, READ_ONLY, Validator
+from ething.Device import *
 from ething.utils import pingable
 from ething.interfaces import Camera
 import subprocess
 
 
 @pingable('url')
-@attr('url', validator=isString(allow_empty=False, regex='^rtsp://'), description="The URL of the device rtsp://... .")
-@attr('transport', validator=isString(allow_empty=False, enum=['udp', 'tcp', 'http']), default='tcp', description="Lower transport protocol. Allowed values are the ones defined for the flags for rtsp_transport (see https://libav.org/avconv.html).")
+@attr('url', type=String(allow_empty=False, regex='^rtsp://'), description="The URL of the device rtsp://... .")
+@attr('transport', type=String(allow_empty=False, enum=['udp', 'tcp', 'http']), default='tcp', description="Lower transport protocol. Allowed values are the ones defined for the flags for rtsp_transport (see https://libav.org/avconv.html).")
 class RTSP(Device, Camera):
     """
     RTSP Device resource representation, usually IP camera.
@@ -18,9 +18,6 @@ class RTSP(Device, Camera):
 
     @method.return_type('image/jpeg')
     def snapshot(self):
-        """
-        get a snapshot.
-        """
         cmd = "avconv -rtsp_transport %s -i %s -frames:v 1 -an -f image2 pipe:1 2>/dev/null" % (
             self.transport, self.url)
 

@@ -126,7 +126,7 @@ class Controller(object):
 
             attr['name'] = info.name
             attr['address'] = info.addr
-            attr['createdBy'] = self.gateway
+            attr['createdBy'] = self.gateway.id
 
             try:
                 device = self.ething.create(info.cls.__name__, attr)
@@ -135,7 +135,7 @@ class Controller(object):
                     "Zigate: unable to create the device %s" % model)
 
         else:
-            self.log.warn(
+            self.log.warning(
                 "Zigate: unable to create the device, unknown model = %s" % model)
 
         return device
@@ -277,7 +277,7 @@ class Controller(object):
             device = self.gateway.getDevice(addr)
 
             if not device:
-                self.log.warn(
+                self.log.warning(
                     "Zigate: receive a message from an unknown device, addr: %s" % addr)
 
         if type == "8010":  # Version
@@ -419,10 +419,9 @@ class Controller(object):
                         """
 
         if device:
-
-            device.onMessage(packet)
-            device.setConnectState(True)
-            device.save()
+            with device:
+                device.onMessage(packet)
+                device.setConnectState(True)
 
     def update(self):
         # do some stuff regularly

@@ -27,7 +27,7 @@ if bluepy_imported:
             self.controllers = {}
 
             gateways = self.core.find({
-                'type': 'BleaGateway'
+                'type': 'resources/BleaGateway'
             })
 
             for gateway in gateways:
@@ -200,7 +200,7 @@ if bluepy_imported:
         def _read(self):
             if self.connected:
                 devices = self.core.find({
-                    'extends': 'BleaDevice'
+                    'extends': 'resources/BleaDevice'
                 })
 
                 now = time.time()
@@ -215,7 +215,7 @@ if bluepy_imported:
 
         def _check(self):
             devices = self.core.find({
-                'extends': 'BleaDevice'
+                'extends': 'resources/BleaDevice'
             })
 
             now = datetime.datetime.utcnow()

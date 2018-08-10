@@ -1,11 +1,12 @@
 # coding: utf-8
 from .RFLinkGateway import RFLinkGateway
 from .RFLinkSerialGateway import RFLinkSerialGateway
-from .RFLinkNode import RFLinkNode
+from .RFLinkSwitch import RFLinkSwitch
+from .RFLinkGenericSensor import RFLinkGenericSensor
 from ething.plugin import Plugin
 from ething.TransportProcess import LineReader, TransportProcess, SerialTransport
 from ething.Scheduler import Scheduler
-from .helpers import convertSwitchId, getSubType
+from .helpers import parse_incoming_data, is_protocol, Result
 import time
 import re
 import datetime
@@ -18,7 +19,7 @@ class RFLink(Plugin):
         self.controllers = {}
 
         gateways = self.core.find({
-            'type': {'$regex': '^RFLink.*Gateway$'}
+            'extends': 'resources/RFLinkGateway'
         })
 
         for gateway in gateways:
@@ -52,14 +53,10 @@ class RFLink(Plugin):
         id = signal['resource']
         if id in self.controllers:
             controller = self.controllers[id]
-            gateway = controller.gateway
-            if signal['rModifiedDate'] > gateway.modifiedDate:
-                gateway.refresh()
-
             for attr in signal['attributes']:
                 if attr in controller.RESET_ATTR:
                     self._stop_controller(id)
-                    self._start_controller(gateway)
+                    self._start_controller(controller.gateway)
                     break
 
     def _start_controller(self, device):
@@ -122,139 +119,126 @@ class RFLinkProtocol(LineReader):
     def handle_line(self, line):
         self.log.debug('read: %s' % line)
 
-        with self.gateway as gateway:
+        gateway = self.gateway
 
-            gateway.setConnectState(True)
+        # keep only messages destined to the gateway
+        if not line.startswith('20;'):
+            return
 
-            words = line.rstrip(';').split(';')
-            wordsCount = len(words)
+        # remove trailing ';'
+        line = line.rstrip(';')
 
-            if wordsCount < 3:
-                self.log.warn("RFLink: invalid message received '%s'" % line)
-                return
+        parts = line.split(';', 4)
 
-            # keep only messages destined to the gateway
-            if words[0] != "20":
-                return
+        if len (parts) == 4 and is_protocol(parts[2]):
 
-            if wordsCount == 3 or words[2][0:4] == 'VER=':
-                # system command/response
+            _, packet_counter, protocol, message = parts
 
-                # does a user request wait for a response
-                for responseListener in self._responseListeners:
-                    responseListener['callback'](False, line)
-                self._responseListeners = []
+            data = parse_incoming_data(protocol, message)
 
-                matches = re.search(
-                    'Nodo RadioFrequencyLink - RFLink Gateway V([\d\.]+) - R([\d]+)', words[2])
-                if matches:
+            if 'ID' in data:
+
+                filter = {
+                    'extends': 'resources/RFLinkNode',
+                    'nodeId': data['ID'],
+                    'protocol': protocol,
+                    'createdBy': gateway.id
+                }
+
+                if 'SWITCH' in data:
+                    filter['switchId'] = data['SWITCH']
+
+                device = gateway.getNode(filter)
+
+                if not device:
+
+                    if gateway.inclusion:
+
+                        attributes = {
+                            'nodeId': data['ID'],
+                            'protocol': protocol,
+                            'name': data['ID'],
+                            'createdBy': gateway.id
+                        }
+
+                        device = self.create_device(protocol, data, attributes)
+
+                        if not device:
+                            self.log.warning("fail to create the node from %s" % (line))
+
+                if device:
+                    with device:
+                        device.setConnectState(True)
+                        device._handle_incoming_data(protocol, data)
+
+        else:
+
+            matches = re.search(
+                'Nodo RadioFrequencyLink - RFLink Gateway V([\d\.]+) - R([\d]+)', parts[2])
+            if matches:
+                with gateway:
                     gateway._version = matches.group(1)
                     gateway._revision = matches.group(2)
-                    self.log.info("RFLink: ver:%s rev:%s" %
-                                  (matches.group(1), matches.group(2)))
-                else:
-                    matches = re.search(
-                        ';VER=([\d\.]+);REV=([\d]+);BUILD=([0-9a-fA-F]+);', line)
-                    if matches:
+                self.log.info("RFLink: ver:%s rev:%s" %
+                              (matches.group(1), matches.group(2)))
+            else:
+                matches = re.search(
+                    ';VER=([\d\.]+);REV=([\d]+);BUILD=([0-9a-fA-F]+);', line)
+                if matches:
+                    with gateway:
                         gateway._version = matches.group(1)
                         gateway._revision = matches.group(2)
                         gateway._build = matches.group(3)
-                        self.log.info("RFLink: ver:%s rev:%s build:%s" % (
-                            matches.group(1), matches.group(2), matches.group(3)))
+                    self.log.info("RFLink: ver:%s rev:%s build:%s" % (
+                        matches.group(1), matches.group(2), matches.group(3)))
 
-            else:
+        i = 0
+        while i < len(self._responseListeners):
+            responseListener = self._responseListeners[i]
 
-                protocol = words[2]
-                args = {}
+            if re.search(responseListener.response, line):
+                responseListener.resolve(line)
+                self._responseListeners.pop(i)
+                i -= 1
 
-                for i in range(3, wordsCount):
-                    sepi = words[i].find('=')
-                    if sepi >= 0:
-                        # key value pair
-                        key = words[i][0:sepi]
-                        value = words[i][sepi + 1:]
-                        args[key] = value
 
-                if 'ID' in args:
+    def create_device(self, protocol, data, attributes):
 
-                    switchId = convertSwitchId(
-                        args['SWITCH']) if 'SWITCH' in args else None
+        # generic node
+        if 'SWITCH' in data:
+            attributes['switchId'] = data['SWITCH']
+            return RFLinkSwitch.create(attributes, ething = self.core)
 
-                    device = gateway.getNode({
-                        'nodeId': args['ID'],
-                        'protocol': protocol,
-                        'switchId': switchId
-                    })
+        # try to generate a generic sensor
+        sensor_cls = RFLinkGenericSensor.create_class_from_data(protocol, data)
+        if sensor_cls:
+            return sensor_cls.create(attributes, ething = self.core)
 
-                    if not device:
-                        if gateway.data.get('inclusion', False):
-                            # the device does not exist !
-
-                            subType = getSubType(protocol, args)
-
-                            # find the best subType suited from the protocol and args
-                            if subType:
-
-                                # create it !
-                                device = RFLinkNode.createDeviceFromMessage(
-                                    subType, protocol, args, gateway)
-
-                                if device:
-                                    self.log.info(
-                                        "RFLink: new node (%s) from %s" % (subType, line))
-                                else:
-                                    self.log.error(
-                                        "RFLink: fail to create the node (%s) from %s" % (subType, line))
-
-                            else:
-                                self.log.warn(
-                                    "RFLink: unable to handle the message %s" % line)
-
-                        else:
-                            self.log.warn(
-                                "RFLink: new node from %s, rejected because inclusion=False" % line)
-
-                    if device:
-                        with device:
-                            device.setConnectState(True)
-                            device.processMessage(protocol, args)
-
-                else:
-                    self.log.warn(
-                        "RFLink: unable to handle the message %s, no id." % line)
 
     # $message message to send
     # $callback (optional) function(error, messageSent, messageReceived = None)
     # $waitResponse (optional) true|false wait for a response or not
-    def send(self, message, callback=None, waitResponse=False):
+    def send(self, message, done = None, err = None, response = None):
 
         self.log.debug("RFLink: send message '%s'" % message)
 
+        result = Result(response, message, done = done, err = err)
+
         self.write_line(message)
 
-        if waitResponse:
+        if not response:
+            result.resolve()
+        else :
+            self._responseListeners.append(result)
 
-            def cb(error, messageReceived):
-                if callable(callback):
-                    callback(error, message, messageReceived)
-
-            # wait for a response
-            self._responseListeners.append({
-                'callback': cb,
-                'ts': time.time(),
-                'messageSent': message
-            })
-
-        else:
-            if callable(callback):
-                callback(False, message, None)
+        return result
 
     def connection_lost(self, exc):
 
         self.gateway.setConnectState(False)
 
         for responseListener in self._responseListeners:
-            responseListener['callback']('disconnected', None)
+            responseListener.reject('disconnected')
         self._responseListeners = []
 
         super(RFLinkProtocol, self).connection_lost(exc)
@@ -266,19 +250,18 @@ class RFLinkProtocol(LineReader):
         while i < len(self._responseListeners):
             responseListener = self._responseListeners[i]
 
-            if now - responseListener['ts'] > self.RESPONSE_TIMEOUT:
+            if now - responseListener.send_ts > self.RESPONSE_TIMEOUT:
                 # remove this item
                 self._responseListeners.pop(i)
                 i -= 1
 
-                responseListener['callback']('response timeout', None)
+                responseListener.reject('response timeout')
 
             i += 1
     
     def check_disconnect(self):
         devices = self.core.find({
-            'extends': 'RFLinkNode',
-            'subType': { '$in': ['thermometer', 'weatherStation', 'multimeter'] }
+            'extends': 'resources/RFLinkNode'
         })
         
         now = datetime.datetime.utcnow()
@@ -293,7 +276,7 @@ class RFLinkSerialController(TransportProcess):
 
     def __init__(self, gateway):
         super(RFLinkSerialController, self).__init__(
-            'rflink',
+            'rflink.%s' % gateway.id,
             transport = SerialTransport(
                 port = gateway.port,
                 baudrate = gateway.baudrate

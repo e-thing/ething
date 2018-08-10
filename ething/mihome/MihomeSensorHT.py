@@ -2,10 +2,10 @@
 
 
 from .MihomeDevice import MihomeDevice
-from ething.interfaces import Thermometer
+from ething.interfaces import Thermometer, HumiditySensor, PressureSensor
 
 
-class MihomeSensorHT(MihomeDevice, Thermometer):
+class MihomeSensorHT(MihomeDevice, Thermometer, HumiditySensor, PressureSensor):
     """
     Mihome temperature/humidity/pressure Sensor Device class.
     """
@@ -13,12 +13,9 @@ class MihomeSensorHT(MihomeDevice, Thermometer):
     def processAttr(self, name, value):
 
         if name == 'temperature':
-            value = int(value)/100.0
+            self._temperature = int(value)/100.0
+        elif name == 'humidity':
+            self._humidity = int(value)/100.0
+        elif name == 'pressure':  # hPa
+            self._pressure = int(value)
 
-        if name == 'humidity':
-            value = int(value)/100.0
-
-        if name == 'pressure':  # hPa
-            value = int(value)
-
-        self.store(name, value)

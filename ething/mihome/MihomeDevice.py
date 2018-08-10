@@ -1,19 +1,19 @@
 # coding: utf-8
 
 
-from ething.Device import Device, method, attr, abstract, isString
+from .MihomeBase import MihomeBase
+from ething.reg import *
 import json
 
 
 @abstract
-@attr('sid', validator=isString(allow_empty=False), description="The uniq sid of the device")
-class MihomeDevice(Device):
+@attr('voltage', type=Number(), mode=READ_ONLY, default=0, description = 'the voltage of the battery if any')
+class MihomeDevice(MihomeBase):
     """
     Mihome Device base class
     """
 
-    @property
-    def gateway(self):
+    def _get_gateway(self):
         return self.createdBy
 
     def processAttr(self, name, value):
@@ -30,9 +30,7 @@ class MihomeDevice(Device):
                 value = data[k]
 
                 if k == 'voltage':
-                    self.store('voltage', int(value)/1000.)  # volt
+                    self._voltage = int(value)/1000.  # volt
                 else:
                     self.processAttr(k, value)
 
-    def sendCommand(self, cmd):
-        return self.gateway.sendCommand(cmd)
