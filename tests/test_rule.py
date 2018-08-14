@@ -1,32 +1,28 @@
 # coding: utf-8
 import pytest
-from ething.meta import get_signal_class, get_event_class
+from ething.Rule import event, action
 
 
 def test_rule(core):
 
-    script_content = u'console.log("toto")'
-
-    script = core.create('resources/File', {
-        'name': 'script.js'
-    })
-
-    script.write(script_content, encoding='utf8')
-
     rule = core.create('resources/Rule', {
         'name': 'myrule',
-        'script': script,
-        'event': {
-            'type': 'events/CustomEvent',
-            'name': 'test'
-        }
+        'events': [
+            event.Custom.CustomEvent({
+                'name': 'my_event'
+            })
+        ],
+        'actions': [
+            action.Notify.Notify({
+                'message': 'hello'
+            })
+        ]
     })
 
     assert rule
 
-    signal = get_signal_class('Custom')('test')
+    signal = event.Custom.Custom('my_event')
 
-    assert rule.run(signal)
+    rule.trigger(signal)
 
-    assert rule.script_return_code == 0
-    assert rule.script_execution_count == 1
+    assert rule.execution_count == 1

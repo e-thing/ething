@@ -19,7 +19,7 @@ class MihomeDevice(MihomeBase):
     def processAttr(self, name, value):
         pass  # to be implemented
 
-    def processData(self, response):
+    def _processData(self, response):
 
         data = json.loads(response['data'])
 

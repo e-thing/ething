@@ -41,7 +41,7 @@ class MySensorsSensor (Device):
         """
         return self.node.send(self.sensorId, type, subtype, payload)
 
-    def _set(self, datatype, value):
+    def _set_data(self, datatype, value):
         name = valueTypeToName(datatype)
 
         if isinstance(value, MutableSequence):

@@ -22,12 +22,10 @@ class Mihome(Plugin):
     def _start_controller(self):
         self.controller = Controller(self.core)
         self.controller.start()
-        self.core.rpc.register('mihome.send', self.controller.send, callback_name='callback')
 
     def _stop_controller(self):
         if hasattr(self, 'controller'):
             self.controller.stop()
-            self.core.rpc.unregister('mihome.send')
             del self.controller
 
 

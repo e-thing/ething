@@ -1,7 +1,9 @@
 # coding: utf-8
 from future.utils import string_types, integer_types, iteritems
 
-from ething.Device import Device, method, attr, isString, isInteger, isObject, isNone, PRIVATE
+from ething.Device import Device
+from ething.reg import *
+from ething.Process import get_process
 
 from jsonpath_rw import jsonpath, parse
 import xml.etree.ElementTree as ET
@@ -11,10 +13,10 @@ import os
 import re
 
 
-@attr('host', validator=isString(), description="The host of the MQTT broker to connect to.")
-@attr('port', validator=isInteger(min=0, max=65535), default=1883, description="The port number of the MQTT broker to connect to.")
-@attr('auth', validator=isNone() | isObject(user=isString(allow_empty=False), password=isString(allow_empty=False)), default=None, description="An object describing the credentials to use.")
-@attr('subscription', mode=PRIVATE, default=None)
+@attr('host', type=String(), description="The host of the MQTT broker to connect to.")
+@attr('port', type=Integer(min=0, max=65535), default=1883, description="The port number of the MQTT broker to connect to.")
+@attr('auth', type=Nullable(Dict(mapping = OrderedDict([('user', String(allow_empty=False)), ('password', String(allow_empty=False))]))), default=None, description="An object describing the credentials to use.")
+@attr('subscription', type=Array(Dict(optionals = ['jsonPath', 'regexp', 'xpath'], mapping = OrderedDict([('name', String(allow_empty=False)), ('topic', String(allow_empty=False)), ('jsonPath', String(allow_empty=False)), ('regexp', String(allow_empty=False)), ('xpath', String(allow_empty=False))])), min_len = 1), default=None)
 class MQTT(Device):
     """
     MQTT Device resource representation
@@ -23,66 +25,13 @@ class MQTT(Device):
     @method.arg('topic', type='string', minLength=1)
     @method.arg('payload', payload='string')
     def publish(self, topic, payload=''):
-        return self.ething.rpc.request('process.%s.publish' % self.id, topic, payload)
-
-    def getSubscription(self):
-        spec = self.ething.fs.retrieveFile(self._subscription)
-        return json.loads(spec.decode('utf8')) if spec else []
-
-    def setSubscription(self, subs):
-
-        if isinstance(subs, list):
-            for v in subs:
-
-                if not isinstance(v, dict):
-                    raise ValueError('sub item must be a dictionary')
-
-                if 'topic' not in v:
-                    raise ValueError('the key "topic" is mandatory')
-
-                for k, vv in iteritems(v):
-
-                    if k == 'topic':
-                        if not isinstance(vv, string_types) or len(vv) == 0:
-                            raise Exception(
-                                'topic: must be a non empty string')
-                    
-                    elif k == 'name':
-                        if not isinstance(vv, string_types) and vv is not None:
-                            raise Exception('name: must be a string')
-                    
-                    elif k == 'jsonPath':
-                        if not isinstance(vv, string_types) and vv is not None:
-                            raise Exception('jsonPath: must be a string')
-
-                    elif k == 'regexp':
-                        if not isinstance(vv, string_types) and vv is not None:
-                            raise Exception('regexp: must be a string')
-                    elif k == 'xpath':
-                        if not isinstance(vv, string_types) and vv is not None:
-                            raise Exception('xpath: must be a string')
-                    else:
-                        raise Exception('unknown key \'%s\'' % k)
-
-        elif subs is not None:
-            raise ValueError('subs must either be None or a list')
-
-        # remove that file if it exists
-        self.ething.fs.removeFile(self._subscription)
-        self._subscription = None
-
-        if subs:
-            self._subscription = self.ething.fs.storeFile('Device/%s/subscription' % self.id, json.dumps(subs).encode('utf8'), {
-                'parent': self.id
-            })
-
-        self.save()
-
-        return True
+        return get_process('mqtt.%s' % self.id).publish(topic, payload)
 
     def processPayload(self, topic, payload):
 
-        for item in self.getSubscription():
+        payload = payload.decode('utf8')
+
+        for item in self.subscription:
 
             if item.get('topic') == topic:
                 
@@ -93,7 +42,7 @@ class MQTT(Device):
                     json_path = item.get('jsonPath')
 
                     try:
-                        decoded = json.loads(payload.decode('utf8'))
+                        decoded = json.loads(payload)
 
                         try:
                             jsonpath_expr = parse(json_path)
@@ -106,7 +55,7 @@ class MQTT(Device):
                                 data = results[0]
 
                                 if isinstance(data, integer_types) or isinstance(data, float) or isinstance(data, string_types) or isinstance(data, bool):
-                                    self.store(name, {'value': data})
+                                    self.store(name, data)
                                     continue
 
                     except ValueError:
@@ -119,7 +68,7 @@ class MQTT(Device):
                     rec = re.compile(regexp)
                     data = None
 
-                    for line in payload.decode('utf8').splitlines():
+                    for line in payload.splitlines():
                         matches = rec.search(line)
                         if matches:
                             data = matches.group(1) if len(
@@ -133,7 +82,7 @@ class MQTT(Device):
                             break
 
                     if data is not None:
-                        self.store(name, {'value': data})
+                        self.store(name, data)
                         continue
 
                 elif item.get('xpath'):
@@ -141,7 +90,7 @@ class MQTT(Device):
                     xpath = item.get('xpath')
 
                     try:
-                        tree = ET.fromstring(payload.decode('utf8'))
+                        tree = ET.fromstring(payload)
                         elements = [r.text for r in tree.findall(xpath)]
                     except Exception:
                         pass
@@ -156,8 +105,33 @@ class MQTT(Device):
                                 pass
 
                             if isinstance(data, integer_types) or isinstance(data, float) or isinstance(data, string_types) or isinstance(data, bool):
-                                self.store(name, {'value': data})
+                                self.store(name, data)
                                 continue
 
                 self.ething.log.warning(
                     'unable to handle the message from topic %s' % topic)
+
+    def store(self, name, value):
+        self.data[name] = value
+
+        try:
+            table = self.ething.findOne({
+                'name': name,
+                'type': 'resources/Table',
+                'createdBy': self.id
+            })
+
+            if not table:
+                # create it !
+                table = self.ething.create('resources/Table', {
+                    'name': name,
+                    'createdBy': self.id,
+                    'maxLength': 5000
+                })
+
+            if table:
+                table.insert({
+                    name: value
+                })
+        except:
+            self.ething.log.exception('history error for %s' % name)

@@ -7,7 +7,7 @@ from .helpers import *
 
 class MySensorsHumiditySensor (MySensorsSensor, HumiditySensor):
 
-    def _set(self, datatype, value):
+    def _set_data(self, datatype, value):
         super(MySensorsHumiditySensor, self)._set(datatype, value)
         if datatype == V_HUM:
             self._humidity = value

@@ -40,17 +40,17 @@ class RFLink(Plugin):
         self.stop_all_controllers()
 
     def _on_resource_created(self, signal):
-        device = self.core.get(signal['resource'])
+        device = signal.resource
         if isinstance(device, RFLinkGateway):
             self._start_controller(device)
 
     def _on_resource_deleted(self, signal):
-        device = self.core.get(signal['resource'])
+        device = signal.resource
         if isinstance(device, RFLinkGateway):
             self._stop_controller(device.id)
 
     def _on_resource_updated(self, signal):
-        id = signal['resource']
+        id = signal.resource.id
         if id in self.controllers:
             controller = self.controllers[id]
             for attr in signal['attributes']:
@@ -64,8 +64,6 @@ class RFLink(Plugin):
             controller = RFLinkSerialController(device)
             self.controllers[device.id] = controller
             controller.start()
-            
-            self.core.rpc.register('process.%s.send' % device.id, controller.send, callback_name = 'callback')
         else:
             raise Exception('Unknown gateway type "%s"' % type(device).__name__)
 
@@ -75,7 +73,6 @@ class RFLink(Plugin):
             controller = self.controllers[id]
             controller.stop()
             del self.controllers[id]
-            self.core.rpc.unregister('process.%s.send' % id)
 
     def stop_all_controllers(self):
         if hasattr(self, 'controllers'):
@@ -128,7 +125,7 @@ class RFLinkProtocol(LineReader):
         # remove trailing ';'
         line = line.rstrip(';')
 
-        parts = line.split(';', 4)
+        parts = line.split(';', 3)
 
         if len (parts) == 4 and is_protocol(parts[2]):
 
@@ -206,6 +203,7 @@ class RFLinkProtocol(LineReader):
 
         # generic node
         if 'SWITCH' in data:
+            attributes['name'] = 'switch-%s' % data['ID']
             attributes['switchId'] = data['SWITCH']
             return RFLinkSwitch.create(attributes, ething = self.core)
 

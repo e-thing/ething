@@ -19,7 +19,7 @@ class RFLinkGateway(Device):
 
     def getNodes(self, filter=None):
         q = {
-            'type': 'resources/RFLinkNode',
+            'extends': 'resources/RFLinkNode',
             'createdBy': self.id
         }
 
@@ -34,7 +34,7 @@ class RFLinkGateway(Device):
         return self.ething.findOne({
             '$and': [
                 {
-                    'type': 'resources/RFLinkNode',
+                    'extends': 'resources/RFLinkNode',
                     'createdBy': self.id
                 }, filter
             ]
@@ -77,4 +77,4 @@ class RFLinkGateway(Device):
         if result.error:
             raise Exception(str(result.error))
 
-        return result.data.split(';', 3)[-1]
+        return result.data.split(';', 2)[-1]

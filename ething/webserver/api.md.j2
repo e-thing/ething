@@ -68,13 +68,16 @@ items: {{ render_schema(schema["items"], indent + 2) }}
   {% endfor %}
 {% endmacro %}
 
-{% macro render_definitions(definitions, indent = 0) %}
+{% macro render_definitions(definitions, level = 0) %}
   {% for ref, definition in definitions | dictsort %}
-{{ "### " + ref | indent(indent, True) }}
+{{ "#######"[:level] + " " + ref }}
 
 {% set object = definition %}
 {% set bases = [] %}
 
+{% if "type" not in definition and "allOf" not in definition and "properties" not in definition %}
+{{ render_definitions(definition, level+1) }}
+{% else %}
 {% if definition.allOf %}
 {% for base in definition.allOf %}
 {% if "$ref" in base %}
@@ -84,13 +87,14 @@ items: {{ render_schema(schema["items"], indent + 2) }}
 {% endif %}
 {% endfor %}
 {% endif %}
+{% endif %}
 
 {% if object.description %}
 {{ definition.description }}
 {% endif %}
 
 {% if bases %}
-#### INHERITED
+{{ "#######"[:level] + "# INHERITED" }}
 
 {% for base in bases %}
 {{ render_ref(base) }}
@@ -98,9 +102,9 @@ items: {{ render_schema(schema["items"], indent + 2) }}
 {% endif %}
 
 {% if object.properties %}
-#### PROPERTIES
+{{ "#######"[:level] + "# PROPERTIES" }}
 
-{{ render_properties(object.properties, object.required, indent+2) }}
+{{ render_properties(object.properties, object.required, 2) }}
 {% endif %}
   {% endfor %}
 {% endmacro %}
@@ -257,4 +261,4 @@ items: {{ render_schema(schema["items"], indent + 2) }}
 
 ## Definitions
 
-{{ render_definitions(swagger_data.definitions, 0) }}
+{{ render_definitions(swagger_data.definitions, 3) }}

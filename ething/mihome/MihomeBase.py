@@ -71,3 +71,6 @@ class MihomeBase(Device):
             raise Exception(str(result.error))
 
         return result
+
+    def _processData(self, response):
+        raise NotImplementedError()

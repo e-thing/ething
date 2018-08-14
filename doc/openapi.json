@@ -31,7 +31,7 @@
           {
             "schema": {
               "required": [
-                "subject"
+                "body"
               ], 
               "type": "object", 
               "properties": {
@@ -39,6 +39,8 @@
                   "type": "string"
                 }, 
                 "subject": {
+                  "default": null, 
+                  "x-nullable": true, 
                   "type": "string"
                 }
               }
@@ -170,7 +172,7 @@
                   "properties": {
                     "type": {
                       "type": "string", 
-                      "description": "The type of the device to create (eg: \"Http\" or \"MySensorsEthernetGateway\")."
+                      "description": "The type of the device to create (eg: \"MySensorsEthernetGateway\")."
                     }
                   }
                 }, 
@@ -342,57 +344,6 @@
         "description": "Execute an operation identified by operationId. The parameters must be passed in the query string."
       }
     }, 
-    "/api/devices/{id}/api/{operationId}": {
-      "get": {
-        "tags": [
-          "device"
-        ], 
-        "responses": {
-          "200": {
-            "description": "object describing the operation."
-          }
-        }, 
-        "parameters": [
-          {
-            "description": "An id representing a Resource", 
-            "required": true, 
-            "type": "string", 
-            "name": "id", 
-            "in": "path"
-          }, 
-          {
-            "description": "id of the operation", 
-            "required": true, 
-            "type": "string", 
-            "name": "operationId", 
-            "in": "path"
-          }
-        ], 
-        "description": "Retrieves an object describing the operation identified by operationId."
-      }
-    }, 
-    "/api/devices/{id}/api": {
-      "get": {
-        "tags": [
-          "device"
-        ], 
-        "responses": {
-          "200": {
-            "description": "object describing the operations available for this device."
-          }
-        }, 
-        "parameters": [
-          {
-            "description": "An id representing a Resource", 
-            "required": true, 
-            "type": "string", 
-            "name": "id", 
-            "in": "path"
-          }
-        ], 
-        "description": "Retrieves an object describing the operations available for this device."
-      }
-    }, 
     "/api/tables/{id}/statistics": {
       "get": {
         "tags": [
@@ -416,11 +367,13 @@
             "in": "path"
           }, 
           {
-            "description": "A query string to select the rows used for the statistics computation", 
+            "x-nullable": true, 
+            "name": "q", 
+            "in": "query", 
+            "default": null, 
             "required": false, 
             "type": "string", 
-            "name": "q", 
-            "in": "query"
+            "description": "A query string to select the rows used for the statistics computation"
           }, 
           {
             "description": "the name of the key. Statistics can only be computed for a single key.", 
@@ -912,293 +865,1422 @@
     }
   }, 
   "definitions": {
-    "ZigateGateway": {
-      "allOf": [
-        {
-          "$ref": "#/definitions/Device"
-        }, 
-        {
-          "type": "object", 
-          "properties": {
-            "sdkVersion": {
-              "default": null, 
-              "description": "The version of the Zigate SDK."
-            }, 
-            "appVersion": {
-              "default": null, 
-              "description": "The version of the Zigate firmware."
-            }
-          }
-        }
-      ]
-    }, 
-    "RTSP": {
-      "allOf": [
-        {
-          "$ref": "#/definitions/Device"
-        }, 
-        {
-          "required": [
-            "url"
-          ], 
-          "type": "object", 
-          "properties": {
-            "url": {
-              "minLength": 1, 
-              "type": "string", 
-              "description": "The URL of the device rtsp://... .", 
-              "pattern": "^rtsp://"
-            }, 
-            "transport": {
-              "default": "tcp", 
-              "minLength": 1, 
-              "enum": [
-                "udp", 
-                "tcp", 
-                "http"
-              ], 
-              "type": "string", 
-              "description": "Lower transport protocol. Allowed values are the ones defined for the flags for rtsp_transport (see https://libav.org/avconv.html)."
-            }
+    "interfaces": {
+      "Interface": {
+        "additionalProperties": false, 
+        "required": [], 
+        "type": "class", 
+        "properties": {}, 
+        "virtual": true
+      }, 
+      "Switch": {
+        "allOf": [
+          {
+            "$ref": "#/interfaces/Interface"
           }, 
-          "description": "RTSP Device resource representation, usually IP camera"
-        }
-      ]
-    }, 
-    "RFLinkNode": {
-      "allOf": [
-        {
-          "$ref": "#/definitions/Device"
-        }, 
-        {
-          "required": [
-            "protocol", 
-            "createdBy", 
-            "nodeId", 
-            "subType", 
-            "switchId"
-          ], 
-          "type": "object", 
-          "properties": {
-            "subType": {
-              "enum": [
-                "switch", 
-                "light", 
-                "door", 
-                "motion", 
-                "thermometer", 
-                "weatherStation", 
-                "multimeter"
-              ], 
-              "description": "The subtype of the device, ie: thermometer, switch, ..."
-            }, 
-            "switchId": {
-              "description": "The switch id of the node. Only available for switch/door/motion subtypes."
-            }, 
-            "protocol": {
-              "minLength": 1, 
-              "type": "string", 
-              "description": "The protocol name of the node."
-            }, 
-            "nodeId": {
-              "minLength": 1, 
-              "type": "string", 
-              "description": "The hardware id of the node."
-            }, 
-            "createdBy": {
-              "pattern": "^[-_a-zA-Z0-9]{7}$", 
-              "type": "string", 
-              "description": "The id of the resource responsible of the creation of this resource, or null."
-            }
-          }
-        }
-      ]
-    }, 
-    "MihomeSensorHT": {
-      "allOf": [
-        {
-          "$ref": "#/definitions/MihomeDevice"
-        }, 
-        {
-          "type": "object", 
-          "properties": {}, 
-          "description": "Mihome temperature/humidity/pressure Sensor Device class."
-        }
-      ]
-    }, 
-    "MySensorsSerialGateway": {
-      "allOf": [
-        {
-          "$ref": "#/definitions/MySensorsGateway"
-        }, 
-        {
-          "required": [
-            "port"
-          ], 
-          "type": "object", 
-          "properties": {
-            "baudrate": {
-              "default": 57600, 
-              "enum": [
-                110, 
-                150, 
-                300, 
-                600, 
-                1200, 
-                2400, 
-                4800, 
-                9600, 
-                19200, 
-                38400, 
-                57600, 
-                115200
-              ], 
-              "type": "integer", 
-              "description": "The baudrate."
-            }, 
-            "port": {
-              "type": "string", 
-              "description": "The serial port name."
-            }
-          }
-        }
-      ]
-    }, 
-    "Denon": {
-      "allOf": [
-        {
-          "$ref": "#/definitions/Device"
-        }, 
-        {
-          "required": [
-            "host"
-          ], 
-          "type": "object", 
-          "properties": {
-            "host": {
-              "minLength": 1, 
-              "type": "string", 
-              "description": "The ip address or hostname of the device to connect to."
-            }
-          }, 
-          "description": "Denon Device resource representation"
-        }
-      ]
-    }, 
-    "YeelightDevice": {
-      "allOf": [
-        {
-          "$ref": "#/definitions/Device"
-        }, 
-        {
-          "required": [
-            "host"
-          ], 
-          "type": "object", 
-          "properties": {
-            "host": {
-              "minLength": 1, 
-              "type": "string", 
-              "description": "The ip address or hostname of the device to connect to."
-            }
-          }
-        }
-      ]
-    }, 
-    "Http": {
-      "allOf": [
-        {
-          "$ref": "#/definitions/Device"
-        }, 
-        {
-          "required": [
-            "url"
-          ], 
-          "type": "object", 
-          "properties": {
-            "url": {
-              "minLength": 1, 
-              "type": "string", 
-              "description": "The URL of the device.", 
-              "pattern": "^https?://"
-            }, 
-            "scope": {
-              "default": "", 
-              "type": "string", 
-              "description": "The allowed scopes for this device (space separated list). Restrict the Http api access. Default to an empty string (no access)."
-            }, 
-            "apikey": {
-              "readOnly": true, 
-              "type": "string", 
-              "description": "The apikey for authenticating this device."
-            }, 
-            "auth": {
-              "additionalProperties": false, 
-              "description": "An object describing the authentication method to use on HTTP request.", 
-              "default": null, 
-              "required": [
-                "password", 
-                "type", 
-                "user"
-              ], 
-              "type": "object", 
-              "properties": {
-                "password": {
-                  "minLength": 1, 
-                  "type": "string"
-                }, 
-                "type": {
-                  "enum": [
-                    "basic", 
-                    "digest"
-                  ], 
-                  "type": "string"
-                }, 
-                "user": {
-                  "minLength": 1, 
-                  "type": "string"
-                }
+          {
+            "additionalProperties": false, 
+            "required": [], 
+            "type": "class", 
+            "properties": {
+              "state": {
+                "readOnly": true, 
+                "type": "boolean", 
+                "description": "the state of the switch"
               }
             }
+          }
+        ]
+      }, 
+      "Dimmable": {
+        "allOf": [
+          {
+            "$ref": "#/interfaces/Interface"
           }, 
-          "description": "Http Device resource representation"
-        }
-      ]
-    }, 
-    "MySensorsSensor": {
-      "allOf": [
-        {
-          "$ref": "#/definitions/Device"
-        }, 
-        {
-          "required": [
-            "createdBy", 
-            "sensorType", 
-            "sensorId"
-          ], 
-          "type": "object", 
-          "properties": {
-            "sensorType": {
-              "type": "string", 
-              "description": "The type of the sensor."
-            }, 
-            "sensorId": {
-              "minimum": 0, 
-              "type": "integer", 
-              "maximum": 254, 
-              "description": "The id of the sensor."
-            }, 
-            "createdBy": {
-              "pattern": "^[-_a-zA-Z0-9]{7}$", 
-              "type": "string", 
-              "description": "The id of the resource responsible of the creation of this resource, or null."
+          {
+            "additionalProperties": false, 
+            "required": [], 
+            "type": "class", 
+            "properties": {
+              "level": {
+                "readOnly": true, 
+                "minimum": 0, 
+                "type": "number", 
+                "maximum": 100, 
+                "description": "the level of this dimmable switch"
+              }
             }
+          }
+        ]
+      }, 
+      "DimmableSwitch": {
+        "allOf": [
+          {
+            "$ref": "#/interfaces/Switch"
           }, 
-          "description": "MySensorsSensor Device resource representation. This device is normally automatically created by a MySensorsNode instance."
-        }
-      ]
+          {
+            "$ref": "#/interfaces/Dimmable"
+          }, 
+          {
+            "additionalProperties": false, 
+            "required": [], 
+            "type": "class", 
+            "properties": {}
+          }
+        ]
+      }, 
+      "Light": {
+        "allOf": [
+          {
+            "$ref": "#/interfaces/Switch"
+          }, 
+          {
+            "additionalProperties": false, 
+            "required": [], 
+            "type": "class", 
+            "properties": {}
+          }
+        ]
+      }, 
+      "DimmableLight": {
+        "allOf": [
+          {
+            "$ref": "#/interfaces/DimmableSwitch"
+          }, 
+          {
+            "additionalProperties": false, 
+            "required": [], 
+            "type": "class", 
+            "properties": {}
+          }
+        ]
+      }, 
+      "RGBLight": {
+        "allOf": [
+          {
+            "$ref": "#/interfaces/Light"
+          }, 
+          {
+            "additionalProperties": false, 
+            "required": [], 
+            "type": "class", 
+            "properties": {
+              "color": {
+                "pattern": "^#[0-9a-fA-F]{6}$", 
+                "readOnly": true, 
+                "type": "string", 
+                "description": "the color of the light (#ffffff format)", 
+                "format": "color"
+              }
+            }
+          }
+        ]
+      }, 
+      "RGBWLight": {
+        "allOf": [
+          {
+            "$ref": "#/interfaces/RGBLight"
+          }, 
+          {
+            "$ref": "#/interfaces/Dimmable"
+          }, 
+          {
+            "additionalProperties": false, 
+            "required": [], 
+            "type": "class", 
+            "properties": {}
+          }
+        ]
+      }, 
+      "Thermometer": {
+        "allOf": [
+          {
+            "$ref": "#/interfaces/Interface"
+          }, 
+          {
+            "additionalProperties": false, 
+            "required": [], 
+            "type": "class", 
+            "properties": {
+              "temperature": {
+                "readOnly": true, 
+                "type": "number", 
+                "description": "the temperature of the sensor"
+              }
+            }
+          }
+        ]
+      }, 
+      "PressureSensor": {
+        "allOf": [
+          {
+            "$ref": "#/interfaces/Interface"
+          }, 
+          {
+            "additionalProperties": false, 
+            "required": [], 
+            "type": "class", 
+            "properties": {
+              "pressure": {
+                "readOnly": true, 
+                "type": "number", 
+                "description": "the pressure measured by the sensor in Pa."
+              }
+            }
+          }
+        ]
+      }, 
+      "HumiditySensor": {
+        "allOf": [
+          {
+            "$ref": "#/interfaces/Interface"
+          }, 
+          {
+            "additionalProperties": false, 
+            "required": [], 
+            "type": "class", 
+            "properties": {
+              "humidity": {
+                "readOnly": true, 
+                "minimum": 0, 
+                "type": "number", 
+                "maximum": 100, 
+                "description": "the humidity measured by the sensor in percent."
+              }
+            }
+          }
+        ]
+      }, 
+      "LightSensor": {
+        "allOf": [
+          {
+            "$ref": "#/interfaces/Interface"
+          }, 
+          {
+            "additionalProperties": false, 
+            "required": [], 
+            "type": "class", 
+            "properties": {
+              "light_level": {
+                "readOnly": true, 
+                "type": "number", 
+                "description": "the light level measured by the sensor."
+              }
+            }
+          }
+        ]
+      }, 
+      "MoistureSensor": {
+        "allOf": [
+          {
+            "$ref": "#/interfaces/Interface"
+          }, 
+          {
+            "additionalProperties": false, 
+            "required": [], 
+            "type": "class", 
+            "properties": {
+              "moisture": {
+                "readOnly": true, 
+                "type": "number", 
+                "description": "the moisture level measured by this sensor."
+              }
+            }
+          }
+        ]
+      }, 
+      "Camera": {
+        "allOf": [
+          {
+            "$ref": "#/interfaces/Interface"
+          }, 
+          {
+            "additionalProperties": false, 
+            "required": [], 
+            "type": "class", 
+            "properties": {}
+          }
+        ]
+      }
+    }, 
+    "resources": {
+      "Resource": {
+        "additionalProperties": false, 
+        "required": [
+          "name"
+        ], 
+        "type": "class", 
+        "properties": {
+          "name": {
+            "minLength": 1, 
+            "type": "string", 
+            "description": "The name of the resource", 
+            "pattern": "^[a-zA-Z0-9 !#$%&'()+,\\-.;=@^_`{    ]+(\\/[a-zA-Z0-9 !#$%&'()+,\\-.;=@^_`{    ]+)*$"
+          }, 
+          "id": {
+            "readOnly": true, 
+            "description": "The id of the resource"
+          }, 
+          "type": {
+            "readOnly": true, 
+            "description": "The type of the resource"
+          }, 
+          "extends": {
+            "readOnly": true, 
+            "description": "An array of classes this resource is based on."
+          }, 
+          "createdDate": {
+            "readOnly": true, 
+            "description": "Create time for this resource"
+          }, 
+          "modifiedDate": {
+            "readOnly": true, 
+            "description": "Last time this resource was modified"
+          }, 
+          "createdBy": {
+            "default": null, 
+            "anyOf": [
+              {
+                "type": "null"
+              }, 
+              {
+                "pattern": "^[-_a-zA-Z0-9]{7}$", 
+                "type": "string"
+              }
+            ], 
+            "description": "The id of the resource responsible of the creation of this resource, or null."
+          }, 
+          "data": {
+            "additionalProperties": true, 
+            "default": {}, 
+            "type": "object", 
+            "properties": {}, 
+            "description": "A collection of arbitrary key-value pairs. Entries with null values are cleared in update. The keys must not be empty or longer than 64 characters, and must contain only the following characters : letters, digits, underscore and dash. Values must be either a string or a boolean or a number"
+          }, 
+          "description": {
+            "default": "", 
+            "type": "string", 
+            "description": "A description of this resource."
+          }, 
+          "public": {
+            "default": false, 
+            "enum": [
+              false, 
+              "readonly", 
+              "readwrite"
+            ], 
+            "description": "False: this resource is not publicly accessible. 'readonly': this resource is accessible for reading by anyone. 'readwrite': this resource is accessible for reading and writing by anyone."
+          }
+        }, 
+        "description": "The base representation of a resource object"
+      }, 
+      "File": {
+        "allOf": [
+          {
+            "$ref": "#/resources/Resource"
+          }, 
+          {
+            "additionalProperties": false, 
+            "required": [], 
+            "type": "class", 
+            "properties": {
+              "contentModifiedDate": {
+                "readOnly": true, 
+                "description": "Last time the content of this file was modified (formatted RFC 3339 timestamp)."
+              }, 
+              "mime": {
+                "readOnly": true, 
+                "description": "The MIME type of the file (automatically detected from the content)."
+              }, 
+              "isText": {
+                "readOnly": true, 
+                "description": "True if this file has text based content."
+              }, 
+              "size": {
+                "readOnly": true, 
+                "description": "The size of this resource in bytes"
+              }, 
+              "expireAfter": {
+                "default": null, 
+                "anyOf": [
+                  {
+                    "type": "null"
+                  }, 
+                  {
+                    "minimum": 1, 
+                    "type": "integer"
+                  }
+                ], 
+                "description": "The amount of time (in seconds) after which this resource will be removed."
+              }
+            }
+          }
+        ]
+      }, 
+      "Table": {
+        "allOf": [
+          {
+            "$ref": "#/resources/Resource"
+          }, 
+          {
+            "additionalProperties": false, 
+            "required": [], 
+            "type": "class", 
+            "properties": {
+              "contentModifiedDate": {
+                "readOnly": true, 
+                "description": "Last time the content of this table was modified."
+              }, 
+              "keys": {
+                "additionalProperties": true, 
+                "readOnly": true, 
+                "type": "object", 
+                "properties": {}, 
+                "description": "A key/value object where the keys correspond to the fields available in this table, and the corresponding value is the number of rows where the field is set. __The default keys ('_id' and 'date' are not listed)__"
+              }, 
+              "length": {
+                "readOnly": true, 
+                "description": "The number of records in the table"
+              }, 
+              "expireAfter": {
+                "default": null, 
+                "anyOf": [
+                  {
+                    "type": "null"
+                  }, 
+                  {
+                    "minimum": 1, 
+                    "type": "integer"
+                  }
+                ], 
+                "description": "The amount of time (in seconds) after which a records will be automatically removed. Set it to null or 0 to disable this feature."
+              }, 
+              "maxLength": {
+                "default": 5000, 
+                "anyOf": [
+                  {
+                    "type": "null"
+                  }, 
+                  {
+                    "minimum": 1, 
+                    "type": "integer"
+                  }
+                ], 
+                "description": "The maximum of records allowed in this table. When this number is reached, the oldest records will be removed to insert the new ones (first in, first out). Set it to null or 0 to disable this feature."
+              }
+            }
+          }
+        ]
+      }, 
+      "Rule": {
+        "allOf": [
+          {
+            "$ref": "#/resources/Resource"
+          }, 
+          {
+            "additionalProperties": false, 
+            "required": [
+              "events", 
+              "actions"
+            ], 
+            "type": "class", 
+            "properties": {
+              "execution_date": {
+                "readOnly": true, 
+                "description": "The last time this rule has been executed"
+              }, 
+              "execution_count": {
+                "readOnly": true, 
+                "description": "The number of times this rule has been executed"
+              }, 
+              "scheduler": {
+                "default": [], 
+                "items": {
+                  "additionalProperties": false, 
+                  "required": [
+                    "start", 
+                    "end"
+                  ], 
+                  "type": "object", 
+                  "properties": {
+                    "start": {
+                      "additionalProperties": false, 
+                      "required": [
+                        "weekDay", 
+                        "hour"
+                      ], 
+                      "type": "object", 
+                      "properties": {
+                        "weekDay": {
+                          "minimum": 0, 
+                          "type": "integer", 
+                          "maximum": 6
+                        }, 
+                        "hour": {
+                          "minimum": 0, 
+                          "type": "integer", 
+                          "maximum": 24
+                        }
+                      }
+                    }, 
+                    "end": {
+                      "additionalProperties": false, 
+                      "required": [
+                        "weekDay", 
+                        "hour"
+                      ], 
+                      "type": "object", 
+                      "properties": {
+                        "weekDay": {
+                          "minimum": 0, 
+                          "type": "integer", 
+                          "maximum": 6
+                        }, 
+                        "hour": {
+                          "minimum": 0, 
+                          "type": "integer", 
+                          "maximum": 24
+                        }
+                      }
+                    }
+                  }
+                }, 
+                "type": "array", 
+                "description": "Activate this rule only within certain periods of time"
+              }, 
+              "enabled": {
+                "default": true, 
+                "type": "boolean", 
+                "description": "If True (default), the rule is enabled"
+              }, 
+              "events": {
+                "minItems": 1, 
+                "items": {
+                  "$ref": "#/events/Event"
+                }, 
+                "type": "array", 
+                "description": "A list of events describing when to execute this rule."
+              }, 
+              "actions": {
+                "minItems": 1, 
+                "items": {
+                  "$ref": "#/actions/Action"
+                }, 
+                "type": "array", 
+                "description": "A list of actions describing a flow. Actions will be executed one after another."
+              }
+            }, 
+            "description": "Rule dictate the action to perform when an event occurs.\n    Rules consist of two parts:\n     - The event part specifies the conditions that triggers the invocation of the rule\n     - The action part specifies what to execute in response to the event"
+          }
+        ]
+      }, 
+      "Device": {
+        "virtual": true, 
+        "allOf": [
+          {
+            "$ref": "#/resources/Resource"
+          }, 
+          {
+            "additionalProperties": false, 
+            "required": [], 
+            "type": "class", 
+            "properties": {
+              "interfaces": {
+                "readOnly": true, 
+                "description": "A list of interfaces this device inherit"
+              }, 
+              "methods": {
+                "readOnly": true, 
+                "description": "The list of the methods available."
+              }, 
+              "lastSeenDate": {
+                "readOnly": true, 
+                "description": "The last time this device was reached or made a request."
+              }, 
+              "connected": {
+                "default": true, 
+                "type": "boolean", 
+                "description": "Set to true when this device is connected."
+              }, 
+              "location": {
+                "default": null, 
+                "anyOf": [
+                  {
+                    "type": "null"
+                  }, 
+                  {
+                    "type": "string"
+                  }
+                ], 
+                "description": "The location of this device."
+              }, 
+              "battery": {
+                "default": null, 
+                "anyOf": [
+                  {
+                    "type": "null"
+                  }, 
+                  {
+                    "minimum": 0, 
+                    "type": "integer", 
+                    "maximum": 100
+                  }
+                ], 
+                "description": "The battery level of this device (must be between 0 (empty) and 100 (full) , or null if the device has no battery information)."
+              }
+            }
+          }
+        ]
+      }, 
+      "RFLinkGateway": {
+        "virtual": true, 
+        "allOf": [
+          {
+            "$ref": "#/resources/Device"
+          }, 
+          {
+            "additionalProperties": false, 
+            "required": [], 
+            "type": "class", 
+            "properties": {
+              "inclusion": {
+                "default": false, 
+                "type": "boolean", 
+                "description": "If true, new devices will be automatically created."
+              }, 
+              "build": {
+                "readOnly": true, 
+                "description": "The build number of the RFLink library used."
+              }, 
+              "revision": {
+                "readOnly": true, 
+                "description": "The revision number of the RFLink library used."
+              }, 
+              "version": {
+                "readOnly": true, 
+                "description": "The version of the RFLink library used."
+              }
+            }
+          }
+        ]
+      }, 
+      "RFLinkSerialGateway": {
+        "allOf": [
+          {
+            "$ref": "#/resources/RFLinkGateway"
+          }, 
+          {
+            "additionalProperties": false, 
+            "required": [
+              "port"
+            ], 
+            "type": "class", 
+            "properties": {
+              "port": {
+                "minLength": 1, 
+                "type": "string", 
+                "description": "The serial port name."
+              }, 
+              "baudrate": {
+                "default": 57600, 
+                "enum": [
+                  110, 
+                  150, 
+                  300, 
+                  600, 
+                  1200, 
+                  2400, 
+                  4800, 
+                  9600, 
+                  19200, 
+                  38400, 
+                  57600, 
+                  115200
+                ], 
+                "description": "The baudrate"
+              }
+            }
+          }
+        ]
+      }, 
+      "RFLinkNode": {
+        "allOf": [
+          {
+            "$ref": "#/resources/Device"
+          }, 
+          {
+            "additionalProperties": false, 
+            "required": [], 
+            "type": "class", 
+            "properties": {
+              "createdBy": {
+                "default": null, 
+                "anyOf": [
+                  {
+                    "type": "null"
+                  }, 
+                  {
+                    "pattern": "^[-_a-zA-Z0-9]{7}$", 
+                    "type": "string"
+                  }
+                ], 
+                "description": "The id of the resource responsible of the creation of this resource, or null."
+              }, 
+              "protocol": {
+                "minLength": 1, 
+                "readOnly": true, 
+                "type": "string", 
+                "description": "The protocol name of the node."
+              }, 
+              "nodeId": {
+                "minLength": 1, 
+                "readOnly": true, 
+                "type": "string", 
+                "description": "The hardware id of the node."
+              }
+            }
+          }
+        ]
+      }, 
+      "RFLinkSwitch": {
+        "allOf": [
+          {
+            "$ref": "#/resources/RFLinkNode"
+          }, 
+          {
+            "$ref": "#/interfaces/Switch"
+          }, 
+          {
+            "additionalProperties": false, 
+            "required": [], 
+            "type": "class", 
+            "properties": {
+              "switchId": {
+                "readOnly": true, 
+                "anyOf": [
+                  {
+                    "type": "null"
+                  }, 
+                  {
+                    "minLength": 1, 
+                    "type": "string"
+                  }
+                ], 
+                "description": "The switch id of the node. Only available for switch/door/motion subtypes."
+              }
+            }
+          }
+        ]
+      }, 
+      "RFLinkGenericSensor": {
+        "virtual": true, 
+        "allOf": [
+          {
+            "$ref": "#/resources/RFLinkNode"
+          }, 
+          {
+            "additionalProperties": false, 
+            "required": [], 
+            "type": "class", 
+            "properties": {}
+          }
+        ]
+      }, 
+      "MySensorsGateway": {
+        "virtual": true, 
+        "allOf": [
+          {
+            "$ref": "#/resources/Device"
+          }, 
+          {
+            "additionalProperties": false, 
+            "required": [], 
+            "type": "class", 
+            "properties": {
+              "libVersion": {
+                "readOnly": true, 
+                "description": "The version of the MySensors library used."
+              }, 
+              "isMetric": {
+                "default": true, 
+                "type": "boolean", 
+                "description": "Set the unit to Metric(default) instead of Imperial."
+              }
+            }, 
+            "description": "see https://www.mysensors.org"
+          }
+        ]
+      }, 
+      "MySensorsSerialGateway": {
+        "allOf": [
+          {
+            "$ref": "#/resources/MySensorsGateway"
+          }, 
+          {
+            "additionalProperties": false, 
+            "required": [
+              "port"
+            ], 
+            "type": "class", 
+            "properties": {
+              "port": {
+                "minLength": 1, 
+                "type": "string", 
+                "description": "The serial port name."
+              }, 
+              "baudrate": {
+                "default": 57600, 
+                "enum": [
+                  110, 
+                  150, 
+                  300, 
+                  600, 
+                  1200, 
+                  2400, 
+                  4800, 
+                  9600, 
+                  19200, 
+                  38400, 
+                  57600, 
+                  115200
+                ], 
+                "description": "The baudrate."
+              }
+            }
+          }
+        ]
+      }, 
+      "MySensorsEthernetGateway": {
+        "allOf": [
+          {
+            "$ref": "#/resources/MySensorsGateway"
+          }, 
+          {
+            "additionalProperties": false, 
+            "required": [
+              "host"
+            ], 
+            "type": "class", 
+            "properties": {
+              "port": {
+                "default": 5003, 
+                "description": "The port number of the gateway. The default port number is 5003."
+              }, 
+              "host": {
+                "description": "The ip address or hostname of the gateway."
+              }
+            }
+          }
+        ]
+      }, 
+      "MySensorsNode": {
+        "allOf": [
+          {
+            "$ref": "#/resources/Device"
+          }, 
+          {
+            "additionalProperties": false, 
+            "required": [
+              "nodeId"
+            ], 
+            "type": "class", 
+            "properties": {
+              "createdBy": {
+                "default": null, 
+                "anyOf": [
+                  {
+                    "type": "null"
+                  }, 
+                  {
+                    "pattern": "^[-_a-zA-Z0-9]{7}$", 
+                    "type": "string"
+                  }
+                ], 
+                "description": "The id of the resource responsible of the creation of this resource, or null."
+              }, 
+              "ackEnabled": {
+                "default": false, 
+                "type": "boolean", 
+                "description": "If set, every message sent must be acknowledged."
+              }, 
+              "libVersion": {
+                "readOnly": true, 
+                "description": "The version of the MySensors library used."
+              }, 
+              "firmware": {
+                "readOnly": true
+              }, 
+              "smartSleep": {
+                "default": false, 
+                "type": "boolean", 
+                "description": "SmartSleep feature enabled for this node."
+              }, 
+              "sketchVersion": {
+                "readOnly": true, 
+                "description": "The version of the sketch uploaded."
+              }, 
+              "sketchName": {
+                "readOnly": true, 
+                "description": "The name of the sketch uploaded."
+              }, 
+              "nodeId": {
+                "minimum": 1, 
+                "type": "integer", 
+                "maximum": 254, 
+                "description": "The id of the node."
+              }
+            }, 
+            "description": "MySensorsNode Device resource representation. This device is normally automatically created by a MySensorsGateway instance."
+          }
+        ]
+      }, 
+      "MySensorsSensor": {
+        "virtual": true, 
+        "allOf": [
+          {
+            "$ref": "#/resources/Device"
+          }, 
+          {
+            "additionalProperties": false, 
+            "required": [
+              "sensorId"
+            ], 
+            "type": "class", 
+            "properties": {
+              "createdBy": {
+                "default": null, 
+                "anyOf": [
+                  {
+                    "type": "null"
+                  }, 
+                  {
+                    "pattern": "^[-_a-zA-Z0-9]{7}$", 
+                    "type": "string"
+                  }
+                ], 
+                "description": "The id of the resource responsible of the creation of this resource, or null."
+              }, 
+              "sensorType": {
+                "readOnly": true, 
+                "description": "The type of the sensor."
+              }, 
+              "sensorId": {
+                "minimum": 0, 
+                "type": "integer", 
+                "maximum": 254, 
+                "description": "The id of the sensor."
+              }
+            }, 
+            "description": "MySensorsSensor Device resource representation. This device is normally automatically created by a MySensorsNode instance."
+          }
+        ]
+      }, 
+      "MySensorsThermometer": {
+        "allOf": [
+          {
+            "$ref": "#/resources/MySensorsSensor"
+          }, 
+          {
+            "$ref": "#/interfaces/Thermometer"
+          }, 
+          {
+            "additionalProperties": false, 
+            "required": [], 
+            "type": "class", 
+            "properties": {}
+          }
+        ]
+      }, 
+      "MySensorsHumiditySensor": {
+        "allOf": [
+          {
+            "$ref": "#/resources/MySensorsSensor"
+          }, 
+          {
+            "$ref": "#/interfaces/HumiditySensor"
+          }, 
+          {
+            "additionalProperties": false, 
+            "required": [], 
+            "type": "class", 
+            "properties": {}
+          }
+        ]
+      }, 
+      "MySensorsPressureSensor": {
+        "allOf": [
+          {
+            "$ref": "#/resources/MySensorsSensor"
+          }, 
+          {
+            "$ref": "#/interfaces/PressureSensor"
+          }, 
+          {
+            "additionalProperties": false, 
+            "required": [], 
+            "type": "class", 
+            "properties": {}
+          }
+        ]
+      }, 
+      "MySensorsBinary": {
+        "allOf": [
+          {
+            "$ref": "#/resources/MySensorsSensor"
+          }, 
+          {
+            "$ref": "#/interfaces/Switch"
+          }, 
+          {
+            "additionalProperties": false, 
+            "required": [], 
+            "type": "class", 
+            "properties": {}
+          }
+        ]
+      }, 
+      "MySensorsGenericSensor": {
+        "allOf": [
+          {
+            "$ref": "#/resources/MySensorsSensor"
+          }, 
+          {
+            "additionalProperties": false, 
+            "required": [], 
+            "type": "class", 
+            "properties": {}
+          }
+        ]
+      }, 
+      "MySensorsRGB": {
+        "allOf": [
+          {
+            "$ref": "#/resources/MySensorsSensor"
+          }, 
+          {
+            "$ref": "#/interfaces/RGBLight"
+          }, 
+          {
+            "additionalProperties": false, 
+            "required": [], 
+            "type": "class", 
+            "properties": {}
+          }
+        ]
+      }, 
+      "MySensorsRGBW": {
+        "allOf": [
+          {
+            "$ref": "#/resources/MySensorsSensor"
+          }, 
+          {
+            "$ref": "#/interfaces/RGBWLight"
+          }, 
+          {
+            "additionalProperties": false, 
+            "required": [], 
+            "type": "class", 
+            "properties": {}
+          }
+        ]
+      }, 
+      "MySensorsDimmer": {
+        "allOf": [
+          {
+            "$ref": "#/resources/MySensorsSensor"
+          }, 
+          {
+            "$ref": "#/interfaces/DimmableSwitch"
+          }, 
+          {
+            "additionalProperties": false, 
+            "required": [], 
+            "type": "class", 
+            "properties": {}
+          }
+        ]
+      }, 
+      "MQTT": {
+        "allOf": [
+          {
+            "$ref": "#/resources/Device"
+          }, 
+          {
+            "additionalProperties": false, 
+            "required": [
+              "host"
+            ], 
+            "type": "class", 
+            "properties": {
+              "subscription": {
+                "minItems": 1, 
+                "items": {
+                  "additionalProperties": false, 
+                  "required": [
+                    "name", 
+                    "topic"
+                  ], 
+                  "type": "object", 
+                  "properties": {
+                    "name": {
+                      "minLength": 1, 
+                      "type": "string"
+                    }, 
+                    "topic": {
+                      "minLength": 1, 
+                      "type": "string"
+                    }, 
+                    "jsonPath": {
+                      "minLength": 1, 
+                      "type": "string"
+                    }, 
+                    "regexp": {
+                      "minLength": 1, 
+                      "type": "string"
+                    }, 
+                    "xpath": {
+                      "minLength": 1, 
+                      "type": "string"
+                    }
+                  }
+                }, 
+                "type": "array"
+              }, 
+              "auth": {
+                "default": null, 
+                "anyOf": [
+                  {
+                    "type": "null"
+                  }, 
+                  {
+                    "additionalProperties": false, 
+                    "required": [
+                      "user", 
+                      "password"
+                    ], 
+                    "type": "object", 
+                    "properties": {
+                      "user": {
+                        "minLength": 1, 
+                        "type": "string"
+                      }, 
+                      "password": {
+                        "minLength": 1, 
+                        "type": "string"
+                      }
+                    }
+                  }
+                ], 
+                "description": "An object describing the credentials to use."
+              }, 
+              "port": {
+                "default": 1883, 
+                "minimum": 0, 
+                "type": "integer", 
+                "maximum": 65535, 
+                "description": "The port number of the MQTT broker to connect to."
+              }, 
+              "host": {
+                "type": "string", 
+                "description": "The host of the MQTT broker to connect to."
+              }
+            }, 
+            "description": "MQTT Device resource representation"
+          }
+        ]
+      }, 
+      "YeelightDevice": {
+        "virtual": true, 
+        "allOf": [
+          {
+            "$ref": "#/resources/Device"
+          }, 
+          {
+            "$ref": "#/interfaces/Light"
+          }, 
+          {
+            "additionalProperties": false, 
+            "required": [], 
+            "type": "class", 
+            "properties": {
+              "host": {
+                "minLength": 1, 
+                "readOnly": true, 
+                "type": "string", 
+                "description": "The ip address of the device."
+              }, 
+              "model": {
+                "readOnly": true, 
+                "type": "string", 
+                "description": "The model of the device."
+              }, 
+              "fw_ver": {
+                "readOnly": true, 
+                "type": "string", 
+                "description": "The firmware version of the device."
+              }
+            }
+          }
+        ]
+      }, 
+      "YeelightBulbRGBW": {
+        "allOf": [
+          {
+            "$ref": "#/resources/YeelightDevice"
+          }, 
+          {
+            "$ref": "#/interfaces/RGBWLight"
+          }, 
+          {
+            "additionalProperties": false, 
+            "required": [], 
+            "type": "class", 
+            "properties": {
+              "state": {
+                "readOnly": true, 
+                "type": "boolean", 
+                "description": "the state of the switch"
+              }
+            }
+          }
+        ]
+      }, 
+      "MihomeBase": {
+        "virtual": true, 
+        "allOf": [
+          {
+            "$ref": "#/resources/Device"
+          }, 
+          {
+            "additionalProperties": false, 
+            "required": [], 
+            "type": "class", 
+            "properties": {
+              "sid": {
+                "minLength": 1, 
+                "readOnly": true, 
+                "type": "string", 
+                "description": "The uniq sid of the device"
+              }, 
+              "short_id": {
+                "readOnly": true
+              }, 
+              "model": {
+                "minLength": 1, 
+                "readOnly": true, 
+                "type": "string", 
+                "description": "The name of the model of the device"
+              }
+            }
+          }
+        ]
+      }, 
+      "MihomeGateway": {
+        "allOf": [
+          {
+            "$ref": "#/resources/MihomeBase"
+          }, 
+          {
+            "$ref": "#/interfaces/RGBWLight"
+          }, 
+          {
+            "$ref": "#/interfaces/LightSensor"
+          }, 
+          {
+            "additionalProperties": false, 
+            "required": [
+              "ip"
+            ], 
+            "type": "class", 
+            "properties": {
+              "password": {
+                "default": "", 
+                "type": "string", 
+                "description": "The password of the gateway"
+              }, 
+              "ip": {
+                "minLength": 1, 
+                "type": "string", 
+                "description": "The IP address of the gateway"
+              }
+            }
+          }
+        ]
+      }, 
+      "MihomeDevice": {
+        "virtual": true, 
+        "allOf": [
+          {
+            "$ref": "#/resources/MihomeBase"
+          }, 
+          {
+            "additionalProperties": false, 
+            "required": [], 
+            "type": "class", 
+            "properties": {
+              "voltage": {
+                "readOnly": true, 
+                "type": "number", 
+                "description": "the voltage of the battery if any"
+              }
+            }, 
+            "description": "Mihome Device base class"
+          }
+        ]
+      }, 
+      "MihomeSensorHT": {
+        "allOf": [
+          {
+            "$ref": "#/resources/MihomeDevice"
+          }, 
+          {
+            "$ref": "#/interfaces/Thermometer"
+          }, 
+          {
+            "$ref": "#/interfaces/HumiditySensor"
+          }, 
+          {
+            "$ref": "#/interfaces/PressureSensor"
+          }, 
+          {
+            "additionalProperties": false, 
+            "required": [], 
+            "type": "class", 
+            "properties": {}, 
+            "description": "Mihome temperature/humidity/pressure Sensor Device class."
+          }
+        ]
+      }, 
+      "RTSP": {
+        "allOf": [
+          {
+            "$ref": "#/resources/Device"
+          }, 
+          {
+            "$ref": "#/interfaces/Camera"
+          }, 
+          {
+            "additionalProperties": false, 
+            "required": [
+              "url"
+            ], 
+            "type": "class", 
+            "properties": {
+              "transport": {
+                "default": "tcp", 
+                "minLength": 1, 
+                "enum": [
+                  "udp", 
+                  "tcp", 
+                  "http"
+                ], 
+                "type": "string", 
+                "description": "Lower transport protocol. Allowed values are the ones defined for the flags for rtsp_transport (see https://libav.org/avconv.html)."
+              }, 
+              "url": {
+                "minLength": 1, 
+                "type": "string", 
+                "description": "The URL of the device rtsp://... .", 
+                "pattern": "^rtsp://"
+              }
+            }, 
+            "description": "RTSP Device resource representation, usually IP camera.\n    avconv must be installed (apt-get install libav-tools)"
+          }
+        ]
+      }, 
+      "SSH": {
+        "allOf": [
+          {
+            "$ref": "#/resources/Device"
+          }, 
+          {
+            "additionalProperties": false, 
+            "required": [
+              "host", 
+              "auth"
+            ], 
+            "type": "class", 
+            "properties": {
+              "host": {
+                "minLength": 1, 
+                "type": "string", 
+                "description": "The ip address or hostname of the device to connect to."
+              }, 
+              "port": {
+                "default": 22, 
+                "minimum": 0, 
+                "type": "integer", 
+                "maximum": 65535, 
+                "description": "The port number of the device to connect to. The default port number is 22."
+              }, 
+              "auth": {
+                "additionalProperties": false, 
+                "required": [
+                  "user", 
+                  "password"
+                ], 
+                "type": "object", 
+                "properties": {
+                  "user": {
+                    "minLength": 1, 
+                    "type": "string"
+                  }, 
+                  "password": {
+                    "minLength": 1, 
+                    "type": "string"
+                  }
+                }, 
+                "description": "An object describing the credentials to use."
+              }
+            }, 
+            "description": "SSH Device resource representation"
+          }
+        ]
+      }, 
+      "CPUTempDevice": {
+        "allOf": [
+          {
+            "$ref": "#/resources/Device"
+          }, 
+          {
+            "$ref": "#/interfaces/Thermometer"
+          }, 
+          {
+            "additionalProperties": false, 
+            "required": [], 
+            "type": "class", 
+            "properties": {}
+          }
+        ]
+      }, 
+      "Denon": {
+        "allOf": [
+          {
+            "$ref": "#/resources/Device"
+          }, 
+          {
+            "$ref": "#/interfaces/Switch"
+          }, 
+          {
+            "additionalProperties": false, 
+            "required": [
+              "host"
+            ], 
+            "type": "class", 
+            "properties": {
+              "host": {
+                "minLength": 1, 
+                "type": "string", 
+                "description": "The ip address or hostname of the device to connect to."
+              }
+            }, 
+            "description": "Denon Device resource representation"
+          }
+        ]
+      }
     }, 
     "Error": {
+      "type": "object", 
       "properties": {
         "message": {
           "readOnly": true, 
@@ -1212,606 +2294,6 @@
         }
       }, 
       "description": "An object describing an error"
-    }, 
-    "Device": {
-      "allOf": [
-        {
-          "$ref": "#/definitions/Resource"
-        }, 
-        {
-          "type": "object", 
-          "properties": {
-            "methods": {
-              "items": {}, 
-              "readOnly": true, 
-              "type": "array", 
-              "description": "The list of the methods available."
-            }, 
-            "battery": {
-              "default": null, 
-              "description": "The battery level of this device (must be between 0 (empty) and 100 (full) , or null if the device has no battery information)."
-            }, 
-            "interfaces": {
-              "items": {}, 
-              "readOnly": true, 
-              "type": "array", 
-              "description": "A list of interfaces this device inherit"
-            }, 
-            "connected": {
-              "default": false, 
-              "type": "boolean", 
-              "description": "Set to true when this device is connected."
-            }, 
-            "location": {
-              "default": null, 
-              "description": "The location of this device."
-            }, 
-            "lastSeenDate": {
-              "readOnly": true, 
-              "description": "The last time this device was reached or made a request."
-            }
-          }
-        }
-      ]
-    }, 
-    "ZigateSerialGateway": {
-      "allOf": [
-        {
-          "$ref": "#/definitions/ZigateGateway"
-        }, 
-        {
-          "required": [
-            "port"
-          ], 
-          "type": "object", 
-          "properties": {
-            "port": {
-              "type": "string", 
-              "description": "The serial port name."
-            }
-          }
-        }
-      ]
-    }, 
-    "Resource": {
-      "discriminator": "type", 
-      "required": [
-        "name"
-      ], 
-      "type": "object", 
-      "properties": {
-        "description": {
-          "default": "", 
-          "type": "string", 
-          "description": "A description of this resource."
-        }, 
-        "data": {
-          "additionalProperties": {
-            "type": "string"
-          }, 
-          "default": {}, 
-          "type": "object", 
-          "properties": {}, 
-          "description": "A collection of arbitrary key-value pairs. Entries with null values are cleared in update. The keys must not be empty or longer than 64 characters, and must contain only the following characters : letters, digits, underscore and dash. Values must be either a string or a boolean or a number"
-        }, 
-        "public": {
-          "default": false, 
-          "enum": [
-            false, 
-            "readonly", 
-            "readwrite"
-          ], 
-          "description": "False: this resource is not publicly accessible. 'readonly': this resource is accessible for reading by anyone. 'readwrite': this resource is accessible for reading and writing by anyone."
-        }, 
-        "extends": {
-          "items": {}, 
-          "readOnly": true, 
-          "type": "array", 
-          "description": "An array of classes this resource is based on."
-        }, 
-        "modifiedDate": {
-          "readOnly": true, 
-          "type": "string", 
-          "description": "Last time this resource was modified", 
-          "format": "date-time"
-        }, 
-        "createdBy": {
-          "default": null, 
-          "pattern": "^[-_a-zA-Z0-9]{7}$", 
-          "type": "string", 
-          "description": "The id of the resource responsible of the creation of this resource, or null."
-        }, 
-        "createdDate": {
-          "readOnly": true, 
-          "type": "string", 
-          "description": "Create time for this resource", 
-          "format": "date-time"
-        }, 
-        "type": {
-          "readOnly": true, 
-          "type": "string", 
-          "description": "The type of the resource"
-        }, 
-        "id": {
-          "readOnly": true, 
-          "type": "string", 
-          "description": "The id of the resource"
-        }, 
-        "name": {
-          "minLength": 1, 
-          "type": "string", 
-          "description": "The name of the resource", 
-          "pattern": "^[a-zA-Z0-9 !#$%&'()+,\\-.;=@^_`{    ]+(\\/[a-zA-Z0-9 !#$%&'()+,\\-.;=@^_`{    ]+)*$"
-        }
-      }, 
-      "description": "The base representation of a resource object"
-    }, 
-    "MihomeGateway": {
-      "allOf": [
-        {
-          "$ref": "#/definitions/Device"
-        }, 
-        {
-          "required": [
-            "ip", 
-            "sid"
-          ], 
-          "type": "object", 
-          "properties": {
-            "ip": {
-              "minLength": 1, 
-              "type": "string", 
-              "description": "The IP address of the gateway"
-            }, 
-            "password": {
-              "default": "", 
-              "type": "string", 
-              "description": "The password of the gateway"
-            }, 
-            "sid": {
-              "minLength": 1, 
-              "type": "string", 
-              "description": "The uniq sid of the gateway"
-            }
-          }
-        }
-      ]
-    }, 
-    "Rule": {
-      "allOf": [
-        {
-          "$ref": "#/definitions/Resource"
-        }, 
-        {
-          "required": [
-            "event", 
-            "script"
-          ], 
-          "type": "object", 
-          "properties": {
-            "script": {
-              "pattern": "^[-_a-zA-Z0-9]{7}$", 
-              "type": "string", 
-              "description": "The JavaScript code to be executed"
-            }, 
-            "script_return_code": {
-              "readOnly": true, 
-              "type": "integer", 
-              "description": "The last exit code returned by the script of this rule"
-            }, 
-            "enabled": {
-              "default": true, 
-              "type": "boolean", 
-              "description": "If True (default), the rule is enabled"
-            }, 
-            "script_execution_count": {
-              "readOnly": true, 
-              "type": "integer", 
-              "description": "The number of times this rule has been executed"
-            }, 
-            "script_execution_date": {
-              "readOnly": true, 
-              "description": "The last time this rule has been executed"
-            }, 
-            "script_args": {
-              "default": "", 
-              "type": "string", 
-              "description": "The arguments passed to the script of this rule"
-            }, 
-            "event": {
-              "description": "The event object describing when to execute this rule", 
-              "$ref": "#/events/Event"
-            }
-          }
-        }
-      ]
-    }, 
-    "RFLinkGateway": {
-      "allOf": [
-        {
-          "$ref": "#/definitions/Device"
-        }, 
-        {
-          "type": "object", 
-          "properties": {
-            "version": {
-              "readOnly": true, 
-              "description": "The version of the RFLink library used."
-            }, 
-            "build": {
-              "readOnly": true, 
-              "description": "The build number of the RFLink library used."
-            }, 
-            "revision": {
-              "readOnly": true, 
-              "description": "The revision number of the RFLink library used."
-            }
-          }
-        }
-      ]
-    }, 
-    "MySensorsEthernetGateway": {
-      "allOf": [
-        {
-          "$ref": "#/definitions/MySensorsGateway"
-        }, 
-        {
-          "required": [
-            "address"
-          ], 
-          "type": "object", 
-          "properties": {
-            "address": {
-              "pattern": "^([-\\w.]+)(:[0-9]{1,5})?$", 
-              "type": "string", 
-              "description": "The ip address or hostname of the gateway."
-            }
-          }
-        }
-      ]
-    }, 
-    "MySensorsGateway": {
-      "allOf": [
-        {
-          "$ref": "#/definitions/Device"
-        }, 
-        {
-          "type": "object", 
-          "properties": {
-            "libVersion": {
-              "readOnly": true, 
-              "description": "The version of the MySensors library used."
-            }, 
-            "isMetric": {
-              "default": true, 
-              "type": "boolean", 
-              "description": "Set the unit to Metric(default) instead of Imperial."
-            }
-          }, 
-          "description": "see https://www.mysensors.org"
-        }
-      ]
-    }, 
-    "YeelightBulbRGBW": {
-      "allOf": [
-        {
-          "$ref": "#/definitions/YeelightDevice"
-        }, 
-        {
-          "type": "object", 
-          "properties": {}
-        }
-      ]
-    }, 
-    "MySensorsNode": {
-      "allOf": [
-        {
-          "$ref": "#/definitions/Device"
-        }, 
-        {
-          "required": [
-            "nodeId", 
-            "createdBy"
-          ], 
-          "type": "object", 
-          "properties": {
-            "smartSleep": {
-              "default": false, 
-              "type": "boolean", 
-              "description": "SmartSleep feature enabled for this node."
-            }, 
-            "sketchName": {
-              "readOnly": true, 
-              "type": "string", 
-              "description": "The name of the sketch uploaded."
-            }, 
-            "firmware": {
-              "readOnly": true
-            }, 
-            "nodeId": {
-              "minimum": 1, 
-              "type": "integer", 
-              "maximum": 254, 
-              "description": "The id of the node."
-            }, 
-            "libVersion": {
-              "readOnly": true, 
-              "description": "The version of the MySensors library used."
-            }, 
-            "createdBy": {
-              "pattern": "^[-_a-zA-Z0-9]{7}$", 
-              "type": "string", 
-              "description": "The id of the resource responsible of the creation of this resource, or null."
-            }, 
-            "sketchVersion": {
-              "readOnly": true, 
-              "type": "string", 
-              "description": "The version of the sketch uploaded."
-            }
-          }, 
-          "description": "MySensorsNode Device resource representation. This device is normally automatically created by a MySensorsGateway instance."
-        }
-      ]
-    }, 
-    "ZigateAqaraTHP": {
-      "allOf": [
-        {
-          "$ref": "#/definitions/ZigateDevice"
-        }, 
-        {
-          "type": "object", 
-          "properties": {}, 
-          "description": "Mihome temperatire/humidity/pressure Sensor Device class."
-        }
-      ]
-    }, 
-    "RFLinkSerialGateway": {
-      "allOf": [
-        {
-          "$ref": "#/definitions/RFLinkGateway"
-        }, 
-        {
-          "required": [
-            "port"
-          ], 
-          "type": "object", 
-          "properties": {
-            "baudrate": {
-              "default": 57600, 
-              "enum": [
-                110, 
-                150, 
-                300, 
-                600, 
-                1200, 
-                2400, 
-                4800, 
-                9600, 
-                19200, 
-                38400, 
-                57600, 
-                115200
-              ], 
-              "type": "integer", 
-              "description": "The baudrate"
-            }, 
-            "port": {
-              "type": "string", 
-              "description": "The serial port name."
-            }
-          }
-        }
-      ]
-    }, 
-    "ZigateDevice": {
-      "allOf": [
-        {
-          "$ref": "#/definitions/Device"
-        }, 
-        {
-          "required": [
-            "address", 
-            "model", 
-            "manufacturer"
-          ], 
-          "type": "object", 
-          "properties": {
-            "model": {
-              "minLength": 1, 
-              "type": "string", 
-              "description": "The model of this device"
-            }, 
-            "manufacturer": {
-              "minLength": 1, 
-              "type": "string", 
-              "description": "The manufacturer of this device"
-            }, 
-            "address": {
-              "minLength": 1, 
-              "type": "string", 
-              "description": "The short address of this device on the zigbee network"
-            }
-          }, 
-          "description": "ZigateDevice Device base class representation"
-        }
-      ]
-    }, 
-    "MQTT": {
-      "allOf": [
-        {
-          "$ref": "#/definitions/Device"
-        }, 
-        {
-          "required": [
-            "host"
-          ], 
-          "type": "object", 
-          "properties": {
-            "host": {
-              "type": "string", 
-              "description": "The host of the MQTT broker to connect to."
-            }, 
-            "port": {
-              "default": 1883, 
-              "minimum": 0, 
-              "type": "integer", 
-              "maximum": 65535, 
-              "description": "The port number of the MQTT broker to connect to."
-            }, 
-            "auth": {
-              "default": null, 
-              "description": "An object describing the credentials to use."
-            }
-          }, 
-          "description": "MQTT Device resource representation"
-        }
-      ]
-    }, 
-    "SSH": {
-      "allOf": [
-        {
-          "$ref": "#/definitions/Device"
-        }, 
-        {
-          "required": [
-            "host"
-          ], 
-          "type": "object", 
-          "properties": {
-            "host": {
-              "minLength": 1, 
-              "type": "string", 
-              "description": "The ip address or hostname of the device to connect to."
-            }, 
-            "port": {
-              "default": 22, 
-              "minimum": 0, 
-              "type": "integer", 
-              "maximum": 65535, 
-              "description": "The port number of the device to connect to. The default port number is 22."
-            }, 
-            "auth": {
-              "additionalProperties": false, 
-              "description": "An object describing the credentials to use.", 
-              "default": null, 
-              "required": [
-                "password", 
-                "user"
-              ], 
-              "type": "object", 
-              "properties": {
-                "password": {
-                  "minLength": 1, 
-                  "type": "string"
-                }, 
-                "user": {
-                  "minLength": 1, 
-                  "type": "string"
-                }
-              }
-            }
-          }, 
-          "description": "SSH Device resource representation"
-        }
-      ]
-    }, 
-    "File": {
-      "allOf": [
-        {
-          "$ref": "#/definitions/Resource"
-        }, 
-        {
-          "type": "object", 
-          "properties": {
-            "contentModifiedDate": {
-              "readOnly": true, 
-              "type": "string", 
-              "description": "Last time the content of this file was modified (formatted RFC 3339 timestamp).", 
-              "format": "date-time"
-            }, 
-            "isText": {
-              "readOnly": true, 
-              "type": "boolean", 
-              "description": "True if this file has text based content."
-            }, 
-            "mime": {
-              "readOnly": true, 
-              "type": "string", 
-              "description": "The MIME type of the file (automatically detected from the content)."
-            }, 
-            "expireAfter": {
-              "default": null, 
-              "minimum": 1, 
-              "type": "integer", 
-              "description": "The amount of time (in seconds) after which this resource will be removed."
-            }, 
-            "size": {
-              "readOnly": true, 
-              "type": "integer", 
-              "description": "The size of this resource in bytes"
-            }
-          }
-        }
-      ]
-    }, 
-    "Table": {
-      "allOf": [
-        {
-          "$ref": "#/definitions/Resource"
-        }, 
-        {
-          "type": "object", 
-          "properties": {
-            "keys": {
-              "additionalProperties": true, 
-              "readOnly": true, 
-              "type": "object", 
-              "properties": {}, 
-              "description": "A key/value object where the keys correspond to the fields available in this table, and the corresponding value is the number of rows where the field is set. __The default keys ('_id' and 'date' are not listed)__"
-            }, 
-            "contentModifiedDate": {
-              "readOnly": true, 
-              "type": "string", 
-              "description": "Last time the content of this table was modified.", 
-              "format": "date-time"
-            }, 
-            "length": {
-              "readOnly": true, 
-              "type": "integer", 
-              "description": "The number of records in the table"
-            }, 
-            "expireAfter": {
-              "default": null, 
-              "description": "The amount of time (in seconds) after which a records will be automatically removed. Set it to null or 0 to disable this feature."
-            }, 
-            "maxLength": {
-              "default": 5000, 
-              "description": "The maximum of records allowed in this table. When this number is reached, the oldest records will be removed to insert the new ones (first in, first out). Set it to null or 0 to disable this feature."
-            }
-          }
-        }
-      ]
-    }, 
-    "MihomeDevice": {
-      "allOf": [
-        {
-          "$ref": "#/definitions/Device"
-        }, 
-        {
-          "required": [
-            "sid"
-          ], 
-          "type": "object", 
-          "properties": {
-            "sid": {
-              "minLength": 1, 
-              "type": "string", 
-              "description": "The uniq sid of the device"
-            }
-          }, 
-          "description": "Mihome Device base class"
-        }
-      ]
     }
   }, 
   "security": [

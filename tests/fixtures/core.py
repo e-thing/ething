@@ -1,8 +1,9 @@
 # coding: utf-8
 import pytest
 from ething.core import Core
-import os
-import tempfile
+from ething.File import File
+from ething.Table import Table
+from ething.Rule import Rule
 
 
 @pytest.fixture
@@ -15,33 +16,16 @@ def core():
             'level': 'debug'
         },
         'debug': True,
-        'webserver': {
-            'enabled': False,
+        'WebServer': {
+            "debug": True,
             'port': 8001
-        },
-        'rpc': {
-            'address': os.path.join(tempfile.gettempdir(), './ething_socket_test')
         }
     })
 
     core.reset()
 
-    return core
-
-
-from ething.SignalManager import SignalManager
-from ething.SocketManager import SocketManager
-from ething.TaskManager import TaskManager
-from ething.Scheduler import Scheduler
-from ething.Mail import Mail
-
-
-@pytest.fixture
-def core_extended(core):
-    core.scheduler = Scheduler(core)
-    core.taskManager = TaskManager(core)
-    core.signalManager = SignalManager(core)
-    core.socketManager = SocketManager(core)
-    core.mail = Mail(core)
+    core.init()
 
     return core
+
+

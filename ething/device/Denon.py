@@ -1,6 +1,7 @@
 # coding: utf-8
 
-from ething.Device import Device, method, attr, isString
+from ething.Device import Device
+from ething.reg import *
 from ething.utils import pingable
 from ething.interfaces import Switch
 import requests
@@ -8,7 +9,7 @@ import xmltodict
 
 
 @pingable()
-@attr('host', validator=isString(allow_empty=False), description="The ip address or hostname of the device to connect to.")
+@attr('host', type=String(allow_empty=False), description="The ip address or hostname of the device to connect to.")
 class Denon(Device, Switch):
     """
     Denon Device resource representation
@@ -37,7 +38,7 @@ class Denon(Device, Switch):
         """
         self.sendCmd('MVDOWN')
 
-    @method.arg('source', type="string", enum=["CD", "TUNER", "IRADIO", "IPD", "BLUETOOTH"])
+    @method.arg('source', type=Enum(["CD", "TUNER", "IRADIO", "IPD", "BLUETOOTH"]))
     def setSource(self, source):
         """
         select the source
@@ -51,7 +52,7 @@ class Denon(Device, Switch):
         """
         return xmltodict.parse(self.sendPostCmd('GetCDStatus'))
 
-    @method.arg('command', type="string", enum=["STOP", "PLAY", "PAUSE", "PREV_TRACK", "NEXT_TRACK"])
+    @method.arg('command', type=Enum(["STOP", "PLAY", "PAUSE", "PREV_TRACK", "NEXT_TRACK"]))
     def setCDControl(self, command):
         """
         control the CD player

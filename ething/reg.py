@@ -574,6 +574,7 @@ def build_schema(cls, root = False, **kwargs):
   helper = kwargs.get('helper', None)
   subclass = kwargs.get('subclass', None)
   skip = kwargs.get('skip') or ()
+  no_methods = kwargs.get('no_methods', False)
 
   if not flatted and not root:
       return {
@@ -626,7 +627,7 @@ def build_schema(cls, root = False, **kwargs):
 
   methods = list_registered_methods(cls)
 
-  if methods:
+  if methods and not no_methods:
     # schema['type'] = 'class'
     schema['methods'] = OrderedDict()
 

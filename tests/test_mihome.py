@@ -1,30 +1,38 @@
 # coding: utf-8
 import pytest
-from ething.mihome.Controller import Controller
+from ething.mihome import MihomeProtocol
+from ething.interfaces import Thermometer, Light
 
 
-def test_mihome_controller(core_extended):
+def test_mihome_controller(core, process):
 
-    controller = Controller(core_extended)
+    protocol = MihomeProtocol(core)
 
-    controller.process(
-        r'{"cmd":"report","model":"gateway","sid":"34ce00fb61a9","short_id":0,"data":"{\"rgb\":0,\"illumination\":503}"}', '192.168.1.2')
+    protocol.init(process)
 
-    gateway = core_extended.findOne({
+    protocol.data_received(
+        (r'{"cmd":"report","model":"gateway","sid":"34ce00fb61a9","short_id":0,"data":"{\"rgb\":0,\"illumination\":503}"}',
+         ('192.168.1.2', 9999))
+    )
+
+    gateway = core.findOne({
         'sid': '34ce00fb61a9'
     })
 
     assert gateway
 
-    assert gateway.interface.is_a('Light')
+    assert isinstance(gateway, Light)
 
-    controller.process(
-        r'{"cmd":"report","model":"weather.v1","sid":"158d0001a4b64a","short_id":22319,"data":"{\"temperature\":\"1983\"}"}')
+    protocol.data_received(
+        (
+        r'{"cmd":"report","model":"weather.v1","sid":"158d0001a4b64a","short_id":22319,"data":"{\"temperature\":\"1983\"}"}',
+        ('192.168.1.2', 9999))
+    )
 
-    sensor = core_extended.findOne({
+    sensor = core.findOne({
         'sid': '158d0001a4b64a'
     })
 
     assert sensor
 
-    assert sensor.interface.is_a('Thermometer')
+    assert isinstance(sensor, Thermometer)

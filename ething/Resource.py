@@ -191,8 +191,8 @@ class Resource(DbEntity):
 
                 if table:
                     table.insert(history_data_item['data'])
-            except:
-                self.log.exception('history error for %s' % table_name)
+            except Exception as e:
+                self.ething.log.exception('history error for %s' % table_name)
 
         self.ething.dispatchSignal(
             'ResourceMetaUpdated', self, list(dirty_keys))

@@ -11,4 +11,5 @@ from .thermometer import Thermometer
 from .pressureSensor import PressureSensor
 from .humiditySensor import HumiditySensor
 from .lightSensor import LightSensor
+from .moistureSensor import MoistureSensor
 from .camera import Camera

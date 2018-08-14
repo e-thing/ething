@@ -26,10 +26,10 @@ class MySensorsNode(Device):
     def gateway(self):
         return self.createdBy
 
-    def _save(self, data):
-        super(MySensorsNode, self)._save(data)
+    def _save(self, dirty_attrs):
+        super(MySensorsNode, self)._save(dirty_attrs)
 
-        if 'battery' in self.getDirtyAttr():
+        if get_registered_attr(self, 'battery') in dirty_attrs:
             # update the battery value to the attached sensors too
             for sensor in self.getSensors():
                 sensor.battery = self.battery

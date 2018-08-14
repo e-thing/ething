@@ -7,7 +7,7 @@ from .helpers import *
 
 class MySensorsBinary (MySensorsSensor, Switch):
 
-    def _set(self, datatype, value):
+    def _set_data(self, datatype, value):
         super(MySensorsBinary, self)._set(datatype, value)
         if datatype == V_STATUS or datatype == V_LIGHT:
             self._state = value

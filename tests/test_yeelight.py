@@ -1,20 +1,29 @@
 # coding: utf-8
 import pytest
-from ething.yeelight.Controller import Controller
+from ething.yeelight import YeelightProtocol
+from ething.interfaces import Light
 
 
-def test_yeelight_controller(core_extended):
+def test_yeelight_controller(core, process):
 
-    device = core_extended.create('YeelightBulbRGBW', {
+    device = core.create('resources/YeelightBulbRGBW', {
         'name': 'device',
-        'host': '192.168.1.2'
+        'host': '192.168.1.2',
+        'model': 'color',
+        'fw_ver': '?',
+        'dev_id': '?'
     })
 
-    controller = Controller(device)
+    assert device
+    assert isinstance(device, Light)
 
-    controller.processMessage({"method": "props", "params": {"power": "on"}})
+    protocol = YeelightProtocol(device)
 
-    assert device.interface.is_a('Light')
+    protocol.init(process)
+
+    assert protocol
+
+    protocol.handle_line(u'{"method": "props", "params": {"power": "on"}}')
 
     table = device.children({
         'type': 'resources/Table'

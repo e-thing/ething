@@ -171,7 +171,7 @@ class Entity(with_metaclass(MetaReg, M_Class)):
         name = attribute.name
         if name in data:
           mode = attribute.get('mode')
-          if mode == READ_ONLY or mode == PRIVATE:
+          if mode == PRIVATE:
             raise AttributeError('attribute "%s" is not writable' % name)
           
           data_type = attribute['type']

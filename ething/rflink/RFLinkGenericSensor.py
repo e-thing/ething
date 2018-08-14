@@ -3,6 +3,7 @@
 
 from .RFLinkNode import RFLinkNode
 from ething.reg import *
+from .helpers import attrMap
 
 
 @abstract
@@ -20,6 +21,10 @@ class RFLinkGenericSensor(RFLinkNode):
         if 'BARO' in data and self.isTypeof('interfaces/PressureSensor'):
             self._pressure = float(data['BARO'])
 
+        for k in data:
+            if k in attrMap:
+                human_readable_name, _ = attrMap[k]
+                self.data[human_readable_name] = data[k]
 
     @classmethod
     def create_dynamic_class(cls, interface_types):

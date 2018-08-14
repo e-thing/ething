@@ -48,27 +48,23 @@ if bluepy_imported:
             self.stop_all_controllers()
 
         def _on_resource_created(self, signal):
-            device = self.core.get(signal['resource'])
+            device = signal.resource
             if isinstance(device, BleaGateway):
                 self._start_controller(device)
 
         def _on_resource_deleted(self, signal):
-            device = self.core.get(signal['resource'])
+            device = signal.resource
             if isinstance(device, BleaGateway):
                 self._stop_controller(device.id)
 
         def _on_resource_updated(self, signal):
-            id = signal['resource']
+            id = signal.resource.id
             if id in self.controllers:
-                controller = self.controllers[id]
-                gateway = controller.gateway
-                if signal['rModifiedDate'] > gateway.modifiedDate:
-                    gateway.refresh()
-
+                controller = self.controllers[id]()
                 for attr in signal['attributes']:
                     if attr in controller.RESET_ATTR:
                         self._stop_controller(id)
-                        self._start_controller(gateway)
+                        self._start_controller(controller.gateway)
                         break
 
         def _start_controller(self, device):

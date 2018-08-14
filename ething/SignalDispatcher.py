@@ -2,7 +2,13 @@
 
 import logging
 import threading
+import time
 from ething.utils.weak_ref import weak_ref
+try:
+    import queue
+except ImportError:
+    import Queue as queue
+
 
 class SignalDispatcher(object):
 
@@ -12,6 +18,24 @@ class SignalDispatcher(object):
         self.r_lock = threading.RLock()
 
         self.handlers = {}
+
+        self._queue = queue.Queue()
+
+    def queue(self, signal):
+        self._queue.put(signal)
+
+    def process(self, timeout = 0):
+        block = bool(timeout != 0)
+        t0 = time.time()
+        while timeout >= 0:
+            try:
+                signal = self._queue.get(block, timeout)
+                self.dispatch(signal)
+            except queue.Empty:
+                break
+            else:
+                timeout -= time.time() - t0
+
 
     def dispatch(self, signal):
         with self.r_lock:

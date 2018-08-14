@@ -1,10 +1,11 @@
 # coding: utf-8
 from future.utils import string_types, integer_types, iteritems
-from ething.Device import Device, method, attr, isString, abstract, READ_ONLY
+from ething.Device import Device
+from ething.reg import *
 from .connector import Connector
 
 @abstract
-@attr('mac', validator=isString(allow_empty=False, regex='^([0-9A-Fa-f]{2}:){5}([0-9A-Fa-f]{2})$'), description="The MAC address of the device.")
+@attr('mac', type=String(allow_empty=False, regex='^([0-9A-Fa-f]{2}:){5}([0-9A-Fa-f]{2})$'), description="The MAC address of the device.")
 @attr('rssi', mode=READ_ONLY, default=None, description="The last received signal strength indicator of this device.")
 class BleaDevice(Device):
     """

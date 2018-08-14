@@ -2,7 +2,7 @@
 
 from .query.Parser import Parser
 from .query.Field import Field
-from .meta import resource_classes
+from .reg import *
 import sys
 
 
@@ -17,13 +17,13 @@ def custom_fields(name, type, schema, default_field):
 
 
 def build_resource_fields(parser):
+    from .Resource import Resource
+    from .Interface import Interface
 
-    for cls_name in resource_classes:
-        cls = resource_classes[cls_name]
-
-        schema = cls.schema(flatted=True)
-
-        parser.import_fields_from_json_schema(schema, helper=custom_fields)
+    for cls in list_registered_classes():
+        if issubclass(cls, (Resource, Interface)):
+            schema = build_schema(cls, flatted=True)
+            parser.import_fields_from_json_schema(schema, helper=custom_fields)
 
 
 class ResourceQueryParser(Parser):

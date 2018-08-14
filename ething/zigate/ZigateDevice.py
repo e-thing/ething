@@ -1,13 +1,14 @@
 # coding: utf-8
 
 
-from ething.Device import Device, method, interface, attr, abstract, isString, isNone, isEnum
+from ething.Device import Device
+from ething.reg import *
 
 
 @abstract
-@attr('address', validator=isString(allow_empty=False), description="The short address of this device on the zigbee network")
-@attr('model', validator=isString(allow_empty=False) | isNone(), description="The model of this device")
-@attr('manufacturer', validator=isString(allow_empty=False) | isNone(), description="The manufacturer of this device")
+@attr('address', type=String(allow_empty=False), description="The short address of this device on the zigbee network")
+@attr('model', type=Nullable(String(allow_empty=False)), description="The model of this device")
+@attr('manufacturer', type=Nullable(String(allow_empty=False)), description="The manufacturer of this device")
 class ZigateDevice(Device):
     """
     ZigateDevice Device base class representation

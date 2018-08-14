@@ -39,12 +39,12 @@ class Zigate(object):
                 self.log.error(e)
 
     def on_resource_created(self, signal):
-        device = self.core.get(signal['resource'])
+        device = signal.resource
         if isinstance(device, ZigateGateway):
             self.start_controller(device)
 
     def on_resource_deleted(self, signal):
-        device = self.core.get(signal['resource'])
+        device = signal.resource
         if isinstance(device, ZigateGateway):
             self.stop_controller(device)
 

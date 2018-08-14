@@ -139,7 +139,7 @@ class MqttDispatcherService(Process):
         topic = 'event/%s' % signal_type
 
         if isinstance(signal, ResourceSignal):
-            topic += '/%s' % signal.resource
+            topic += '/%s' % signal.resource.id
 
         payload = toJson(signal)
 

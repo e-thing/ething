@@ -5,10 +5,10 @@ from __future__ import print_function
 from future.utils import string_types
 import apispec
 from ething.version import __version__
-from ething.meta import resource_classes
 from ething.Resource import Resource
+from ething.Interface import Interface
+from ething.reg import *
 import json
-from ething.base import READ_ONLY
 import jinja2
 from codecs import open
 
@@ -228,32 +228,7 @@ def generate(app, core, specification='stdout', documentation=None):
         if name == 'modifiedDate' and 'default' in schema:
             schema['default'] = "<current date>"
 
-    for name in list(resource_classes):
-        resource_cls = resource_classes[name]
-
-        schema = resource_cls.schema(
-            flatted=False, helper=resource_attr_helper)
-
-        # static inheritance
-        allOf = []
-        for b in resource_cls.__bases__:
-            if issubclass(b, Resource):
-                allOf.append({
-                    '$ref': '#/definitions/%s' % b.__name__
-                })
-
-        if len(allOf) > 0:
-            if schema:
-                allOf.append(schema)
-
-            schema = {
-                'allOf': allOf
-            }
-
-        if name == "Resource":
-            schema.update({'discriminator': 'type'})
-
-        spec.definition(name, extra_fields=schema)
+    spec._definitions.update(build_schema_definitions(subclass=(Resource, Interface), no_methods = True))
 
     spec.definition("Error", description="An object describing an error", properties={
         "message": {
@@ -266,6 +241,8 @@ def generate(app, core, specification='stdout', documentation=None):
             "description": "The HTTP response status code",
             "readOnly": True
         }
+    }, extra_fields = {
+        'type': 'object'
     })
 
     #
@@ -368,8 +345,7 @@ def get_headers(input):
 
 
 if __name__ == "__main__":
-
-    from ething.webserver import server
+    from ething.webserver.server import FlaskApp
     from ething.core import Core
 
     core = Core({
@@ -384,7 +360,7 @@ if __name__ == "__main__":
         }
     })
 
-    app = server.create(core)
+    app = FlaskApp(core)
 
     docpath = os.path.abspath(os.path.join(
         os.path.dirname(__file__), '../../doc'))

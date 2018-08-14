@@ -9,6 +9,9 @@ import traceback
 import errno
 import logging
 from threading import Thread, Lock
+from ething.plugin import Plugin
+from ething.Process import Process
+
 
 if os.name == 'nt':
     EAGAIN = errno.WSAEWOULDBLOCK
@@ -425,3 +428,48 @@ class RPC_Server(object):
         sock.close()
         # self.log.debug("RPC client disconnect")
         # self.manager.unregisterReadSocket(sock)
+
+
+
+class rpc(Plugin):
+
+    def load(self):
+        self.process = RPC_Process(self.core, self.config.get('address'))
+        self.process.start()
+
+    def unload(self):
+        if hasattr(self, 'process'):
+            self.process.stop()
+            del self.process
+
+
+class RPC_Process(Process):
+
+    def __init__(self, core, address):
+        super(RPC_Process, self).__init__('rpc')
+
+        self.core = core
+        self.address = address
+        self.rpc = None
+
+    def main(self):
+        self.rpc = RPC(self.address)
+
+        self.rpc.register('stop', self.core.stop)
+        self.rpc.register('version', self.core.version)
+        self.rpc.register('signal', self.core.signalDispatcher.queue)
+        self.rpc.register('mail', self.core.mail.send)
+
+        self.core.signalDispatcher.bind('*', self._signal_publish) # todo: make the resource and signal works with pickle
+
+        rpc_server = self.rpc.start_server()
+
+        while not self.stopped():
+            rpc_server.serve(0.5)
+
+        self.core.signalDispatcher.unbind('*', self._signal_publish)
+
+        rpc_server.stop()
+
+    def _signal_publish(self, signal):
+        self.rpc.publish('signal', signal)

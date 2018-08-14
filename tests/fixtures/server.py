@@ -1,12 +1,16 @@
 # coding: utf-8
 import pytest
-from ething.webserver.server import create
+from ething.webserver.server import FlaskApp
+from ething.webserver.routes import install_routes
+from ething.webserver.auth import install_auth
 import base64
 
 
 @pytest.fixture
 def webapp(core):
-    app = create(core)
+    app = FlaskApp(core)
+    auth = install_auth(core=core, app=app, server=None)
+    install_routes(core=core, app=app, auth=auth)
 
     # add a global context
     ctx = app.app_context()

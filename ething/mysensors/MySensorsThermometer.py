@@ -7,7 +7,7 @@ from .helpers import *
 
 class MySensorsThermometer (MySensorsSensor, Thermometer):
 
-    def _set(self, datatype, value):
-        super(MySensorsThermometer, self)._set(datatype, value)
+    def _set_data(self, datatype, value):
+        super(MySensorsThermometer, self)._set_data(datatype, value)
         if datatype == V_TEMP:
             self._temperature = value

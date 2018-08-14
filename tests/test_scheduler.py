@@ -6,12 +6,12 @@ import time
 
 interval_counter = 0
 
-def test_taskmanager(core):
+def test_taskmanager():
     global interval_counter
 
     interval_counter = 0
 
-    scheduler = Scheduler(core)
+    scheduler = Scheduler()
 
     def increase():
         global interval_counter
@@ -21,7 +21,7 @@ def test_taskmanager(core):
 
     tf = time.time() + 3.2
     while time.time() < tf:
-        scheduler.update()
+        scheduler.process()
         time.sleep(0.2)
 
     assert interval_counter == 6

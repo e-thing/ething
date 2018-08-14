@@ -12,16 +12,28 @@ class ResourceSignal(Signal):
 
     def __init__(self, resource):
         super(ResourceSignal, self).__init__()
-        self.resource = resource.id
-        self.rName = resource.name
-        self.rType = resource.type
-        self.rModifiedDate = resource.modifiedDate
+        self.resource = resource
     
     def __str__(self):
-        return "%s [%s]" % (type(self).__name__, self.resource)
+        return "%s [%s]" % (type(self).__name__, self.resource.id)
 
     def __repr__(self):
-        return "%s [%s]" % (type(self).__name__, self.resource)
+        return "%s [%s]" % (type(self).__name__, self.resource.id)
+
+#    def toJson(self):
+#        j = super(ResourceSignal, self).toJson()
+#        j['data']['resource'] = self.resource.id
+#        return j
+
+    def __getstate__(self):
+        d = self.__dict__.copy()
+        d['resource'] = self.resource.id
+        return d
+
+    def __setstate__(self, d):
+        self.__dict__.update(d)
+        self.resource = Core.get_instance().get(d['resource'])
+
     
 
 class ResourceFilter(Basetype):

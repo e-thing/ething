@@ -49,7 +49,7 @@ def install(core, app, auth, **kwargs):
                     properties:
                       type:
                         type: string
-                        description: 'The type of the device to create (eg: "Http" or "MySensorsEthernetGateway").'
+                        description: 'The type of the device to create (eg: "MySensorsEthernetGateway").'
                   - $ref: '#/definitions/Device'
         """
         attr = request.get_json()
@@ -64,7 +64,8 @@ def install(core, app, auth, **kwargs):
 
             attr.setdefault('createdBy', g.auth.resource)
 
-            r = core.create(type, attr)
+            r = app.create(type, attr)
+            # r = core.create(type, attr)
 
             if r:
 
@@ -146,14 +147,3 @@ def install(core, app, auth, **kwargs):
             method.call(*args, **kwargs)
             return '', 204
 
-    @app.route('/api/devices/<id>/specification')
-    @auth.required('device:read resource:read')
-    def device_http_specification(id):
-        r = app.getResource(id, ['Http'])
-        return app.jsonify(r.getSpecification())
-
-    @app.route('/api/devices/<id>/subscription')
-    @auth.required('device:read resource:read')
-    def device_mqtt_subscription(id):
-        r = app.getResource(id, ['MQTT'])
-        return app.jsonify(r.getSubscription())

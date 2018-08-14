@@ -8,7 +8,6 @@ from .ResourceQueryParser import ResourceQueryParser
 from .Config import Config
 from .SignalDispatcher import SignalDispatcher
 from .Mail import Mail
-from .rpc import RPC
 from .version import __version__
 from .plugin import instanciate_plugins
 from .Scheduler import Scheduler
@@ -38,7 +37,6 @@ class Core(object):
 
         self._init_logger()
         self._init_database()
-        self._init_rpc()
         self._init_plugins()
 
         Core.__instance = self
@@ -84,9 +82,6 @@ class Core(object):
 
         self.resourceQueryParser = ResourceQueryParser(tz = str(self.local_tz))
 
-    def _init_rpc(self):
-        self.rpc = RPC(self.config.get('rpc.address'))
-
     def stop(self):
         self.log.info("stopping ...")
         self.dispatchSignal('DaemonStopped')
@@ -110,19 +105,13 @@ class Core(object):
             except Exception as e:
                 self.log.exception("error while unload plugin %s" % plugin_name)
 
-        if hasattr(self, "rpc_server"):
-            try:
-                self.rpc_server.stop()
-            except Exception as e:
-                self.log.exception("error while shutting down rpc")
-
     def restart(self):
         self.stop()
         self.restart_flag = True
 
-    def start(self):
+    def init(self):
 
-        self.log.info("Starting ething %s" % self.version)
+        self.log.info("ething %s" % self.version)
         self.log.info("Using home directory: %s" % os.getcwd())
 
         self.signalDispatcher = SignalDispatcher()
@@ -130,14 +119,6 @@ class Core(object):
         self.scheduler = Scheduler()
         
         self.scheduler.at(self._tick, hour='*', min='*')
-
-        self.rpc.register('stop', self.stop)
-        self.rpc.register('version', self.version)
-        self.rpc.register('signal', self.signalDispatcher.dispatch)
-        self.rpc.register('mail', self.mail.send)
-
-        # rpc
-        self.rpc_server = self.rpc.start_server()
 
         # load the plugins
         for plugin in self.plugins:
@@ -148,23 +129,20 @@ class Core(object):
             except Exception:
                 self.log.exception('unable to load the plugin %s' % plugin_name)
 
-        self.signalDispatcher.bind('*', self._signal_publish)
         self.signalDispatcher.bind('ConfigUpdated', self._on_config_updated)
 
+    def start(self):
+        self.init()
         self.running = True
-
         self.dispatchSignal('DaemonStarted')
 
     def loop(self, timeout=1):
-        self.rpc_server.serve(timeout)
+        self.signalDispatcher.process(timeout)
+        self.scheduler.process()
 
     def loop_forever(self):
         while self.running:
             self.loop(1)
-            self.scheduler.process()
-    
-    def _signal_publish(self, signal):
-        self.rpc.publish('signal', signal)
     
     def _tick(self):
         self.dispatchSignal('Tick')
@@ -293,11 +271,7 @@ class Core(object):
             except:
                 self.log.exception('signal instanciate error')
 
-        try:
-            # self.log.debug('dispatchSignal %s' % signal)
-            self.rpc.send('signal', signal)
-        except:
-            pass
+        self.signalDispatcher.queue(signal)
 
         # if hasattr(self, "signalManager"):
         #     self.signalManager.dispatch(signal)
@@ -306,10 +280,7 @@ class Core(object):
 
         self.dispatchSignal('Notified', message = message, subject = subject)
 
-        self.rpc.send('mail', message = message, subject = subject)
-
-        # if hasattr(self, "signalManager"):
-        #     self.signalManager.dispatch(signal)
+        self.mail.send(message = message, subject = subject)
 
     def reset(self):
         """

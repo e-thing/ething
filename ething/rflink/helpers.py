@@ -315,7 +315,7 @@ class Default_Data_Formatter(Data_Formatter):
         data = {}
 
         for item in items:
-            kv = item.split('=', 2)
+            kv = item.split('=', 1)
             if len(kv) == 1:
                 kv.append(True)
             data[kv[0]] = convertAttrValue(kv[0], kv[1])

@@ -1,47 +1,39 @@
 # coding: utf-8
 import pytest
-from ething.rflink.Controller import Controller
+import ething.rflink as RFLink
+from  ething.interfaces import Switch
 
 
-def test_rflink_controller(core_extended):
+def test_rflink_controller(core, process):
 
-    gateway = core_extended.create('RFLinkSerialGateway', {
+    gateway = core.create('resources/RFLinkSerialGateway', {
         'name': 'gateway',
         'port': '?'
     })
 
-    class Transport(object):
-        def __init__(self, controller):
-            self.messages = []
+    assert gateway
 
-        def write(self, message):
-            self.messages.append(message)
+    protocol = RFLink.RFLinkProtocol(gateway)
 
-        def open(self):
-            pass
+    protocol.init(process)
 
-        def close(self):
-            pass
+    assert protocol
 
-    controller = Controller(gateway, Transport)
-    controller.open()
-    assert gateway.connected
+    gateway.inclusion = True
 
-    gateway.startInclusion()
-
-    controller.processLine(
-        b'20;00;Nodo RadioFrequencyLink - RFLink Gateway V1.1 - R46;')
+    protocol.handle_line(
+        u'20;00;Nodo RadioFrequencyLink - RFLink Gateway V1.1 - R46;')
     assert gateway.version == "1.1"
     assert gateway.revision == "46"
 
-    controller.processLine(b'20;06;NewKaku;ID=008440e6;SWITCH=1;CMD=OFF;')
+    protocol.handle_line(u'20;06;NewKaku;ID=008440e6;SWITCH=1;CMD=ON;')
 
     switch = gateway.children({
         'nodeId': '008440e6'
     })[0]
 
     assert switch
-    assert switch.interface.is_a('Switch')
+    assert isinstance(switch, Switch)
 
     table = switch.children({
         'type': 'resources/Table'
@@ -53,4 +45,4 @@ def test_rflink_controller(core_extended):
     assert table.length == 1
     assert len(list(table.keys)) == 1
 
-    assert table.select(start=-1)[0].get('state') is False
+    assert table.select(start=-1)[0].get('state') is True

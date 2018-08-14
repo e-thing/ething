@@ -287,9 +287,10 @@ def main():
 
     # load the plugins here !
     from .webserver.server import WebServer
-    # from .RuleManager import RuleManager
-    # from .PingService import PingService
-    # from .MqttDispatcher import MqttDispatcher
+    from .RuleManager import RuleManager
+    from .PingService import PingService
+    from .MqttDispatcher import MqttDispatcher
+    # from .rpc import rpc
 
     # load the modules here
     from .File import File
@@ -298,19 +299,18 @@ def main():
 
     from .rflink import RFLink
     from .mysensors import MySensors
-    # from .mqtt import mqtt
+    from .mqtt import mqtt
     from .yeelight import Yeelight
     from .mihome import Mihome
-    # try:
-    #    from .blea import Blea
-    # except:
-    #    pass
+    try:
+        from .blea import Blea
+    except:
+        pass
     # from .zigate import Zigate
-    # from .device.Http import Http
     from .device.RTSP import RTSP
     from .device.SSH import SSH
     from .device.CPUTemp import CPUTempPlugin
-    # from .device.Denon import Denon
+    from .device.Denon import Denon
 
     core = Core(config)
 
@@ -325,10 +325,14 @@ def main():
         print('generating docs ...')
         outdir = args.generate_docs
         if outdir and os.path.isdir(outdir):
-            from ething.webserver import server
+            from ething.webserver.server import FlaskApp
+            from ething.webserver.routes import install_routes
+            from ething.webserver.auth import install_auth
             from ething.webserver.specification import generate
 
-            app = server.create(core)
+            app = FlaskApp(core)
+            auth = install_auth(core=core, app=app, server=None)
+            install_routes(core=core, app=app, auth=auth)
             generate(app, core, specification=os.path.join(
                 outdir, 'openapi.json'), documentation=os.path.join(outdir, 'http_api.md'))
 

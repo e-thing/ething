@@ -18,6 +18,7 @@ from .server_utils import ServerException, tb_extract_info, root_path
 from ething.plugin import Plugin
 from ething.Process import Process
 from ething.Helpers import filter_obj
+from ething.reg import get_registered_class
 from collections import OrderedDict
 
 try:
@@ -94,12 +95,16 @@ class WebServer(Plugin):
 
 class FlaskApp(Flask):
 
-    def __init__(self, process, **kwargs):
+    def __init__(self, core, log = None, **kwargs):
         kwargs.setdefault('static_url_path', '')
         super(FlaskApp, self).__init__(__name__, **kwargs)
 
-        self.core = process.core
-        self.log = process.log
+        self.core = core
+
+        if log is None:
+            self.log = logging.getLogger("ething.FlaskApp")
+        else:
+            self.log = log
 
         # for PATCH request
         self.wsgi_app = HTTPMethodOverrideMiddleware(self.wsgi_app)
@@ -116,7 +121,7 @@ class FlaskApp(Flask):
         logging.getLogger('werkzeug').setLevel(logging.ERROR)
 
         # debug
-        self.debug = bool(self.core.config['debug'])
+        self.debug = bool(self.core.config.get('debug'))
         if self.debug:
             self.log.info('webserver: debug mode enabled')
 
@@ -229,6 +234,15 @@ class FlaskApp(Flask):
 
         return r
 
+    def create(self, type, attr):
+        cls = get_registered_class(type)
+        if cls is not None:
+            instance =  cls.fromJson(attr, create=True, ething=self.core)
+            instance.save()
+            return instance
+        else:
+            raise Exception('the type "%s" is unknown' % type)
+
 
 class WebServerProcess(Process):
     def __init__(self, core, config=None):
@@ -245,7 +259,7 @@ class WebServerProcess(Process):
 
     def main(self):
 
-        app = FlaskApp(self, root_path=root_path)
+        app = FlaskApp(self.core, self.log, root_path=root_path)
 
         self.log.info("web server root path = %s" % root_path)
 

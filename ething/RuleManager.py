@@ -3,6 +3,7 @@
 from .plugin import Plugin
 from .Scheduler import Scheduler
 from .Process import Process
+from .Rule import Rule
 import threading
 import time
 
@@ -60,11 +61,11 @@ class RuleProcess(Process):
         self.core.signalDispatcher.unbind('*', self.dispatchSignal)
 
     def onResourceCreatedOrDeleted(self, signal):
-        if signal['rType'] == 'resources/Rule':
+        if isinstance(signal.resource, Rule):
             self._build_cache()
 
     def onResourceMetaUpdated(self, signal):
-        if signal['rType'] == 'resources/Rule' and ( 'events' in signal['attributes'] or 'enabled' in signal['attributes'] or 'scheduler' in signal['attributes']):
+        if isinstance(signal.resource, Rule) and ( 'events' in signal['attributes'] or 'enabled' in signal['attributes'] or 'scheduler' in signal['attributes']):
             self._build_cache()
 
     def dispatchSignal(self, signal):
@@ -94,7 +95,7 @@ class RuleProcess(Process):
                             while i < l:
                                 s = self._queue[i]
                                 s_type = type(s).__name__
-                                if s_type == "ResourceMetaUpdated" and signal['resource'] == s['resource']:
+                                if s_type == "ResourceMetaUpdated" and signal.resource == s.resource:
                                     # ok same signal describing the same resource -> merge the attributes
                                     signal['attributes'] = list(
                                         set(signal['attributes']).union(set(s['attributes'])))

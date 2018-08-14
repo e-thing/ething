@@ -23,7 +23,7 @@ class MySensorsGateway(Device):
 
     def getNodes(self, filter=None):
         q = {
-            'type': 'resources/MySensorsNode',
+            'extends': 'resources/MySensorsNode',
             'createdBy': self.id
         }
 
@@ -36,7 +36,7 @@ class MySensorsGateway(Device):
 
     def getNode(self, nodeId):
         return self.ething.findOne({
-            'type': 'resources/MySensorsNode',
+            'extends': 'resources/MySensorsNode',
             'createdBy': self.id,
             'nodeId': nodeId
         })

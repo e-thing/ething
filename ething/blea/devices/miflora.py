@@ -1,11 +1,11 @@
 # coding: utf-8
 
 from ..BleaDevice import BleaDevice
-from ething.base import attr, READ_ONLY
-from ething.interfaces import Thermometer
+from ething.reg import *
+from ething.interfaces import Thermometer, LightSensor, MoistureSensor
 
 @attr('firmware', default='unknown', mode=READ_ONLY, description="The firmware version of this device.")
-class Miflora(BleaDevice, Thermometer):
+class Miflora(BleaDevice, Thermometer, LightSensor, MoistureSensor):
     
     name = 'miflora'
     readPeriod = 300
@@ -31,9 +31,9 @@ class Miflora(BleaDevice, Thermometer):
                     self.battery = battery
                     self.setConnectState(True)
                     
-                    conn.writeCharacteristic('0x36','0100',response=True)
-                    
-                    conn.waitForNotifications(2)
+                conn.writeCharacteristic('0x36','0100',response=True)
+
+                conn.waitForNotifications(2)
                 
                 
         except Exception as e:
@@ -49,15 +49,16 @@ class Miflora(BleaDevice, Thermometer):
             sunlight = received[4] * 256 + received[3]
             moisture = received[7]
             fertility = received[9] * 256 + received[8]
-            
-            data = {
-                'sunlight': sunlight,
-                'moisture': moisture,
-                'fertility': fertility,
-                'temperature': temperature
-            }
-            
-            # self.ething.log.debug(str(data))
-            
-            self.store('data', data)
+
+            with self:
+                self._temperature = temperature
+                self._light_level = sunlight
+                self._moisture = sunlight
+
+                self.data.update({
+                    'sunlight': sunlight,
+                    'moisture': moisture,
+                    'fertility': fertility,
+                    'temperature': temperature
+                })
 
