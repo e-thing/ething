@@ -1,3 +1,4 @@
+# coding: utf-8
 import collections
 
 
@@ -16,6 +17,7 @@ types['object'] = ('object', 'dict')
 types['null'] = ('null', 'none', 'nonetype')
 types['number'] = ('number',) + types['integer'] + types['double']
 types['date'] = ('date',)
+types['regex'] = ('regex', 'SRE_Pattern')
 
 
 def type_normalize(a):

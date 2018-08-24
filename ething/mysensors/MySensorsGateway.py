@@ -22,24 +22,18 @@ class MySensorsGateway(Device):
         return get_process('mysensors.%s' % self.id)
 
     def getNodes(self, filter=None):
-        q = {
-            'extends': 'resources/MySensorsNode',
-            'createdBy': self.id
-        }
 
-        if filter is not None:
-            q = {
-                '$and': [q, filter]
-            }
+        def _filter (r):
+            if r.createdBy == self and r.isTypeof('resources/MySensorsNode'):
+                if filter:
+                    return filter(r)
+                return True
+            return False
 
-        return self.ething.find(q)
+        return self.ething.find(_filter)
 
     def getNode(self, nodeId):
-        return self.ething.findOne({
-            'extends': 'resources/MySensorsNode',
-            'createdBy': self.id,
-            'nodeId': nodeId
-        })
+        return self.ething.findOne(lambda r: r.isTypeof('resources/MySensorsNode') and r.createdBy == self and r.nodeId == nodeId)
 
     def removeAllNodes(self):
         # remove all the nodes attached to it !

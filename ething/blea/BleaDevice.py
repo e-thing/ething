@@ -24,10 +24,7 @@ class BleaDevice(Device):
         ething = gateway.ething
         
         # does the device already exist !
-        device = ething.findOne({
-            'extends': 'resources/BleaDevice',
-            'mac': mac
-        })
+        device = ething.findOne(lambda r: r.isTypeof('resources/BleaDevice') and r.mac == mac)
         
         if not device:
             if gateway.learning:

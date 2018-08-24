@@ -3,7 +3,6 @@
 from . import Signal, Event
 from ething.reg import *
 from ething.ShortId import ShortId
-from ething.ResourceQueryParser import ResourceQueryParser
 from future.utils import string_types
 from ething.core import Core
 
@@ -69,7 +68,7 @@ class ResourceFilter(Basetype):
                 self._checkId(resourceFilter, ething)
             else:
                 # expression
-                ok, message = ResourceQueryParser.check(resourceFilter)
+                ok, message = ething.resourceQueryParser.check(resourceFilter)
                 if not ok:
                     raise ValueError('invalid expression: %s' % message)
 
@@ -121,12 +120,7 @@ class ResourceEvent(Event):
                 return resourceFilter == resourceIdFromSignal
             else:  # query string
                 # check if the resource from the signal match the expression
-                return bool(self.ething.findOne({
-                    '$and': {
-                        {'_id': resourceIdFromSignal},
-                        self.ething.resourceQueryParser.parse(resourceFilter)
-                    }
-                }))
+                return bool(self.ething.findOne([lambda r: r.id == resourceIdFromSignal, resourceFilter]))
 
         elif isinstance(resourceFilter, list):  # array of resource ids
             return resourceIdFromSignal in resourceFilter

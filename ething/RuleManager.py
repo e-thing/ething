@@ -127,10 +127,7 @@ class RuleProcess(Process):
             self.log.debug("rebuild rules cache")
             self._cache.clear()
 
-            rules = self.core.find({
-                'type': 'resources/Rule',
-                'enabled': True
-            })
+            rules = self.core.find(lambda r: r.isTypeof('resources/Rule') and r.enabled)
 
             for rule in rules:
 

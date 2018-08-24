@@ -15,9 +15,7 @@ def test_mihome_controller(core, process):
          ('192.168.1.2', 9999))
     )
 
-    gateway = core.findOne({
-        'sid': '34ce00fb61a9'
-    })
+    gateway = core.findOne(lambda r: r.sid == '34ce00fb61a9')
 
     assert gateway
 
@@ -29,9 +27,7 @@ def test_mihome_controller(core, process):
         ('192.168.1.2', 9999))
     )
 
-    sensor = core.findOne({
-        'sid': '158d0001a4b64a'
-    })
+    sensor = core.findOne(lambda r: r.sid == '158d0001a4b64a')
 
     assert sensor
 

@@ -20,6 +20,7 @@ import os
 import datetime
 import re
 import pytz
+from collections import Iterable
 
 
 class Core(object):
@@ -170,6 +171,32 @@ class Core(object):
     #
 
     def find(self, query=None, limit=None, skip=None, sort=None):
+
+        if query is not None:
+
+            if isinstance(query, string_types) or callable(query):
+                query = [query]
+
+            filters = []
+            for q in query:
+                if isinstance(q, string_types):
+                    # expression
+                    filters.append(self.resourceQueryParser.compile(q))
+                else:
+                    filters.append(q)
+
+            def fn(r):
+                for f in filters:
+                    try:
+                        res = f(r)
+                    except:
+                        res = False
+                    if not res:
+                        return False
+                return True
+
+            query = fn
+
         return self.resource_db_cache.find(query = query, limit = limit, skip = skip, sort = sort)
 
     def findOne(self, query=None):

@@ -11,24 +11,17 @@ from .Message import Message
 class ZigateGateway(Device):
 
     def getDevices(self, filter=None):
-        q = {
-            'extends': 'resources/ZigateDevice',
-            'createdBy': self.id
-        }
+        def _filter (r):
+            if r.createdBy == self and r.isTypeof('resources/ZigateDevice'):
+                if filter:
+                    return filter(r)
+                return True
+            return False
 
-        if filter is not None:
-            q = {
-                '$and': [q, filter]
-            }
-
-        return self.ething.find(q)
+        return self.ething.find(_filter)
 
     def getDevice(self, addr):
-        return self.ething.findOne({
-            'extends': 'resources/ZigateDevice',
-            'createdBy': self.id,
-            'address': addr
-        })
+        return self.ething.findOne(lambda r: r.isTypeof('resources/ZigateDevice') and r.createdBy == self and r.address == addr)
 
     def removeAllDevices(self):
         # remove all the nodes attached to it !

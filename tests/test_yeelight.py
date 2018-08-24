@@ -25,9 +25,7 @@ def test_yeelight_controller(core, process):
 
     protocol.handle_line(u'{"method": "props", "params": {"power": "on"}}')
 
-    table = device.children({
-        'type': 'resources/Table'
-    })[0]
+    table = device.children(lambda r: r.isTypeof('resources/Table'))[0]
 
     print(table)
 

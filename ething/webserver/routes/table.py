@@ -5,7 +5,6 @@ from flask import request, Response
 from ..server_utils import *
 import csv
 from ething.ShortId import ShortId
-from ething.TableQueryParser import TableQueryParser
 
 
 def install(core, app, auth, **kwargs):
@@ -291,11 +290,6 @@ def install(core, app, auth, **kwargs):
 
             fmt = args.pop('fmt').lower()
 
-            if g.auth.resource and args['query']:
-                parser = TableQueryParser()
-                parser.addConstant('me', g.auth.resource.id)
-                args['parser'] = parser
-
             if fmt == "json":
                 return app.jsonify(r.select(**args))
             elif fmt == "json_pretty":
@@ -410,15 +404,8 @@ def install(core, app, auth, **kwargs):
 
         if data:
 
-            parser = None
-
-            if g.auth.resource:
-                parser = TableQueryParser()
-                parser.addConstant('me', g.auth.resource.id)
-                args['parser'] = parser
-
             r.replaceRow(args['q'], data, args['invalid_field'],
-                         args['upsert'], parser=parser)
+                         args['upsert'])
             return app.jsonify(r)
         else:
             raise Exception('No data.')

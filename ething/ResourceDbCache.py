@@ -15,7 +15,7 @@ class ResourceDbCache(object):
         self.__db = core.db
         self.__resources = dict()
         self.__log = logging.getLogger("ething.ResourceDbCache")
-        self.__lock = threading.Lock()
+        self.__lock = threading.RLock()
 
         self._load()
 
@@ -95,45 +95,24 @@ class ResourceDbCache(object):
 
     def find(self, query=None, limit=None, skip=None, sort=None):
         with self.__lock:
-            if query is None:
-                query = {}
 
-            if isinstance(query, string_types):
-                # parse the query string
-                query = self.__core.resourceQueryParser.parse(query)
+            resources = list(self.__resources.values())
 
-            c = self.__db["resources"]
-
-            resources = []
-
-            if limit is None:
-                limit = 0
-            if skip is None:
-                skip = 0
+            if query:
+                resources = filter(query, resources)
 
             if isinstance(sort, string_types):
                 m = re.search('^([+-]?)(.+)$', sort)
                 if m is not None:
-                    sort = [(m.group(2), pymongo.ASCENDING if m.group(
-                        1) != '-' else pymongo.DESCENDING)]
-                else:
-                    sort = None
+                    asc = m.group(1) != '-'
+                    sort_attr = m.group(2)
 
-            if sort is None:
-                sort = [('modifiedDate', pymongo.DESCENDING)]
+                    resources = sorted(resources, key=lambda r: getattr(r, sort_attr, None), reverse = not asc)
 
-            cursor = c.find(query, skip=skip, limit=limit, sort=sort, projection=())
+            offset = skip or 0
 
-            for doc in cursor:
-                id = doc['_id']
+            return resources[offset:(limit + offset if limit is not None else None)]
 
-                if id in self.__resources:
-                    resources.append(self.__resources[id])
-                else:
-                    self.__log.warning('the resource with id=%s is not found in the cache' % id)
-
-
-            return resources
 
 
 

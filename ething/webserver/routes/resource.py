@@ -62,14 +62,13 @@ def install(core, app, auth, **kwargs):
             if 'resource' not in allowed_types:
                 # restrict the search to the allowed_types
 
-                typeQuery = {
-                    'extends': {'$in': allowed_types}
-                }
+                def typeQuery (r):
+                    for t in allowed_types:
+                        if r.isTypeof(t):
+                            return True
 
                 if query:
-                    query = {
-                        '$and': [core.resourceQueryParser.parse(query), typeQuery]
-                    }
+                    query = [typeQuery, query]
                 else:
                     query = typeQuery
 

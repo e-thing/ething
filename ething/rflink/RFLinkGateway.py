@@ -18,27 +18,25 @@ class RFLinkGateway(Device):
         return get_process('rflink.%s' % self.gateway.id)
 
     def getNodes(self, filter=None):
-        q = {
-            'extends': 'resources/RFLinkNode',
-            'createdBy': self.id
-        }
+        def _filter (r):
+            if r.createdBy == self and r.isTypeof('resources/RFLinkNode'):
+                if filter:
+                    return filter(r)
+                return True
+            return False
 
-        if filter is not None:
-            q = {
-                '$and': [q, filter]
-            }
-
-        return self.ething.find(q)
+        return self.ething.find(_filter)
 
     def getNode(self, filter):
-        return self.ething.findOne({
-            '$and': [
-                {
-                    'extends': 'resources/RFLinkNode',
-                    'createdBy': self.id
-                }, filter
-            ]
-        })
+
+        def _filter (r):
+            if r.createdBy == self and r.isTypeof('resources/RFLinkNode'):
+                if filter:
+                    return filter(r)
+                return True
+            return False
+
+        return self.ething.findOne(_filter)
 
     def removeAllNodes(self):
         # remove all the nodes attached to it !

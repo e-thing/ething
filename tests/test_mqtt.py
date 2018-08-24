@@ -29,10 +29,7 @@ def test_mqtt_controller(core):
 
     device.processPayload(u"data/json", b'{"foo":"bar"}')
 
-    table = device.children({
-        'type': 'resources/Table',
-        'name': 'json'
-    })[0]
+    table = device.children(lambda r: r.isTypeof('resources/Table') and r.name == 'json')[0]
 
     print(table)
 
@@ -44,10 +41,7 @@ def test_mqtt_controller(core):
 
     device.processPayload(u"data/text", b'key=bar')
 
-    table = device.children({
-        'type': 'resources/Table',
-        'name': 'text'
-    })[0]
+    table = device.children(lambda r: r.isTypeof('resources/Table') and r.name == 'text')[0]
 
     print(table)
 
@@ -59,10 +53,7 @@ def test_mqtt_controller(core):
 
     device.processPayload(u"data/xml", b'<data><foo>bar</foo></data>')
 
-    table = device.children({
-        'type': 'resources/Table',
-        'name': 'xml'
-    })[0]
+    table = device.children(lambda r: r.isTypeof('resources/Table') and r.name == 'xml')[0]
 
     print(table)
 

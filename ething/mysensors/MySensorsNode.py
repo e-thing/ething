@@ -36,24 +36,18 @@ class MySensorsNode(Device):
                 sensor.save()
 
     def getSensors(self, filter=None):
-        q = {
-            'extends': 'resources/MySensorsSensor',
-            'createdBy': self.id
-        }
 
-        if filter is not None:
-            q = {
-                '$and': [q, filter]
-            }
+        def _filter (r):
+            if r.createdBy == self and r.isTypeof('resources/MySensorsSensor'):
+                if filter:
+                    return filter(r)
+                return True
+            return False
 
-        return self.ething.find(q)
+        return self.ething.find(_filter)
 
     def getSensor(self, sensorId):
-        return self.ething.findOne({
-            'extends': 'resources/MySensorsSensor',
-            'createdBy': self.id,
-            'sensorId': sensorId
-        })
+        return self.ething.findOne(lambda r: r.isTypeof('resources/MySensorsSensor') and r.createdBy == self and r.sensorId == sensorId)
 
     def removeAllSensors(self):
         # remove all the nodes attached to it !

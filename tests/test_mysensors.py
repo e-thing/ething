@@ -83,9 +83,7 @@ def test_mysensors_protocol(core, process):
 
     assert sensor.temperature == 36.5
 
-    table = sensor.children({
-        'type': 'resources/Table'
-    })[0]
+    table = sensor.children(lambda r: r.isTypeof('resources/Table'))[0]
 
     print(table)
 

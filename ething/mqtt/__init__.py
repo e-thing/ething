@@ -13,9 +13,7 @@ class mqtt(Plugin):
 
         self.controllers = {}
 
-        gateways = self.core.find({
-            'type': 'MQTT'
-        })
+        gateways = self.core.find(lambda r: r.isTypeof('MQTT'))
 
         for gateway in gateways:
             try:

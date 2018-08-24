@@ -26,9 +26,7 @@ if bluepy_imported:
 
             self.controllers = {}
 
-            gateways = self.core.find({
-                'type': 'resources/BleaGateway'
-            })
+            gateways = self.core.find(lambda r: r.isTypeof('resources/BleaGateway'))
 
             for gateway in gateways:
                 try:
@@ -195,9 +193,7 @@ if bluepy_imported:
 
         def _read(self):
             if self.connected:
-                devices = self.core.find({
-                    'extends': 'resources/BleaDevice'
-                })
+                devices = self.core.find(lambda r: r.isTypeof('resources/BleaDevice'))
 
                 now = time.time()
 
@@ -210,9 +206,7 @@ if bluepy_imported:
                             read_thread.start()
 
         def _check(self):
-            devices = self.core.find({
-                'extends': 'resources/BleaDevice'
-            })
+            devices = self.core.find(lambda r: r.isTypeof('resources/BleaDevice'))
 
             now = datetime.datetime.utcnow()
 

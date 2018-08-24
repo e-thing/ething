@@ -32,9 +32,7 @@ class MySensors(Plugin):
 
         self.controllers = {}
 
-        gateways = self.core.find({
-            'extends': 'resources/MySensorsGateway'
-        })
+        gateways = self.core.find(lambda r: r.isTypeof('resources/MySensorsGateway'))
 
         for gateway in gateways:
             try:
@@ -531,9 +529,7 @@ class MySensorsProtocol(LineReader):
             i += 1
     
     def check_disconnect(self):
-        devices = self.core.find({
-            'extends': 'resources/MySensorsNode'
-        })
+        devices = self.core.find(lambda r: r.isTypeof('resources/MySensorsNode'))
         
         now = datetime.datetime.utcnow()
         

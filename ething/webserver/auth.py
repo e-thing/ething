@@ -98,9 +98,7 @@ class Auth(object):
 
         if apikey:
 
-            authenticated_resource = self.core.findOne({
-                'apikey': apikey
-            })
+            authenticated_resource = self.core.findOne(lambda r: getattr(r, 'apikey', None) == apikey)
 
             if authenticated_resource:
                 return AuthContext('apikey', scope=authenticated_resource.scope, resource=authenticated_resource)

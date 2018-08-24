@@ -7,18 +7,15 @@ from future.utils import string_types
 
 class Field(object):
 
-    def __init__(self, name, type=None, compilfn=None, model_key=None):
+    def __init__(self, name, accepted_type=None):
         self._name = name
 
-        if type is None or type == '*':
+        if accepted_type is None or accepted_type == '*':
             self._type = '*'
-        elif isinstance(type, string_types):
-            self._type = [type_normalize(type)]
+        elif isinstance(accepted_type, string_types):
+            self._type = [type_normalize(accepted_type)]
         else:
-            self._type = [type_normalize(t) for t in type]
-
-        self.__compilfn = compilfn
-        self._model_key = model_key if model_key is not None else name
+            self._type = [type_normalize(t) for t in accepted_type]
 
     @property
     def typeStr(self):
@@ -31,26 +28,16 @@ class Field(object):
     def name(self):
         return self._name
 
-    @property
-    def model_key(self):
-        return self._model_key
+    def isType(self, t):
 
-    def compil(self, operator, value):
-        if callable(self.__compilfn):
-            return self.__compilfn(operator, value)
-        else:
-            return operator.compil(self, value)
-
-    def isType(self, type):
-
-        if type == '*':
+        if t == '*':
             return self._type == '*'
 
         if self._type == '*':
             return True
 
-        for t in self._type:
-            if type_equals(t, type):
+        for _t in self._type:
+            if type_equals(_t, t):
                 return True
 
         return False

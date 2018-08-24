@@ -115,11 +115,7 @@ class MQTT(Device):
         self.data[name] = value
 
         try:
-            table = self.ething.findOne({
-                'name': name,
-                'type': 'resources/Table',
-                'createdBy': self.id
-            })
+            table = self.ething.findOne(lambda r: r.isTypeof('resources/Table') and r.name == name and r.createdBy == self)
 
             if not table:
                 # create it !

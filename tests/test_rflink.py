@@ -28,16 +28,12 @@ def test_rflink_controller(core, process):
 
     protocol.handle_line(u'20;06;NewKaku;ID=008440e6;SWITCH=1;CMD=ON;')
 
-    switch = gateway.children({
-        'nodeId': '008440e6'
-    })[0]
+    switch = gateway.children(lambda r: r.nodeId == '008440e6')[0]
 
     assert switch
     assert isinstance(switch, Switch)
 
-    table = switch.children({
-        'type': 'resources/Table'
-    })[0]
+    table = switch.children(lambda r: r.isTypeof('resources/Table'))[0]
 
     print(table)
 

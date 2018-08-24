@@ -57,6 +57,12 @@ class Resource(DbEntity):
         super(Resource, self).__init__(data, create)
         object.__setattr__(self, '_Resource__ething', ething)
 
+    def __eq__(self, other):
+        if isinstance(other, Resource):
+            return self.id == other.id
+        else:
+            return False
+
     def __str__(self):
         return '%s(id=%s, name=%s)' % (self.type, self.id, self.name)
 
@@ -85,16 +91,15 @@ class Resource(DbEntity):
         self.ething.dispatchSignal(signal, *args, **kwargs)
 
     def children(self, filter=None):
-        q = {
-            'createdBy': self.id
-        }
 
-        if filter is not None:
-            q = {
-                '$and': [q, filter]
-            }
+        def _filter (r):
+            if r.createdBy == self:
+                if filter:
+                    return filter(r)
+                return True
+            return False
 
-        return self.ething.find(q)
+        return self.ething.find(_filter)
 
     def removeParent(self):
         with self:
@@ -175,11 +180,7 @@ class Resource(DbEntity):
             history_data_item = history_data[table_name]
 
             try:
-                table = self.ething.findOne({
-                    'name': table_name,
-                    'type': 'resources/Table',
-                    'createdBy': self.id
-                })
+                table = self.ething.findOne(lambda r: r.createdBy == self and r.name == table_name and r.isTypeof('resources/Table'))
 
                 if not table:
                     # create it !
@@ -203,13 +204,8 @@ class Resource(DbEntity):
     #    return {}
 
     def match(self, expression):
-        return self.ething.find_one({
-            '$and': [
-                {'_id': self.id},
-                # use the parser because of the 'me' constant !
-                self.ething.resourceQueryParser.parse(expression)
-            ]
-        }) is not None
+        filter = self.ething.resourceQueryParser.compile(expression)
+        return filter(self)
 
     def repair(self):
         pass

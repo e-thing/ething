@@ -28,9 +28,7 @@ class Zigate(object):
         self.core.signalManager.bind(
             'ResourceDeleted', self.on_resource_deleted)
 
-        devices = self.core.find({
-            'extends': 'resources/ZigateGateway'
-        })
+        devices = self.core.find(lambda r: r.isTypeof('resources/ZigateGateway'))
 
         for device in devices:
             try:

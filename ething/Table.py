@@ -456,16 +456,12 @@ class Table(Resource):
 
     # replace only one row
 
-    def replaceRow(self, query, data, invalidFields=INVALID_FIELD_RENAME, upsert=False, parser=None):
+    def replaceRow(self, query, data, invalidFields=INVALID_FIELD_RENAME, upsert=False):
         if data:
             with self:
                 if isinstance(query, string_types):
-
-                    if parser is None:
-                        parser = self.parser
-
                     # parse the query string
-                    q = parser.parse(query)
+                    q = self.parser.compile(query)
 
                 elif isinstance(query, dict):
                     q = query
@@ -516,7 +512,7 @@ class Table(Resource):
     def find(self, query=None):
         return self.select(query=query)
 
-    def select(self, start=0, length=None, fields=None, sort=None, query=None, date_format=None, parser=None):
+    def select(self, start=0, length=None, fields=None, sort=None, query=None, date_format=None):
         # If start is non-negative, the returned selection will start at the start'th position in the table, counting from zero.
         # If start is negative, the returned selection will start at the start'th position from the end of the table.
         # If length is given and is positive, the selection returned will contain at most length lines beginning from start.
@@ -535,12 +531,8 @@ class Table(Resource):
                 date_format = None
 
         if isinstance(query, string_types):
-
-            if parser is None:
-                parser = self.parser
-
             # parse the query string
-            q = parser.parse(query)
+            q = self.parser.compile(query)
 
         elif isinstance(query, dict):
             q = query
@@ -620,7 +612,7 @@ class Table(Resource):
 
         if isinstance(query, string_types):
             # parse the query string
-            queries.append(self.parser.parse(query))
+            queries.append(self.parser.compile(query))
 
         elif isinstance(query, dict):
             queries.append(query)

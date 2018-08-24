@@ -17,9 +17,7 @@ class Yeelight(Plugin):
 
         self.controllers = {}
 
-        gateways = self.core.find({
-            'extends': 'resources/YeelightDevice'
-        })
+        gateways = self.core.find(lambda r: r.isTypeof('resources/YeelightDevice'))
 
         for gateway in gateways:
             try:
@@ -283,11 +281,7 @@ class YeelightAdvertisementProtocol(Protocol):
         id = dev_info.get('id')
         model = dev_info.get('model')
 
-        device = self.core.find({
-            'extends': 'resources/YeelightDevice',
-            'dev_id': id,
-            'model': model
-        })
+        device = self.core.find(lambda r: r.isTypeof('resources/YeelightDevice') and r.dev_id == id and r.model == model)
 
         if not device:
             self.log.debug('new device : id = %s, model = %s' % (id, model))

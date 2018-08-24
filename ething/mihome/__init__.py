@@ -75,10 +75,7 @@ class MihomeProtocol(Protocol):
             # 1 - retrieve the device from the sid
             #
             if sid:
-                device = self.core.findOne({
-                    'extends': 'resources/MihomeBase',
-                    'sid': sid
-                })
+                device = self.core.findOne(lambda r: r.isTypeof('resources/MihomeBase') and r.sid == sid)
 
                 if not device and model is not None:
                     # try to create a new device from the incoming data !
@@ -99,10 +96,7 @@ class MihomeProtocol(Protocol):
                     else:
                         # concerning a device
 
-                        gateway = self.core.findOne({
-                            'type': 'resources/MihomeGateway',
-                            'ip': ip
-                        })
+                        gateway = self.core.findOne(lambda r: r.isTypeof('resources/MihomeGateway') and r.ip == ip)
 
                         if gateway:
 
@@ -206,9 +200,7 @@ class MihomeProtocol(Protocol):
             i += 1
     
     def check_disconnect(self):
-        devices = self.core.find({
-            'extends': 'resources/MihomeDevice'
-        })
+        devices = self.core.find(lambda r: r.isTypeof('resources/MihomeDevice'))
         
         now = datetime.datetime.utcnow()
         

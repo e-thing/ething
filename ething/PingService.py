@@ -40,9 +40,7 @@ class PingService(Process):
         ping all devices to see if there are still connected !
         """
 
-        devices = self.core.find({
-            'extends': 'resources/Device'
-        })
+        devices = self.core.find(lambda r: r.isTypeof("resources/Device"))
 
         for device in devices:
             if hasattr(device, 'ping'):

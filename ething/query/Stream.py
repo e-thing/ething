@@ -34,7 +34,7 @@ class Stream(object):
         self.index += numberOfChar
         return numberOfChar
 
-    def read(self, a):
+    def read(self, a, ignore_case = False):
         if isinstance(a, integer_types) and a > 0:
             # read n characters
             o = self.content[:a]
@@ -43,7 +43,7 @@ class Stream(object):
 
         elif isinstance(a, string_types):
             # return the first match
-            m = re.search(a, self.content)
+            m = re.match(a, self.content, flags = re.I if ignore_case else 0)
             if m is not None:
                 o = m.group(0)
                 self.walk(m.start(0)+len(o))
@@ -54,7 +54,7 @@ class Stream(object):
         return None
 
     def match(self, regex):
-        m = re.search(regex, self.content)
+        m = re.match(regex, self.content)
         return bool(m)
 
     def skipSpace(self):

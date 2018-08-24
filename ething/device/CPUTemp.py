@@ -35,9 +35,7 @@ class Service(IntervalProcess):
         self.core = core
 
     def begin(self):
-        self.device = self.core.findOne({
-            'type': 'resources/CPUTempDevice'
-        })
+        self.device = self.core.findOne(lambda r: r.isTypeof('resources/CPUTempDevice'))
 
         if self.device is None:
             self.log.info('create device')

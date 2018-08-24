@@ -9,8 +9,8 @@ from ething.ResourceQueryParser import ResourceQueryParser
     ("size > 0", True),
     ("  ", False),
 ])
-def test_resourcequeryparser_valid(expr, valid):
-    ok, message = ResourceQueryParser.check(expr)
+def test_resourcequeryparser_valid(core, expr, valid):
+    ok, message = core.resourceQueryParser.check(expr)
 
     print(message)
 
@@ -35,12 +35,12 @@ def test_resourcequeryparser(core):
         'name': 'table1'
     })
 
-    assert len(core.find('type == "File"')) == 2
+    assert len(core.find('type == "resources/File"')) == 2
     assert len(core.find('data.foo == "bar"')) == 1
     assert len(core.find('data has "foo"')) == 1
     assert len(core.find('data.foo exists')) == 1
     assert len(core.find('name == "file1.txt" and data is "object"')) == 1
-    assert len(core.find('extends has "File"')) == 2
+    assert len(core.find('extends has "resources/File"')) == 2
     assert len(core.find('expireAfter == null')) == 2
     assert len(core.find('expireAfter is "null"')) == 2
     assert len(core.find('expireAfter is "number"')) == 1

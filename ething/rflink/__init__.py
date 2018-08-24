@@ -18,9 +18,7 @@ class RFLink(Plugin):
 
         self.controllers = {}
 
-        gateways = self.core.find({
-            'extends': 'resources/RFLinkGateway'
-        })
+        gateways = self.core.find(lambda r: r.isTypeof('resources/RFLinkGateway'))
 
         for gateway in gateways:
             try:
@@ -135,15 +133,11 @@ class RFLinkProtocol(LineReader):
 
             if 'ID' in data:
 
-                filter = {
-                    'extends': 'resources/RFLinkNode',
-                    'nodeId': data['ID'],
-                    'protocol': protocol,
-                    'createdBy': gateway.id
-                }
-
-                if 'SWITCH' in data:
-                    filter['switchId'] = data['SWITCH']
+                def filter (r):
+                    if r.isTypeof('resources/RFLinkNode') and r.nodeId == data['ID'] and r.protocol == protocol and r.createdBy == self:
+                        if 'SWITCH' in data:
+                            return r.switchId == data['SWITCH']
+                        return True
 
                 device = gateway.getNode(filter)
 
@@ -258,9 +252,7 @@ class RFLinkProtocol(LineReader):
             i += 1
     
     def check_disconnect(self):
-        devices = self.core.find({
-            'extends': 'resources/RFLinkNode'
-        })
+        devices = self.core.find(lambda r: r.isTypeof('resources/RFLinkNode'))
         
         now = datetime.datetime.utcnow()
         
