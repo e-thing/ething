@@ -1,12 +1,12 @@
 # coding: utf-8
 
-from .query import Query, mongodb_compiler
+from .query import Query
 
 
 class TableQueryParser(Query):
 
-    def __init__(self, **kwargs):
-        super(TableQueryParser, self).__init__(mongodb_compiler, fields = {
+    def __init__(self, compiler, **kwargs):
+        super(TableQueryParser, self).__init__(compiler, fields = {
             'id': 'string',
             'date': 'date'
         }, **kwargs)

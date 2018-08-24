@@ -3,7 +3,8 @@
 from future.utils import string_types
 
 from .reg import get_registered_class
-from .DbFs import DbFs
+from .database.mongodb import MongoDB
+from .database.sql import SQL
 from .ResourceQueryParser import ResourceQueryParser
 from .Config import Config
 from .SignalDispatcher import SignalDispatcher
@@ -13,14 +14,11 @@ from .plugin import instanciate_plugins
 from .Scheduler import Scheduler
 from .ResourceDbCache import ResourceDbCache
 
-import pymongo
 import logging
 import sys
 import os
 import datetime
-import re
 import pytz
-from collections import Iterable
 
 
 class Core(object):
@@ -58,28 +56,14 @@ class Core(object):
     def _init_database(self):
 
         try:
-            server = 'mongodb://' + \
-                self.config['db']['host'] + ':' + \
-                str(self.config['db']['port'])
-            mongoClient = pymongo.MongoClient(
-                server, username=self.config['db']['user'], password=self.config['db']['password'], connect=True, serverSelectionTimeoutMS=5)
+            self.db = MongoDB(tz = str(self.local_tz), **self.config['db'])
+            # self.db = SQL(tz=str(self.local_tz), **self.config['db'])
 
-            info = mongoClient.server_info()
-
-            self.mongoClient = mongoClient
-            self.db = mongoClient[self.config['db']['database']]
-            if self.db is None:
-                raise Exception('unable to connect to the database')
-
-            self.log.info('connected to database: %s' % server)
-
+            self.db.connect()
             self.resource_db_cache = ResourceDbCache(self)
-
         except:
             raise Exception(
                 'unable to connect to the database [%s]' % sys.exc_info()[1])
-
-        self.fs = DbFs(self.db)
 
         self.resourceQueryParser = ResourceQueryParser(tz = str(self.local_tz))
 
@@ -105,6 +89,9 @@ class Core(object):
                 self.log.info('plugin %s unloaded' % plugin_name)
             except Exception as e:
                 self.log.exception("error while unload plugin %s" % plugin_name)
+
+        if hasattr(self, 'db'):
+            self.db.disconnect()
 
     def restart(self):
         self.stop()
@@ -216,46 +203,8 @@ class Core(object):
             raise Exception('the type "%s" is unknown' % type)
 
     def usage(self):
-
-        # table
-        tbinfo = {
-            'count': 0,
-            'size': 0
-        }
-
-        for name in self.db.collection_names(include_system_collections=False):
-            if re.match('tb\.', name):
-                try:
-                    i = self.db.command('collstats', name)
-                    tbinfo['count'] += i['count']
-                    tbinfo['size'] += i['size']
-                except:
-                    pass
-
-        # other
-        resource_size = 0
-        c = self.db["resources"]
-        res = c.aggregate([{
-            '$match': {
-                "size": {'$exists': True}
-            }
-        }, {
-            '$group': {
-                "_id": None,
-                "size": {'$sum': '$size'}
-            }
-        }])
-
-        try:
-            result = res.next()
-            resource_size = result["size"]
-        except:
-            pass
-
-        res.close()
-
         return {
-            'used': (resource_size + tbinfo['size'])
+            'used': self.db.get_usage()
         }
 
     @staticmethod
@@ -313,10 +262,8 @@ class Core(object):
         """
         clear all the database !
         """
-        db_name = self.db.name
-        db_client = self.db.client
-        db_client.drop_database(db_name)
-        self.db = db_client[db_name]
+        self.db.clear()
+        self.resource_db_cache.reload()
 
     def repair(self):
         """

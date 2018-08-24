@@ -1,7 +1,6 @@
 # coding: utf-8
 
 from .stream import Stream
-import ast
 import unicodedata
 import re
 import sys
@@ -209,8 +208,7 @@ class Query(object):
       # try to get string (double quotes or simple quotes)
       if v:
           # quoted string
-
-          return Value(self, ast.literal_eval(v))
+          return Value(self, v[1:-1])
 
           # r = v[1:-1] # remove the quotes
           # if(v[0] == '"'):

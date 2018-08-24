@@ -42,7 +42,7 @@ class ResourceType(Id):
 @attr('createdDate', default=lambda _: datetime.datetime.utcnow(), mode=READ_ONLY, description="Create time for this resource")
 @attr('extends', mode=READ_ONLY, default=lambda cls: [get_definition_pathname(c) for c in cls.__mro__ if issubclass(c, Resource) and (c is not Resource)], description="An array of classes this resource is based on.")
 @attr('type', mode=READ_ONLY, default=lambda cls: get_definition_pathname(cls), description="The type of the resource")
-@attr('id', default=lambda _: ShortId.generate(), mode=READ_ONLY, model_key='_id', description="The id of the resource")
+@attr('id', default=lambda _: ShortId.generate(), mode=READ_ONLY, description="The id of the resource")
 @attr('name', type=String(allow_empty=False, regex='^[a-zA-Z0-9 !#$%&\'()+,\-.;=@^_`{    ]+(\\/[a-zA-Z0-9 !#$%&\'()+,\-.;=@^_`{    ]+)*$'), description="The name of the resource")
 class Resource(DbEntity):
     """

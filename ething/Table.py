@@ -4,15 +4,11 @@ from future.utils import string_types, integer_types
 
 from .Resource import Resource
 from .entity import *
-from .TableQueryParser import TableQueryParser
 import datetime
 import time
 import re
 from dateutil.parser import parse
 from .ShortId import ShortId
-import bson
-import os
-import pymongo
 import csv
 import sys
 import pytz
@@ -44,13 +40,8 @@ class Table(Resource):
     TIMESTAMP = 0
     TIMESTAMP_MS = 1
 
-    _parser = None
-
     # return an object
     def docSerialize(self, doc, date_format=None):
-        if '_id' in doc:
-            doc['id'] = doc['_id']
-            del doc['_id']
 
         if 'date' in doc:
             if date_format == Table.TIMESTAMP:
@@ -67,13 +58,17 @@ class Table(Resource):
         return 'tb.%s' % self.id
 
     @property
-    def collection(self):
-        return self.ething.db[self.collectionName]
+    def db(self):
+        return self.ething.db
+
+    def _insert(self):
+        super(Table, self)._insert()
+        self.db.create_table(self.collectionName)
 
     def remove(self, removeChildren=False):
 
         # remove all the data from this table
-        self.clear()
+        self.db.remove_table(self.collectionName)
 
         # remove the resource
         super(Table, self).remove(removeChildren)
@@ -81,10 +76,8 @@ class Table(Resource):
     def clear(self):
         with self:
             # remove all the data from this table
-            try:
-                self.collection.drop()
-            except:
-                pass
+            self.db.remove_table(self.collectionName)
+            self.db.create_table(self.collectionName)
 
             self._length = 0
             self._keys = {}
@@ -94,91 +87,81 @@ class Table(Resource):
 
     def checkExpiredData(self):
 
-        # remove the expired data in the current table
-        expireAfter = self.expireAfter
-        if expireAfter is not None:
-            expiratedDate = datetime.datetime.utcnow() - datetime.timedelta(0, expireAfter)
-            c = self.collection
-            cursor = c.find(filter={
-                'date': {
-                    '$lt': expiratedDate
-                }
-            }, projection={'_id': True})
+        with self:
+            # remove the expired data in the current table
+            expireAfter = self.expireAfter
+            if expireAfter is not None:
+                expiratedDate = datetime.datetime.utcnow() - datetime.timedelta(0, expireAfter)
 
-            idToBeRemoved = []
-            for doc in cursor:
-                idToBeRemoved.append(doc['_id'])
+                removed_rows = self.db.remove_table_rows_by_query(self.collectionName, 'date < "%s"' % expiratedDate.isoformat())
 
-            if len(idToBeRemoved) > 0:
-                self.remove_rows(idToBeRemoved)
+                self._update_meta(removed_rows = removed_rows)
+
+    def _update_meta(self, removed_rows = None, added_rows = None, reset = False):
+
+        if removed_rows is not None:
+            keys = self.keys
+            nb = 0
+
+            for row in removed_rows:
+                # update the key count
+                for field in row:
+                    if field in keys:
+                        keys[field] -= 1
+                        if keys[field] <= 0:
+                            del keys[field]
+
+                nb += 1
+
+            if nb > 0:
+                self._length = self.length - nb
+
+        if added_rows is not None:
+            keys = self.keys
+            nb = 0
+
+            for row in added_rows:
+                # update the key count
+                for field in row:
+                    if field == 'id' or field == 'date':
+                        continue
+                    if field not in keys:
+                        keys[field] = 0
+                    keys[field] += 1
+
+                nb += 1
+
+            if nb > 0:
+                self._length = self.length + nb
+
+        if reset is True:
+            meta = self.db.get_table_metadata(self.collectionName)
+            self._length = meta.get('length', 0)
+            self._keys = meta.get('keys', {})
+
+        self._contentModifiedDate = datetime.datetime.utcnow()
 
     def updateMeta(self):
-
         with self:
-            keys = {}
-            length = 0
-
-            c = self.collection
-            cursor = c.find(projection={
-                '_id': 0,
-                'date': 0
-            })
-
-            for doc in cursor:
-                for k in doc:
-                    if k not in keys:
-                        keys[k] = 0
-                    keys[k] += 1
-                length += 1
-
-            self._length = length
-            self._keys = keys
+            self._update_meta(reset = True)
 
     def repair(self):
         self.updateMeta()
 
+
     # return the number of document removed
-
     def remove_rows(self, row_ids):
-
         with self:
-            nb = 0
 
-            c = self.collection
-
-            keys = self.keys
-
-            for row_id in row_ids:
-
-                try:
-                    removedDoc = c.find_one_and_delete({
-                        '_id': row_id
-                    })
-
-                    # update the key count
-                    if removedDoc:
-                        for field in removedDoc:
-                            if field in keys:
-                                keys[field] -= 1
-                                if keys[field] <= 0:
-                                    del keys[field]
-
-                        nb += 1
-
-                except:
-                    pass  # invalid id or unable to remove the document
-
-            if nb > 0:
-                self._length = self.length - nb
-                self._contentModifiedDate = datetime.datetime.utcnow()
-
-        return nb
+            removed_rows = self.db.remove_table_rows_by_id(self.collectionName, row_ids)
+            self._update_meta(removed_rows=removed_rows)
+            return len(removed_rows)
 
     def remove_row(self, row_id):
         return self.remove_rows([row_id]) > 0
 
     @staticmethod
-    def sanitizeData(dataArray, keys=None, invalidFields=INVALID_FIELD_RENAME, skipError=True, setDate=True):
+    def sanitizeData(dataArray, invalidFields=INVALID_FIELD_RENAME, skipError=True, setDate=True):
 
         if isinstance(invalidFields, string_types):
             if invalidFields == "stop":
@@ -189,9 +172,6 @@ class Table(Resource):
                 invalidFields = Table.INVALID_FIELD_SKIP
             else:
                 invalidFields = Table.INVALID_FIELD_RENAME
-
-        if keys is None:
-            keys = {}
 
         length = 0
 
@@ -254,17 +234,12 @@ class Table(Resource):
                         except:
                             raise Exception('Invalid date "%s"' % v)
 
-                # update the key count
-                for k in data:
-                    if k != 'date':
-                        if k not in keys:
-                            keys[k] = 0
-                        keys[k] += 1
-
                 # add date if not already set
                 if setDate and 'date' not in data:
                     # add the insertion date for that document
                     data['date'] = datetime.datetime.utcnow()
+
+                data['id'] = ShortId.generate()
 
                 length += 1
 
@@ -282,60 +257,33 @@ class Table(Resource):
     def insert(self, data, invalidFields=INVALID_FIELD_RENAME):
         if data:
             with self:
-                keys = self.keys
-                length = self.length
-                maxLength = self.maxLength
 
                 # sanitize the incoming data
                 dataArray = [data]
-                length += Table.sanitizeData(dataArray, keys, invalidFields, False)
+                l = Table.sanitizeData(dataArray, invalidFields, False)
 
-                # add meta data
-                for d in dataArray:
-                    d['_id'] = ShortId.generate()
+                if l > 0:
 
-                # insert the data
-                c = self.collection
-                c.insert_one(dataArray[0])
-                # remove extra rows
-                if maxLength and length > maxLength:
+                    # insert the data
+                    self.db.insert_table_row(self.collectionName, dataArray[0])
 
-                    removed_docs = []
-                    remove_length = length - maxLength
+                    self._update_meta(added_rows = dataArray)
 
                     # remove extra rows
-                    if remove_length == 1:
-                        # remove the oldest document
-                        removed_doc = c.find_one_and_delete(
-                            {}, sort=[('date', pymongo.ASCENDING)])
-                        removed_docs.append(removed_doc)
-                    elif remove_length > 1:
-                        # multiple docs
-                        removed_docs = list(
-                            c.find({}, sort=[('date', pymongo.ASCENDING)], limit=remove_length))
-                        removed_docs_ids = [doc['_id'] for doc in removed_docs]
-                        c.delete_many({
-                            '_id': {'$in': removed_docs_ids}
-                        })
+                    length = self.length
+                    maxLength = self.maxLength
+                    if maxLength and length > maxLength:
+                        remove_length = length - maxLength
 
-                    length -= len(removed_docs)
+                        # remove extra rows
+                        rows_to_be_removed = self.db.get_table_rows(self.collectionName, sort = [('date', True)], length = remove_length)
+                        self.remove_rows(map(lambda r: r['id'], rows_to_be_removed))
 
-                    # update the key count
-                    for removed_doc in removed_docs:
-                        for field in removed_doc:
-                            if field in keys:
-                                keys[field] -= 1
-                                if keys[field] <= 0:
-                                    del keys[field]
+                    doc = self.docSerialize(dataArray[0])
+                    # generate an event
+                    self.dispatchSignal('TableDataAdded', self, doc)
 
-                self._length = length
-                self._contentModifiedDate = datetime.datetime.utcnow()
-
-            doc = self.docSerialize(dataArray[0])
-            # generate an event
-            self.dispatchSignal('TableDataAdded', self, doc)
-
-            return doc
+                    return doc
 
         return False
 
@@ -352,165 +300,58 @@ class Table(Resource):
             self.clear()
 
             # sanitize the incoming data
-            keys = {}
-            length = Table.sanitizeData(dataArray, keys, invalidFields, skipError)
+            length = Table.sanitizeData(dataArray, invalidFields, skipError)
 
-            if dataArray:
-                # add meta data
-                for d in dataArray:
-                    d['_id'] = ShortId.generate()
-
+            if length > 0:
                 # insert the data
-                c = self.collection
-                c.insert_many(dataArray, ordered=False)
-
-            self._keys = keys
-            self._length = length
+                self.db.insert_table_rows(self.collectionName, dataArray)
+                self._update_meta(added_rows=dataArray)
 
         return True
 
-    # no sanitize is made, internal purpose only
-
-    def __importRaw(self, dataArray, keys):
-        with self:
-            if not dataArray:
-                return True
-
-            maxLength = self.maxLength
-
-            # remove extra row
-            if maxLength and len(dataArray) > maxLength:
-                dataArray = dataArray[0:maxLength]
-
-            # remove any previous content
-            self.clear()
-
-            # add meta data
-            for d in dataArray:
-                d['_id'] = ShortId.generate()
-
-            # insert the data
-            c = self.collection
-            c.insert_many(dataArray, ordered=False)
-
-            # update the metadata
-            self._length = len(dataArray)
-            keys_ = self.keys
-
-            for k in keys:
-                if k not in keys_:
-                    keys_[k] = 0
-                keys_[k] += keys[k]
-
-            self._contentModifiedDate = datetime.datetime.utcnow()
-
-        return True
-
-    def getRow(self, id, fields=None):
-
-        # return only specific fields
-        _fields = None
-        if fields is not None:
-            _fields = {}
-            _fields['_id'] = False  # by default, the '_id' field is shown
-            for field in fields:
-                # handle special key '_id'
-                if field == 'id':
-                    _fields['_id'] = True
-                elif field not in Table.reservedKeys:
-                    _fields[field] = True
-
-        c = self.collection
-        r = c.find_one({'_id': id}, projection=_fields)
-
+    def getRow(self, id):
+        r = self.db.get_table_row_by_id(self.collectionName, id)
         return self.docSerialize(r) if r is not None else None
 
     def replaceRowById(self, row_id, data, invalidFields=INVALID_FIELD_RENAME):
         if data:
             with self:
-                keys = self.keys
 
                 # sanitize the incoming data
                 dataArray = [data]
-                Table.sanitizeData(dataArray, keys, invalidFields, False)
+                l = Table.sanitizeData(dataArray, invalidFields, False)
 
-                # add meta data
-                dataArray[0]['_id'] = row_id
+                if l > 0:
+                    new_row = dataArray[0]
+                    # copy id
+                    new_row['id'] = row_id
 
-                # insert the data
-                c = self.collection
-                original = c.find_one_and_replace({'_id': row_id}, dataArray[0])
+                    # insert the data
+                    old_row = self.db.update_table_row(self.collectionName, new_row)
 
-                if original is not None:
-                    for field in original:
-                        if field in keys:
-                            keys[field] -= 1
-                            if keys[field] <= 0:
-                                del keys[field]
-
-                    self._contentModifiedDate = datetime.datetime.utcnow()
-
-                    return self.docSerialize(dataArray[0])
+                    if old_row:
+                        self._update_meta(removed_rows=[old_row], added_rows=[new_row])
+                        return self.docSerialize(new_row)
 
         return False
 
     # replace only one row
-
     def replaceRow(self, query, data, invalidFields=INVALID_FIELD_RENAME, upsert=False):
         if data:
             with self:
-                if isinstance(query, string_types):
-                    # parse the query string
-                    q = self.parser.compile(query)
 
-                elif isinstance(query, dict):
-                    q = query
-                else:
-                    q = {}
+                rows = self.db.get_table_rows(self.collectionName, query = query, length = 1)
 
-                c = self.collection
+                if len(rows) > 0:
+                    row = rows[0]
 
-                original = c.find_one(q)
-
-                if original is not None:
-                    # the document was found !
-
-                    keys = self.keys
-
-                    # sanitize the incoming data
-                    dataArray = [data]
-                    Table.sanitizeData(dataArray, keys, invalidFields, False)
-
-                    # add meta data
-                    dataArray[0]['_id'] = original['_id']  # keep the same id !
-
-                    # replace it !
-                    c.replace_one({'_id': original['_id']}, dataArray[0])
-
-                    for field in original:
-                        if field in keys:
-                            keys[field] -= 1
-                            if keys[field] <= 0:
-                                del keys[field]
-
-                    self._contentModifiedDate = datetime.datetime.utcnow()
-
-                    return self.docSerialize(dataArray[0])
+                    return self.replaceRowById(row['id'], data, invalidFields)
                 else:
                     # not found !
                     if upsert:
                         return self.insert(data, invalidFields)
 
         return False
-
-    @property
-    def parser(self):
-        if Table._parser is None:
-            Table._parser = TableQueryParser(tz = str(self.ething.local_tz))
-        return Table._parser
-
-    def find(self, query=None):
-        return self.select(query=query)
 
     def select(self, start=0, length=None, fields=None, sort=None, query=None, date_format=None):
         # If start is non-negative, the returned selection will start at the start'th position in the table, counting from zero.
@@ -519,7 +360,31 @@ class Table(Resource):
         # If length is omitted, the selection starting from start until the end of the table will be returned.
         # length >= 0
 
-        c = self.collection
+        if sort is None:
+            # always sort by date
+            sort = [('date', True)]
+
+        if isinstance(sort, string_types):
+            parts = sort.split(',')
+            sort = []
+            for p in parts:
+                m = re.search('^([+-]?)(.+)$', p)
+                if m is not None:
+                    sortField = m.group(2)
+                    sortAsc = bool(m.group(1) != '-')
+                    sort.append((sortField, sortAsc))
+            if not sort:
+                sort = None
+
+        # define the start point and the length of the returning set
+        if start < 0:
+            start = self.length + start
+            if start < 0:
+                if length is not None:
+                    length += start
+                start = 0
+
+        rows = self.db.get_table_rows(self.collectionName, query = query, sort = sort, start = start, length = length, keys = fields)
 
         if isinstance(date_format, string_types):
             date_format = date_format.lower()
@@ -530,105 +395,15 @@ class Table(Resource):
             else:
                 date_format = None
 
-        if isinstance(query, string_types):
-            # parse the query string
-            q = self.parser.compile(query)
-
-        elif isinstance(query, dict):
-            q = query
-        else:
-            q = {}
-
-        opt = {
-            'sort': [('date', pymongo.ASCENDING)],  # always sort by date
-            'skip': 0,
-            'limit': 0,
-            'projection': None
-        }
-
-        # sort
-        if isinstance(sort, string_types):
-            opt['sort'] = []
-            parts = sort.split(',')
-            for p in parts:
-                m = re.search('^([+-]?)(.+)$', p)
-                if m is not None:
-                    sortField = m.group(2)
-                    sortAsc = pymongo.ASCENDING if m.group(
-                        1) != '-' else pymongo.DESCENDING
-                    opt['sort'].append((sortField, sortAsc))
-            if not opt['sort']:
-                opt['sort'] = None
-        elif isinstance(sort, list):
-            opt['sort'] = sort
-
-        # define the start point and the length of the returning set
-        if start < 0:
-            start = self.length + start
-            if start < 0:
-                if length is not None:
-                    length += start
-                start = 0
-
-        opt['skip'] = start
-        if length is not None:
-            opt['limit'] = length
-
-        # return only specific fields
-        if fields is not None:
-            _fields = {}
-            _fields['_id'] = False  # by default, the '_id' field is shown
-            for field in fields:
-                # handle special key '_id'
-                if field == 'id':
-                    _fields['_id'] = True
-                elif field not in Table.reservedKeys:
-                    _fields[field] = True
-            opt['projection'] = _fields
-
-        cursor = c.find(
-            q, projection=opt['projection'], skip=opt['skip'], limit=opt['limit'], sort=opt['sort'])
-
         # iterate
         items = []
-        for doc in cursor:
-            items.append(self.docSerialize(doc, date_format))
+        for row in rows:
+            items.append(self.docSerialize(row, date_format))
 
         return items
 
     def computeStatistics(self, key, query=None):
-
-        map = bson.code.Code(open(os.path.join(os.path.dirname(
-            __file__), './mongodb/statistics/map.js')).read(1000).replace('<KEY>', key))
-        reduce = bson.code.Code(open(os.path.join(os.path.dirname(
-            __file__), './mongodb/statistics/reduce.js')).read(1000))
-        finalize = bson.code.Code(open(os.path.join(os.path.dirname(
-            __file__), './mongodb/statistics/finalize.js')).read(1000))
-
-        queries = []
-        queries.append({
-            key: {'$exists': True}
-        })
-
-        if isinstance(query, string_types):
-            # parse the query string
-            queries.append(self.parser.compile(query))
-
-        elif isinstance(query, dict):
-            queries.append(query)
-
-        out = {}
-
-        res = self.collection.map_reduce(map, reduce, {
-            'inline': 1
-        }, query={
-            '$and': queries
-        }, finalize=finalize, full_response=True)
-
-        if res['ok'] and len(res['results']) > 0:
-            return self.ething.r_encode(res['results'][0]['value'])
-
-        return False
+        return self.db.get_table_statistics_by_key(self.collectionName, key, query)
 
     def writeCSV(self, show_header=True, **kwargs):
 

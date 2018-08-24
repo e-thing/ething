@@ -103,7 +103,7 @@ class DbEntity(Entity):
     def _insert(self):
         raise NotImplementedError()
 
-    def _before_save(selfself):
+    def _before_save(self):
         pass
 
     def _save(self, dirty_attrs):

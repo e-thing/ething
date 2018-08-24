@@ -40,7 +40,6 @@ class BaseClass (object):
         raise NotImplementedError()
 
     def insert_resource(self, resource):
-        """return the resource id"""
         raise NotImplementedError()
 
     def remove_resource(self, resource):
@@ -75,11 +74,18 @@ class BaseClass (object):
     # Table (used for storing data time series)
     #
 
+    def create_table(self, table_id):
+        raise NotImplementedError()
+
     def remove_table(self, table_id):
         raise NotImplementedError()
 
     def get_table_rows(self, table_id, query = None, start=0, length=None, keys=None, sort=None):
         raise NotImplementedError()
+
+    def get_table_row_by_id(self, table_id, row_id):
+        rows = self.get_table_rows(table_id, query = "id == %s" % row_id, length = 1)
+        return rows[0] if len(rows) > 0 else None
 
     def get_table_metadata(self, table_id):
         """
@@ -108,16 +114,11 @@ class BaseClass (object):
         }
 
     def insert_table_row(self, table_id, row_data):
-        """return the row id"""
         raise NotImplementedError()
 
     def insert_table_rows(self, table_id, rows_data):
-        inserted_row_ids = []
         for row_data in rows_data:
-            id = self.insert_table_row(table_id, row_data)
-            if id is not None:
-                inserted_row_ids.append(id)
-        return inserted_row_ids
+            self.insert_table_row(table_id, row_data)
 
     def update_table_row(self, table_id, row_id, row_data):
         """return the old row"""

@@ -6,26 +6,26 @@ from ething.Table import Table
 from ething.Rule import Rule
 
 
+_core = Core({
+    'db': {
+        'database': 'test_unit'
+    },
+    'log': {
+        'level': 'debug'
+    },
+    'debug': True,
+    'WebServer': {
+        "debug": True,
+        'port': 8001
+    }
+})
+
 @pytest.fixture
 def core():
-    core = Core({
-        'db': {
-            'database': 'test_unit'
-        },
-        'log': {
-            'level': 'debug'
-        },
-        'debug': True,
-        'WebServer': {
-            "debug": True,
-            'port': 8001
-        }
-    })
+    _core.reset()
 
-    core.reset()
+    _core.init()
 
-    core.init()
-
-    return core
+    return _core
 
 

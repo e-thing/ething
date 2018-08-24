@@ -32,10 +32,10 @@ class File(Resource):
     def remove(self, removeChildren=False):
 
         # remove the file from GridFS
-        self.ething.fs.removeFile(self._content)
+        self.ething.db.removeFile(self._content)
 
         # remove any thumbnail
-        self.ething.fs.removeFile(self._thumb)
+        self.ething.db.removeFile(self._thumb)
 
         # remove the resource
         super(File, self).remove(removeChildren)
@@ -61,7 +61,7 @@ class File(Resource):
         return False
 
     def read(self, encoding=None):
-        contents = self.ething.fs.retrieveFile(self._content)
+        contents = self.ething.db.retrieveFile(self._content)
 
         if contents is None:
             contents = b''
@@ -80,15 +80,15 @@ class File(Resource):
                 bytes = bytes.encode(encoding)
 
             # remove that file if it exists
-            self.ething.fs.removeFile(self._content)
+            self.ething.db.removeFile(self._content)
             self._content = None
             self._size = 0
 
             if bytes:
-                self._content = self.ething.fs.storeFile('File/%s/content' % self.id, bytes, {
+                self._content = self.ething.db.storeFile('File/%s/content' % self.id, bytes, {
                     'parent': self.id
                 })
-                self._size = self.ething.fs.getFileSize(self._content)
+                self._size = self.ething.db.getFileSize(self._content)
 
             self._contentModifiedDate = datetime.datetime.utcnow()
 
@@ -177,11 +177,11 @@ class File(Resource):
                     except:
                         pass
 
-                self.ething.fs.removeFile(self._thumb)
+                self.ething.db.removeFile(self._thumb)
                 self._thumb = None
 
                 if thumb:
-                    self._thumb = self.ething.fs.storeFile('App/%s/thumb' % self.id, thumb, {
+                    self._thumb = self.ething.db.storeFile('App/%s/thumb' % self.id, thumb, {
                         'parent': self.id
                     })
 
@@ -200,7 +200,7 @@ class File(Resource):
         return True
 
     def readThumbnail(self):
-        return self.ething.fs.retrieveFile(self._thumb)
+        return self.ething.db.retrieveFile(self._thumb)
 
     @staticmethod
     def createThumb(imagedata, thumbWidth):

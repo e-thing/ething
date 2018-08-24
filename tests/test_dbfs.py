@@ -1,28 +1,25 @@
 # coding: utf-8
 import pytest
-from bson.objectid import ObjectId
 
 
 def test_dbfs(core):
 
     content = b'hello world'
 
-    id = core.fs.storeFile('fff.txt', content, {
+    id = core.db.storeFile('fff.txt', content, {
         'attr': 'attrvalue'
     })
 
-    result = core.fs.retrieveFile(id)
+    result = core.db.retrieveFile(id)
 
-    assert isinstance(id, ObjectId)
+    assert len(core.db.listFiles()) == 1
 
-    assert len(core.fs.listFiles()) == 1
+    assert core.db.getFileSize(id) == len(content)
 
-    assert core.fs.getFileSize(id) == len(content)
+    assert core.db.retrieveFile(id) == content
 
-    assert core.fs.retrieveFile(id) == content
+    assert core.db.getFileMetadata(id).get('attr') == 'attrvalue'
 
-    assert core.fs.getFileMetadata(id).get('attr') == 'attrvalue'
+    core.db.removeFile(id)
 
-    core.fs.removeFile(id)
-
-    assert core.fs.listFiles() == []
+    assert core.db.listFiles() == []

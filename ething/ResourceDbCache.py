@@ -5,7 +5,6 @@ import logging
 import threading
 from future.utils import string_types
 import re
-import pymongo
 
 
 class ResourceDbCache(object):
@@ -24,13 +23,9 @@ class ResourceDbCache(object):
 
             self.__resources.clear()
 
-            c = self.__db["resources"]
-
-            cursor = c.find({})
-
             cnt = 0
 
-            for doc in cursor:
+            for doc in self.__db.list_resources():
                 cl = get_registered_class(doc['type'])
                 if cl is not None:
                     try:
@@ -46,14 +41,16 @@ class ResourceDbCache(object):
 
             self.__log.debug('%d resources loaded in cache' % cnt)
 
+    def reload(self):
+        self._load()
+
     def remove(self, resource):
         with self.__lock:
             id = resource.id
 
             if id in self.__resources:
                 # remove from the database
-                c = self.__db["resources"]
-                c.delete_one({'_id': id})
+                self.__db.remove_resource(id)
 
                 # remove from the cache
                 del self.__resources[id]
@@ -66,12 +63,7 @@ class ResourceDbCache(object):
 
             if id not in self.__resources:
                 # insertion in the database
-                c = self.__db["resources"]
-                try:
-                    c.insert_one(resource.serialize())
-                except:
-                    # code 11000 on duplicate error
-                    raise Exception('internal error: doc insertion failed')
+                self.__db.insert_resource(resource.serialize())
 
                 # insertion in the cache
                 self.__resources[id] = resource
@@ -84,8 +76,7 @@ class ResourceDbCache(object):
 
             if id in self.__resources:
                 # replace in the database
-                c = self.__db["resources"]
-                c.replace_one({'_id': id}, resource.serialize())
+                self.__db.update_resource(resource.serialize())
             else:
                 raise Exception('unable to save resource %s : not exist' % resource)
 

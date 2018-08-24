@@ -1,7 +1,12 @@
 # coding: utf-8
 
 from .base import BaseClass
+from ething.TableQueryParser import TableQueryParser
+from ething.query import mongodb_compiler
 import pymongo
+import gridfs
+import re
+import bson
 
 
 class MongoDB(BaseClass):
@@ -28,182 +33,248 @@ class MongoDB(BaseClass):
         pass
 
     def get_usage(self):
-        raise NotImplementedError()
+        # table
+        tbinfo = {
+            'count': 0,
+            'size': 0
+        }
+
+        for name in self.db.collection_names(include_system_collections=False):
+            if re.match('tb\.', name):
+                try:
+                    i = self.db.command('collstats', name)
+                    tbinfo['count'] += i['count']
+                    tbinfo['size'] += i['size']
+                except:
+                    pass
+
+        # other
+        resource_size = 0
+        c = self.db["resources"]
+        res = c.aggregate([{
+            '$match': {
+                "size": {'$exists': True}
+            }
+        }, {
+            '$group': {
+                "_id": None,
+                "size": {'$sum': '$size'}
+            }
+        }])
+
+        try:
+            result = res.next()
+            resource_size = result["size"]
+        except:
+            pass
+
+        res.close()
+
+        return resource_size + tbinfo['size']
 
     def clear(self):
-        raise NotImplementedError()
+        db_name = self.db.name
+        db_client = self.db.client
+        db_client.drop_database(db_name)
+        self.db = db_client[db_name]
+
 
     #
     # Resources
     #
 
     def list_resources(self):
-        raise NotImplementedError()
+        cursor = self.db["resources"].find({})
+        resources = []
+
+        for doc in cursor:
+            doc['id'] = doc['_id']
+            del doc['_id']
+            resources.append(doc)
+
+        return resources
 
     def update_resource(self, resource):
-        raise NotImplementedError()
+        resource['_id'] = resource['id']
+        del resource['id']
+        self.db["resources"].replace_one({'_id': resource['_id']}, resource)
 
     def insert_resource(self, resource):
-        """return the resource id"""
-        raise NotImplementedError()
+        resource['_id'] = resource['id']
+        del resource['id']
+        try:
+            self.db["resources"].insert_one(resource)
+        except:
+            # code 11000 on duplicate error
+            raise Exception('internal error: doc insertion failed')
 
-    def remove_resource(self, resource):
-        raise NotImplementedError()
+    def remove_resource(self, resource_id):
+        self.db["resources"].delete_one({'_id': resource_id})
+
 
     #
     # File System (used for storing images, text ...)
     #
 
     def storeFile(self, filename, contents, metadata=None):
-        """return the file id"""
-        raise NotImplementedError()
+        if contents:
+
+            bucket = gridfs.GridFSBucket(self.db)
+
+            grid_in = bucket.open_upload_stream(filename, metadata=metadata)
+
+            grid_in.write(contents)
+            grid_in.close()
+
+            return str(grid_in._id)
+
+        return None
 
     def retrieveFile(self, file_id):
-        raise NotImplementedError()
+        content = None
+        if file_id:
+            bucket = gridfs.GridFSBucket(self.db)
+            try:
+                grid_out = bucket.open_download_stream(bson.ObjectId(file_id))
+                content = grid_out.read()
+
+            except gridfs.errors.NoFile:
+                pass
+
+        return content
 
     def removeFile(self, file_id):
-        raise NotImplementedError()
+        if file_id:
+            bucket = gridfs.GridFSBucket(self.db)
+            try:
+                bucket.delete(bson.ObjectId(file_id))
+            except gridfs.errors.NoFile:
+                pass
 
     def getFileMetadata(self, file_id):
-        raise NotImplementedError()
+        metadata = {}
+
+        if file_id:
+            fs = gridfs.GridFS(self.db)
+            file = fs.find_one(bson.ObjectId(file_id))
+            if file is not None:
+                metadata = file.metadata
+
+        return metadata
 
     def getFileSize(self, file_id):
-        raise NotImplementedError()
+        if file_id:
+            fs = gridfs.GridFS(self.db)
+            file = fs.find_one(bson.ObjectId(file_id))
+            if file is not None:
+                return file.length
+
+        return 0
 
     def listFiles(self):
-        raise NotImplementedError()
+        fs = gridfs.GridFS(self.db)
+        return fs.list()
+
 
     #
     # Table (used for storing data time series)
     #
 
+    def create_table(self, table_id):
+        pass
+
     def remove_table(self, table_id):
-        raise NotImplementedError()
+        try:
+            self.db[table_id].drop()
+        except:
+            pass
 
     def get_table_rows(self, table_id, query=None, start=0, length=None, keys=None, sort=None):
-        raise NotImplementedError()
 
-    def get_table_metadata(self, table_id):
-        """
-        compute the length and list the keys (except the id and date keys)
-        {
-            length: int,
-            keys: { key: number }
+        c = self.db[table_id]
+        q = {}
+
+        if query is not None:
+            # parse the query string
+            parser = TableQueryParser(compiler=mongodb_compiler, tz=getattr(self, 'tz', None))
+            q = parser.compile(query)
+
+        opt = {
+            'sort': None,
+            'skip': 0,
+            'limit': 0,
+            'projection': None
         }
-        """
-        keys = {}
-        length = 0
 
-        for row in self.get_table_rows(table_id):
-            for k in row:
-                if k not in keys:
-                    keys[k] = 0
-                keys[k] += 1
-            length += 1
+        # sort
+        if sort:
+            opt['sort'] = [(s[0] if s[0] != 'id' else '_id', pymongo.ASCENDING if s[1] else pymongo.DESCENDING) for s in sort]
 
-        keys.pop('id', None)
-        keys.pop('date', None)
+        opt['skip'] = start
+        if length is not None:
+            opt['limit'] = length
 
-        return {
-            'length': length,
-            'keys': keys
-        }
+        # return only specific fields
+        if keys is not None:
+            _fields = {}
+            _fields['_id'] = False  # by default, the '_id' field is shown
+            for field in keys:
+                # handle special key '_id'
+                if field == 'id':
+                    _fields['_id'] = True
+                else:
+                    _fields[field] = True
+            opt['projection'] = _fields
+
+        cursor = c.find(q, projection=opt['projection'], skip=opt['skip'], limit=opt['limit'], sort=opt['sort'])
+
+        # iterate
+        items = []
+        for row in cursor:
+            row['id'] = row['_id']
+            del row['_id']
+            items.append(row)
+
+        return items
+
+    def get_table_row_by_id(self, table_id, row_id):
+        row = self.db[table_id].find_one({'_id': row_id})
+        if row:
+            row['id'] = row['_id']
+            del row['_id']
+            return row
 
     def insert_table_row(self, table_id, row_data):
-        """return the row id"""
-        raise NotImplementedError()
+        row_data = row_data.copy()
+        row_data['_id'] = row_data['id']
+        del row_data['id']
+        self.db[table_id].insert_one(row_data)
 
     def insert_table_rows(self, table_id, rows_data):
-        inserted_row_ids = []
         for row_data in rows_data:
-            id = self.insert_table_row(table_id, row_data)
-            if id is not None:
-                inserted_row_ids.append(id)
-        return inserted_row_ids
+            row_data['_id'] = row_data['id']
+            del row_data['id']
+        self.db[table_id].insert_many(rows_data, ordered=False)
 
-    def update_table_row(self, table_id, row_id, row_data):
+    def update_table_row(self, table_id, row_data):
         """return the old row"""
-        raise NotImplementedError()
+        old_row = self.db[table_id].find_one_and_replace({'_id': row_data['id']}, row_data)
+        if old_row:
+            old_row['id'] = old_row['_id']
+            del old_row['_id']
+            return old_row
 
     def remove_table_row(self, table_id, row_id):
         """return the removed row"""
-        raise NotImplementedError()
+        try:
+            old_row = self.db[table_id].find_one_and_delete({
+                '_id': row_id
+            })
 
-    def remove_table_rows_by_id(self, table_id, row_ids):
-        removed_rows = []
-        for row_id in row_ids:
-            removed_row = self.remove_table_row(table_id, row_id)
-            if removed_row:
-                removed_rows.append(removed_row)
-        return removed_rows
+            if old_row:
+                old_row['id'] = old_row['_id']
+                del old_row['_id']
+                return old_row
+        except:
+            pass  # invalid id or unable to remove the document
 
-    def remove_table_rows_by_query(self, table_id, query):
-        rows_to_be_removed = self.get_table_rows(table_id, query=query)
-        return self.remove_table_rows_by_id(table_id, map(lambda row: row.get('id'), rows_to_be_removed))
-
-    def get_table_statistics_by_key(self, table_id, key, query=None):
-
-        sum = 0
-        sum2 = 0
-        min = None
-        min_date = None
-        min_id = None
-        max = None
-        max_date = None
-        max_id = None
-        count = 0
-        start_date = None
-        end_date = None
-        n = 0
-        avg = None
-        variance = None
-        stddev = None
-
-        rows = self.get_table_rows(table_id, query=query, keys=['id', 'date', key])
-
-        for row in rows:
-            count += 1
-            value = row[key]
-            date = row['date']
-            id = row['id']
-
-            if start_date is None or date < start_date:
-                start_date = date
-
-            if end_date is None or date > end_date:
-                end_date = date
-
-            if isinstance(value, number_types):
-                n += 1
-                sum += value
-                sum2 += value * value
-
-                if min is None or value < min:
-                    min = value
-                    min_date = date
-                    min_id = id
-
-                if max is None or value > max:
-                    max = value
-                    max_date = date
-                    max_id = id
-
-        if n > 0:
-            avg = sum / n
-            variance = (sum2 / n) - avg
-            stddev = math.sqrt(variance)
-
-        return {
-            'min': min,
-            'min_date': min_date,
-            'min_id': min_id,
-            'max': max,
-            'max_date': max_date,
-            'max_id': max_id,
-            'count': count,
-            'start_date': start_date,
-            'end_date': end_date,
-            'avg': avg,
-            'variance': variance,
-            'stddev': stddev,
-        }
