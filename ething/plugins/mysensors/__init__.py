@@ -205,7 +205,7 @@ class MySensorsProtocol(LineReader):
         attributes = {
             'name':  sensorTypeToName(sensorType) or ('%s/sensor-%d' % (node.name, sensorId)),
             'sensorId': sensorId,
-            'sensorType': sensorType,
+            'sensorType': sensorTypeStr(sensorType),
             'createdBy': node.id
         }
 

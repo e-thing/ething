@@ -61,7 +61,7 @@ class Core(object):
                 db_ctor = MongoDB
             else:
                 db_ctor = SQL
-            self.log.info('db type: %s' % db_ctor)
+            self.log.info('db type: %s' % db_type)
             self.db = db_ctor(tz = str(self.local_tz), **self.config['db'])
 
             self.db.connect()
@@ -181,7 +181,8 @@ class Core(object):
                 for f in filters:
                     try:
                         res = f(r)
-                    except:
+                    except Exception as e:
+                        self.log.exception('error in resource filter')
                         res = False
                     if not res:
                         return False
@@ -200,10 +201,11 @@ class Core(object):
             raise ValueError('id must be a string')
         return self.resource_db_cache.get(id)
 
-    def create(self, type, attributes):
-        cl = get_registered_class(type)
-        if cl is not None:
-            return cl.create(attributes, ething=self)
+    def create(self, cls, attributes):
+        if isinstance(cls, string_types):
+            cls = get_registered_class(cls)
+        if cls is not None:
+            return cls.create(attributes, ething=self)
         else:
             raise Exception('the type "%s" is unknown' % type)
 

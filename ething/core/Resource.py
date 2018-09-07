@@ -3,7 +3,9 @@
 from .ShortId import ShortId, Id
 from .dbentity import *
 from .core import Core
+from .reg import get_definition_pathname
 import datetime
+import inspect
 
 
 class ResourceType(Id):
@@ -84,8 +86,12 @@ class Resource(DbEntity):
         else:
             return value
 
-    def isTypeof(self, type):
-        return type in self.extends
+    def isTypeof(self, typename):
+        if isinstance(typename, Resource):
+            typename = get_definition_pathname(type(typename))
+        elif inspect.isclass(typename) and issubclass(typename, Resource):
+            typename = get_definition_pathname(typename)
+        return typename in self.extends
 
     def dispatchSignal(self, signal, *args, **kwargs):
         self.ething.dispatchSignal(signal, *args, **kwargs)

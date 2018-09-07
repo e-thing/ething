@@ -12,7 +12,6 @@ from threading import Thread, Lock
 from ething.core.core.plugin import Plugin
 from ething.core.Process import Process
 
-
 if os.name == 'nt':
     EAGAIN = errno.WSAEWOULDBLOCK
 else:
@@ -112,15 +111,15 @@ class RPC(object):
             data = None
             if err.errno != EAGAIN:
                 raise
-        
+
         if data is None:
             self.log.error('err in read data')
             return None
-        
+
         if len(data) != size:
             self.log.error('wrong size')
             return None
-        
+
         try:
             res = pickle.loads(data)
         except Exception:
@@ -246,7 +245,7 @@ class RPC_SubClient(object):
             self.sock = None
             self.log.debug("stop sub topic=%s" % self.topic)
 
-    def get(self, timeout = 0):
+    def get(self, timeout=0):
         """
         wait until a message arrive
         """
@@ -298,7 +297,7 @@ class RPC_Server(object):
         while True:
             self._process()
 
-    def serve(self, timeout = None):
+    def serve(self, timeout=None):
         try:
             self.sock.settimeout(timeout)
             self._process()
@@ -323,15 +322,14 @@ class RPC_Server(object):
         client_sock, client_address = self.sock.accept()
         # self.log.debug("new RPC client connected %s (%d)" % (str(client_address),self._n) )
 
-        Thread(target=self._thread_client, args=(client_sock, ), name="rpc.client").start()
+        Thread(target=self._thread_client, args=(client_sock,), name="rpc.client").start()
 
-        #self.manager.registerReadSocket(
+        # self.manager.registerReadSocket(
         #    client_sock, self._process_client, (client_sock,))
 
     def _thread_client(self, sock):
         sock.settimeout(5.)
         self._process_client(sock)
-
 
     def _process_client(self, sock):
         # a client send some data
@@ -396,7 +394,7 @@ class RPC_Server(object):
         elif isinstance(req, RPC_Sub):
 
             topic = req.topic
-            
+
             with self._lock:
                 if topic not in self._subs:
                     self._subs[topic] = {
@@ -412,16 +410,15 @@ class RPC_Server(object):
             if topic in self._subs:
 
                 m = RPC_pubsubmsg(topic, message)
-                
+
                 with self._lock:
                     sockets = self._subs[topic]['sockets']
-                
+
                 for s in sockets:
                     if s is not sock:
                         rpc._send_obj(s, m)
 
             self._close_client(sock)
-
 
     def _close_client(self, sock):
         self._n -= 1
@@ -430,9 +427,7 @@ class RPC_Server(object):
         # self.manager.unregisterReadSocket(sock)
 
 
-
 class rpc(Plugin):
-
     def load(self):
         self.process = RPC_Process(self.core, self.config.get('address'))
         self.process.start()
@@ -444,7 +439,6 @@ class rpc(Plugin):
 
 
 class RPC_Process(Process):
-
     def __init__(self, core, address):
         super(RPC_Process, self).__init__('rpc')
 
@@ -460,7 +454,8 @@ class RPC_Process(Process):
         self.rpc.register('signal', self.core.signalDispatcher.queue)
         self.rpc.register('mail', self.core.mail.send)
 
-        self.core.signalDispatcher.bind('*', self._signal_publish) # todo: make the resource and signal works with pickle
+        self.core.signalDispatcher.bind('*',
+                                        self._signal_publish)  # todo: make the resource and signal works with pickle
 
         rpc_server = self.rpc.start_server()
 

@@ -1,5 +1,3 @@
-# coding: utf-8
-
 from ething.core.Device import Device
 from ething.core.reg import *
 from ething.core.utils import pingable
@@ -96,20 +94,20 @@ class Denon(Device, Switch):
 
     """
      working cmd for marantz M-CR611 :
-     
+
      PWON
      PWSTANDBY
-     
+
      MVUP
      MVDOWN
      MV00 // min = mute
      MV08  
      MV20 // loud
      ...
-     
+
      MUON // mute
      MUOFF
-     
+
      SICD // CD
      SITUNER // DAB
      SIIRADIO // internet radio
@@ -117,15 +115,16 @@ class Denon(Device, Switch):
      SIUSB // front usb
      SIIPD // front usb start playback
      SIBLUETOOTH // bluetooth
-     
+
      // control online music, usb/ipod bluetooth
      // cf Steuerungsprotokoll_IP_RS232C_AVR-X1200W_AVR-X2200W_AVR-X3200W_AVR-X4200W.pdf
      NS9A // play bluetooth
      NS9C // stop
      ...
-     
-     
+
+
     """
+
     @method.arg('cmd', type='string')
     def sendCmd(self, cmd):
         r = requests.get(
@@ -141,7 +140,7 @@ class Denon(Device, Switch):
     GetNetAudioStatus
     GetSurroundModeStatus
     GetCDStatus
-    
+
     SetCDControl value: 00 , 01 play, 05 prev, 06 next
     """
 

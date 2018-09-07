@@ -9,7 +9,8 @@ import subprocess
 
 @pingable('url')
 @attr('url', type=String(allow_empty=False, regex='^rtsp://'), description="The URL of the device rtsp://... .")
-@attr('transport', type=String(allow_empty=False, enum=['udp', 'tcp', 'http']), default='tcp', description="Lower transport protocol. Allowed values are the ones defined for the flags for rtsp_transport (see https://libav.org/avconv.html).")
+@attr('transport', type=String(allow_empty=False, enum=['udp', 'tcp', 'http']), default='tcp',
+      description="Lower transport protocol. Allowed values are the ones defined for the flags for rtsp_transport (see https://libav.org/avconv.html).")
 class RTSP(Device, Camera):
     """
     RTSP Device resource representation, usually IP camera.
@@ -23,7 +24,7 @@ class RTSP(Device, Camera):
 
         p = subprocess.Popen(cmd, stdout=subprocess.PIPE, shell=True)
         out, err = p.communicate()
-        
+
         if p.returncode != 0:
             raise Exception('avconv error. The device may be unavailabled. Also check that avconv is installed.')
 
@@ -36,7 +37,7 @@ class RTSP(Device, Camera):
         """
         return a video stream (mp4).
         """
-        
+
         cmd = ["avconv -rtsp_transport %s -i %s -an" %
                (self.transport, self.url)]
 

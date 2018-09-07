@@ -9,7 +9,6 @@ import datetime
 
 
 class PingPlugin(Plugin):
-
     def load(self):
         super(PingPlugin, self).load()
         self.service = PingService(self.core)
@@ -23,18 +22,17 @@ class PingPlugin(Plugin):
 
 
 class PingService(Process):
-    
     def __init__(self, core):
         super(PingService, self).__init__('ping_service')
         self.core = core
         self.scheduler = Scheduler()
         self.scheduler.setInterval(60, self._ping_all)
-    
+
     def main(self):
         while not self.stopped():
             self.scheduler.process()
             time.sleep(0.5)
-    
+
     def _ping_all(self):
         """
         ping all devices to see if there are still connected !
@@ -44,10 +42,10 @@ class PingService(Process):
 
         for device in devices:
             if hasattr(device, 'ping'):
-                if (device.lastSeenDate is None) or (device.lastSeenDate < datetime.datetime.utcnow()-datetime.timedelta(seconds=45)):
-                    threading.Thread(target=self._ping, args=(device, ), name="ping").start()
-    
+                if (device.lastSeenDate is None) or (
+                    device.lastSeenDate < datetime.datetime.utcnow() - datetime.timedelta(seconds=45)):
+                    threading.Thread(target=self._ping, args=(device,), name="ping").start()
+
     def _ping(self, device):
-        connected = device.ping(timeout = 5)
+        connected = device.ping(timeout=5)
         self.log.debug('ping device %s : %s' % (device, 'connected' if connected else 'not connected'))
-    

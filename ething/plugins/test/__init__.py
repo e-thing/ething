@@ -8,7 +8,7 @@ from ething.core.IntervalProcess import IntervalProcess
 import random
 
 
-class TestDevice (Device, Thermometer):
+class RandomThermometer (Device, Thermometer):
     pass
 
 
@@ -33,11 +33,11 @@ class Service(IntervalProcess):
         self.core = core
 
     def begin(self):
-        self.device = self.core.findOne(lambda r: r.isTypeof('resources/TestDevice'))
+        self.device = self.core.findOne(lambda r: r.isTypeof(RandomThermometer))
 
         if self.device is None:
             self.log.info('create device')
-            self.device = self.core.create('resources/TestDevice', {
+            self.device = self.core.create(RandomThermometer, {
                 'name': 'Random thermometer'
             })
 
