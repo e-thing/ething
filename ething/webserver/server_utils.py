@@ -189,7 +189,7 @@ def parse_multipart_data(stream, boundary):
                 continue
             headers = stack[-1][0]
             line = line.decode()
-            key, value = map(lambda i: i.strip(), line.split(':'))
+            key, value = [i.strip() for i in line.split(':')]
             headers[key] = value
 
         if state == 'body':

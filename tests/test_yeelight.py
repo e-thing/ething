@@ -1,7 +1,7 @@
 # coding: utf-8
 import pytest
-from ething.yeelight import YeelightProtocol
-from ething.interfaces import Light
+from ething.plugins.yeelight import YeelightProtocol
+from ething.core.interfaces import Light
 
 
 def test_yeelight_controller(core, process):

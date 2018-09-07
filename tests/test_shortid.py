@@ -1,6 +1,6 @@
 # coding: utf-8
 import pytest
-from ething.ShortId import ShortId
+from ething.core.ShortId import ShortId
 
 
 @pytest.mark.parametrize("id,valid", [

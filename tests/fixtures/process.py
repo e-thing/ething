@@ -1,6 +1,6 @@
 # coding: utf-8
 import pytest
-from ething.Process import Process
+from ething.core.Process import Process
 
 
 @pytest.fixture

@@ -1,7 +1,7 @@
 # coding: utf-8
 from future.utils import string_types
 import pytest
-from ething.ApiKey import ApiKey
+from ething.core.ApiKey import ApiKey
 
 
 def test_apikey_generate():

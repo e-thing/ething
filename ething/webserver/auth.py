@@ -34,8 +34,8 @@ class AuthContext(object):
 
         if isinstance(self.scope, string_types):  # check permissions
 
-            permissions = filter(None, permissions.split(" "))
-            scopes = filter(None, self.scope.split(" "))
+            permissions = [p for p in permissions.split(" ") if p]
+            scopes = [s for s in self.scope.split(" ") if s]
 
             for scope in scopes:
                 if scope in permissions:

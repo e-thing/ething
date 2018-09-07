@@ -11,6 +11,7 @@ from . import auth
 from . import notify
 from . import settings
 from . import resource
+from . import plugin
 
 
 def install_routes(**kwargs):
@@ -26,3 +27,4 @@ def install_routes(**kwargs):
     notify.install(**kwargs)
     settings.install(**kwargs)
     resource.install(**kwargs)
+    plugin.install(**kwargs)

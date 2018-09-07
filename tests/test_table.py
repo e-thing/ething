@@ -1,6 +1,6 @@
 # coding: utf-8
 import pytest
-from ething.Table import Table
+from ething.core.Table import Table
 
 
 def test_table_create(core):

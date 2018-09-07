@@ -1,6 +1,6 @@
 # coding: utf-8
 import pytest
-from ething.ScriptEngine import ScriptEngine
+from ething.core.ScriptEngine import ScriptEngine
 
 
 @pytest.mark.nodejs

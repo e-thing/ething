@@ -9,12 +9,12 @@ import string
 from collections import OrderedDict
 from werkzeug.http import unquote_etag
 
-from ething.reg import build_schema_definitions
-from ething.dbentity import DbEntity, Entity
+from ething.core.reg import build_schema_definitions
+from ething.core.dbentity import DbEntity, Entity
 
-from ething.Scope import Scope
+from ething.core.Scope import Scope
 
-from ething.utils import get_info
+from ething.core.utils import get_info
 
 
 _meta = None
@@ -64,7 +64,7 @@ def install(core, app, auth, **kwargs):
     @app.route('/api/utils/bluetooth_list')
     @auth.required()
     def bluetooth_list():
-        from ething.utils.bluetooth import list_bluetooth_interfaces
+        from ething.core.utils.bluetooth import list_bluetooth_interfaces
         return app.jsonify(list_bluetooth_interfaces(), indent=4)
 
     read_log_args = {
@@ -141,7 +141,9 @@ def install(core, app, auth, **kwargs):
             for plugin in core.plugins:
                 name = plugin.name
                 schema = getattr(plugin, 'CONFIG_SCHEMA', None)
-                definition = {}
+                definition = {
+                    'js_index': bool(getattr(plugin, 'js_index', False))
+                }
 
                 if schema:
                     definition['schema'] = schema

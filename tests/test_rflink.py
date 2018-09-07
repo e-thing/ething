@@ -1,7 +1,7 @@
 # coding: utf-8
 import pytest
-import ething.rflink as RFLink
-from  ething.interfaces import Switch
+import ething.plugins.rflink as RFLink
+from  ething.core.interfaces import Switch
 
 
 def test_rflink_controller(core, process):

@@ -1,6 +1,6 @@
 # coding: utf-8
 import pytest
-from ething.ResourceQueryParser import ResourceQueryParser
+from ething.core.ResourceQueryParser import ResourceQueryParser
 
 
 @pytest.mark.parametrize("expr,valid", [

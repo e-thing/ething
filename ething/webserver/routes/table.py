@@ -4,7 +4,7 @@ from future.utils import string_types
 from flask import request, Response
 from ..server_utils import *
 import csv
-from ething.ShortId import ShortId
+from ething.core.ShortId import ShortId
 
 
 def install(core, app, auth, **kwargs):

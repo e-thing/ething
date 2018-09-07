@@ -5,7 +5,7 @@ from flask import request, Response
 from ..server_utils import *
 import re
 from future.utils import text_type
-from ething.reg import get_registered_methods
+from ething.core.reg import get_registered_methods
 
 
 def install(core, app, auth, **kwargs):

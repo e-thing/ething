@@ -1,9 +1,9 @@
 # coding: utf-8
 import pytest
-from ething.core import Core
-from ething.File import File
-from ething.Table import Table
-from ething.Rule import Rule
+from ething.core.core import Core
+from ething.core.File import File
+from ething.core.Table import Table
+from ething.core.Rule import Rule
 
 
 _core = Core({

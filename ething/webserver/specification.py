@@ -4,10 +4,10 @@
 from __future__ import print_function
 from future.utils import string_types
 import apispec
-from ething.version import __version__
-from ething.Resource import Resource
-from ething.Interface import Interface
-from ething.reg import *
+from ething.core.version import __version__
+from ething.core.Resource import Resource
+from ething.core.Interface import Interface
+from ething.core.reg import *
 import json
 import jinja2
 from codecs import open
@@ -346,7 +346,7 @@ def get_headers(input):
 
 if __name__ == "__main__":
     from ething.webserver.server import FlaskApp
-    from ething.core import Core
+    from ething.core.core import Core
 
     core = Core({
         'db': {

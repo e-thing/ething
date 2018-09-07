@@ -51,7 +51,7 @@ def install(core, app, auth, **kwargs):
 
         if auth.scope is not None:
 
-            scopes = filter(None, auth.scope.split(" "))
+            scopes = [s for s in auth.scope.split(" ") if s]
 
             allowed_types = []
             for scope in scopes:

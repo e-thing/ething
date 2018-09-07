@@ -6,7 +6,7 @@
 """
 
 from __future__ import print_function
-from .version import __version__
+from .core.version import __version__
 
 import argparse
 import sys
@@ -19,7 +19,7 @@ import logging
 from logging.handlers import RotatingFileHandler
 import signal
 
-from .env import USER_DIR, LOG_FILE
+from .core.env import USER_DIR, LOG_FILE, CONFIG_FILE, PID_FILE
 
 
 # Default daemon parameters.
@@ -266,8 +266,8 @@ def main():
     if getattr(args, 'daemon', None):
         createDaemon()
 
-    from .Config import Config
-    from .utils import print_info
+    from .core.Config import Config
+    from .core.utils import print_info
 
     init_logger(not (getattr(args, 'daemon', None) or getattr(args, 'quiet', False)))
 
@@ -278,32 +278,11 @@ def main():
 
     from .core import Core
 
-    # load the plugins here !
+    # import webserver
     from .webserver.server import WebServer
-    from .RuleManager import RuleManager
-    from .PingService import PingService
-    from .MqttDispatcher import MqttDispatcher
-    # from .rpc import rpc
 
-    # load the modules here
-    from .File import File
-    from .Table import Table
-    from .Rule import Rule
-
-    from .rflink import RFLink
-    from .mysensors import MySensors
-    from .mqtt import mqtt
-    from .yeelight import Yeelight
-    from .mihome import Mihome
-    try:
-        from .blea import Blea
-    except:
-        pass
-    # from .zigate import Zigate
-    from .device.RTSP import RTSP
-    from .device.SSH import SSH
-    from .device.CPUTemp import CPUTempPlugin
-    from .device.Denon import Denon
+    # import the plugins here !
+    from . import plugins
 
     core = Core(config)
 

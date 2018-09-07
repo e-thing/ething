@@ -15,10 +15,10 @@ import pytz
 from future.utils import binary_type
 from .method_override import HTTPMethodOverrideMiddleware
 from .server_utils import ServerException, tb_extract_info, root_path
-from ething.plugin import Plugin
-from ething.Process import Process
-from ething.Helpers import filter_obj
-from ething.reg import get_registered_class
+from ething.core.plugin import Plugin
+from ething.core.Process import Process
+from ething.core.Helpers import filter_obj
+from ething.core.reg import get_registered_class
 from collections import OrderedDict
 
 try:
@@ -214,7 +214,7 @@ class FlaskApp(Flask):
 
             if scope is not None:
 
-                scopes = filter(None, g.auth.scope.split(" "))
+                scopes = [s for s in g.auth.scope.split(" ") if s]
 
                 allowed_types = []
                 for scope in scopes:

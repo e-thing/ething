@@ -1,6 +1,6 @@
 # coding: utf-8
 import pytest
-from ething.File import File
+from ething.core.File import File
 import requests
 
 

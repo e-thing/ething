@@ -1,6 +1,6 @@
 # coding: utf-8
 import pytest
-from ething.Helpers import toJson
+from ething.core.Helpers import toJson
 import json
 
 

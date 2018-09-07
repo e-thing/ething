@@ -1,7 +1,7 @@
 # coding: utf-8
 import pytest
-from ething.mihome import MihomeProtocol
-from ething.interfaces import Thermometer, Light
+from ething.plugins.mihome import MihomeProtocol
+from ething.core.interfaces import Thermometer, Light
 
 
 def test_mihome_controller(core, process):
@@ -11,7 +11,7 @@ def test_mihome_controller(core, process):
     protocol.init(process)
 
     protocol.data_received(
-        (r'{"cmd":"report","model":"gateway","sid":"34ce00fb61a9","short_id":0,"data":"{\"rgb\":0,\"illumination\":503}"}',
+        (rb'{"cmd":"report","model":"gateway","sid":"34ce00fb61a9","short_id":0,"data":"{\"rgb\":0,\"illumination\":503}"}',
          ('192.168.1.2', 9999))
     )
 
@@ -23,7 +23,7 @@ def test_mihome_controller(core, process):
 
     protocol.data_received(
         (
-        r'{"cmd":"report","model":"weather.v1","sid":"158d0001a4b64a","short_id":22319,"data":"{\"temperature\":\"1983\"}"}',
+        rb'{"cmd":"report","model":"weather.v1","sid":"158d0001a4b64a","short_id":22319,"data":"{\"temperature\":\"1983\"}"}',
         ('192.168.1.2', 9999))
     )
 

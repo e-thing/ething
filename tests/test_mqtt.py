@@ -1,6 +1,6 @@
 # coding: utf-8
 import pytest
-from ething.mqtt import MQTT
+from ething.plugins.mqtt import MQTT
 
 
 def test_mqtt_controller(core):

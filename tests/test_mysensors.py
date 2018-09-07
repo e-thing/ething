@@ -1,8 +1,8 @@
 # coding: utf-8
 import pytest
-from ething.mysensors.Message import Message
-import ething.mysensors as MySensors
-from ething.interfaces import Thermometer
+from ething.plugins.mysensors.Message import Message
+import ething.plugins.mysensors as MySensors
+from ething.core.interfaces import Thermometer
 
 
 def test_mysensors_message():

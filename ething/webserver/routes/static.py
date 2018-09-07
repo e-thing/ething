@@ -26,4 +26,4 @@ def install(core, app, auth, **kwargs):
 
     @app.route('/client/<path:path>')
     def static_client(path):
-        return send_from_directory('webui', path)
+        return send_from_directory('webserver/webui', path)
