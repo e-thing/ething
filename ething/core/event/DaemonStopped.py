@@ -4,6 +4,9 @@ from .Signal import Signal
 from .Event import Event
 
 
+__all__ = ["DaemonStopped", "DaemonStoppedEvent"]
+
+
 class DaemonStopped(Signal):
     pass
 

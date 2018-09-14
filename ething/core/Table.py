@@ -1,9 +1,8 @@
 # coding: utf-8
 from future.utils import string_types, integer_types
-
-
 from .Resource import Resource
 from .entity import *
+from .event import ResourceEvent, ResourceSignal
 import datetime
 import time
 import re
@@ -20,6 +19,66 @@ else:
     from StringIO import StringIO
 
 
+class TableDataAdded(ResourceSignal):
+    def __init__(self, resource, data):
+        super(TableDataAdded, self).__init__(resource)
+        self.data = data
+
+
+class TableDataAddedEvent(ResourceEvent):
+    """
+    is emitted each time a new value is appended to a table
+    """
+    signal = TableDataAdded
+
+
+@attr('repeat', type=Boolean(), default=False, description="If true, the rule will be triggered each time the value match the threshold condition. Else the rule is triggered only the first time the threshold condition is met, then the rule is disabled until the threshold condition is not met.")
+@attr('threshold_value', type=Number())
+@attr('threshold_mode', type=Enum(('gt', 'ge', 'lt', 'le')))
+@attr('key', type=String(allow_empty = False), description="The name of the column in the table")
+@attr('last_status', mode=PRIVATE, default=False)
+class TableDataThresholdEvent(ResourceEvent):
+    """
+    is emitted each time a value is appended to a table is over or below a threshold
+    """
+    signal = TableDataAdded
+
+    def _filter(self, signal):
+        ret = False
+
+        if super(TableDataThresholdEvent, self)._filter(signal):
+            key = self.key
+
+            if key in signal.data:
+                value = signal.data.get(key)
+
+                if isinstance(value, integer_types) or isinstance(value, float):
+                    threshold_mode = self.threshold_mode
+                    threshold_value = self.threshold_value
+
+                    if threshold_mode == 'gt':
+                        if value > threshold_value:
+                            ret = True
+                    elif threshold_mode == 'ge':
+                        if value >= threshold_value:
+                            ret = True
+                    elif threshold_mode == 'lt':
+                        if value < threshold_value:
+                            ret = True
+                    elif threshold_mode == 'le':
+                        if value <= threshold_value:
+                            ret = True
+
+                last_status = self._last_status
+                self._last_status = ret
+
+                if not self.repeat and ret and last_status:
+                    ret = False
+
+        return ret
+
+
+@throw(TableDataAdded)
 @attr('maxLength', type=Nullable(Integer(min=1)), default=5000, description="The maximum of records allowed in this table. When this number is reached, the oldest records will be removed to insert the new ones (first in, first out). Set it to null or 0 to disable this feature.")
 @attr('expireAfter', type=Nullable(Integer(min=1)), default=None, description="The amount of time (in seconds) after which a records will be automatically removed. Set it to null or 0 to disable this feature.")
 @attr('length', default=0, mode=READ_ONLY, description="The number of records in the table")
@@ -138,6 +197,7 @@ class Table(Resource):
             meta = self.db.get_table_metadata(self.collectionName)
             self._length = meta.get('length', 0)
             self._keys = meta.get('keys', {})
+            self.data = {}
 
         self._contentModifiedDate = datetime.datetime.utcnow()
 
@@ -269,6 +329,8 @@ class Table(Resource):
 
                     self._update_meta(added_rows = dataArray)
 
+                    self.data = dataArray[0]
+
                     # remove extra rows
                     length = self.length
                     maxLength = self.maxLength
@@ -281,7 +343,7 @@ class Table(Resource):
 
                     doc = self.docSerialize(dataArray[0])
                     # generate an event
-                    self.dispatchSignal('TableDataAdded', self, doc)
+                    self.dispatchSignal(TableDataAdded(self, doc))
 
                     return doc
 
@@ -306,6 +368,7 @@ class Table(Resource):
                 # insert the data
                 self.db.insert_table_rows(self.collectionName, dataArray)
                 self._update_meta(added_rows=dataArray)
+                self.data = dataArray[-1]
 
         return True
 

@@ -28,12 +28,12 @@ class RFLink(Plugin):
 
         self.core.signalDispatcher.bind('ResourceCreated', self._on_resource_created)
         self.core.signalDispatcher.bind('ResourceDeleted', self._on_resource_deleted)
-        self.core.signalDispatcher.bind('ResourceMetaUpdated', self._on_resource_updated)
+        self.core.signalDispatcher.bind('ResourceUpdated', self._on_resource_updated)
 
     def unload(self):
         self.core.signalDispatcher.unbind('ResourceCreated', self._on_resource_created)
         self.core.signalDispatcher.unbind('ResourceDeleted', self._on_resource_deleted)
-        self.core.signalDispatcher.unbind('ResourceMetaUpdated', self._on_resource_updated)
+        self.core.signalDispatcher.unbind('ResourceUpdated', self._on_resource_updated)
 
         self.stop_all_controllers()
 

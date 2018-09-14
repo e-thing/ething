@@ -3,10 +3,10 @@
 from ..entity import *
 
 
-@path('actions')
+@path('conditions')
 @abstract
 @attr('type', mode=READ_ONLY, default=lambda cls: str(cls.__name__), description="The type of the action")
-class Action(Entity):
+class Condition(Entity):
 
     @property
     def rule(self):
@@ -16,7 +16,7 @@ class Action(Entity):
     def ething(self):
         return self.rule.ething
 
-    def run(self, signal):
+    def test(self, signal):
         raise NotImplementedError()
 
     @classmethod

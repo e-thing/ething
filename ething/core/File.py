@@ -3,6 +3,7 @@
 from future.utils import text_type, bord
 from .Resource import Resource
 from .entity import *
+from .event import ResourceEvent, ResourceSignal
 import datetime
 import os
 from .utils.mime import content_to_mime, ext_to_mime
@@ -15,6 +16,18 @@ except ImportError:
 from io import BytesIO
 
 
+class FileDataModified(ResourceSignal):
+    pass
+
+
+class FileDataModifiedEvent(ResourceEvent):
+    """
+    is emitted each time file's content is modified
+    """
+    signal = FileDataModified
+
+
+@throw(FileDataModified)
 @attr('expireAfter', type=Nullable(Integer(min=1)), default=None, description="The amount of time (in seconds) after which this resource will be removed.")
 @attr('content', default=None, mode=PRIVATE)
 @attr('thumb', default=None, mode=PRIVATE)
@@ -95,7 +108,7 @@ class File(Resource):
             self.updateMeta(File.META_ALL, bytes)
 
         # generate an event
-        self.dispatchSignal('FileDataModified', self)
+        self.dispatchSignal(FileDataModified(self))
 
         return True
 

@@ -52,3 +52,9 @@ class Event(Entity):
         _cls = get_registered_class(type)
         return Entity.fromJson.__func__(_cls, data, **kwargs)
 
+    @classmethod
+    def toSchema(cls, **kwargs):
+        schema = Entity.toSchema.__func__(cls, **kwargs)
+        if cls.signal:
+            schema['signal'] = cls.signal.__name__
+        return schema

@@ -4,6 +4,7 @@ from flask import Flask, Response, request, g
 from flask_cors import CORS
 from flask_compress import Compress
 from werkzeug.exceptions import HTTPException
+from werkzeug.http import unquote_etag
 from .auth import install_auth
 from .routes import install_routes
 import json
@@ -242,6 +243,18 @@ class FlaskApp(Flask):
             return instance
         else:
             raise Exception('the type "%s" is unknown' % type)
+
+    def etag_match(self, etag):
+        req_etag = request.headers.get('If-None-Match')
+        if req_etag and etag == unquote_etag(req_etag)[0]:
+            return True
+        return False
+
+    def set_etag(self, resp, etag = None):
+        if etag is not None:
+            resp.set_etag(etag)
+            resp.headers['Cache-Control'] = 'must-revalidate'
+        return resp
 
 
 class WebServerProcess(Process):

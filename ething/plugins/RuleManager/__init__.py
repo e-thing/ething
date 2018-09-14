@@ -45,7 +45,7 @@ class RuleProcess(Process):
         self.core.signalDispatcher.bind(
             'ResourceCreated ResourceDeleted', self.onResourceCreatedOrDeleted)
         self.core.signalDispatcher.bind(
-            'ResourceMetaUpdated', self.onResourceMetaUpdated)
+            'ResourceUpdated', self.onResourceUpdated)
 
         self.core.signalDispatcher.bind('*', self.dispatchSignal)
 
@@ -56,7 +56,7 @@ class RuleProcess(Process):
         self.core.signalDispatcher.unbind(
             'ResourceCreated ResourceDeleted', self.onResourceCreatedOrDeleted)
         self.core.signalDispatcher.unbind(
-            'ResourceMetaUpdated', self.onResourceMetaUpdated)
+            'ResourceUpdated', self.onResourceUpdated)
 
         self.core.signalDispatcher.unbind('*', self.dispatchSignal)
 
@@ -64,8 +64,8 @@ class RuleProcess(Process):
         if isinstance(signal.resource, Rule):
             self._build_cache()
 
-    def onResourceMetaUpdated(self, signal):
-        if isinstance(signal.resource, Rule) and ( 'events' in signal['attributes'] or 'enabled' in signal['attributes'] or 'scheduler' in signal['attributes']):
+    def onResourceUpdated(self, signal):
+        if isinstance(signal.resource, Rule) and ( 'events' in signal['attributes'] or 'enabled' in signal['attributes'] ):
             self._build_cache()
 
     def dispatchSignal(self, signal):
@@ -80,8 +80,8 @@ class RuleProcess(Process):
             if self._cache:
                 # no need to process signals when there is no rule registered
 
-                if 'ResourceMetaUpdated' in self._cache:
-                    # fuse ResourceMetaUpdated signals
+                if 'ResourceUpdated' in self._cache:
+                    # fuse ResourceUpdated signals
                     f = 0
                     l = len(self._queue)
                     while l > 0:
@@ -89,13 +89,13 @@ class RuleProcess(Process):
 
                         signal = self._queue[l]
                         signal_type = type(signal).__name__
-                        if signal_type == "ResourceMetaUpdated":
+                        if signal_type == "ResourceUpdated":
                             # merge with previous signal
                             i = 0
                             while i < l:
                                 s = self._queue[i]
                                 s_type = type(s).__name__
-                                if s_type == "ResourceMetaUpdated" and signal.resource == s.resource:
+                                if s_type == "ResourceUpdated" and signal.resource == s.resource:
                                     # ok same signal describing the same resource -> merge the attributes
                                     signal['attributes'] = list(
                                         set(signal['attributes']).union(set(s['attributes'])))
@@ -140,5 +140,5 @@ class RuleProcess(Process):
                     self._cache[signal].append(rule)
 
     def process_signal(self, signal, rule):
-        rule.refresh(keepDirtyFields = True)  # need to be refreshed because some attributes may have changed since the last time the _cache has been updated
-        rule.run(signal)
+        if rule.condition_match(signal):
+            rule.run(signal)

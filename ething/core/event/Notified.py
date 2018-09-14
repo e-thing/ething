@@ -4,6 +4,9 @@ from .Signal import Signal
 from .Event import Event
 
 
+__all__ = ["Notified", "NotifiedEvent"]
+
+
 class Notified(Signal):
     def __init__(self, message, subject = None):
         super(Notified, self).__init__()

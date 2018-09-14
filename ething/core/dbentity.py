@@ -11,7 +11,7 @@ class DbEntity(Entity):
         object.__setattr__(self, '_DbEntity__no_save', 0)
         object.__setattr__(self, '_DbEntity__watch_data', dict())
 
-        self._watch_init()#
+        self._watch_init()
 
     def __setattr__(self, name, value):
         super(DbEntity, self).__setattr__(name, value)
@@ -53,11 +53,10 @@ class DbEntity(Entity):
                     dirty_attrs = self._get_dirty_attrs()
 
                     for a in dirty_attrs:
-                        on_change = a.get('on_change')
-                        if on_change:
+                        if a.get('watch'):
                             old_value = self.__watch_data.get(a.name)
                             new_value = self._get(a)
-                            on_change(self, new_value, old_value)
+                            self._watch(a.name, new_value, old_value)
 
                     self._save(dirty_attrs)
 
@@ -71,28 +70,8 @@ class DbEntity(Entity):
 
 
 
-#    def refresh(self, keepDirtyFields=False):
-#        with self._lock:
-#            serialized_data = self._refresh()
-#            if not serialized_data: return # nothing to refresh
-#            dirty_attrs = set()
-#
-#            if keepDirtyFields:
-#                dirty_attrs = self._get_dirty_attrs()
-#
-#            for attribute in list_registered_attr(self):
-#                name = attribute.name
-#                model_key = attribute.get('model_key', name)
-#                if model_key in serialized_data:
-#                    if keepDirtyFields and attribute in dirty_attrs:
-#                        continue
-#                    data_type = attribute['type']
-#                    self._set(data_type.unserialize(serialized_data.get(model_key)))
-#
-#            if not keepDirtyFields:
-#                self._clean()
-#
-#            self._watch_init()
+    def _watch(self, attr, new_value, old_value):
+        pass
 
     def remove(self):
         with self._lock:
@@ -129,5 +108,5 @@ class DbEntity(Entity):
     def _watch_init(self):
         self.__watch_data.clear()
         for a in list_registered_attr(self):
-            if a.get('on_change'):
+            if a.get('watch'):
                 self.__watch_data[a.name] = self._get(a)

@@ -34,7 +34,7 @@ class Controller(object):
 
         # refresh the gateway each time the gateway properties changes
         self.ething.signalManager.bind(
-            'ResourceMetaUpdated', self.onResourceMetaUpdated)
+            'ResourceUpdated', self.onResourceUpdated)
 
         self.ething.scheduler.tick(self.update)
 
@@ -63,7 +63,7 @@ class Controller(object):
     def transport(self):
         return self._transport
 
-    def onResourceMetaUpdated(self, signal):
+    def onResourceUpdated(self, signal):
         if signal['resource'] == self.gateway.id and signal['rModifiedDate'] > self.gateway.modifiedDate:
             self.gateway.refresh()
 
@@ -80,7 +80,7 @@ class Controller(object):
     def destroy(self):
         self.close()
         self.ething.signalManager.unbind(
-            'ResourceMetaUpdated', self.onResourceMetaUpdated)
+            'ResourceUpdated', self.onResourceUpdated)
 
     def open(self):
 

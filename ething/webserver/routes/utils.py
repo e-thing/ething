@@ -7,7 +7,6 @@ import os
 import random
 import string
 from collections import OrderedDict
-from werkzeug.http import unquote_etag
 
 from ething.core.reg import build_schema_definitions
 from ething.core.dbentity import DbEntity, Entity
@@ -150,11 +149,7 @@ def install(core, app, auth, **kwargs):
 
                 _meta['plugins'][name] = definition
         else:
-            req_etag = request.headers.get('If-None-Match')
-            if req_etag and definitions_etag == unquote_etag(req_etag)[0]:
+            if app.etag_match(definitions_etag):
                 return Response(status=304)
 
-        resp = app.jsonify(_meta)
-        resp.set_etag(definitions_etag)
-        resp.headers['Cache-Control'] = 'must-revalidate'
-        return resp
+        return app.set_etag(app.jsonify(_meta), definitions_etag)

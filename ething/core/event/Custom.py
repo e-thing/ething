@@ -5,6 +5,9 @@ from .Event import Event
 from ..reg import *
 
 
+__all__ = ["Custom", "CustomEvent"]
+
+
 class Custom(Signal):
 
     def __init__(self, name):

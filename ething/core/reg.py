@@ -150,6 +150,50 @@ def has_registered_attr(class_or_instance, name):
 
 
 #
+# signals
+#
+
+class Signal_(object):
+
+    def __init__(self, signal, cls):
+        self.signal = signal
+        self.cls = cls
+
+
+def throw(*args):
+  def d(cls):
+
+    signals = getattr(cls, '__meta').get('signals')
+
+    for s in args:
+        signal_ = Signal_(s, cls)
+
+        i = 0
+        exists = False
+        for s_ in signals:
+            if s is s_.signal:
+                exists = True
+                break
+            i += 1
+
+        if exists:
+            signals[i] = signal_ # replace
+        else:
+            signals.append(signal_)
+
+    return cls
+  return d
+
+def list_registered_signals(class_or_instance):
+  """
+  list the signals the given class or instance may throw.
+  """
+  if not inspect.isclass(class_or_instance):
+    class_or_instance = type(class_or_instance)
+  return getattr(class_or_instance, '__meta', {}).get('signals', [])
+
+
+#
 # Methods
 #
 
@@ -491,33 +535,51 @@ class MetaReg(type):
     def __new__(meta, name, bases, dct):
       cls = type.__new__(meta, name, bases, dct)
 
-      # attributes
-
       inherited_meta = getattr(cls, '__meta', {})
 
-      extended = []
+      # attributes
+      extended_attributes = []
       for b in reversed(bases):
         for attribute_b in list_registered_attr(b):
 
           attribute = None
           i = 0
-          for a in extended:
+          for a in extended_attributes:
             if a.name == attribute_b.name:
               attribute = a
               break
             i += 1
 
           if attribute is None:
-            extended.insert(0, attribute_b)
+              extended_attributes.insert(0, attribute_b)
           else:
             # copy it before updating
             copy = Attribute(attribute.name, cls, attribute.properties.copy())
             copy.update(attribute_b.properties)
-            extended[i] = copy
+            extended_attributes[i] = copy
 
+      # signals:
+      extended_signals = []
+      for b in reversed(bases):
+          for signal_b_ in list_registered_signals(b):
+
+              exists = False
+              i = 0
+              for s_ in extended_signals:
+                  if s_.signal is signal_b_.signal:
+                      exists = True
+                      break
+                  i += 1
+
+              if not exists:
+                  extended_signals.insert(0, signal_b_)
+              else:
+                # replace
+                extended_signals[i] = signal_b_
 
       setattr(cls, '__meta', {
-        'attributes': extended,
+        'attributes': extended_attributes,
+        'signals': extended_signals,
         'abstract': False,
         'path': inherited_meta.get('path', '')
       })
@@ -575,6 +637,7 @@ def build_schema(cls, root = False, **kwargs):
   subclass = kwargs.get('subclass', None)
   skip = kwargs.get('skip') or ()
   no_methods = kwargs.get('no_methods', False)
+  no_signals = kwargs.get('no_signals', False)
 
   if not flatted and not root:
       return {
@@ -594,6 +657,15 @@ def build_schema(cls, root = False, **kwargs):
   description = description.strip()
   if description:
     schema['description'] = description
+
+  if not no_signals:
+      signals = []
+      for signal_ in list_registered_signals(cls):
+          if (not flatted) and cls is not signal_.cls:
+              continue
+          signals.append(signal_.signal.__name__)
+      if len(signals) > 0:
+          schema['signals'] = signals
 
   for attribute in attributes:
     mode = attribute.get('mode')
@@ -685,7 +757,10 @@ def build_schema_definitions(**kwargs):
 
     meta = getattr(cls, '__meta')
     path = meta.get('path')
-    schema = build_schema(cls, flatted = False, root = True, **kwargs)
+    if hasattr(cls, 'toSchema'):
+        schema = cls.toSchema(flatted = False, root = True, **kwargs)
+    else:
+        schema = build_schema(cls, flatted = False, root = True, **kwargs)
 
     rel_def = definitions
     if path:

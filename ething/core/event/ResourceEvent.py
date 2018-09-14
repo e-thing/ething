@@ -7,6 +7,9 @@ from future.utils import string_types
 from ..core import Core
 
 
+__all__ = ["ResourceSignal", "ResourceFilter", "ResourceEvent"]
+
+
 class ResourceSignal(Signal):
 
     def __init__(self, resource):

@@ -232,7 +232,12 @@ def install(core, app, auth, **kwargs):
         r = app.getResource(id, ['File'])
 
         if request.method == 'GET':
-            return Response(r.read(), mimetype=r.mime)
+            etag = str(r.contentModifiedDate)
+
+            if app.etag_match(etag):
+                return Response(status=304)
+
+            return app.set_etag(Response(r.read(), mimetype=r.mime), etag)
 
         elif request.method == 'PUT':
 

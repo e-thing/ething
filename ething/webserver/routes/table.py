@@ -288,12 +288,18 @@ def install(core, app, auth, **kwargs):
 
         if request.method == 'GET':
 
+            etag = str(r.contentModifiedDate)
+
+            if app.etag_match(etag):
+                return Response(status=304)
+
             fmt = args.pop('fmt').lower()
+            resp = None
 
             if fmt == "json":
-                return app.jsonify(r.select(**args))
+                resp = app.jsonify(r.select(**args))
             elif fmt == "json_pretty":
-                return app.jsonify(r.select(**args), indent=4)
+                resp = app.jsonify(r.select(**args), indent=4)
             elif fmt == "csv" or fmt == "csv_no_header":
                 args['show_header'] = (fmt == "csv")
 
@@ -303,7 +309,10 @@ def install(core, app, auth, **kwargs):
                         ';', ',').replace('|', ',').split(',')
                     args['fields'] = fields
 
-                return Response(r.writeCSV(**args), mimetype='text/csv')
+                resp = Response(r.writeCSV(**args), mimetype='text/csv')
+
+            if resp is not None:
+                return app.set_etag(resp, etag)
 
             raise Exception('Invalid request')
 
@@ -433,7 +442,12 @@ def install(core, app, auth, **kwargs):
                 description: The statistics object.
         """
         r = app.getResource(id, ['Table'])
-        return app.jsonify(r.computeStatistics(args['key'], args['q']))
+        etag = str(r.contentModifiedDate)
+
+        if app.etag_match(etag):
+            return Response(status=304)
+
+        return app.set_etag(app.jsonify(r.computeStatistics(args['key'], args['q'])), etag)
 
     table_cell_id_patch_args = {
         'invalid_field': fields.Str(validate=validate.OneOf(['rename', 'stop', 'skip', 'none']), missing='rename'),

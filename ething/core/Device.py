@@ -1,23 +1,89 @@
 # coding: utf-8
-from future.utils import string_types, integer_types
-
-from future.utils import with_metaclass, listvalues
+from future.utils import string_types, integer_types, with_metaclass, listvalues
 from .Resource import Resource
 from .reg import *
+from .event import ResourceEvent, ResourceSignal
 import datetime
 
 
-def on_battery_change(self, value, old_value):
-    if value < self.BATTERY_LOW:
-        if old_value >= self.BATTERY_LOW:
-            self.dispatchSignal('LowBatteryDevice', self)
+class BatteryLevelChanged(ResourceSignal):
+    def __init__(self, resource, new_value, old_value):
+        super(BatteryLevelChanged, self).__init__(resource)
+        self.new_value = new_value
+        self.old_value = old_value
+
+
+@attr('last_state', mode=PRIVATE, default=False)
+@attr('repeat', type=Boolean(), default=False)
+@attr('threshold', type=Number(), default=0)
+@attr('trigger_mode', type=Enum((None, 'above threshold', 'below threshold', 'equal to')), default=None)
+class BatteryLevelChangedEvent(ResourceEvent):
+    """
+    is emitted each time the battery level changed
+    """
+    signal = BatteryLevelChanged
+
+    def _filter(self, signal):
+        if super(BatteryLevelChangedEvent, self)._filter(signal):
+
+            new_value = signal.new_value
+            old_value = signal.old_value
+            result = False
+
+            try:
+                trigger_mode = self.trigger_mode
+                threshold = self.threshold
+
+                if trigger_mode is None:
+                    result = True
+                elif trigger_mode == 'above threshold':
+                    result = new_value >= threshold and old_value < threshold
+                elif trigger_mode == 'below threshold':
+                    result = new_value <= threshold and old_value > threshold
+                elif trigger_mode == 'equal to':
+                    result = new_value == threshold
+            except Exception:
+                pass
+
+            last_state = self._last_state
+            self._last_state = result
+
+            if result:
+                if not self.repeat:
+                    if last_state:
+                        result = False
+
+            return result
+
+
+class DeviceConnected(ResourceSignal):
+    pass
+
+
+class DeviceConnectedEvent(ResourceEvent):
+    """
+    is emitted each time a device connect
+    """
+    signal = DeviceConnected
+
+
+class DeviceDisconnected(ResourceSignal):
+    pass
+
+
+class DeviceDisconnectedEvent(ResourceEvent):
+    """
+    is emitted each time a device disconnect
+    """
+    signal = DeviceDisconnected
 
 
 @abstract
+@throw(BatteryLevelChanged, DeviceConnected, DeviceDisconnected)
 # 0-100 : the battery level, if None it means that no battery information is provided
-@attr('battery', type=Nullable(Integer(min=0, max=100)), default=None, on_change=on_battery_change, description="The battery level of this device (must be between 0 (empty) and 100 (full) , or null if the device has no battery information).")
+@attr('battery', type=Nullable(Integer(min=0, max=100)), default=None, watch=True, description="The battery level of this device (must be between 0 (empty) and 100 (full) , or null if the device has no battery information).")
 @attr('location', type=Nullable(String()), default=None, description="The location of this device.")
-@attr('connected', type=Boolean(), default=True, description="Set to true when this device is connected.")
+@attr('connected', type=Boolean(), default=True, watch=True, description="Set to true when this device is connected.")
 @attr('lastSeenDate', mode=READ_ONLY, default=None, description="The last time this device was reached or made a request.")
 @attr('methods', default=[], mode=READ_ONLY, description="The list of the methods available.")
 @attr('interfaces', default=[], mode=READ_ONLY, description="A list of interfaces this device inherit")
@@ -40,10 +106,17 @@ class Device(Resource):
             if self.connected != connected:
                 self.connected = connected
 
-                if connected:
+    def _watch(self, attr, new_value, old_value):
+        super(Device, self)._watch(attr, new_value, old_value)
+
+        if attr == 'battery':
+            if new_value != old_value:
+                self.dispatchSignal(BatteryLevelChanged(self, new_value, old_value))
+        elif attr == 'connected':
+            if new_value != old_value:
+                if new_value:
                     self.ething.log.debug("device connected %s" % self)
-                    self.dispatchSignal('DeviceConnected', self)
+                    self.dispatchSignal(DeviceConnected(self))
                 else:
                     self.ething.log.debug("device disconnected %s" % self)
-                    self.dispatchSignal('DeviceDisconnected', self)
-
+                    self.dispatchSignal(DeviceDisconnected(self))

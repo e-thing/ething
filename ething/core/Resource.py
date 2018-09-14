@@ -4,8 +4,63 @@ from .ShortId import ShortId, Id
 from .dbentity import *
 from .core import Core
 from .reg import get_definition_pathname
+from .event import ResourceEvent, ResourceSignal
+from .Interface import Interface
 import datetime
 import inspect
+
+
+class ResourceCreated(ResourceSignal):
+    pass
+
+
+class ResourceCreatedEvent(ResourceEvent):
+    """
+    is emitted each time a resource is created
+    """
+    signal = ResourceCreated
+
+
+class ResourceDeleted(ResourceSignal):
+    pass
+
+
+class ResourceDeletedEvent(ResourceEvent):
+    """
+    is emitted each time a resource is deleted
+    """
+    signal = ResourceDeleted
+
+
+class ResourceUpdated(ResourceSignal):
+
+    def __init__(self, resource, attributes):
+        super(ResourceUpdated, self).__init__(resource)
+        self.attributes = attributes
+
+
+@attr('attributes', type=Nullable(Array(min_len=1, item=String(allow_empty=False))), default=None)
+class ResourceUpdatedEvent(ResourceEvent):
+    """
+    is emitted each time a resource attribute has been updated
+    """
+
+    signal = ResourceUpdated
+
+    def _filter(self, signal):
+
+        if super(ResourceUpdatedEvent, self)._filter(signal):
+            a = self.attributes
+
+            if not a:
+                return True
+
+            b = signal.attributes
+            for val in a:
+                if val in b:
+                    return True
+
+        return False
 
 
 class ResourceType(Id):
@@ -35,6 +90,7 @@ class ResourceType(Id):
         return value
 
 
+@throw(ResourceCreated, ResourceDeleted, ResourceUpdated)
 @path('resources')
 @attr('public', type=Enum([False, 'readonly', 'readwrite']), default=False, description="False: this resource is not publicly accessible. 'readonly': this resource is accessible for reading by anyone. 'readwrite': this resource is accessible for reading and writing by anyone.")
 @attr('description', type=String(), default='', description="A description of this resource.")
@@ -42,7 +98,7 @@ class ResourceType(Id):
 @attr('createdBy', type=Nullable(Id()), default=None, description="The id of the resource responsible of the creation of this resource, or null.")
 @attr('modifiedDate', default=lambda _: datetime.datetime.utcnow(), mode=READ_ONLY, description="Last time this resource was modified")
 @attr('createdDate', default=lambda _: datetime.datetime.utcnow(), mode=READ_ONLY, description="Create time for this resource")
-@attr('extends', mode=READ_ONLY, default=lambda cls: [get_definition_pathname(c) for c in cls.__mro__ if issubclass(c, Resource) and (c is not Resource)], description="An array of classes this resource is based on.")
+@attr('extends', mode=READ_ONLY, default=lambda cls: [get_definition_pathname(c) for c in cls.__mro__ if issubclass(c, DbEntity) and (c is not DbEntity and c is not Resource and c is not Interface)], description="An array of classes this resource is based on.")
 @attr('type', mode=READ_ONLY, default=lambda cls: get_definition_pathname(cls), description="The type of the resource")
 @attr('id', default=lambda _: ShortId.generate(), mode=READ_ONLY, description="The id of the resource")
 @attr('name', type=String(allow_empty=False, regex='^[a-zA-Z0-9 !#$%&\'()+,\-.;=@^_`{    ]+(\\/[a-zA-Z0-9 !#$%&\'()+,\-.;=@^_`{    ]+)*$'), description="The name of the resource")
@@ -125,28 +181,19 @@ class Resource(DbEntity):
                 child.removeParent()
 
     def _remove(self, removeChildren=False):
-        ##id = self.id
 
         self.ething.resource_db_cache.remove(self)
-        #c = self.ething.db["resources"]
-        #c.delete_one({'_id': id})
 
         self.ething.log.debug("Resource deleted : %s" % str(self))
 
-        self.ething.dispatchSignal('ResourceDeleted', self)
+        self.ething.dispatchSignal(ResourceDeleted(self))
 
     def _insert(self):
 
         # insertion
         self.ething.resource_db_cache.insert(self)
-        #c = self.ething.db["resources"]
-        #try:
-        #    c.insert_one(self.serialize())
-        #except:
-        #    # code 11000 on duplicate error
-        #    raise Exception('internal error: doc insertion failed')
 
-        self.ething.dispatchSignal('ResourceCreated', self)
+        self.ething.dispatchSignal(ResourceCreated(self))
 
         self.ething.log.debug("Resource created : %s" % str(self))
 
@@ -161,8 +208,6 @@ class Resource(DbEntity):
             str(self), dirty_keys))
 
         self.ething.resource_db_cache.save(self)
-        #c = self.ething.db["resources"]
-        #c.replace_one({'_id': self.id}, self.serialize())
 
         history_data = {}
 
@@ -201,13 +246,7 @@ class Resource(DbEntity):
             except Exception as e:
                 self.ething.log.exception('history error for %s' % table_name)
 
-        self.ething.dispatchSignal(
-            'ResourceMetaUpdated', self, list(dirty_keys))
-
-    #def _refresh(self):
-    #    #c = self.ething.db["resources"]
-    #    #return c.find_one({'_id': self.id})
-    #    return {}
+        self.ething.dispatchSignal(ResourceUpdated(self, list(dirty_keys)))
 
     def match(self, expression):
         filter = self.ething.resourceQueryParser.compile(expression)
