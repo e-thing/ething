@@ -16,6 +16,7 @@ import pytz
 from future.utils import binary_type
 from .method_override import HTTPMethodOverrideMiddleware
 from .server_utils import ServerException, tb_extract_info, root_path
+from .apikey import ApikeyManager
 from ething.core.plugin import Plugin
 from ething.core.Process import Process
 from ething.core.Helpers import filter_obj
@@ -133,6 +134,9 @@ class FlaskApp(Flask):
 
         for cls in HTTPException.__subclasses__():
             self.register_error_handler(cls, self.error_handler)
+
+        # apikeys manager
+        self.apikey_manager = ApikeyManager(core)
 
 
     def error_handler(self, e):

@@ -19,13 +19,13 @@ class DbEntity(Entity):
 
     @classmethod
     def create(cls, attributes, **ctor_attr):
-        instance = cls(attributes, True, **ctor_attr)
+        instance = cls(attributes, create=True, **ctor_attr)
         instance.save()
         return instance
 
     @classmethod
     def unserialize(cls, data, **kwargs):
-        return super(DbEntity, cls).unserialize(data, create = False, **kwargs)
+        return super(DbEntity, cls).unserialize(data, create=False, **kwargs)
 
     def save(self):
         with self._lock:

@@ -10,8 +10,9 @@ from collections import OrderedDict
 
 from ething.core.reg import build_schema_definitions
 from ething.core.dbentity import DbEntity, Entity
+from ething.core.utils.export import export_data, import_data
 
-from ething.core.Scope import Scope
+from ..Scope import Scope
 
 from ething.core.utils import get_info
 
@@ -25,6 +26,12 @@ def install(core, app, auth, **kwargs):
     @auth.required()
     def restart():
         core.restart()
+        return '', 204
+
+    @app.route('/api/utils/reset')
+    @auth.required()
+    def reset():
+        core.reset()
         return '', 204
 
 
@@ -153,3 +160,20 @@ def install(core, app, auth, **kwargs):
                 return Response(status=304)
 
         return app.set_etag(app.jsonify(_meta), definitions_etag)
+
+    @app.route('/api/utils/export')
+    @auth.required()
+    def export_route():
+        return app.jsonify(export_data(core))
+
+    @app.route('/api/utils/import', methods=['POST'])
+    @auth.required()
+    def import_route():
+
+        data = request.get_json()
+
+        if data:
+            import_data(core, data)
+            return '', 204
+
+        raise Exception('Invalid request')

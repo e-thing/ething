@@ -8,7 +8,7 @@ def test_rule(core):
     rule = core.create('resources/Rule', {
         'name': 'myrule',
         'events': [
-            event.Custom.CustomEvent({
+            event.CustomEvent({
                 'name': 'my_event'
             })
         ],
@@ -21,7 +21,7 @@ def test_rule(core):
 
     assert rule
 
-    signal = event.Custom.Custom('my_event')
+    signal = event.Custom('my_event')
 
     rule.trigger(signal)
 

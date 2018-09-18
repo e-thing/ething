@@ -12,6 +12,7 @@ from . import notify
 from . import settings
 from . import resource
 from . import plugin
+from . import apikey
 
 
 def install_routes(**kwargs):
@@ -28,3 +29,4 @@ def install_routes(**kwargs):
     settings.install(**kwargs)
     resource.install(**kwargs)
     plugin.install(**kwargs)
+    apikey.install(**kwargs)

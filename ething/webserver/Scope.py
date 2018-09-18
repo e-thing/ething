@@ -1,7 +1,7 @@
 # coding: utf-8
 from future.utils import string_types
 
-from .type import String
+from ething.core.type import String
 
 
 class Scope(object):

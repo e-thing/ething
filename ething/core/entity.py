@@ -86,11 +86,9 @@ class Entity(with_metaclass(MetaReg, M_Class)):
             if (mode == PRIVATE or mode == READ_ONLY) and not priv_access:
                 raise AttributeError('attribute "%s" is not writable' % name)
 
-            old_value = self._get(attribute)
-            new_value = self._set(attribute, value)
+            self._set(attribute, value)
 
-            if isinstance(new_value, Memory) or  old_value != new_value:
-                self._set_dirty(attribute)
+            self._set_dirty(attribute)
     
     def _set(self, attribute, value):
         name = attribute.name
@@ -151,8 +149,16 @@ class Entity(with_metaclass(MetaReg, M_Class)):
             attribute = self._getattr(key)
             if attribute:
               name = attribute.name
-              data_type = attribute['type']
-              setattr(self, name, data_type.fromJson(data[name], **kwargs))
+              mode = attribute.get('mode')
+              if mode == PRIVATE or mode == READ_ONLY:
+                  continue
+              data_type = attribute.get('type')
+
+              old_value = self._get(attribute)
+              new_value = self._set(attribute, data_type.fromJson(data[name], **kwargs))
+
+              if isinstance(new_value, Memory) or old_value != new_value:
+                  self._set_dirty(attribute)
     
     @classmethod
     def unserialize(cls, data, **kwargs):

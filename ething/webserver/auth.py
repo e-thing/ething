@@ -46,8 +46,9 @@ class AuthContext(object):
 
 class Auth(object):
 
-    def __init__(self, core, config):
-        self.core = core
+    def __init__(self, app, config):
+        self.app = app
+        self.core = app.core
         self.config = config
         self.session = Session(config)
 
@@ -93,15 +94,14 @@ class Auth(object):
             return AuthContext('session')
 
     def check_apikey(self):
-        apikey = request.headers.get(
+        apikey_value = request.headers.get(
             'HTTP_X_API_KEY') or request.args.get('api_key')
 
-        if apikey:
+        if apikey_value:
+            apikey = self.app.apikey_manager.find(apikey_value)
 
-            authenticated_resource = self.core.findOne(lambda r: getattr(r, 'apikey', None) == apikey)
-
-            if authenticated_resource:
-                return AuthContext('apikey', scope=authenticated_resource.scope, resource=authenticated_resource)
+            if apikey:
+                return AuthContext('apikey', scope=apikey.scope, resource=None)
             else:
                 raise ServerException('invalid apikey', 401)
 
@@ -132,7 +132,7 @@ class Auth(object):
 
 def install_auth(core, app, config = {}, **kwargs):
 
-    auth = Auth(core, config)
+    auth = Auth(app, config)
 
     if config.get('auth', {}).get('localonly'):
         @app.before_request

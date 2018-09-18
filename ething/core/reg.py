@@ -19,19 +19,36 @@ def _make_default(value, *arg, **kwargs):
 READ_ONLY = 2
 PRIVATE = 4
 
+
+class _NO_VALUE(object):
+    pass
+
+NO_VALUE = _NO_VALUE
+
+
 class Attribute (MutableMapping):
     
     def __init__(self, name, cls, props = None):
         self.name = name
         self.cls = cls
-        self._props = props if props is not None else dict()
+        self._props = dict()
+        if props is not None:
+            self.update(props)
     
     @property
     def properties (self):
       return self._props
     
     def update(self, *args, **kwargs):
-      self._props.update(dict(*args, **kwargs))
+      props = dict(*args, **kwargs)
+
+      for k in props:
+          v = props[k]
+          if v is NO_VALUE:
+            # remove the key
+            self._props.pop(k, None)
+          else:
+            self._props[k] = v
 
     def __getitem__(self, key):
         return self._props[key]

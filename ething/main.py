@@ -282,7 +282,8 @@ def main():
     from .webserver.server import WebServer
 
     # import the plugins here !
-    from . import plugins
+    from .plugins import import_all
+    import_all()
 
     core = Core(config)
 

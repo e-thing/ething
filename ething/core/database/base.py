@@ -71,23 +71,28 @@ class BaseClass (object):
 
 
     #
-    # Table (used for storing data time series)
+    # Table (used for storing apikeys, time series ...)
     #
-
-    def create_table(self, table_id):
+    def list_tables(self):
         raise NotImplementedError()
 
-    def remove_table(self, table_id):
+    def table_exists(self, table_name):
+        return table_name in self.list_tables()
+
+    def create_table(self, table_name):
         raise NotImplementedError()
 
-    def get_table_rows(self, table_id, query = None, start=0, length=None, keys=None, sort=None):
+    def remove_table(self, table_name):
         raise NotImplementedError()
 
-    def get_table_row_by_id(self, table_id, row_id):
-        rows = self.get_table_rows(table_id, query = "id == %s" % row_id, length = 1)
+    def get_table_rows(self, table_name, query = None, start=0, length=None, keys=None, sort=None):
+        raise NotImplementedError()
+
+    def get_table_row_by_id(self, table_name, row_id):
+        rows = self.get_table_rows(table_name, query = "id == '%s'" % row_id, length = 1)
         return rows[0] if len(rows) > 0 else None
 
-    def get_table_metadata(self, table_id):
+    def get_table_metadata(self, table_name):
         """
         compute the length and list the keys (except the id and date keys)
         {
@@ -98,7 +103,7 @@ class BaseClass (object):
         keys = {}
         length = 0
 
-        for row in self.get_table_rows(table_id):
+        for row in self.get_table_rows(table_name):
             for k in row:
                 if k not in keys:
                     keys[k] = 0
@@ -113,34 +118,37 @@ class BaseClass (object):
             'keys': keys
         }
 
-    def insert_table_row(self, table_id, row_data):
+    def insert_table_row(self, table_name, row_data):
         raise NotImplementedError()
 
-    def insert_table_rows(self, table_id, rows_data):
+    def insert_table_rows(self, table_name, rows_data):
         for row_data in rows_data:
-            self.insert_table_row(table_id, row_data)
+            self.insert_table_row(table_name, row_data)
 
-    def update_table_row(self, table_id, row_id, row_data):
+    def update_table_row(self, table_name, row_id, row_data):
         """return the old row"""
         raise NotImplementedError()
 
-    def remove_table_row(self, table_id, row_id):
+    def remove_table_row(self, table_name, row_id):
         """return the removed row"""
         raise NotImplementedError()
 
-    def remove_table_rows_by_id(self, table_id, row_ids):
+    def remove_table_rows_by_id(self, table_name, row_ids):
         removed_rows = []
         for row_id in row_ids:
-            removed_row = self.remove_table_row(table_id, row_id)
+            removed_row = self.remove_table_row(table_name, row_id)
             if removed_row:
                 removed_rows.append(removed_row)
         return removed_rows
 
-    def remove_table_rows_by_query(self, table_id, query):
-        rows_to_be_removed = self.get_table_rows(table_id, query = query)
-        return self.remove_table_rows_by_id(table_id, [row.get('id') for row in rows_to_be_removed])
+    def remove_table_rows_by_query(self, table_name, query):
+        rows_to_be_removed = self.get_table_rows(table_name, query = query)
+        return self.remove_table_rows_by_id(table_name, [row.get('id') for row in rows_to_be_removed])
 
-    def get_table_statistics_by_key(self, table_id, key, query = None):
+    def clear_table(self, table_name):
+        raise NotImplementedError()
+
+    def get_table_statistics_by_key(self, table_name, key, query = None):
 
         sum = 0
         sum2 = 0
@@ -159,7 +167,7 @@ class BaseClass (object):
         stddev = None
 
 
-        rows = self.get_table_rows(table_id, query = query, keys = ['id', 'date', key])
+        rows = self.get_table_rows(table_name, query = query, keys = ['id', 'date', key])
 
         for row in rows:
             count += 1

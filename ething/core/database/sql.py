@@ -206,22 +206,29 @@ class SQL(BaseClass):
     # Table (used for storing data time series)
     #
 
-    def create_table(self, table_id):
+    def list_tables(self):
         c = self.db.cursor()
-        c.execute("CREATE TABLE '%s' (id char(7), data text)" % (table_id,))
+        c.execute("SELECT name FROM sqlite_master WHERE type='table'")
+        tables = c.fetchall()
+        c.close()
+        return [t[0] for t in tables]
+
+    def create_table(self, table_name):
+        c = self.db.cursor()
+        c.execute("CREATE TABLE '%s' (id char(7), data text)" % (table_name,))
         c.close()
         self.db.commit()
 
-    def remove_table(self, table_id):
+    def remove_table(self, table_name):
         c = self.db.cursor()
-        c.execute("DROP TABLE '%s'" % (table_id,))
+        c.execute("DROP TABLE '%s'" % (table_name,))
         self.db.commit()
         c.close()
 
-    def get_table_rows(self, table_id, query = None, start=0, length=None, keys=None, sort=None):
+    def get_table_rows(self, table_name, query = None, start=0, length=None, keys=None, sort=None):
         rows = []
         c = self.db.cursor()
-        for row in c.execute("SELECT data FROM '%s'" % (table_id, )):
+        for row in c.execute("SELECT data FROM '%s'" % (table_name, )):
             rows.append(json.loads(row[0], cls=Decoder))
         c.close()
 
@@ -244,24 +251,24 @@ class SQL(BaseClass):
         
         return rows
 
-    def insert_table_row(self, table_id, row_data):
+    def insert_table_row(self, table_name, row_data):
         c = self.db.cursor()
-        c.execute("INSERT INTO '%s' (id, data) VALUES (?, ?)" % table_id, (row_data['id'], json.dumps(row_data, cls=Encoder)))
+        c.execute("INSERT INTO '%s' (id, data) VALUES (?, ?)" % table_name, (row_data['id'], json.dumps(row_data, cls=Encoder)))
         row_data['id'] = c.lastrowid
         self.db.commit()
         c.close()
 
-    def update_table_row(self, table_id, row_id, row_data):
+    def update_table_row(self, table_name, row_id, row_data):
         """return the old row"""
         c = self.db.cursor()
 
-        c.execute("SELECT data FROM '%s' WHERE id = ?" % table_id, (row_id,))
+        c.execute("SELECT data FROM '%s' WHERE id = ?" % table_name, (row_id,))
         updated_row = c.fetchone()
         if updated_row:
             updated_row = json.loads(updated_row[0], cls=Decoder)
 
         c.execute(
-            "UPDATE '%s' SET data = ? WHERE id = ?" % table_id,
+            "UPDATE '%s' SET data = ? WHERE id = ?" % table_name,
             (json.dumps(row_data, cls=Encoder), row_id))
 
         self.db.commit()
@@ -269,18 +276,25 @@ class SQL(BaseClass):
 
         return updated_row
 
-    def remove_table_row(self, table_id, row_id):
+    def remove_table_row(self, table_name, row_id):
         """return the removed row"""
         c = self.db.cursor()
 
-        c.execute("SELECT data FROM '%s' WHERE id = ?" % table_id, (row_id,))
+        c.execute("SELECT data FROM '%s' WHERE id = ?" % table_name, (row_id,))
         deleted_row = c.fetchone()
         if deleted_row:
             deleted_row = json.loads(deleted_row[0], cls=Decoder)
 
-        c.execute("DELETE FROM '%s' WHERE id = ?" % table_id, (row_id,))
+        c.execute("DELETE FROM '%s' WHERE id = ?" % table_name, (row_id,))
 
         self.db.commit()
         c.close()
 
         return deleted_row
+
+    def clear_table(self, table_name):
+        c = self.db.cursor()
+        c.execute("DELETE FROM '%s'" % table_name)
+        self.db.commit()
+        c.close()
+

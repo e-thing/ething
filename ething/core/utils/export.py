@@ -15,8 +15,8 @@ def export_data(core):
 
     # tables
     tables = {}
-    for table_id in core.db.list_tables():
-        tables[table_id] = core.db.get_table_rows(table_id)
+    for table_name in core.db.list_tables():
+        tables[table_name] = core.db.get_table_rows(table_name)
     data['tables'] = tables
 
     # files
@@ -42,8 +42,8 @@ def import_data(core, data):
         core.db.insert_resource(r)
 
     # tables
-    for table_id in data['tables']:
-        core.db.insert_table_rows(table_id, data['tables'][table_id])
+    for table_name in data['tables']:
+        core.db.insert_table_rows(table_name, data['tables'][table_name])
 
     # files
     for file_id in data['files']:

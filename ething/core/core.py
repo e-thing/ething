@@ -125,10 +125,6 @@ class Core(object):
         self.signalDispatcher.bind('ConfigUpdated', self._on_config_updated)
 
     def start(self):
-
-        from .utils.deadlock_dbg import trace_start
-        trace_start("trace.log")
-
         self.init()
         self.running = True
         self.dispatchSignal('DaemonStarted')

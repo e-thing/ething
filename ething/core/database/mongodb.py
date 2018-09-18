@@ -44,14 +44,13 @@ class MongoDB(BaseClass):
             'size': 0
         }
 
-        for name in self.db.collection_names(include_system_collections=False):
-            if re.match('tb\.', name):
-                try:
-                    i = self.db.command('collstats', name)
-                    tbinfo['count'] += i['count']
-                    tbinfo['size'] += i['size']
-                except:
-                    pass
+        for name in self.list_tables():
+            try:
+                i = self.db.command('collstats', name)
+                tbinfo['count'] += i['count']
+                tbinfo['size'] += i['size']
+            except:
+                pass
 
         # other
         resource_size = 0
@@ -87,6 +86,12 @@ class MongoDB(BaseClass):
     #
     # Resources
     #
+
+    def list_tables(self):
+        if hasattr(self.db, 'collection_names'):
+            return self.db.collection_names(include_system_collections=False)
+        else:
+            return self.db.list_collection_names()
 
     def list_resources(self):
         cursor = self.db["resources"].find({})
@@ -193,18 +198,18 @@ class MongoDB(BaseClass):
     # Table (used for storing data time series)
     #
 
-    def create_table(self, table_id):
+    def create_table(self, table_name):
         pass
 
-    def remove_table(self, table_id):
+    def remove_table(self, table_name):
         try:
-            self.db[table_id].drop()
+            self.db[table_name].drop()
         except:
             pass
 
-    def get_table_rows(self, table_id, query=None, start=0, length=None, keys=None, sort=None):
+    def get_table_rows(self, table_name, query=None, start=0, length=None, keys=None, sort=None):
 
-        c = self.db[table_id]
+        c = self.db[table_name]
         q = {}
 
         if query is not None:
@@ -250,37 +255,37 @@ class MongoDB(BaseClass):
 
         return items
 
-    def get_table_row_by_id(self, table_id, row_id):
-        row = self.db[table_id].find_one({'_id': row_id})
+    def get_table_row_by_id(self, table_name, row_id):
+        row = self.db[table_name].find_one({'_id': row_id})
         if row:
             row['id'] = row['_id']
             del row['_id']
             return row
 
-    def insert_table_row(self, table_id, row_data):
+    def insert_table_row(self, table_name, row_data):
         row_data = row_data.copy()
         row_data['_id'] = row_data['id']
         del row_data['id']
-        self.db[table_id].insert_one(row_data)
+        self.db[table_name].insert_one(row_data)
 
-    def insert_table_rows(self, table_id, rows_data):
+    def insert_table_rows(self, table_name, rows_data):
         for row_data in rows_data:
             row_data['_id'] = row_data['id']
             del row_data['id']
-        self.db[table_id].insert_many(rows_data, ordered=False)
+        self.db[table_name].insert_many(rows_data, ordered=False)
 
-    def update_table_row(self, table_id, row_data):
+    def update_table_row(self, table_name, row_data):
         """return the old row"""
-        old_row = self.db[table_id].find_one_and_replace({'_id': row_data['id']}, row_data)
+        old_row = self.db[table_name].find_one_and_replace({'_id': row_data['id']}, row_data)
         if old_row:
             old_row['id'] = old_row['_id']
             del old_row['_id']
             return old_row
 
-    def remove_table_row(self, table_id, row_id):
+    def remove_table_row(self, table_name, row_id):
         """return the removed row"""
         try:
-            old_row = self.db[table_id].find_one_and_delete({
+            old_row = self.db[table_name].find_one_and_delete({
                 '_id': row_id
             })
 
@@ -290,4 +295,7 @@ class MongoDB(BaseClass):
                 return old_row
         except:
             pass  # invalid id or unable to remove the document
+
+    def clear_table(self, table_name):
+        self.db.drop_collection(table_name)
 
