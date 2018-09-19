@@ -148,7 +148,9 @@ def install(core, app, auth, **kwargs):
                 name = plugin.name
                 schema = getattr(plugin, 'CONFIG_SCHEMA', None)
                 definition = {
-                    'js_index': bool(getattr(plugin, 'js_index', False))
+                    'js_index': bool(getattr(plugin, 'js_index', False)),
+                    'version': getattr(plugin, 'VERSION', None),
+                    'description': (plugin.__doc__ or '').strip()
                 }
 
                 if schema:

@@ -8,6 +8,7 @@ from ething.core.Resource import ResourceUpdated
 import requests
 import json
 
+version = '0.1.0'
 
 api_weather_url = 'http://api.openweathermap.org/data/2.5/weather'
 
@@ -15,6 +16,13 @@ refresh_interval = 300 # in seconds
 
 
 class OpenWeatherMapPlugin(Plugin):
+
+    """
+    OpenWeatherMap plugin. Allow you to get the weather for any city.
+    """
+
+    VERSION = version
+
     CONFIG_DEFAULTS = {
         'appid': '',
     }

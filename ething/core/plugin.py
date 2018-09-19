@@ -36,10 +36,19 @@ class PluginMount(type):
 class Plugin(with_metaclass(PluginMount, object)):
     """A plugin abstract class"""
 
+    VERSION = None
+
     def __init__(self, core, **kwargs):
         self.core = core
         self.log = logging.getLogger("ething.%s" % self.name)
         self.config = core.config[self.name] or {}
+        self.loaded = False
+
+    def __str__(self):
+        return self.name
+
+    def __repr__(self):
+        return self.name
 
     @classmethod
     def register(cls):
@@ -56,10 +65,16 @@ class Plugin(with_metaclass(PluginMount, object)):
         cls.js_index = js_index
 
     def load(self):
+        if self.loaded:
+            raise Exception('plugin "%s" already loaded' % self)
+        self.log.info('load plugin')
         self.core.signalDispatcher.bind('ConfigUpdated', self._on_core_config_updated)
+        self.loaded = True
 
     def unload(self):
         self.core.signalDispatcher.unbind('ConfigUpdated', self._on_core_config_updated)
+        self.loaded = False
+        self.log.info('unload plugin')
 
     def on_config_change(self, changes):
         pass

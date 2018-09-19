@@ -46,7 +46,6 @@ requires = [
     "cherrypy",
     "pytz",
     "flask-compress",
-    'wmi'
 ]
 
 if os.name != "nt":

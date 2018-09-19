@@ -429,10 +429,12 @@ class RPC_Server(object):
 
 class rpc(Plugin):
     def load(self):
+        super(rpc, self).load()
         self.process = RPC_Process(self.core, self.config.get('address'))
         self.process.start()
 
     def unload(self):
+        super(rpc, self).unload()
         if hasattr(self, 'process'):
             self.process.stop()
             del self.process

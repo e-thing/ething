@@ -11,10 +11,12 @@ import time
 class RuleManager(Plugin):
 
     def load(self):
+        super(RuleManager, self).load()
         self.process = RuleProcess(self.core)
         self.process.start()
 
     def unload(self):
+        super(RuleManager, self).unload()
         if hasattr(self, 'process'):
             self.process.stop()
             del self.process

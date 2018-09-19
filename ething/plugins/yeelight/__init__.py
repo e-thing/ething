@@ -14,6 +14,7 @@ import re
 class Yeelight(Plugin):
 
     def load(self):
+        super(Yeelight, self).load()
 
         self.controllers = {}
 
@@ -33,6 +34,7 @@ class Yeelight(Plugin):
         self.advertisement_controller.start()
 
     def unload(self):
+        super(Yeelight, self).unload()
         self.core.signalDispatcher.unbind('ResourceCreated', self._on_resource_created)
         self.core.signalDispatcher.unbind('ResourceDeleted', self._on_resource_deleted)
         self.core.signalDispatcher.unbind('ResourceUpdated', self._on_resource_updated)

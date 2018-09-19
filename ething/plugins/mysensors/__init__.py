@@ -29,6 +29,7 @@ import datetime
 class MySensors(Plugin):
 
     def load(self):
+        super(MySensors, self).load()
 
         self.controllers = {}
 
@@ -45,6 +46,7 @@ class MySensors(Plugin):
         self.core.signalDispatcher.bind('ResourceUpdated', self._on_resource_updated)
 
     def unload(self):
+        super(MySensors, self).unload()
         self.core.signalDispatcher.unbind('ResourceCreated', self._on_resource_created)
         self.core.signalDispatcher.unbind('ResourceDeleted', self._on_resource_deleted)
         self.core.signalDispatcher.unbind('ResourceUpdated', self._on_resource_updated)
