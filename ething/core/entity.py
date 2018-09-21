@@ -167,7 +167,8 @@ class Entity(with_metaclass(MetaReg, M_Class)):
         name = attribute.name
         data_type = attribute['type']
         model_key = attribute.get('model_key', name)
-        j[name] = data_type.unserialize(data.get(model_key), **kwargs)
+        if model_key in data:
+            j[name] = data_type.unserialize(data.get(model_key), **kwargs)
       return cls(j, **kwargs)
     
     @classmethod
@@ -179,9 +180,9 @@ class Entity(with_metaclass(MetaReg, M_Class)):
           mode = attribute.get('mode')
           if mode == PRIVATE:
             raise AttributeError('attribute "%s" is not writable' % name)
-          
           data_type = attribute['type']
-          j[name] = data_type.fromJson(data.get(name), **kwargs)
+          if name in data:
+            j[name] = data_type.fromJson(data.get(name), **kwargs)
       return cls(j, **kwargs)
     
     @classmethod

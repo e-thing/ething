@@ -42,6 +42,8 @@ class DbEntity(Entity):
 
                 if self.__new:
 
+                    self._before_insert()
+
                     self._insert()
 
                     object.__setattr__(self, '_DbEntity__new', False)
@@ -77,6 +79,9 @@ class DbEntity(Entity):
         with self._lock:
             self._remove()
             object.__setattr__(self, '_DbEntity__new', True)
+
+    def _before_insert(self):
+        pass
 
     def _insert(self):
         raise NotImplementedError()

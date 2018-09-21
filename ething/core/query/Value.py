@@ -45,9 +45,10 @@ class Value(object):
                     settings={
                         'TIMEZONE': tz,
                         'TO_TIMEZONE': 'UTC'
-                    })
+                    }
+                )
                 if isinstance(d, datetime.datetime):
-                    self.__date = d
+                    self.__date = d.replace(tzinfo=None)
             except:
                 pass
 

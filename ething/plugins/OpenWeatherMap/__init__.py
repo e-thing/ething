@@ -3,8 +3,9 @@
 from ething.core.plugin import Plugin
 from ething.core.IntervalProcess import IntervalProcess
 from ething.core.Device import *
-from ething.core.interfaces import Thermometer, PressureSensor, HumiditySensor
+from ething.core.interfaces import Thermometer, PressureSensor, HumiditySensor, Anemometer
 from ething.core.Resource import ResourceUpdated
+from ething.core.interfaces.sensor import SensorValueChanged
 import requests
 import json
 
@@ -75,9 +76,16 @@ class OpenWeatherMapPlugin(Plugin):
         return len(self.core.find(lambda d: isinstance(d, OpenWeatherMapDevice))) > 0
 
 
+@attr('weather', type=String(), mode=READ_ONLY, default='', history = True, watch = True, description='a string descibing the current weather')
 @attr('location', type=String(allow_empty=False), default=NO_VALUE, description='a city\'s name. See https://openweathermap.org/find')
-class OpenWeatherMapDevice(Device, Thermometer, PressureSensor, HumiditySensor):
-    pass
+class OpenWeatherMapDevice(Device, Thermometer, PressureSensor, HumiditySensor, Anemometer):
+
+    def _watch(self, attr, new_value, old_value):
+        super(OpenWeatherMapDevice, self)._watch(attr, new_value, old_value)
+
+        if attr == 'weather':
+            if new_value != old_value:
+                self.dispatchSignal(SensorValueChanged(self, attr, new_value, old_value))
 
 
 class OpenWeatherMapService(IntervalProcess):
@@ -109,9 +117,9 @@ class OpenWeatherMapService(IntervalProcess):
                 with device:
                     device.setConnectState(True)
 
-                    main = data.get('main', {})
+                    self.log.debug('data read for %s: %s' % (device, json.dumps(data)))
 
-                    self.log.debug('data read for %s: %s' % (device, json.dumps(main)))
+                    main = data.get('main', {})
 
                     if 'temp' in main:
                         device._temperature = main.get('temp')
@@ -120,5 +128,18 @@ class OpenWeatherMapService(IntervalProcess):
                     if 'humidity' in main:
                         device._humidity = main.get('humidity')
 
+                    weather = data.get('weather', [])
+
+                    if len(weather) > 0:
+                        weather = weather[0]
+                        if isinstance(weather, dict):
+                            device._weather = weather.get('description', '')
+
+                    if 'wind' in data:
+                        wind = data.get('wind', {})
+
+                        if 'speed' in wind:
+                            device._wind_speed = wind.get('speed')
+                            device._wind_direction = wind.get('deg', None)
 
 

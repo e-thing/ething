@@ -134,7 +134,7 @@ class File(Resource):
 
         with self:
             if opt & File.META_MIME:
-                """ try to find the correct mime type according to the extension first, then if not found, by the content """
+                # try to find the correct mime type according to the extension first, then if not found, by the content
 
                 mime = None
                 filename, ext = os.path.splitext(self.name)
@@ -229,3 +229,7 @@ class File(Resource):
         buffer.close()
         inBuffer.close()
         return thumbdata
+
+    def _before_insert(self):
+        super(File, self)._before_insert()
+        self.updateMeta(File.META_ALL)
