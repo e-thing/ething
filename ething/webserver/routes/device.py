@@ -1,10 +1,9 @@
 # coding: utf-8
 
-
 from flask import request, Response
 from ..server_utils import *
 import re
-from future.utils import text_type
+from future.utils import string_types, text_type
 from ething.core.reg import get_registered_methods
 
 
@@ -138,7 +137,7 @@ def install(core, app, auth, **kwargs):
 
         if return_type:
 
-            if re.search('^[^/]+/[^/]+$', return_type):
+            if isinstance(return_type, string_types) and re.search('^[^/]+/[^/]+$', return_type):
                 return Response(method.call(*args, **kwargs), mimetype=return_type)
             else:
                 return app.jsonify(method.call(*args, **kwargs))

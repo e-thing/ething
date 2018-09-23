@@ -268,8 +268,11 @@ class MySensorsProtocol(LineReader):
 
             if node and sensorId >= 0 and sensorId != INTERNAL_CHILD:
                 sensor = node.getSensor(sensorId)
-                if not sensor and message.messageType == PRESENTATION:
-                    sensor = self.createSensor(node, sensorId, message.subType)
+                if not sensor:
+                    if message.messageType == PRESENTATION:
+                        sensor = self.createSensor(node, sensorId, message.subType)
+                    else:
+                        self.log.warning('unable to create sensor (node=%s sensor=%s), waiting for a presentation packet, restart the node' % (nodeId, sensorId))
 
             if not node:
                 node = NullContextManager()
@@ -568,5 +571,5 @@ class MySensorsController(TransportProcess):
         self.gateway = gateway
 
     def send(self, *args, **kwargs):
-        self.protocol.send(*args, **kwargs)
+        return self.protocol.send(*args, **kwargs)
 

@@ -47,7 +47,7 @@ class Decoder(json.JSONDecoder):
             if type == 'datetime':
                 return parser.parse(obj['value'])
             if type == 'bytes':
-                return obj['value'].encode('uf8')
+                return obj['value'].encode('utf8')
         return obj
 
 

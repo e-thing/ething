@@ -50,7 +50,7 @@
     }
 
 
-    definitions.resources.MySensorsSerialGateway = {
+    definitions.resources.MySensorsEthernetGateway = {
 
         path: ['MySensors', 'Gateway'],
 
@@ -64,7 +64,7 @@
 
     }
 
-    definitions.resources.MySensorsEthernetGateway = {
+    definitions.resources.MySensorsSerialGateway = {
 
         path: ['MySensors', 'Gateway'],
 

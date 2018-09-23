@@ -30,7 +30,7 @@ def pingable(attr='host'):
 
             return online
 
-        setattr(cls, 'ping', f)
+        setattr(cls, 'ping_host', f)
         return cls
     return d
 

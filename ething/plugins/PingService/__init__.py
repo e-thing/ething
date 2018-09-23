@@ -38,14 +38,17 @@ class PingService(Process):
         ping all devices to see if there are still connected !
         """
 
-        devices = self.core.find(lambda r: r.isTypeof("resources/Device"))
+        devices = self.core.find(lambda r: r.isTypeof("resources/Device") and hasattr(r, 'ping_host'))
 
         for device in devices:
-            if hasattr(device, 'ping'):
-                if (device.lastSeenDate is None) or (
-                    device.lastSeenDate < datetime.datetime.utcnow() - datetime.timedelta(seconds=45)):
-                    threading.Thread(target=self._ping, args=(device,), name="ping").start()
+            if (device.lastSeenDate is None) or (
+                device.lastSeenDate < datetime.datetime.utcnow() - datetime.timedelta(seconds=45)):
+                threading.Thread(target=self._ping, args=(device,), name="ping").start()
 
     def _ping(self, device):
-        connected = device.ping(timeout=5)
-        self.log.debug('ping device %s : %s' % (device, 'connected' if connected else 'not connected'))
+        try:
+            connected = device.ping_host(timeout=5)
+        except:
+            self.log.exception('unable to ping device %s' % device)
+        else:
+            self.log.debug('ping device %s : %s' % (device, 'connected' if connected else 'not connected'))

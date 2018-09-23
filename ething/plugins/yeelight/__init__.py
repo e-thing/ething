@@ -236,7 +236,7 @@ class Controller(TransportProcess):
         self.gateway = gateway
 
     def send(self, *args, **kwargs):
-        self.protocol.send(*args, **kwargs)
+        return self.protocol.send(*args, **kwargs)
 
 
 
@@ -274,7 +274,7 @@ class YeelightAdvertisementProtocol(Protocol):
     def search(self):
         self.log.debug('search...')
         package = "M-SEARCH * HTTP/1.1\r\nST:wifi_bulb\r\nMAN:\"ssdp:discover\"\r\n"
-        self.transport.write(package, (yeelight.MULTICAST_ADDRESS, yeelight.MULTICAST_PORT))
+        self.transport.write(package.encode('utf8'), (yeelight.MULTICAST_ADDRESS, yeelight.MULTICAST_PORT))
 
     def process_device_info(self, dev_info):
 

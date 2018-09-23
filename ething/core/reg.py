@@ -492,7 +492,7 @@ def list_registered_methods(class_or_instance):
   methods = list()
   
   # list all methods attached to this device
-  for name, func in inspect.getmembers(cls, inspect.ismethod):
+  for name, func in inspect.getmembers(cls, inspect.isfunction):
       if hasattr(func, '__meta'):
         methods.append(Method(func) if instance is None else BoundMethod(func, instance))
   

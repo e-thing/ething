@@ -8,7 +8,7 @@ from .helpers import *
 class MySensorsDimmer (MySensorsSensor, DimmableSwitch):
 
     def _set_data(self, datatype, value):
-        super(MySensorsDimmer, self)._set(datatype, value)
+        super(MySensorsDimmer, self)._set_data(datatype, value)
 
         if datatype == V_PERCENTAGE or datatype == V_DIMMER:
             self._level = value

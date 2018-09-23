@@ -8,7 +8,7 @@ from .helpers import *
 class MySensorsRGB (MySensorsSensor, RGBLight):
 
     def _set_data(self, datatype, value):
-        super(MySensorsRGB, self)._set(datatype, value)
+        super(MySensorsRGB, self)._set_data(datatype, value)
         if datatype == V_RGB:
             self._color = value
         elif datatype == V_STATUS:

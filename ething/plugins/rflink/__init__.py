@@ -279,7 +279,7 @@ class RFLinkSerialController(TransportProcess):
         self.gateway = gateway
 
     def send(self, *args, **kwargs):
-        self.protocol.send(*args, **kwargs)
+        return self.protocol.send(*args, **kwargs)
 
 
 

@@ -229,7 +229,7 @@ class Controller(TransportProcess):
         )
 
     def send(self, *args, **kwargs):
-        self.protocol.send(*args, **kwargs)
+        return self.protocol.send(*args, **kwargs)
 
 
 

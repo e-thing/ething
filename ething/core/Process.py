@@ -11,13 +11,12 @@ processes_map = {}
 def add_process(process):
     with processes_map_lock:
         if process.name not in processes_map:
-            processes_map[process.name] = set()
-
-        processes_map[process.name].add(process)
+            processes_map[process.name] = []
+        processes_map[process.name].append(process)
 
 def remove_process(process):
     with processes_map_lock:
-        processes_map[process.name].discard(process)
+        processes_map[process.name].remove(process)
 
 def get_process(name):
     with processes_map_lock:
@@ -26,7 +25,7 @@ def get_process(name):
 
 def get_processes(name):
     with processes_map_lock:
-        return list(processes_map.get(name, set()))
+        return processes_map.get(name, [])
 
 
 class Process(StoppableThread):

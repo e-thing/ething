@@ -262,6 +262,7 @@ class TransportProcess(Process):
                 
                 self.protocol.connection_made()
             except Exception as e:
+                self.log.exception('exception in transport.open()')
                 error = e
 
             while not error and not self.stopped():
@@ -274,6 +275,7 @@ class TransportProcess(Process):
                 except Exception as e:
                     # probably some I/O problem such as disconnected USB serial
                     # adapters -> exit
+                    self.log.exception('exception in transport')
                     error = e
                 else:
                     if data:
@@ -281,6 +283,7 @@ class TransportProcess(Process):
                         try:
                             self.protocol.data_received(data)
                         except Exception as e:
+                            self.log.exception('exception in protocol.data_received()')
                             error = e
 
             if self.is_open:
