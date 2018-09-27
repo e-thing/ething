@@ -1,29 +1,23 @@
 (function(global){
 
-    var meta = global.meta;
-    var definitions = meta.definitions;
-
-
-    definitions.resources.MihomeGateway = {
-
+    EThingUI.extend('resources/MihomeGateway', {
         disableCreation: true
+    })
 
-    }
-
-    definitions.resources.MihomeDevice = {
+    EThingUI.extend('resources/MihomeDevice', {
 
         disableCreation: true,
 
         widgets: {
             'sensors': {
-              label: 'sensor values',
-              description: 'show all the sensors values',
-              type: 'WGenericSensor'
+              metadata: {
+                  label: 'sensor values',
+                  description: 'show all the sensors values',
+              },
+              extends: EThingUI.widgets.WGenericSensor
             }
         }
 
-    }
-
-
+    })
 
 })(this);

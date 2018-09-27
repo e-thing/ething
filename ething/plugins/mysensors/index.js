@@ -1,8 +1,5 @@
 (function(global){
 
-    var meta = global.meta;
-    var definitions = meta.definitions;
-
     const types = {
       'S_DOOR': { icon: 'mdi-door' },
       'S_MOTION': { icon: 'mdi-transition' },
@@ -50,7 +47,7 @@
     }
 
 
-    definitions.resources.MySensorsEthernetGateway = {
+    EThingUI.extend('resources/MySensorsEthernetGateway', {
 
         path: ['MySensors', 'Gateway'],
 
@@ -62,9 +59,9 @@
             }
         }
 
-    }
+    })
 
-    definitions.resources.MySensorsSerialGateway = {
+    EThingUI.extend('resources/MySensorsSerialGateway', {
 
         path: ['MySensors', 'Gateway'],
 
@@ -76,15 +73,15 @@
             }
         }
 
-    }
+    })
 
-    definitions.resources.MySensorsNode = {
+    EThingUI.extend('resources/MySensorsNode', {
 
         disableCreation: true,
 
-    }
+    })
 
-    definitions.resources.MySensorsSensor = {
+    EThingUI.extend('resources/MySensorsSensor', {
 
         disableCreation: true,
 
@@ -99,21 +96,20 @@
             return types[sensorType]
         }
 
-    }
+    })
 
-    definitions.resources.MySensorsGenericSensor = {
+    EThingUI.extend('resources/MySensorsGenericSensor', {
 
         widgets: {
             'sensors': {
-                label: 'sensor values',
-                description: 'show all the sensors values',
-                type: 'WGenericSensor'
+              metadata: {
+                  label: 'sensor values',
+                  description: 'show all the sensors values',
+              },
+              extends: EThingUI.widgets.WGenericSensor
             }
         }
-    }
-
-
-
+    })
 
 
 })(this);

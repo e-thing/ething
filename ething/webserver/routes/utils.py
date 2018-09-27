@@ -140,7 +140,7 @@ def install(core, app, auth, **kwargs):
                 "definitions": build_schema_definitions(skip=(DbEntity, Entity)),
                 "scopes": Scope.list,
                 "info": get_info(core),
-                "plugins":OrderedDict(),
+                "plugins": OrderedDict(),
                 "config": core.config.SCHEMA
             }
 
@@ -148,9 +148,9 @@ def install(core, app, auth, **kwargs):
                 name = plugin.name
                 schema = getattr(plugin, 'CONFIG_SCHEMA', None)
                 definition = {
-                    'js_index': bool(getattr(plugin, 'js_index', False)),
+                    'js_index': bool(getattr(plugin, 'JS_INDEX', False)),
                     'version': getattr(plugin, 'VERSION', None),
-                    'description': (plugin.__doc__ or '').strip()
+                    'description': getattr(plugin, 'DESCRIPTION', '')
                 }
 
                 if schema:

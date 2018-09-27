@@ -1,10 +1,6 @@
 (function(global){
 
-    var meta = global.meta;
-    var definitions = meta.definitions;
-
-
-    definitions.resources.RFLinkSerialGateway = {
+    EThingUI.extend('resources/RFLinkSerialGateway', {
 
         path: ['RFLink', 'Gateway'],
 
@@ -16,21 +12,23 @@
             }
         }
 
-    }
+    })
 
-    definitions.resources.RFLinkNode = {
+    EThingUI.extend('resources/RFLinkNode', {
 
         disableCreation: true,
 
-    }
+    })
 
-    definitions.resources.RFLinkGenericSensor = {
+    EThingUI.extend('resources/RFLinkGenericSensor', {
 
         widgets: {
             'sensors': {
-              label: 'sensor values',
-              description: 'show all the sensors values',
-              type: 'WGenericSensor'
+              metadata: {
+                  label: 'sensor values',
+                  description: 'show all the sensors values',
+              },
+              extends: EThingUI.widgets.WGenericSensor
             }
         },
 
@@ -49,7 +47,7 @@
             return m
         }
 
-    }
+    })
 
 
 })(this);

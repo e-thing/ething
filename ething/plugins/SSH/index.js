@@ -1,10 +1,6 @@
 (function(global){
 
-    var meta = global.meta;
-    var definitions = meta.definitions;
-
-
-    definitions.resources.SSH = {
+    EThingUI.extend('resources/SSH', {
 
         properties: {
             host: {
@@ -12,7 +8,7 @@
             }
         }
 
-    }
+    })
 
 
 })(this);

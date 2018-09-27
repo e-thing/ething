@@ -485,3 +485,18 @@ class Table(Resource):
             buffer.close()
 
         return content
+
+    def export_instance(self, **kwargs):
+        s = self.serialize(**kwargs)
+        d = self.select()
+        return {
+            'object': s,
+            'content': d
+        }
+
+    @classmethod
+    def import_instance(cls, data, **kwargs):
+        instance = cls.unserialize(data.get('object'), create=True, **kwargs)
+        instance.save()
+        instance.importData(data.get('content'))
+        return instance

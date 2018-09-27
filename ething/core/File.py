@@ -8,6 +8,7 @@ import datetime
 import os
 from .utils.mime import content_to_mime, ext_to_mime
 import re
+import base64
 try:
     from PIL import Image, ImageOps
 except ImportError:
@@ -233,3 +234,20 @@ class File(Resource):
     def _before_insert(self):
         super(File, self)._before_insert()
         self.updateMeta(File.META_ALL)
+
+    def export_instance(self, **kwargs):
+        s = self.serialize(**kwargs)
+        s['content'] = None
+        s['thumb'] = None
+        d = base64.b64encode(self.read())
+        return {
+            'object': s,
+            'content': d
+        }
+
+    @classmethod
+    def import_instance(cls, data, **kwargs):
+        instance = cls.unserialize(data.get('object'), create = True, **kwargs)
+        instance.save()
+        instance.write(base64.b64decode(data.get('content')))
+        return instance

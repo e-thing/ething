@@ -1,15 +1,11 @@
 (function(global){
 
-    var Vue = global.Vue;
-    var quasar = global.quasar;
-    var meta = global.meta;
-    var formSchema = global.formSchema;
-    var definitions = meta.definitions;
-    var extend = quasar.extend;
-    var FormComponent = formSchema.FormComponent;
+    function deepCopy(obj) {
+        return JSON.parse(JSON.stringify(obj))
+    }
 
 
-    definitions.resources.MQTT = {
+    EThingUI.extend('resources/MQTT', {
 
         properties: {
 
@@ -22,10 +18,10 @@
             }
         }
 
-    }
+    })
 
 
-    formSchema.registerForm(schema => {
+    EThingUI.formSchema.registerForm(schema => {
         if (schema.type === 'mqtt-sub-item') {
             return 'form-schema-mqtt-sub-item'
         }
@@ -55,11 +51,11 @@
 
         template: '<div><small v-if="schema.description" class="form-schema-description">{{ schema.description }}</small><form-schema :schema="rootSchema" :model="internalModel" @input="setInternalValue" @error="setError"/></div>',
 
-        mixins: [FormComponent],
+        mixins: [EThingUI.formSchema.FormComponent],
 
         data () {
             return {
-              rootSchema: extend(true, {}, rootSchema),
+              rootSchema: deepCopy(rootSchema),
             }
         },
 
@@ -94,7 +90,7 @@
                   required: true
                 }
 
-                var orig = extend(true, {}, rootSchema)
+                var orig = deepCopy(rootSchema)
 
                 //console.log('rootModel.type', orig)
 

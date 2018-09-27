@@ -1,14 +1,10 @@
 (function(global){
 
-    var meta = global.meta;
-    var definitions = meta.definitions;
-
-
-    definitions.resources.YeelightDevice = {
+    EThingUI.extend('resources/YeelightDevice', {
 
         disableCreation: true,
 
-    }
+    })
 
 
 })(this);

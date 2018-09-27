@@ -1,6 +1,6 @@
 from ..Helpers import toJson
-import base64
 import datetime
+from ..reg import get_registered_class
 
 
 def export_data(core):
@@ -10,42 +10,50 @@ def export_data(core):
         'date': datetime.datetime.now()
     }
 
+    # config
+    data['config'] = core.config
+
     # resources
-    data['resources'] = core.db.list_resources()
+    resources = []
+    for r in core.find():
+        resources.append({
+            'id': r.id,
+            'type': r.type,
+            'resource': r.export_instance()
+        })
+    data['resources'] = resources
 
-    # tables
-    tables = {}
-    for table_name in core.db.list_tables():
-        tables[table_name] = core.db.get_table_rows(table_name)
-    data['tables'] = tables
-
-    # files
-    files = {}
-    for file in core.db.listFiles():
-        file_id = file['id']
-        files[file_id] = {
-            'metadata': file['metadata'],
-            'filename': file['filename'],
-            'content': base64.b64encode(core.db.retrieveFile(file_id))
-        }
-    data['files'] = files
+    # plugins
+    plugins_export = dict()
+    for p in core.plugins:
+        d = p.export_data()
+        if d is not None:
+            plugins_export[p.name] = d
+    data['plugins'] = plugins_export
 
     return toJson(data)
+
 
 def import_data(core, data):
 
     if core.version != data.get('version'):
         raise Exception('unable to import: version numbers differ %s != %s' % (core.version, data.get('version')))
 
+    # config
+    config = data.get('config')
+    if config:
+        core.config.set(config)
+
     # resources
-    for r in data['resources']:
-        core.db.insert_resource(r)
+    for r in data.get('resources', []):
+        cls = get_registered_class(r.get('type'))
+        if cls:
+            cls.import_instance(r.get('resource'), ething=core)
 
-    # tables
-    for table_name in data['tables']:
-        core.db.insert_table_rows(table_name, data['tables'][table_name])
+    # plugins
+    plugins_export = data.get('plugins')
+    if plugins_export:
+        for p in core.plugins:
+            if p.name in plugins_export:
+                p.import_data(plugins_export.get(p.name))
 
-    # files
-    for file_id in data['files']:
-        file = data['files'][file_id]
-        core.db.storeFile(file['filename'], base64.b64decode(file['content']), file['metadata'], file_id)

@@ -1,10 +1,6 @@
 (function(global){
 
-    var meta = global.meta;
-    var definitions = meta.definitions;
-
-
-    definitions.resources.Denon = {
+    EThingUI.extend('resources/Denon', {
 
         label: 'Denon/Marantz amplifier',
 
@@ -16,7 +12,7 @@
             }
         }
 
-    }
+    })
 
 
 })(this);

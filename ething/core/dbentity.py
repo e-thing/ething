@@ -25,7 +25,8 @@ class DbEntity(Entity):
 
     @classmethod
     def unserialize(cls, data, **kwargs):
-        return super(DbEntity, cls).unserialize(data, create=False, **kwargs)
+        kwargs.setdefault('create', False)
+        return super(DbEntity, cls).unserialize(data, **kwargs)
 
     def save(self):
         with self._lock:
@@ -115,3 +116,12 @@ class DbEntity(Entity):
         for a in list_registered_attr(self):
             if a.get('watch'):
                 self.__watch_data[a.name] = self._get(a)
+
+    def export_instance(self, **kwargs):
+        return self.serialize(**kwargs)
+
+    @classmethod
+    def import_instance(cls, data, **kwargs):
+        instance = cls.unserialize(data, create = True, **kwargs)
+        instance.save()
+        return instance

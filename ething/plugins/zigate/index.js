@@ -1,10 +1,6 @@
 (function(global){
 
-    var meta = global.meta;
-    var definitions = meta.definitions;
-
-
-    definitions.resources.ZigateSerialGateway = {
+    EThingUI.extend('resources/ZigateSerialGateway', {
 
         path: ['Zigate', 'Gateway'],
 
@@ -16,7 +12,7 @@
             }
         }
 
-    }
+    })
 
 
 })(this);

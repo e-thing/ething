@@ -16,7 +16,7 @@ import pytz
 from future.utils import binary_type
 from .method_override import HTTPMethodOverrideMiddleware
 from .server_utils import ServerException, tb_extract_info, root_path
-from .apikey import ApikeyManager
+from .apikey import ApikeyManager, Apikey
 from ething.core.plugin import Plugin
 from ething.core.Process import Process
 from ething.core.Helpers import filter_obj
@@ -93,6 +93,15 @@ class WebServer(Plugin):
         if hasattr(self, 'process'):
             self.process.stop()
             del self.process
+
+    def export_data(self):
+        akm = ApikeyManager(self.core)
+        return [apikey.export_instance() for apikey in akm.list()]
+
+    def import_data(self, data):
+        akm = ApikeyManager(self.core)
+        for apikey in data:
+            Apikey.import_instance(apikey, manager=akm)
 
 
 class FlaskApp(Flask):
@@ -268,6 +277,7 @@ class WebServerProcess(Process):
         self.config = config or {}
         self.debug = False
         self.server = None
+        self.app = None
 
     def stop(self):
         if self.server:
@@ -277,6 +287,8 @@ class WebServerProcess(Process):
     def main(self):
 
         app = FlaskApp(self.core, self.log, root_path=root_path)
+
+        self.app = app
 
         self.log.info("web server root path = %s" % root_path)
 

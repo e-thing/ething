@@ -1,10 +1,6 @@
 (function(global){
 
-    var meta = global.meta;
-    var definitions = meta.definitions;
-
-
-    definitions.resources.BleaGateway = {
+    EThingUI.extend('resources/BleaGateway', {
 
         label: 'Bluetooth Gateway',
 
@@ -17,22 +13,22 @@
             }
         }
 
-    }
+    })
 
-    definitions.resources.Miflora = {
+    EThingUI.extend('resources/Miflora', {
 
         icon: 'mdi-flower',
 
         widgets: {
             'sensors': {
-              label: 'sensor values',
-              description: 'show all the sensors values',
-              type: 'WGenericSensor'
+              metadata: {
+                  label: 'sensor values',
+                  description: 'show all the sensors values',
+              },
+              extends: EThingUI.widgets.WGenericSensor
             }
         }
 
-    }
-
-
+    })
 
 })(this);

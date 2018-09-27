@@ -3,6 +3,13 @@ from .type import *
 from collections import MutableMapping, OrderedDict
 import copy
 import inspect
+import sys
+
+
+if sys.version_info >= (3, 0):
+    method_inspector = inspect.isfunction
+else:
+    method_inspector = inspect.ismethod
 
 
 def _make_default(value, *arg, **kwargs):
@@ -476,7 +483,6 @@ class BoundMethod (Method):
     return super(BoundMethod, self).call(self._instance, *args, **kwargs)
 
 
-
 def list_registered_methods(class_or_instance):
   """
   list the methods of the given class or instance.
@@ -492,7 +498,7 @@ def list_registered_methods(class_or_instance):
   methods = list()
   
   # list all methods attached to this device
-  for name, func in inspect.getmembers(cls, inspect.isfunction):
+  for name, func in inspect.getmembers(cls, method_inspector):
       if hasattr(func, '__meta'):
         methods.append(Method(func) if instance is None else BoundMethod(func, instance))
   
@@ -610,7 +616,7 @@ class MetaReg(type):
       for base in bases:
         
         base_m = [m.func for m in list_registered_methods(base)]
-        cls_m = [i[1] for i in inspect.getmembers(cls, inspect.isfunction)]
+        cls_m = [i[1] for i in inspect.getmembers(cls, method_inspector)]
         for b_m in base_m:
             if b_m not in cls_m:
                 #print('overloading %s' % b_m.__name__)

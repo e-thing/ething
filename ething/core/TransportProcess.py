@@ -184,8 +184,9 @@ class Protocol(object):
         pass
 
     def connection_lost(self, exc):
-        if isinstance(exc, Exception):
-            self.log.error("Exception in transport process: %s" % str(exc))
+        #if isinstance(exc, Exception):
+        #    self.log.error("Exception in transport process: %s" % str(exc))
+        pass
 
 class Packetizer(Protocol):
     """

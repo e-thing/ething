@@ -1,5 +1,6 @@
 # coding: utf-8
 from flask import send_file
+import os
 
 
 def install(core, app, auth, **kwargs):
@@ -15,10 +16,10 @@ def install(core, app, auth, **kwargs):
     def plugin_js_index(name):
         p = core.get_plugin(name)
         if p:
-            if p.js_index:
-                return send_file(p.js_index)
+            if p.JS_INDEX:
+                return send_file(os.path.join(p.ROOT_DIR, p.JS_INDEX))
             else:
-                raise Exception('no js index')
+                raise Exception('no js index defined for this plugin')
         else:
             raise Exception('unknown plugin')
 
