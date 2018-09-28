@@ -223,7 +223,7 @@ def main():
         print("v%s" % __version__)
         sys.exit()
 
-    if hasattr(args, 'pidfile'):
+    if getattr(args, 'pidfile', None):
         PID_FILE = args.pidfile
 
     if getattr(args, 'stop', None):

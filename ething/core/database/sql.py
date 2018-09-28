@@ -148,7 +148,7 @@ class SQL(BaseClass):
             files = c.fetchall()
             if len(files) > 0:
                 content = files[0][0]
-                if isinstance(content, buffer):
+                if not py3 and isinstance(content, buffer):
                     content = str(content) # convert buffer to string
 
             c.close()
