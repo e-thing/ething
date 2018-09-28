@@ -7,9 +7,11 @@ import sys
 
 
 if sys.version_info >= (3, 0):
-    method_inspector = inspect.isfunction
+    def get_cls_methods(cls):
+      return inspect.getmembers(cls, inspect.isfunction)
 else:
-    method_inspector = inspect.ismethod
+    def get_cls_methods(cls):
+      return [(n,m.__func__) for n,m in inspect.getmembers(cls, inspect.ismethod)]
 
 
 def _make_default(value, *arg, **kwargs):
@@ -498,7 +500,7 @@ def list_registered_methods(class_or_instance):
   methods = list()
   
   # list all methods attached to this device
-  for name, func in inspect.getmembers(cls, method_inspector):
+  for name, func in get_cls_methods(cls):
       if hasattr(func, '__meta'):
         methods.append(Method(func) if instance is None else BoundMethod(func, instance))
   
@@ -616,7 +618,7 @@ class MetaReg(type):
       for base in bases:
         
         base_m = [m.func for m in list_registered_methods(base)]
-        cls_m = [i[1] for i in inspect.getmembers(cls, method_inspector)]
+        cls_m = [i[1] for i in get_cls_methods(cls)]
         for b_m in base_m:
             if b_m not in cls_m:
                 #print('overloading %s' % b_m.__name__)

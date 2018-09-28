@@ -83,7 +83,7 @@ class Plugin(with_metaclass(PluginMount, object)):
         root_dir = os.path.dirname(inspect.getfile(cls))
 
         plugin_info = {
-            'js': None,
+            'js': './index.js',
             'version': None,
             'description': None,
             'name': None,
@@ -95,9 +95,6 @@ class Plugin(with_metaclass(PluginMount, object)):
         try:
             plugin_json_file = os.path.join(root_dir, 'plugin.json')
             if os.path.isfile(plugin_json_file):
-                plugin_info.update({
-                    'js': './index.js'
-                })
                 with open(plugin_json_file) as f:
                     plugin_info.update(json.load(f))
         except:
@@ -107,7 +104,9 @@ class Plugin(with_metaclass(PluginMount, object)):
             cls.NAME = plugin_info.get('name')
 
         if plugin_info.get('js'):
-            cls.JS_INDEX = plugin_info.get('js')
+            js_index_file = os.path.join(root_dir, plugin_info.get('js'))
+            if os.path.isfile(js_index_file):
+                cls.JS_INDEX = js_index_file
 
         if plugin_info.get('version') is not None:
             cls.VERSION = plugin_info.get('version')

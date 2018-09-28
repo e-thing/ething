@@ -1,7 +1,7 @@
 # coding: utf-8
 
 
-from ething.core.Device import Device, method, attr, abstract, isString, isBool, isNone, READ_ONLY
+from ething.core.Device import Device, method, attr, abstract
 from .Message import Message
 
 
