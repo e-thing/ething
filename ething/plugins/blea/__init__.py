@@ -124,7 +124,7 @@ if bluepy_imported:
     class ReadThread(threading.Thread):
 
         def __init__(self, controller, device):
-            super(ReadThread, self).__init__(name="ReadThread")
+            super(ReadThread, self).__init__(name="bleaReadThread")
             self.daemon = True
             self.controller = controller
             self.device = device
@@ -143,7 +143,6 @@ if bluepy_imported:
             super(Controller, self).__init__('blea')
             self.gateway = gateway
             self.core = gateway.ething
-            self._lock = threading.Lock()
             self.scheduler = Scheduler()
             self.tsreadmap = {}
             self._lock = threading.Lock()

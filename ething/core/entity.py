@@ -46,22 +46,22 @@ class Entity(with_metaclass(MetaReg, M_Class)):
           return a
 
     def __getattr__(self, name):
-        with self._lock:
-            priv_access = False
+        #with self._lock:
+        priv_access = False
 
-            if name.startswith('_'):
-                priv_access = True
-                name = name[1:]
+        if name.startswith('_'):
+            priv_access = True
+            name = name[1:]
 
-            attribute = self._getattr(name)
+        attribute = self._getattr(name)
 
-            if attribute is None:
-                raise AttributeError('no attribute "%s"' % name)
+        if attribute is None:
+            raise AttributeError('no attribute "%s"' % name)
 
-            if attribute.get('mode') == PRIVATE and not priv_access:
-                raise AttributeError('attribute "%s" is not readable' % name)
+        if attribute.get('mode') == PRIVATE and not priv_access:
+            raise AttributeError('attribute "%s" is not readable' % name)
 
-            return self._get(attribute)
+        return self._get(attribute)
 
     def _get(self, attribute):
         name = attribute.name
