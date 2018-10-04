@@ -10,5 +10,4 @@ def import_all():
             print('plugin "%s" import failed: %s' % (module_name, str(e)))
             traceback.print_exc()
         else:
-            print('plugin "%s" imported' % module_name)
             globals()[module_name] = module

@@ -46,6 +46,8 @@ requires = [
     "cherrypy",
     "pytz",
     "flask-compress",
+    "jsonschema",
+    "unqlite"
 ]
 
 if os.name != "nt":

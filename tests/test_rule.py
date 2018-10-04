@@ -13,8 +13,8 @@ def test_rule(core):
             })
         ],
         'actions': [
-            action.Notify.Notify({
-                'message': 'hello'
+            action.Wait.Wait({
+                'duration': 200
             })
         ]
     })

@@ -51,10 +51,10 @@ class Decoder(json.JSONDecoder):
         return obj
 
 
-class SQL(BaseClass):
+class SQLite(BaseClass):
 
     def __init__(self, **config):
-        super(SQL, self).__init__(**config)
+        super(SQLite, self).__init__(**config)
         self.file = os.path.join(USER_DIR, '%s.db' % self.database)
 
     def connect(self):
@@ -254,7 +254,6 @@ class SQL(BaseClass):
     def insert_table_row(self, table_name, row_data):
         c = self.db.cursor()
         c.execute("INSERT INTO '%s' (id, data) VALUES (?, ?)" % table_name, (row_data['id'], json.dumps(row_data, cls=Encoder)))
-        row_data['id'] = c.lastrowid
         self.db.commit()
         c.close()
 

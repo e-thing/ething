@@ -4,11 +4,11 @@ from future.utils import string_types
 
 from .reg import get_registered_class
 from .database.mongodb import MongoDB
-from .database.sql import SQL
+from .database.sqlite import SQLite
+from .database.unqlitedb import UnQLiteDB
 from .ResourceQueryParser import ResourceQueryParser
-from .Config import Config
+from .Config import CoreConfig
 from .SignalDispatcher import SignalDispatcher
-from .Mail import Mail
 from .version import __version__
 from .plugin import instanciate_plugins
 from .Scheduler import Scheduler
@@ -34,7 +34,7 @@ class Core(object):
     def __init__(self, config=None):
         self.running = False
 
-        self.config = Config(self, config)
+        self.config = CoreConfig(self, config)
 
         self._init_logger()
         self._init_database()
@@ -50,27 +50,28 @@ class Core(object):
     def _init_logger(self):
         self.log = logging.getLogger('ething')
         self.log.setLevel(
-            getattr(logging, self.config['log']['level'].upper(), logging.INFO))
+            getattr(logging, self.config.get('log', {}).get('level', 'info').upper(), logging.INFO))
 
     def _init_plugins(self):
         self.plugins = instanciate_plugins(self)
 
     def _init_database(self):
-
         try:
-            db_type = self.config.get('db.type', 'sqlite').lower()
+            db_type = self.config.get('db.type', 'unqlite').lower()
             if db_type == 'mongodb':
                 db_ctor = MongoDB
+            elif db_type == 'unqlite':
+                db_ctor = UnQLiteDB
             else:
-                db_ctor = SQL
+                db_ctor = SQLite
             self.log.info('db type: %s' % db_type)
-            self.db = db_ctor(tz = str(self.local_tz), **self.config['db'])
+            self.db = db_ctor(tz = str(self.local_tz), **(self.config.get('db', {})))
 
             self.db.connect()
             self.resource_db_cache = ResourceDbCache(self)
-        except:
-            raise Exception(
-                'unable to connect to the database [%s]' % sys.exc_info()[1])
+        except Exception as e:
+            self.log.exception('init database error')
+            raise e
 
         self.resourceQueryParser = ResourceQueryParser(tz = str(self.local_tz))
 
@@ -116,7 +117,6 @@ class Core(object):
         self.log.info("Using home directory: %s" % os.getcwd())
 
         self.signalDispatcher = SignalDispatcher()
-        self.mail = Mail(self)
         self.scheduler = Scheduler()
         
         self.scheduler.at(self._tick, hour='*', min='*')
@@ -126,9 +126,9 @@ class Core(object):
             plugin_name = type(plugin).__name__
             try:
                 plugin.load()
-                self.log.info('plugin %s loaded' % plugin_name)
+                self.log.info('plugin %s loaded (version=%s)' % (plugin_name, plugin.VERSION))
             except Exception:
-                self.log.exception('unable to load the plugin %s' % plugin_name)
+                self.log.exception('unable to load the plugin %s (version=%s)' % (plugin_name, plugin.VERSION))
 
         self.signalDispatcher.bind('ConfigUpdated', self._on_config_updated)
         
@@ -159,22 +159,10 @@ class Core(object):
         self.dispatchSignal('Tick')
 
     def _on_config_updated(self, signal):
-        update_log = False
-        update_notification = False
-
-        for change in signal.changes:
-            attr_name = change[0]
-            if attr_name.startswith("log."):
-                update_log = True
-            elif attr_name.startswith("notification."):
-                update_notification = True
-
-        if update_log:
-            self.log.debug('log config updated')
-            self._init_logger()
-        if update_notification:
-            self.log.debug('notification config updated')
-            self.mail = Mail(self)
+        for key in signal.updated_keys:
+            if key == "log":
+                self.log.debug('log config updated')
+                self._init_logger()
 
     #
     # Resources
@@ -278,10 +266,7 @@ class Core(object):
         #     self.signalManager.dispatch(signal)
 
     def notify(self, message, subject = None):
-
         self.dispatchSignal('Notified', message = message, subject = subject)
-
-        self.mail.send(message = message, subject = subject)
 
     def reset(self):
         """

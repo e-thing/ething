@@ -13,6 +13,9 @@ def install(core, app, auth, server = None, **kwargs):
     @auth.required()
     def events():
 
+        if not server.ready:
+            raise Exception('Server not ready')
+
         remote_addr = request.remote_addr
 
         core.log.debug('SSE: new listener %s' % remote_addr)

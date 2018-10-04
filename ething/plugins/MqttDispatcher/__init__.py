@@ -15,6 +15,9 @@ from collections import OrderedDict
 class MqttDispatcher(Plugin):
     CONFIG_DEFAULTS = {
         'port': 1883,
+        'user': '',
+        'password': '',
+        'host': ''
     }
 
     CONFIG_SCHEMA = {
@@ -22,8 +25,7 @@ class MqttDispatcher(Plugin):
         'properties': OrderedDict([
             ('host', {
                 'description': 'leave empty to disable this plugin',
-                'type': 'string',
-                'minLength': 1
+                'type': 'string'
             }),
             ('port', {
                 'type': 'integer',
@@ -31,12 +33,10 @@ class MqttDispatcher(Plugin):
                 'maximum': 65535
             }),
             ('user', {
-                'type': 'string',
-                'minLength': 1
+                'type': 'string'
             }),
             ('password', {
-                'type': 'string',
-                'minLength': 4
+                'type': 'string'
             })
         ])
     }
@@ -59,7 +59,7 @@ class MqttDispatcher(Plugin):
             self.process.stop()
             del self.process
 
-    def on_config_change(self, changes):
+    def on_config_change(self):
         self.stop_process()
         self.start_process()
 

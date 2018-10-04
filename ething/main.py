@@ -192,6 +192,21 @@ def remove_logger():
         h.close()
 
 
+def load_config(filename):
+    config = dict()
+
+    if os.path.isfile(filename):
+        # try to read it !
+        config = json.load(open(filename, encoding='utf8'))
+
+    return config
+
+
+def save_config(filename, conf):
+    with open(filename, 'w', encoding='utf8') as outfile:
+        json.dump(conf, outfile, indent=1)
+
+
 def main():
 
     global CONFIG_FILE, PID_FILE
@@ -223,7 +238,7 @@ def main():
         print("v%s" % __version__)
         sys.exit()
 
-    if getattr(args, 'pidfile', None):
+    if getattr(args, 'pidfile', None) is not None:
         PID_FILE = args.pidfile
 
     if getattr(args, 'stop', None):
@@ -257,8 +272,7 @@ def main():
 
         # copy default config
         old_umask = os.umask(0o177)
-        with open(CONFIG_FILE, 'w', encoding='utf8') as conf:
-            json.dump({}, conf)
+        save_config(CONFIG_FILE, {})
         os.umask(old_umask)
 
     print("config : %s" % CONFIG_FILE)
@@ -266,13 +280,12 @@ def main():
     if getattr(args, 'daemon', None):
         createDaemon()
 
-    from .core.Config import Config
     from .core.utils import print_info
 
     init_logger(not (getattr(args, 'daemon', None) or getattr(args, 'quiet', False)))
 
     try:
-        config = Config.load(CONFIG_FILE)
+        config = load_config(CONFIG_FILE)
     except:
         raise
 
@@ -323,8 +336,8 @@ def main():
     signal.signal(signal.SIGINT, stop)
     signal.signal(signal.SIGTERM, stop)
 
-    def save_config(signal):
-        core.config.save(CONFIG_FILE)
+    def _save_config(signal):
+        save_config(CONFIG_FILE, core.config)
 
     try:
 
@@ -334,7 +347,7 @@ def main():
         core.start()
 
         core.signalDispatcher.bind(
-            'ConfigUpdated', save_config)
+            'ConfigUpdated', _save_config)
 
         core.loop_forever()
 
@@ -359,10 +372,21 @@ def main():
         exit_code = 2
 
     finally:
-        core.destroy()
-        remove_logger()
+        try:
+            core.destroy()
+        except:
+            core.log.exception("exception in core.destroy()")
+
+        try:
+            remove_logger()
+        except Exception as e:
+            print("exception in remove_logger(): %s" % str(e))
+
         if PID_FILE:
-            deletePidFile()
+            try:
+                deletePidFile()
+            except:
+                print("exception in deletePidFile(): %s" % str(e))
 
     if getattr(core, 'restart_flag', False):
         print("restarting...")

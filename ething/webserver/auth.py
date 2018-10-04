@@ -69,7 +69,7 @@ class Auth(object):
             return wrapper
         return d
 
-    def check(self, permissions):
+    def check(self, permissions = None):
 
         authctx = self.check_localhost() or self.check_session(
         ) or self.check_apikey() or self.check_basic() or self.check_public()
@@ -134,7 +134,7 @@ def install_auth(core, app, config = {}, **kwargs):
 
     auth = Auth(app, config)
 
-    if config.get('auth', {}).get('localonly'):
+    if config.get('auth.localonly'):
         @app.before_request
         def check_local_only():
 

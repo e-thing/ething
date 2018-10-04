@@ -63,9 +63,6 @@ class OpenWeatherMapPlugin(Plugin):
         self.stop_process()
         self.start_process()
 
-    #def on_config_change(self, changes):
-    #    self.restart_process()
-
     def on_resource_event(self, signal):
         device = signal.resource
         if isinstance(device, OpenWeatherMapDevice):

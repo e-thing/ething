@@ -38,6 +38,6 @@ def install(core, app, auth, **kwargs):
                 type: object
         """
         if request.method == 'PATCH':
-            core.config.set(request.get_json())
+            core.config.update(request.get_json())
 
-        return app.jsonify(core.config())
+        return app.jsonify(core.config)

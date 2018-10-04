@@ -113,11 +113,6 @@ class ScriptEngine(object):
         if apiKey:
             cmd.append('--apikey')
             cmd.append(apiKey)
-        # else:
-        #     cmd.append('--user')
-        #     cmd.append('"%s"' % addslashes(ething.config('auth.username')))
-        #     cmd.append('--password')
-        #     cmd.append('"%s"' % addslashes(ething.config('auth.password')))
 
         if isinstance(globals, dict):
             cmd.append('--globals')

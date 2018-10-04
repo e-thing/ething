@@ -8,10 +8,11 @@ from ething.core.Rule import Rule
 
 _core = Core({
     'db': {
+        'type': 'unqlite',
         'database': 'test_unit'
     },
     'log': {
-        'level': 'debug'
+        'level': 'DEBUG'
     },
     'debug': True,
     'WebServer': {

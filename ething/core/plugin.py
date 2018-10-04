@@ -1,9 +1,10 @@
 from future.utils import with_metaclass
-from .Config import Config
+from .Config import ConfigItem
 import logging
 import inspect
 import os
 import json
+import copy
 from io import open
 
 
@@ -12,6 +13,9 @@ class PluginMount(type):
 
     def __init__(cls, name, bases, attrs):
         """Called when a Plugin derived class is imported"""
+
+        if name == 'BuiltinPlugin' or name == 'Plugin':
+            return
 
         if not hasattr(cls, 'plugins'):
             # Called when the metaclass is first instantiated
@@ -31,16 +35,13 @@ class PluginMount(type):
 
         plugin.register()
 
-        if plugin.CONFIG_DEFAULTS:
-            Config.DEFAULT[plugin.NAME] = plugin.CONFIG_DEFAULTS
-
         # save the plugin reference
         cls.plugins.append(plugin)
 
 
 
 
-class Plugin(with_metaclass(PluginMount, object)):
+class BasePlugin(with_metaclass(PluginMount, object)):
     """A plugin abstract class"""
 
     # the name of the plugin (default to the plugin class name)
@@ -64,7 +65,9 @@ class Plugin(with_metaclass(PluginMount, object)):
     def __init__(self, core, **kwargs):
         self.core = core
         self.log = logging.getLogger("ething.%s" % self.name)
-        self.config = core.config[self.name] or {}
+
+        self.config = ConfigItem(core.config, self.name, schema = self.CONFIG_SCHEMA, defaults = copy.deepcopy(self.CONFIG_DEFAULTS))
+
         self.loaded = False
 
     @property
@@ -126,7 +129,7 @@ class Plugin(with_metaclass(PluginMount, object)):
         if self.loaded:
             raise Exception('plugin "%s" already loaded' % self)
         self.loaded = True
-        self.log.info('load plugin')
+        self.log.info('load plugin version=%s' % str(self.VERSION))
         self.core.signalDispatcher.bind('ConfigUpdated', self._on_core_config_updated)
 
     def unload(self):
@@ -134,19 +137,12 @@ class Plugin(with_metaclass(PluginMount, object)):
         self.loaded = False
         self.log.info('unload plugin')
 
-    def on_config_change(self, changes):
+    def on_config_change(self):
         pass
 
     def _on_core_config_updated(self, signal):
-
-        local_changes = []
-        for change in signal.changes:
-            attr_name = change[0]
-            if attr_name == self.name or attr_name.startswith("%s." % self.name):
-                local_changes.append(change)
-
-        if len(local_changes) > 0:
-            self.on_config_change(local_changes)
+        if self.name in signal.updated_keys:
+            self.on_config_change()
 
     def export_data(self):
         pass
@@ -157,6 +153,17 @@ class Plugin(with_metaclass(PluginMount, object)):
 
 def instanciate_plugins(core, **kwargs):
     plugin_instances = []
-    for plugin in Plugin.plugins:
-        plugin_instances.append(plugin(core, **kwargs))
+    for plugin in BasePlugin.plugins:
+        try:
+            plugin_instances.append(plugin(core, **kwargs))
+        except:
+            core.log.exception('unable to instanciate plugin "%s"' % plugin.NAME)
     return plugin_instances
+
+
+class BuiltinPlugin(BasePlugin):
+    pass
+
+
+class Plugin(BasePlugin):
+    pass

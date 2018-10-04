@@ -7,38 +7,6 @@ from future.utils import string_types
 import re
 
 
-class LogLock(object):
-    def __init__(self, name, lock, logger):
-        self.name = str(name)
-        self.lock = lock
-        self.logger = logger
-
-    def acquire(self, blocking=True):
-        thread = threading.current_thread()
-        self.logger.debug("{0:x} Trying to acquire {1} lock from thread {2}:{3}".format(
-            id(self), self.name, thread.name, thread.ident))
-        ret = self.lock.acquire(blocking)
-        if ret == True:
-            self.logger.debug("{0:x} Acquired {1} lock from thread {2}:{3}".format(
-                id(self), self.name, thread.name, thread.ident))
-        else:
-            self.logger.debug("{0:x} Non-blocking aquire of {1} lock failed from thread {2}:{3}".format(
-                id(self), self.name, thread.name, thread.ident))
-        return ret
-
-    def release(self):
-        thread = threading.current_thread()
-        self.logger.debug("{0:x} Releasing {1} lock from thread {2}:{3}".format(id(self), self.name, thread.name, thread.ident))
-        self.lock.release()
-
-    def __enter__(self):
-        self.acquire()
-
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        self.release()
-        return False    # Do not swallow exceptions
-
-
 class ResourceDbCache(object):
 
     def __init__ (self, core):
@@ -46,7 +14,7 @@ class ResourceDbCache(object):
         self.__db = core.db
         self.__resources = dict()
         self.__log = logging.getLogger("ething.ResourceDbCache")
-        self.__lock = threading.RLock() # LogLock('ResourceDbCache', threading.RLock(), self.__log)
+        self.__lock = threading.RLock()
 
         self._load()
 
@@ -56,8 +24,10 @@ class ResourceDbCache(object):
             self.__resources.clear()
 
             cnt = 0
+            loaded = 0
 
             for doc in self.__db.list_resources():
+                cnt += 1
                 cl = get_registered_class(doc['type'])
                 if cl is not None:
                     try:
@@ -65,13 +35,15 @@ class ResourceDbCache(object):
 
                         self.__resources[instance.id] = instance
 
-                        cnt += 1
+                        loaded += 1
 
                     except:
                         self.__log.exception('error loading resource: name=%s type=%s id=%s' % (
                             doc.get('name'), doc.get('type'), doc.get('id')))
+                else:
+                    self.__log.error('unknown type: "%s"' % doc['type'])
 
-            self.__log.debug('%d resources loaded in cache' % cnt)
+            self.__log.debug('%d resources loaded in cache (%d skipped)' % (loaded, cnt - loaded))
 
     def reload(self):
         self._load()

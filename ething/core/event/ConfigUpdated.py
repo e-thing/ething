@@ -9,9 +9,9 @@ __all__ = ["ConfigUpdated", "ConfigUpdatedEvent"]
 
 class ConfigUpdated(Signal):
 
-    def __init__(self, changes):
+    def __init__(self, updated_keys):
         super(ConfigUpdated, self).__init__()
-        self.changes = changes
+        self.updated_keys = updated_keys
 
 
 class ConfigUpdatedEvent(Event):

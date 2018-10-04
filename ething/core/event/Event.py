@@ -1,6 +1,7 @@
 # coding: utf-8
 
 from ..entity import *
+import logging
 
 
 def _attr_signal_default(cls):
@@ -17,6 +18,10 @@ def _attr_signal_default(cls):
 class Event(Entity):
 
     signal = None
+
+    @property
+    def log(self):
+        return logging.getLogger('ething.%s' % self.type)
 
     @property
     def rule(self):
@@ -44,12 +49,16 @@ class Event(Entity):
     def unserialize(cls, data, **kwargs):
         type = data.get('type')
         _cls = get_registered_class(type)
+        if _cls is None:
+            raise Exception('unknown type "%s"' % type)
         return Entity.unserialize.__func__(_cls, data, **kwargs)
 
     @classmethod
     def fromJson(cls, data, **kwargs):
         type = data.get('type')
         _cls = get_registered_class(type)
+        if _cls is None:
+            raise Exception('unknown type "%s"' % type)
         return Entity.fromJson.__func__(_cls, data, **kwargs)
 
     @classmethod

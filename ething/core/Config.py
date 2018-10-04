@@ -1,47 +1,176 @@
 # coding: utf-8
 
 from __future__ import unicode_literals
-from future.utils import string_types, integer_types, iteritems
-import os
-import logging
-import json
-import re
+from collections import Mapping, OrderedDict, MutableMapping
+from future.utils import iteritems, string_types
+from jsonschema import validate
 import copy
-from hashlib import md5
-from pytz import common_timezones
-from collections import OrderedDict
 import threading
+from pytz import common_timezones
 
 
-CONF_VERSION = 1
+def merge(dct, merge_dct):
+    for k, v in iteritems(merge_dct):
+        if k in dct and isinstance(dct[k], Mapping):
+            merge(dct[k], merge_dct[k])
+        else:
+            dct[k] = merge_dct[k]
+    return dct
 
 
-class Config(object):
+def set_defaults(dct, defaults):
+  for k, v in iteritems(defaults):
 
+    if k in dct:
+      if isinstance(dct[k], Mapping) and isinstance(defaults[k], Mapping):
+        set_defaults(dct[k], defaults[k])
+    else:
+      dct[k] = defaults[k]
+
+
+def get_from_path(data, path):
+  parts = path.split('.')
+  p = data
+  for part in parts:
+      if isinstance(p, Mapping) and (part in p):
+          p = p[part]
+      else:
+          raise KeyError('invalid key')
+  return p
+
+
+def set_from_path(data, path, value, dict_cls = dict):
+
+  parts = path.split('.')
+  last = parts.pop()
+  p = data
+  for part in parts:
+      if (not part in p):
+          p[part] = dict_cls()
+      elif not isinstance(p[part], MutableMapping):
+          raise KeyError('invalid key')
+      p = p[part]
+
+  p[last] = value
+
+
+class ConfigBase(Mapping):
+    def __init__(self, value=None, schema=None):
+        self._store = value if value is not None else dict()
+        self._schema = schema
+        self._lock = threading.Lock()
+        if self._schema:
+            validate(self._store, self._schema)
+
+    @property
+    def schema(self):
+        return self._schema
+
+    def update(self, data):
+        with self._lock:
+            if self._schema:
+                dcopy = copy.deepcopy(self._store)
+                dcopy.update(data)
+                # raise an exception if the validation fail
+                validate(dcopy, self._schema)
+
+            # list the keys that has been updated
+            updated_keys = []
+            for k in data:
+                if k not in self._store or self._store[k] != data[k]:
+                    updated_keys.append(k)
+            self._store.update(data)
+            if updated_keys:
+                self.on_change(updated_keys)
+
+    def set(self, key, value):
+        with self._lock:
+            if key not in self._store or self._store[key] != value:
+                if self._schema:
+                    dcopy = copy.deepcopy(self._store)
+                    set_from_path(dcopy, key, value)
+                    # raise an exception if the validation fail
+                    validate(dcopy, self._schema)
+
+                set_from_path(self._store, key, value)
+                self.on_change([key])
+
+    def __getitem__(self, key):
+        return get_from_path(self._store, key)
+
+    def __iter__(self):
+        return iter(self._store)
+
+    def __len__(self):
+        return len(self._store)
+
+    def on_change(self, updated_keys):
+        pass
+
+    def toJson(self):
+        with self._lock:
+            return self._store
+
+    def __call__(self, *args):
+        args = list(args)
+
+        if len(args) == 1 and isinstance(args[0], dict):
+            return self.update(args[0])
+        if len(args) == 1 and isinstance(args[0], string_types):
+            return self.get(args[0])
+        if len(args) == 2 and isinstance(args[0], string_types):
+            return self.set(args[0], args[1])
+
+        raise ValueError('invalid arguments')
+
+
+class Config(ConfigBase):
+    def _notify_change(self, child):
+        self.on_change([child.key])
+
+
+class ConfigItem(ConfigBase):
+    def __init__(self, parent, key, schema=None, defaults = None):
+        if schema is None:
+            # inherit from the parent
+            if parent.schema:
+                schema = parent.schema.get('properties', {}).get(key)
+
+        if key not in parent:
+            parent._store[key] = dict()
+
+        if defaults:
+            set_defaults(parent._store[key], defaults)
+
+        super(ConfigItem, self).__init__(parent[key], schema)
+
+        self._parent = parent
+        self._key = key
+
+    @property
+    def key(self):
+        return self._key
+
+    @property
+    def parent(self):
+        return self._parent
+
+    def on_change(self, updated_keys):
+        self._parent._notify_change(self)
+
+
+class CoreConfig(Config):
     # default configuration
     DEFAULT = {
 
         # mongoDB server
         'db': {
-            'type': 'sqlite', # sqlite or mongodb
+            'type': 'sqlite',  # sqlite or mongodb
             # 'host': 'localhost',
             # 'port': 27017,
             # 'user': None,
             # 'password': None,
             'database': "ething"
-        },
-
-        # (set to false to disable this feature)
-        'notification': {
-            'emails': [],
-
-            # 'smtp' :
-            #    'host': 'smtp.gmail.com',
-            #    'port' : 587,
-            #    'user' : '<username>@gmail.com',
-            #    'password' : '<password>'
-
-            'smtp': None
         },
 
         # debug information is given in the error messages send through HTTP requests
@@ -51,13 +180,6 @@ class Config(object):
         'log': {
             'level': 'INFO'
         },
-
-        # "mqtt" : {
-        #    "host" : "localhost", # disabled by default
-        #    "port" : 1883,
-        #    "clientId" : "ething",
-        #    "rootTopic" : "ething/"
-        # },
 
         'script': {
             'timeout': 300000  # in millisecondes
@@ -89,6 +211,7 @@ class Config(object):
 
             ("log", {
                 "type": "object",
+                "additionalProperties": False,
                 "properties": OrderedDict([
                     ("level", {
                         "type": "string",
@@ -98,6 +221,7 @@ class Config(object):
             }),
             ("script", {
                 "type": "object",
+                "additionalProperties": False,
                 "properties": OrderedDict([
                     ("timeout", {
                         "description": "Expressed in milliseconds. 0 means unlimited.",
@@ -105,210 +229,20 @@ class Config(object):
                         "minimum": 0
                     })
                 ])
-            }),
-            ("notification", {
-                "type": "object",
-                "properties": OrderedDict([
-                    ("smtp", {
-                        "anyOf": [{
-                            "type": "object",
-                            "required": ['host', 'port', 'user', 'password'],
-                            "properties": OrderedDict([
-                                ("host", {
-                                    "type": "string",
-                                    "minLength": 1,
-                                    "default": 'smtp.gmail.com'
-                                }),
-                                ("port", {
-                                    "type": "integer",
-                                    "title": "The Port Schema ",
-                                    'type': 'integer',
-                                    'minimum': 1,
-                                    'maximum': 65535,
-                                    "default": 587
-                                }),
-                                ("user", {
-                                    "type": "string",
-                                    "minLength": 1
-                                }),
-                                ("password", {
-                                    "type": "string",
-                                    "minLength": 1
-                                })
-                            ])
-                        }, {
-                            "type": "null"
-                        }]
-                    }),
-                    ("emails", {
-                        "type": "array",
-                        "items": {
-                            "type": "string",
-                            "minLength": 1
-                        }
-                    })
-                ])
             })
         ])
     }
 
-    def __init__(self, core, config=None):
+    def __init__(self, core, value=None):
+        v = copy.deepcopy(self.DEFAULT)
 
+        if value:
+            merge(v, value)
+
+        super(CoreConfig, self).__init__(v, self.SCHEMA)
         self.core = core
 
-        self._lock = threading.Lock()
+    def on_change(self, updated_keys):
+        self.core.log.info('config updated: %s' % updated_keys)
+        self.core.dispatchSignal('ConfigUpdated', updated_keys)
 
-        self._d = copy.deepcopy(Config.DEFAULT)
-
-        if isinstance(config, string_types):
-            config = self.load(config)
-
-        if isinstance(config, dict):
-            self._d = Config.__merge(self._d, config)
-
-    @staticmethod
-    def load(filename):
-        config = None
-
-        if os.path.isfile(filename):
-            # try to read it !
-            config = json.load(open(filename))
-
-        return config
-
-    @staticmethod
-    def __merge(dct, merge_dct):
-        for k, v in iteritems(merge_dct):
-            if k in dct and isinstance(dct[k], dict):
-                Config.__merge(dct[k], merge_dct[k])
-            else:
-                dct[k] = merge_dct[k]
-        return dct
-
-    def save(self, filename):
-        with open(filename, 'w') as outfile:
-            json.dump(self.get(), outfile, indent=1)
-
-    # get/set attribute
-
-    def get(self, name=None, default=None):
-        with self._lock:
-            if name is None:
-                return self._d
-            else:
-                parts = name.split('.')
-                p = self._d
-                for part in parts:
-                    if isinstance(p, dict) and (part in p):
-                        p = p[part]
-                    else:
-                        return default
-                return p
-
-    def _set(self, name, value=None):
-
-        changes = []
-
-        if isinstance(name, dict):
-            for key in name:
-                changes += self._set(key, name[key])
-
-        else:
-
-            if value is not None and isinstance(value, dict):
-                for key in value:
-                    changes += self._set("%s.%s" % (name, key), value[key])
-
-            else:
-
-                if name == 'notification.emails':
-                    ok = False
-                    if isinstance(value, list):
-                        ok = True
-                        for email in value:
-                            if not (isinstance(email, string_types) and re.match("[^@]+@[^@]+\.[^@]+", email)):
-                                ok = False
-                                break
-                    if not ok:
-                        raise Exception('emails must be an array of email')
-                elif name == 'debug' or name == 'auth.localonly':
-                    if not isinstance(value, bool):
-                        raise Exception(name+" must be a boolean")
-                elif name == 'auth.password':
-                    if not(isinstance(value, string_types) and re.match("^.{4,}$", value)):
-                        raise Exception(
-                            name+' must be a string (min. length = 4 cahracters)')
-                    value = md5(value).hexdigest()
-                elif name == 'script.timeout':
-                    if not(isinstance(value, integer_types) and value >= 0):
-                        raise Exception(name+' must be an integer >= 0')
-                elif name == 'notification' or name == 'notification.smtp' or name == 'log' or name == 'mqtt':
-                    if value is not None:
-                        raise Exception(name+" is invalid")
-                elif (name == 'db.user' or name == 'db.password' or name == 'notification.smtp.user' or name == 'notification.smtp.password'
-                      or name == 'mqtt.user' or name == 'mqtt.password'):
-                    if (not isinstance(value, string_types) or not value) and value is not None:
-                        raise Exception(name+" must be a non empty string")
-                elif (name == 'db.host' or name == 'db.database'
-                      or name == 'notification.smtp.host'
-                      or name == 'mqtt.host' or name == 'mqtt.clientId'):
-                    if not isinstance(value, string_types) or not value:
-                        raise Exception(name+" must be a non empty string")
-                elif name == 'mqtt.rootTopic' or name == 'node-red.target':
-                    if not isinstance(value, string_types):
-                        raise Exception(name+" must be a string")
-                elif name == 'db.port' or name == 'webserver.port' or name == 'notification.smtp.port' or name == 'mqtt.port' or name == 'node-red.port':
-                    if not(isinstance(value, integer_types) and value >= 0 and value <= 65535):
-                        raise Exception(name+" must be a valid port number")
-                elif name == 'log.level':
-                    if not isinstance(value, string_types):
-                        raise Exception(
-                            name+" must be a valid log level string")
-                    value = value.upper()
-                    try:
-                        getattr(logging, value)
-                    except AttributeError:
-                        raise Exception(
-                            name+" must be a valid log level string")
-
-                parts = name.split('.')
-                last = parts.pop()
-                p = self._d
-                for part in parts:
-                    if (not part in p) or not isinstance(p[part], dict):
-                        p[part] = {}
-                    p = p[part]
-
-                old_value = p.get(last)
-                if old_value != value:
-                    changes.append((name, value, old_value))
-
-                p[last] = value
-
-        return changes
-
-    def set(self, name, value=None):
-        with self._lock:
-            changes = self._set(name, value)
-            self.core.dispatchSignal('ConfigUpdated', changes)
-
-    def __call__(self, *args):
-        args = list(args)
-
-        if len(args) == 0:
-            return self.get()
-        if len(args) == 1 and isinstance(args[0], dict):
-            return self.set(args[0])
-        if len(args) == 1 and isinstance(args[0], string_types):
-            return self.get(args[0])
-        if len(args) == 2 and isinstance(args[0], string_types):
-            return self.set(args[0], args[1])
-
-        raise ValueError('invalid arguments')
-
-    def __getitem__(self, name):
-        return self.get(name)
-
-    def toJson(self):
-        with self._lock:
-            return self._d

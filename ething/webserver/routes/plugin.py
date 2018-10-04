@@ -42,23 +42,3 @@ def install(core, app, auth, **kwargs):
             return app.jsonify(plugin_to_json(p))
         else:
             raise Exception('unknown plugin')
-
-    @app.route('/api/plugin/<name>/load', methods=['POST'])
-    @auth.required()
-    def plugin_load(name):
-        p = core.get_plugin(name)
-        if p:
-            p.load()
-            return app.jsonify(plugin_to_json(p))
-        else:
-            raise Exception('unknown plugin')
-
-    @app.route('/api/plugin/<name>/unload', methods=['POST'])
-    @auth.required()
-    def plugin_unload(name):
-        p = core.get_plugin(name)
-        if p:
-            p.unload()
-            return app.jsonify(plugin_to_json(p))
-        else:
-            raise Exception('unknown plugin')
