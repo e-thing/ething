@@ -14,6 +14,7 @@ import traceback
 import os
 import time
 import threading
+from io import open
 
 # Taken from http://bzimmer.ziclix.com/2008/12/17/python-thread-dumps/
 
@@ -73,9 +74,9 @@ class TraceDumper(threading.Thread):
             pass
 
     def stacktraces(self):
-        fout = file(self.fpath, "wb+")
+        fout = open(self.fpath, "wb+")
         try:
-            fout.write(stacktraces())
+            fout.write(stacktraces().encode('utf8'))
         finally:
             fout.close()
 

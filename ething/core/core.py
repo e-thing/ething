@@ -13,6 +13,8 @@ from .version import __version__
 from .plugin import instanciate_plugins
 from .Scheduler import Scheduler
 from .ResourceDbCache import ResourceDbCache
+from .utils.deadlock_dbg import trace_start, trace_stop
+from .env import USER_DIR
 
 import logging
 import sys
@@ -76,6 +78,12 @@ class Core(object):
         self.log.info("stopping ...")
         self.dispatchSignal('DaemonStopped')
         self.running = False
+        
+        if self.config.get('debug'):
+            try:
+                trace_stop()
+            except:
+                pass
 
     @property
     def version(self):
@@ -123,6 +131,16 @@ class Core(object):
                 self.log.exception('unable to load the plugin %s' % plugin_name)
 
         self.signalDispatcher.bind('ConfigUpdated', self._on_config_updated)
+        
+        if self.config.get('debug'):
+            deadlock_trace_file = os.path.join(USER_DIR, 'deadlock_tracer.log')
+            self.log.info('deadlock tracer thread started (%s)' % deadlock_trace_file)
+            try:
+                trace_start(deadlock_trace_file)
+            except:
+                self.log.exception('unable to start deadlock tracer')
+        
+        
 
     def start(self):
         self.init()

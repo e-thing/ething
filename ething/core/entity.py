@@ -98,17 +98,17 @@ class Entity(with_metaclass(MetaReg, M_Class)):
         return value
     
     def toJson(self, **kwargs):
-        with self._lock:
-          j = {}
-          for attribute in self.__attributes:
-            name = attribute.name
+      #with self._lock:
+      j = {}
+      for attribute in self.__attributes:
+        name = attribute.name
 
-            if attribute.get('mode') == PRIVATE:
-              continue
+        if attribute.get('mode') == PRIVATE:
+          continue
 
-            data_type = attribute['type']
-            j[name] = data_type.toJson(self.__d[name], **kwargs)
-          return j
+        data_type = attribute['type']
+        j[name] = data_type.toJson(self.__d[name], **kwargs)
+      return j
     
     def serialize(self, **kwargs):
         with self._lock:
