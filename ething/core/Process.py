@@ -40,14 +40,24 @@ class Process(StoppableThread):
     def run(self):
         self.log.info('Start process "%s"' % self.name)
 
+        self.setup()
+
         try:
             self.main()
         except Exception:
             self.log.exception('Exception in process "%s"' % self.name)
+
+        self.end()
 
         remove_process(self)
 
         self.log.info('Process "%s" stopped' % self.name)
 
     def main(self):
+        pass
+
+    def setup(self):
+        pass
+
+    def end(self):
         pass

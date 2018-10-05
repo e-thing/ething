@@ -21,12 +21,6 @@
     })
 
 
-    EThingUI.formSchema.registerForm(schema => {
-        if (schema.type === 'mqtt-sub-item') {
-            return 'form-schema-mqtt-sub-item'
-        }
-    })
-
     var rootSchema = {
         type: 'object',
         required: ['name', 'topic', 'type'],
@@ -51,7 +45,7 @@
 
         template: '<div><small v-if="schema.description" class="form-schema-description">{{ schema.description }}</small><form-schema :schema="rootSchema" :model="internalModel" @input="setInternalValue" @error="setError"/></div>',
 
-        mixins: [EThingUI.formSchema.FormComponent],
+        mixins: [EThingUI.form.FormComponent],
 
         data () {
             return {
@@ -136,7 +130,11 @@
 
     }
 
-    Vue.component('FormSchemaMqttSubItem', FormSchemaMqttSubItem)
+    EThingUI.form.registerForm(FormSchemaMqttSubItem, schema => {
+        if (schema.type === 'mqtt-sub-item') {
+            return true
+        }
+    })
 
 
 

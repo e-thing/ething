@@ -13,6 +13,7 @@ import logging
 import socket
 import datetime
 import pytz
+import threading
 from future.utils import binary_type, string_types
 from .method_override import HTTPMethodOverrideMiddleware
 from .server_utils import ServerException, tb_extract_info, root_path, use_args, use_multi_args
@@ -278,10 +279,15 @@ class WebServerProcess(Process):
         self.debug = False
         self.server = None
         self.app = None
+        self.auth = None
+        self.started = threading.Event()
 
     def stop(self):
         if self.server:
             self.server.stop()
+
+    def end(self):
+        self.started.clear()
         self.server = None
 
     def main(self):
@@ -320,22 +326,33 @@ class WebServerProcess(Process):
 
         self.log.info("webserver: started at http://%s:%d" % (current_ip or 'localhost', port))
 
+        self.started.set()
+
         self.server.start()
 
     def install_route(self, url, fn, **options):
 
         endpoint = options.pop('endpoint', fn.__name__)
-        view_func = fn
 
-        # handle permissions
-        permissions = options.pop('permissions', '')
-        if permissions is not False:
-            view_func = self.auth.required(permissions)(view_func)
+        if self.started.wait(5):
 
-        #args
-        args = options.pop('args', None)
-        if args:
-            view_func = use_args(args)(view_func)
+            if self.app:
+                view_func = fn
 
-        self.app.add_url_rule(url, endpoint, view_func=view_func, **options)
+                # handle permissions
+                permissions = options.pop('permissions', '')
+                if permissions is not False:
+                    view_func = self.auth.required(permissions)(view_func)
+
+                #args
+                args = options.pop('args', None)
+                if args:
+                    view_func = use_args(args)(view_func)
+
+                self.app.add_url_rule(url, endpoint, view_func=view_func, **options)
+            else:
+                self.log.error('unable to install route "%s" : %s' % (endpoint, url))
+
+        else:
+            self.log.error('server is not started, unable to install route "%s" : %s' % (endpoint, url))
 

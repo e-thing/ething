@@ -6,7 +6,6 @@ from ..server_utils import *
 import base64
 from werkzeug.http import parse_options_header
 import json
-from ething.core.ScriptEngine import ScriptEngine
 
 
 def install(core, app, auth, **kwargs):
@@ -261,24 +260,3 @@ def install(core, app, auth, **kwargs):
 
         return Response(thumb, mimetype='image/png')
 
-    file_action_execute_args = {
-        'args': fields.Str(missing=None, description="A string representing the arguments to be passed to the script.")
-    }
-
-    @app.route('/api/files/<id>/execute')
-    @use_args(file_action_execute_args)
-    @auth.required('file:read resource:read')
-    def file_execute(args, id):
-        r = app.getResource(id, ['File'])
-
-        if r.mime == 'application/javascript':
-
-            res = ScriptEngine.runFromFile(r, args['args'])
-
-            if not res:
-                raise Exception('Unable to execute')
-
-            return app.jsonify(res)
-
-        else:
-            raise Exception('Not executable')

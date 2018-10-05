@@ -1,87 +1,76 @@
 # coding: utf-8
 
 from future.utils import string_types, text_type
-
-from .Helpers import toJson
-
+from ething.core.plugin import Plugin
+from ething.core.Helpers import toJson
+from .utils import addslashes, Output
+from .RunScript import RunScript
+from collections import OrderedDict
+from webargs import fields
 import os
 import tempfile
-import json
 import time
 import subprocess
 import re
 import shlex
 import sys
 import json
-from collections import OrderedDict
 
 
-def addslashes(s):
-    l = ["\\", '"', "'", "\0", ]
-    for i in l:
-        if i in s:
-            s = s.replace(i, '\\'+i)
-    return s
+version = '0.1.0'
+
+PROG = os.path.abspath(os.path.join(os.path.dirname(__file__), './nodejs/vm2.js'))
 
 
-class Output(object):
+class JsScript(Plugin):
 
-    def __init__(self, chunked_output):
-        self._chunked_output = chunked_output
-        # cached
-        self._stderr = None
-        self._stdout = None
-        self._std = None
+    """
+    JsScript plugin. This plugin allows you to execute JavaScript script using the ething-js library.
+    """
 
-    def __str__(self):
-        return self.std
+    VERSION = version
 
-    @property
-    def chunked(self):
-        return self._chunked_output
+    CONFIG_DEFAULTS = {
+        'executable': 'node',
+        'timeout': 300000  # in millisecondes
+    }
 
-    @property
-    def stderr(self):
-        if self._stderr is None:
-            self._stderr = self._cat('stderr')
-        return self._stderr
+    CONFIG_SCHEMA = {
+        'type': 'object',
+        'properties': OrderedDict([
+            ("executable", {
+                "description": "node executable",
+                "type": "string"
+            }),
+            ("timeout", {
+                "description": "Script time limit expressed in milliseconds. 0 means unlimited.",
+                "type": "integer",
+                "minimum": 0
+            })
+        ])
+    }
 
-    @property
-    def stdout(self):
-        if self._stdout is None:
-            self._stdout = self._cat('stdout')
-        return self._stdout
+    def load(self):
+        super(JsScript, self).load()
 
-    @property
-    def std(self):
-        if self._std is None:
-            self._std = self._cat()
-        return self._std
+        # install route
 
-    def _cat(self, type = None):
-        strcat = ''
-        for item in self._chunked_output:
-            if type is not None and item['type'] != type:
-                continue
-            strcat += item['chunk'].encode('utf8').decode('unicode_escape', "replace")
-        return strcat
+        webserver_plugin = self.core.get_plugin('WebServer')
 
-class ScriptEngine(object):
+        self.install_route(webserver_plugin.process)
 
-    # PROG = os.path.abspath(os.path.join(os.path.dirname(__file__), './nodejs/vm.js'))
-    PROG = os.path.abspath(os.path.join(
-        os.path.dirname(__file__), './nodejs/vm2.js'))
+    def unload(self):
+        super(JsScript, self).unload()
 
-    @staticmethod
-    def run(ething, script, scriptName='anonymous', apiKey=None, globals=None):
+    def run(self, script, scriptName='anonymous', apiKey=None, globals=None):
 
-        nodejs_exe = ething.config.get('nodejs.executable', None)
+        nodejs_exe = self.config.get('executable', None)
 
         if not nodejs_exe:
             raise Exception(
-                'execution of nodejs is disabled in the configuration')
+                'nodejs is not configured')
 
-        prog = ScriptEngine.PROG
+        prog = PROG
 
         if not os.path.isfile(prog):
             raise Exception("unable to execute '%s'" % prog)
@@ -103,9 +92,9 @@ class ScriptEngine(object):
             outHdl.name,
             "--serverUrl",
             addslashes('http://localhost:%d' %
-                       ething.config.get('webserver.port', 8000)),
+                       self.core.config.get('webserver.port', 8000)),
             "-t",
-            str(ething.config('script.timeout')),
+            str(self.config.get('timeout')),
             "--filename",
             scriptName
         ]
@@ -122,7 +111,7 @@ class ScriptEngine(object):
 
         cmdstr = ' '.join(cmd)
 
-        ething.log.debug("execute '%s'" % cmdstr)
+        self.log.debug("execute '%s'" % cmdstr)
 
         try:
             time_start = time.time()
@@ -139,16 +128,16 @@ class ScriptEngine(object):
             outHdl.close()
 
         out = out.decode(sys.stdout.encoding or 'utf8')
-        
-        ething.log.debug("script return code : %d" % return_var)
-        # ething.log.debug("script stdout : %s" % out)
+
+        self.log.debug("script return code : %d" % return_var)
+        # self.log.debug("script stdout : %s" % out)
 
         if len(out):
             out = out[:out.rfind(',')]
 
         out = Output(json.loads('[%s]' % out))
 
-        ething.log.debug("script output : \n%s" % out.std)
+        self.log.debug("script output : \n%s" % out.std)
 
         return {
             'executionTime': time_end - time_start,
@@ -159,8 +148,7 @@ class ScriptEngine(object):
             'ok': return_var == 0
         }
 
-    @staticmethod
-    def runFromFile(script, arguments='', globals=None):
+    def runFromFile(self, script, arguments='', globals=None):
 
         if script.mime != 'application/javascript':
             raise Exception('not a valid script file')
@@ -199,4 +187,31 @@ class ScriptEngine(object):
             'args': args
         })
 
-        return ScriptEngine.run(script.ething, scriptcontent, scriptName=os.path.basename(script.name), globals=globals)
+        return self.run(scriptcontent, scriptName=os.path.basename(script.name), globals=globals)
+
+    def install_route(self, webserver):
+
+        file_action_execute_args = {
+            'args': fields.Str(missing=None,
+                               description="A string representing the arguments to be passed to the script.")
+        }
+
+        def file_execute(args, id):
+            app = webserver.app
+
+            r = app.getResource(id, ['File'])
+
+            if r.mime == 'application/javascript':
+
+                res = self.runFromFile(r, args['args'])
+
+                if not res:
+                    raise Exception('Unable to execute')
+
+                return app.jsonify(res)
+
+            else:
+                raise Exception('Not executable')
+
+        webserver.install_route('/api/files/<id>/execute', file_execute, args=file_action_execute_args,
+                                       permissions='file:read resource:read')
