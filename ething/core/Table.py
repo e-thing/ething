@@ -2,7 +2,7 @@
 from future.utils import string_types, integer_types
 from .Resource import Resource
 from .entity import *
-from .event import ResourceEvent, ResourceSignal
+from .rule.event import ResourceEvent, ResourceSignal
 import datetime
 import time
 import re

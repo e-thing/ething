@@ -3,7 +3,7 @@
 from ething.core.plugin import Plugin
 from collections import OrderedDict
 from .smtp import SmtpMail
-from ething.core.action import Action
+from ething.core.rule.action import Action
 from ething.core.reg import *
 
 

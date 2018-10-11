@@ -1,6 +1,6 @@
 # coding: utf-8
 
-from ething.core.action import Action
+from ething.core.rule.action import Action
 from ething.core.Resource import ResourceType
 from ething.core.reg import *
 

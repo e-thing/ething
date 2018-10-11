@@ -291,12 +291,14 @@ def main():
 
     from .core import Core
 
-    # import webserver
+    # import webserver + rule plugins
     from .webserver.server import WebServer
 
     # import the plugins here !
     from .plugins import import_all
     import_all()
+    from .core.plugin import import_from_modules
+    import_from_modules()
 
     core = Core(config)
 

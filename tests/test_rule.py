@@ -1,6 +1,6 @@
 # coding: utf-8
 import pytest
-from ething.core.Rule import event, action
+from ething.core.rule import event, action
 
 
 def test_rule(core):

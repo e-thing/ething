@@ -1,7 +1,6 @@
 # coding: utf-8
 
-from .Signal import Signal
-from .Event import Event
+from . import Signal, Event
 
 
 __all__ = ["Notified", "NotifiedEvent"]

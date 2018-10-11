@@ -1,13 +1,4 @@
-import traceback
+from ething.core.plugin import import_from_path
 
 def import_all():
-    import pkgutil
-
-    for loader, module_name, is_pkg in  pkgutil.iter_modules(__path__):
-        try:
-            module = loader.find_module(module_name).load_module(module_name)
-        except Exception as e:
-            print('plugin "%s" import failed: %s' % (module_name, str(e)))
-            traceback.print_exc()
-        else:
-            globals()[module_name] = module
+    import_from_path(__path__)

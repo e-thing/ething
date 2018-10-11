@@ -3,7 +3,7 @@
 from future.utils import text_type, bord
 from .Resource import Resource
 from .entity import *
-from .event import ResourceEvent, ResourceSignal
+from .rule.event import ResourceEvent, ResourceSignal
 import datetime
 import os
 from .utils.mime import content_to_mime, ext_to_mime

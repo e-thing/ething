@@ -1,4 +1,4 @@
-var EThing = require('ething-js');
+var EThing = require('./ething.js');
 
 function usage(){
 	console.error();

@@ -1,7 +1,7 @@
 # coding: utf-8
 
 from .Condition import Condition
-from ..reg import *
+from ething.core.entity import *
 import datetime
 
 

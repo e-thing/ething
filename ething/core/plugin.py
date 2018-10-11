@@ -1,11 +1,14 @@
 from future.utils import with_metaclass
 from .Config import ConfigItem
+from .Helpers import topological_sort
 import logging
 import inspect
 import os
 import json
 import copy
 from io import open
+import traceback
+import pkgutil
 
 
 class PluginMount(type):
@@ -62,6 +65,9 @@ class BasePlugin(with_metaclass(PluginMount, object)):
     # the path to the plugin javascript file (metadata, widgets ...). This file is loaded by the web interface.
     JS_INDEX = None
 
+    # a list of other plugins that need to be loaded before this plugin
+    DEPENDENCIES = None
+
     def __init__(self, core, **kwargs):
         self.core = core
         self.log = logging.getLogger("ething.%s" % self.name)
@@ -86,12 +92,13 @@ class BasePlugin(with_metaclass(PluginMount, object)):
         root_dir = os.path.dirname(inspect.getfile(cls))
 
         plugin_info = {
-            'js': './index.js',
+            'ui': './index.js',
             'version': None,
             'description': None,
             'name': None,
             'config': None,
-            'configSchema': None
+            'configSchema': None,
+            'dependencies': []
         }
 
         # read plugin information stored in the json file 'plugin.json'
@@ -106,8 +113,8 @@ class BasePlugin(with_metaclass(PluginMount, object)):
         if plugin_info.get('name'):
             cls.NAME = plugin_info.get('name')
 
-        if plugin_info.get('js'):
-            js_index_file = os.path.join(root_dir, plugin_info.get('js'))
+        if plugin_info.get('ui'):
+            js_index_file = os.path.join(root_dir, plugin_info.get('ui'))
             if os.path.isfile(js_index_file):
                 cls.JS_INDEX = js_index_file
 
@@ -122,6 +129,9 @@ class BasePlugin(with_metaclass(PluginMount, object)):
 
         if plugin_info.get('configSchema'):
             cls.CONFIG_SCHEMA = plugin_info.get('configSchema')
+
+        if plugin_info.get('dependencies'):
+            cls.DEPENDENCIES = plugin_info.get('dependencies', [])
 
         cls.ROOT_DIR = root_dir
 
@@ -153,11 +163,23 @@ class BasePlugin(with_metaclass(PluginMount, object)):
 
 def instanciate_plugins(core, **kwargs):
     plugin_instances = []
+
+    plugins_dep = []
+
     for plugin in BasePlugin.plugins:
-        try:
-            plugin_instances.append(plugin(core, **kwargs))
-        except:
-            core.log.exception('unable to instanciate plugin "%s"' % plugin.NAME)
+        plugins_dep.append((plugin.NAME, plugin.DEPENDENCIES or []))
+
+    ordered = list(topological_sort(plugins_dep))
+
+    for plugin_name in ordered:
+        for plugin in BasePlugin.plugins:
+            if plugin.NAME == plugin_name:
+                try:
+                    plugin_instances.append(plugin(core, **kwargs))
+                except:
+                    core.log.exception('unable to instanciate plugin "%s"' % plugin.NAME)
+                break
+
     return plugin_instances
 
 
@@ -167,3 +189,24 @@ class BuiltinPlugin(BasePlugin):
 
 class Plugin(BasePlugin):
     pass
+
+
+def import_from_path(path):
+
+    for loader, module_name, is_pkg in  pkgutil.iter_modules(path):
+        try:
+            module = loader.find_module(module_name).load_module(module_name)
+        except Exception as e:
+            print('plugin "%s" import failed: %s' % (module_name, str(e)))
+            traceback.print_exc()
+        #else:
+        #    globals()[module_name] = module
+
+def import_from_modules():
+    for loader, module_name, is_pkg in pkgutil.iter_modules():
+        if module_name.startswith('ething_plugin_'):
+            try:
+                module = loader.find_module(module_name).load_module(module_name)
+            except Exception as e:
+                print('plugin "%s" import failed: %s' % (module_name, str(e)))
+                traceback.print_exc()

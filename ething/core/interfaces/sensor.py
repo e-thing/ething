@@ -2,7 +2,7 @@
 
 from ..Interface import Interface
 from ..reg import *
-from ..event import ResourceSignal, ResourceEvent
+from ..rule.event import ResourceSignal, ResourceEvent
 
 
 class SensorValueChanged(ResourceSignal):

@@ -1,14 +1,14 @@
 # coding: utf-8
 
-from ething.core.plugin import Plugin
+from ething.core.plugin import BuiltinPlugin
 from ething.core.Scheduler import Scheduler
 from ething.core.Process import Process
-from ething.core.Rule import Rule
+from .Rule import Rule
 import threading
 import time
 
 
-class RuleManager(Plugin):
+class RuleManager(BuiltinPlugin):
 
     def load(self):
         super(RuleManager, self).load()

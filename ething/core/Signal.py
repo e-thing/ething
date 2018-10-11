@@ -1,6 +1,6 @@
 # coding: utf-8
 
-from ..reg import *
+from .reg import *
 from future.utils import with_metaclass
 import time
 

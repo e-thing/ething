@@ -1,7 +1,7 @@
 # coding: utf-8
 
-from .Resource import Resource
-from .entity import *
+from ething.core.Resource import Resource
+from ething.core.entity import *
 
 from . import event
 from . import condition

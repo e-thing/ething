@@ -4,7 +4,7 @@ from .ShortId import ShortId, Id
 from .dbentity import *
 from .core import Core
 from .reg import get_definition_pathname
-from .event import ResourceEvent, ResourceSignal
+from .rule.event import ResourceEvent, ResourceSignal
 from .Interface import Interface
 import datetime
 import inspect

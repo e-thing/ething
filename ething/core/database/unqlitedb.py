@@ -1,5 +1,5 @@
 # coding: utf-8
-
+from future.utils import binary_type
 from .base import BaseClass
 from ..TableQueryParser import TableQueryParser
 from ..query import attribute_compiler
@@ -30,14 +30,21 @@ def encode_id(id):
 def decode_db(obj):
     if isinstance(obj, dict):
         if '__type' in obj:
-            type = obj['__type']
+            type = obj['__type'].decode('utf8')
             if type == 'datetime':
-                return parser.parse(obj['value'])
+                return parser.parse(obj['value'].decode('utf8'))
             if type == 'unicode':
                 return  obj['value'].decode('utf8')
+            if type == 'binary':
+                return  obj['value']
         else:
             for k in obj:
                 obj[k] = decode_db(obj[k])
+    elif isinstance(obj, binary_type):
+        return obj.decode('utf8')
+    elif isinstance(obj, list):
+        for i in range(len(obj)):
+            obj[i] = decode_db(obj[i])
     return obj
 
 
@@ -47,6 +54,7 @@ def encode_db(obj):
             "__type": "datetime",
             "value": obj.isoformat()
         }
+
     if not py3:
         if isinstance(obj, unicode):
             return {
@@ -54,10 +62,23 @@ def encode_db(obj):
                 "value": obj.encode('utf8')
             }
 
+    if py3:
+        if isinstance(obj, binary_type):
+            return {
+                "__type": "binary",
+                "value": obj
+            }
+
     if isinstance(obj, dict):
         copy_obj = dict()
         for k in obj:
             copy_obj[k] = encode_db(obj[k])
+        return copy_obj
+
+    if isinstance(obj, list):
+        copy_obj = list()
+        for i in obj:
+            copy_obj.append(encode_db(i))
         return copy_obj
 
     return obj
@@ -111,9 +132,10 @@ class UnQLiteDB(BaseClass):
     #
 
     def _get_db_id_from_resource_id(self, resource_id):
-        rs = self.resources.filter(lambda r: r['id'] == resource_id)
+        rs = self.resources.filter(lambda r: decode_db(r['id']) == resource_id)
         if len(rs):
             return rs[0]['__id']
+        raise Exception('unknown resource id "%s"' % resource_id)
 
     def list_resources(self):
         return map(decode, self.resources.all())
@@ -135,10 +157,11 @@ class UnQLiteDB(BaseClass):
     # File System (used for storing images, text ...)
     #
 
-    def _get_db_id_from_file_id(self, resource_id):
-        rs = self.fs.filter(lambda r: r['id'] == resource_id)
+    def _get_db_id_from_file_id(self, file_id):
+        rs = self.fs.filter(lambda r: decode_db(r['id']) == file_id)
         if len(rs):
             return rs[0]['__id']
+        raise Exception('unknown file id "%s"' % file_id)
 
     def storeFile(self, filename, contents, metadata=None, id=None):
         if contents:
@@ -191,12 +214,16 @@ class UnQLiteDB(BaseClass):
         return 0
 
     def listFiles(self):
-        return [{
-            'id': f['id'],
-            'filename': f['filename'],
-            'metadata': decode_db(f['metadata']),
-            'size': f['size']
-        } for f in self.fs.all()]
+        files = []
+        for f in self.fs.all():
+            f.pop('data', None)
+            f = decode_db(f)
+            files.append({
+                'id': f['id'],
+                'filename': f['filename'],
+                'metadata': f['metadata'],
+                'size': f['size']
+            })
 
 
     #
@@ -205,7 +232,10 @@ class UnQLiteDB(BaseClass):
 
     def list_tables(self):
         if self.db.exists('collections'):
-            return self.db['collections'].strip().split(' ')
+            collections = self.db['collections']
+            if isinstance(collections, binary_type):
+                collections = collections.decode('utf8')
+            return collections.strip().split(' ')
         return []
 
     def create_table(self, table_name):
@@ -256,7 +286,7 @@ class UnQLiteDB(BaseClass):
         """return the old row"""
         table = self.db.collection(table_name)
 
-        rows = table.filter(lambda row: row['id'] == row_id)
+        rows = table.filter(lambda row: decode_db(row['id']) == row_id)
         updated_row = rows[0] if rows else None
 
         table.update(updated_row['__id'], encode(row_data))
@@ -268,7 +298,7 @@ class UnQLiteDB(BaseClass):
         """return the removed row"""
         table = self.db.collection(table_name)
 
-        rows = table.filter(lambda row: row['id'] == row_id)
+        rows = table.filter(lambda row: decode_db(row['id']) == row_id)
         deleted_row = rows[0] if rows else None
 
         table.delete(deleted_row['__id'])

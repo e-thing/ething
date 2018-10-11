@@ -33,6 +33,7 @@ class MongoDB(BaseClass):
             raise Exception('unable to connect to the database')
 
         self.log.info('connected to database: %s' % server)
+        self.log.info('mongodb version: %s' % mongoClient.server_info().get('version'))
 
     def disconnect(self):
         pass

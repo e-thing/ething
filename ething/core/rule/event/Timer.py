@@ -1,9 +1,8 @@
 # coding: utf-8
 
-from .Signal import Signal
-from .Event import Event
+from . import Signal, Event
 from croniter import croniter
-from ..reg import attr, String
+from ething.core.reg import attr, String
 import pytz
 import datetime
 
