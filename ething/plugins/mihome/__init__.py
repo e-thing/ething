@@ -2,6 +2,7 @@
 from future.utils import string_types
 from .MihomeGateway import MihomeGateway
 from .MihomeSensorHT import MihomeSensorHT
+from .MihomeMagnet import MihomeMagnet
 from ething.core.plugin import Plugin
 from ething.core.TransportProcess import Protocol, TransportProcess, UdpTransport
 from ething.core.Scheduler import Scheduler
@@ -112,6 +113,12 @@ class MihomeProtocol(Protocol):
                                 })
 
                                 device = self.core.create('resources/MihomeSensorHT', attributes)
+                            elif model == 'sensor_magnet.aq2':
+                                attributes.update({
+                                    'createdBy': gateway.id,
+                                })
+
+                                device = self.core.create('resources/MihomeMagnet', attributes)
                         else:
                             self.log.warning(
                                 "Mihome: gateway not found with ip=%s" % (ip))

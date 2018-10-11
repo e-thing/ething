@@ -39,7 +39,8 @@ class MihomeGateway(MihomeBase, RGBWLight, LightSensor):
 
         if response.get('cmd') == 'iam':
             def read(result, gateway):
-                for sid in result.data:
+                list_sid = json.loads(result.data['data'])
+                for sid in list_sid:
                     self.controller.send({"cmd": "read", "sid": sid}, ip=self.ip, ack = False)
 
             self.controller.send({"cmd": "get_id_list", 'sid': self.sid}, ip=self.ip, done = read)

@@ -2,7 +2,7 @@
 
 from . import Signal, Event
 from croniter import croniter
-from ething.core.reg import attr, String
+from ...reg import attr, String
 import pytz
 import datetime
 

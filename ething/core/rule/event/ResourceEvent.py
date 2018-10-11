@@ -1,10 +1,10 @@
 # coding: utf-8
 
 from . import Signal, Event
-from ething.core.reg import *
-from ething.core.ShortId import ShortId
+from ...reg import *
+from ...ShortId import ShortId
 from future.utils import string_types
-from ething.core import Core
+from ... import Core
 
 
 __all__ = ["ResourceSignal", "ResourceFilter", "ResourceEvent"]

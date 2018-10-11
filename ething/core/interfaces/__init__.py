@@ -15,5 +15,6 @@ from .humiditySensor import HumiditySensor
 from .lightSensor import LightSensor
 from .moistureSensor import MoistureSensor
 from .anemometer import Anemometer
+from .doorSensor import DoorSensor
 
 from .camera import Camera

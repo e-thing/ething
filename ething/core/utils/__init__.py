@@ -2,8 +2,6 @@
 
 from .pingable import pingable
 
-from .nodejs import *
-
 from .null_context_manager import NullContextManager
 
 _info = None
@@ -26,9 +24,6 @@ def get_info(core):
             'platform': {
                 'name': "%s %s" % (sys.platform, platform.platform()),
                 'version': platform.version()
-            },
-            'nodejs': {
-                'version': (is_nodejs_installed(core) or "not found")
             }
         }
 
@@ -48,6 +43,3 @@ def print_info(core, printer):
     platform_info = info.get('platform', {})
     printer("PLATFORM  : %s" % (platform_info.get('name')))
     printer("SYSTEM    : %s" % (platform_info.get('version')))
-
-    nodejs_info = info.get('nodejs', {})
-    printer("NODE.JS   : %s" % (nodejs_info.get('version')))

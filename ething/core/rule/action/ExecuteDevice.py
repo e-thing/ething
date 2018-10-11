@@ -1,8 +1,8 @@
 # coding: utf-8
 
 from .Action import Action
-from ething.core.Resource import ResourceType
-from ething.core.entity import *
+from ...Resource import ResourceType
+from ...entity import *
 
 
 @attr('args', type=Dict(allow_extra = True), default={}, description="The arguments passed to the method")

@@ -1,7 +1,7 @@
 # coding: utf-8
 
 from .Action import Action
-from ething.core.entity import *
+from ...entity import *
 import time
 
 

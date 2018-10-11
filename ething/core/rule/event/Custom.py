@@ -1,7 +1,7 @@
 # coding: utf-8
 
 from . import Signal, Event
-from ething.core.reg import *
+from ...reg import *
 
 
 __all__ = ["Custom", "CustomEvent"]

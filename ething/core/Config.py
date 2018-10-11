@@ -165,7 +165,7 @@ class CoreConfig(Config):
 
         # mongoDB server
         'db': {
-            'type': 'sqlite',  # sqlite or mongodb
+            'type': 'sqlite',  # sqlite or mongodb or unqlite
             # 'host': 'localhost',
             # 'port': 27017,
             # 'user': None,

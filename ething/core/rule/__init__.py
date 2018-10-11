@@ -1,8 +1,8 @@
 # coding: utf-8
 
-from ething.core.plugin import BuiltinPlugin
-from ething.core.Scheduler import Scheduler
-from ething.core.Process import Process
+from ..plugin import BuiltinPlugin
+from ..Scheduler import Scheduler
+from ..Process import Process
 from .Rule import Rule
 import threading
 import time

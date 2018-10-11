@@ -1,6 +1,6 @@
 # coding: utf-8
 
-from ething.core.entity import *
+from ...entity import *
 import logging
 
 

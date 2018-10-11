@@ -1,7 +1,7 @@
 
 
 from .Event import Event
-from ething.core.Signal import Signal
+from ...Signal import Signal
 from .ResourceEvent import *
 
 from .Timer import *
