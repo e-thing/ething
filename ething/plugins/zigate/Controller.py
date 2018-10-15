@@ -453,7 +453,7 @@ class Controller(object):
         while i < len(self._responseListeners):
             responseListener = self._responseListeners[i]
 
-            if now - responseListener['ts'] > Controller.RESPONSE_TIMEOUT:
+            if now - responseListener['ts'] > self.RESPONSE_TIMEOUT:
 
                 # remove this item
                 self._responseListeners.pop(i)

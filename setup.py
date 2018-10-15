@@ -20,7 +20,7 @@ exec(open(os.path.join(here, NAME, 'core', 'version.py')).read())
 
 requires = [
     "future",
-    "pymongo==3.5.1",
+    #"pymongo==3.5.1",
     "python-dateutil",
     "pillow",
     "shortid",
@@ -47,7 +47,7 @@ requires = [
     "pytz",
     "flask-compress",
     "jsonschema",
-    "unqlite"
+    #"unqlite"
 ]
 
 if os.name != "nt":

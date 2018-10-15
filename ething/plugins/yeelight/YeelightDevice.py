@@ -23,7 +23,7 @@ class YeelightDevice (Device, Light):
         return get_process('yeelight.%s' % self.id)
 
     def setState(self, state):
-        result = self.controller.send("set_power", ('on' if state else 'off', "smooth", 500), done = lambda _, device : setattr(device, '_state', state) )
+        result = self.controller.send("set_power", ['on' if state else 'off', "smooth", 500], done = lambda _, device : setattr(device, '_state', state) )
 
         result.wait()
 

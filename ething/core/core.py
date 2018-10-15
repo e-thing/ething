@@ -3,15 +3,6 @@
 from future.utils import string_types
 
 from .reg import get_registered_class
-try:
-    from .database.mongodb import MongoDB
-except:
-    MongoDB = None
-from .database.sqlite import SQLite
-try:
-    from .database.unqlitedb import UnQLiteDB
-except:
-    UnQLiteDB = None
 from .ResourceQueryParser import ResourceQueryParser
 from .Config import CoreConfig
 from .SignalDispatcher import SignalDispatcher
@@ -65,14 +56,14 @@ class Core(object):
         try:
             db_type = self.config.get('db.type', 'unqlite').lower()
             if db_type == 'mongodb':
+                from .database.mongodb import MongoDB
                 db_ctor = MongoDB
             elif db_type == 'unqlite':
+                from .database.unqlitedb import UnQLiteDB
                 db_ctor = UnQLiteDB
             else:
+                from .database.sqlite import SQLite
                 db_ctor = SQLite
-
-            if not db_ctor:
-                raise Exception('the database package "%s" is not installed' % db_type)
 
             self.log.info('db type: %s' % db_type)
             self.db = db_ctor(tz = str(self.local_tz), **(self.config.get('db', {})))

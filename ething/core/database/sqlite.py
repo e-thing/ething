@@ -12,6 +12,7 @@ import json
 import datetime
 import sys
 from dateutil import parser
+import threading
 
 
 if sys.version_info >= (3, 0):
@@ -56,27 +57,29 @@ class SQLite(BaseClass):
     def __init__(self, **config):
         super(SQLite, self).__init__(**config)
         self.file = os.path.join(USER_DIR, '%s.db' % self.database)
+        self.lock = threading.Lock()
 
     def connect(self):
+        with self.lock:
+            self.db = sqlite3.connect(self.file, check_same_thread=False)
 
-        self.db = sqlite3.connect(self.file, check_same_thread=False)
+            if self.db is None:
+                raise Exception('unable to connect to the database')
 
-        if self.db is None:
-            raise Exception('unable to connect to the database')
+            self.log.info('connected to database: %s' % self.file)
 
-        self.log.info('connected to database: %s' % self.file)
-
-        c = self.db.cursor()
-        c.execute('CREATE TABLE IF NOT EXISTS resources (id char(7), data text)')
-        c.execute('CREATE TABLE IF NOT EXISTS fs (id char(7), filename text, size int, metadata text, content blob)')
-        self.db.commit()
-        c.close()
+            c = self.db.cursor()
+            c.execute('CREATE TABLE IF NOT EXISTS resources (id char(7), data text)')
+            c.execute('CREATE TABLE IF NOT EXISTS fs (id char(7), filename text, size int, metadata text, content blob)')
+            self.db.commit()
+            c.close()
 
 
     def disconnect(self):
         if hasattr(self, 'db'):
-            self.db.commit()
-            self.db.close()
+            with self.lock:
+                self.db.commit()
+                self.db.close()
 
     def get_usage(self):
         try:
@@ -95,31 +98,35 @@ class SQLite(BaseClass):
     #
 
     def list_resources(self):
-        resources = []
-        c = self.db.cursor()
-        for row in c.execute('SELECT data FROM resources'):
-            resources.append(json.loads(row[0], cls=Decoder))
-        c.close()
-        return resources
+        with self.lock:
+            resources = []
+            c = self.db.cursor()
+            for row in c.execute('SELECT data FROM resources'):
+                resources.append(json.loads(row[0], cls=Decoder))
+            c.close()
+            return resources
 
     def update_resource(self, resource):
-        c = self.db.cursor()
-        c.execute(
-            "UPDATE resources SET data = ? WHERE id = ?", (json.dumps(resource, cls=Encoder), resource['id']))
-        self.db.commit()
-        c.close()
+        with self.lock:
+            c = self.db.cursor()
+            c.execute(
+                "UPDATE resources SET data = ? WHERE id = ?", (json.dumps(resource, cls=Encoder), resource['id']))
+            self.db.commit()
+            c.close()
 
     def insert_resource(self, resource):
-        c = self.db.cursor()
-        c.execute("INSERT INTO resources (id, data) VALUES (?, ?)", (resource['id'], json.dumps(resource, cls=Encoder)))
-        self.db.commit()
-        c.close()
+        with self.lock:
+            c = self.db.cursor()
+            c.execute("INSERT INTO resources (id, data) VALUES (?, ?)", (resource['id'], json.dumps(resource, cls=Encoder)))
+            self.db.commit()
+            c.close()
 
     def remove_resource(self, resource_id):
-        c = self.db.cursor()
-        c.execute("DELETE FROM resources WHERE id = ?", (resource_id, ))
-        self.db.commit()
-        c.close()
+        with self.lock:
+            c = self.db.cursor()
+            c.execute("DELETE FROM resources WHERE id = ?", (resource_id, ))
+            self.db.commit()
+            c.close()
 
 
     #
@@ -128,11 +135,12 @@ class SQLite(BaseClass):
 
     def storeFile(self, filename, contents, metadata=None, id=None):
         if contents:
-            id = ShortId.generate() if id is None else id
-            c = self.db.cursor()
-            c.execute("INSERT INTO fs (id, filename, size, metadata, content) VALUES (?, ?, ?, ?, ?)", (id, filename, len(contents), json.dumps(metadata or {}), sqlite3.Binary(contents)))
-            self.db.commit()
-            c.close()
+            with self.lock:
+                id = ShortId.generate() if id is None else id
+                c = self.db.cursor()
+                c.execute("INSERT INTO fs (id, filename, size, metadata, content) VALUES (?, ?, ?, ?, ?)", (id, filename, len(contents), json.dumps(metadata or {}), sqlite3.Binary(contents)))
+                self.db.commit()
+                c.close()
 
             return id
 
@@ -141,65 +149,69 @@ class SQLite(BaseClass):
     def retrieveFile(self, file_id):
         content = None
         if file_id:
+            with self.lock:
+                c = self.db.cursor()
+                c.execute('SELECT content FROM fs WHERE id = ?', (file_id, ))
 
-            c = self.db.cursor()
-            c.execute('SELECT content FROM fs WHERE id = ?', (file_id, ))
+                files = c.fetchall()
+                if len(files) > 0:
+                    content = files[0][0]
+                    if not py3 and isinstance(content, buffer):
+                        content = str(content) # convert buffer to string
 
-            files = c.fetchall()
-            if len(files) > 0:
-                content = files[0][0]
-                if not py3 and isinstance(content, buffer):
-                    content = str(content) # convert buffer to string
-
-            c.close()
+                c.close()
 
         return content
 
     def removeFile(self, file_id):
         if file_id:
-            c = self.db.cursor()
-            c.execute("DELETE FROM fs WHERE id = ?", (file_id,))
-            self.db.commit()
-            c.close()
+            with self.lock:
+                c = self.db.cursor()
+                c.execute("DELETE FROM fs WHERE id = ?", (file_id,))
+                self.db.commit()
+                c.close()
 
     def getFileMetadata(self, file_id):
         metadata = {}
 
         if file_id:
-            c = self.db.cursor()
-            c.execute('SELECT metadata FROM fs WHERE id = ?', (file_id,))
+            with self.lock:
+                c = self.db.cursor()
+                c.execute('SELECT metadata FROM fs WHERE id = ?', (file_id,))
 
-            rows = c.fetchall()
-            if len(rows) > 0:
-                metadata = json.loads(rows[0][0])
+                rows = c.fetchall()
+                if len(rows) > 0:
+                    metadata = json.loads(rows[0][0])
 
-            c.close()
+                c.close()
 
         return metadata
 
     def getFileSize(self, file_id):
         if file_id:
-            c = self.db.cursor()
-            c.execute('SELECT size FROM fs WHERE id = ?', (file_id,))
+            with self.lock:
+                c = self.db.cursor()
+                c.execute('SELECT size FROM fs WHERE id = ?', (file_id,))
 
-            rows = c.fetchall()
-            c.close()
-            if len(rows) > 0:
-                return rows[0][0]
+                rows = c.fetchall()
+                c.close()
+                if len(rows) > 0:
+                    return rows[0][0]
 
         return 0
 
     def listFiles(self):
-        c = self.db.cursor()
-        c.execute('SELECT id, filename, size, metadata FROM fs')
-        files = c.fetchall()
-        c.close()
-        return [{
-            'id': f[0],
-            'filename': f[1],
-            'metadata': json.loads(f[3]),
-            'size': f[2]
-        } for f in files]
+        with self.lock:
+            c = self.db.cursor()
+            c.execute('SELECT id, filename, size, metadata FROM fs')
+            files = c.fetchall()
+            c.close()
+            return [{
+                'id': f[0],
+                'filename': f[1],
+                'metadata': json.loads(f[3]),
+                'size': f[2]
+            } for f in files]
 
 
     #
@@ -207,30 +219,35 @@ class SQLite(BaseClass):
     #
 
     def list_tables(self):
-        c = self.db.cursor()
-        c.execute("SELECT name FROM sqlite_master WHERE type='table'")
-        tables = c.fetchall()
-        c.close()
-        return [t[0] for t in tables]
+        with self.lock:
+            c = self.db.cursor()
+            c.execute("SELECT name FROM sqlite_master WHERE type='table'")
+            tables = c.fetchall()
+            c.close()
+            return [t[0] for t in tables]
 
     def create_table(self, table_name):
-        c = self.db.cursor()
-        c.execute("CREATE TABLE '%s' (id char(7), data text)" % (table_name,))
-        c.close()
-        self.db.commit()
+        with self.lock:
+            c = self.db.cursor()
+            c.execute("CREATE TABLE '%s' (id char(7), data text)" % (table_name,))
+            self.db.commit()
+            c.close()
 
     def remove_table(self, table_name):
-        c = self.db.cursor()
-        c.execute("DROP TABLE '%s'" % (table_name,))
-        self.db.commit()
-        c.close()
+        with self.lock:
+            c = self.db.cursor()
+            c.execute("DROP TABLE '%s'" % (table_name,))
+            self.db.commit()
+            c.close()
 
     def get_table_rows(self, table_name, query = None, start=0, length=None, keys=None, sort=None):
         rows = []
-        c = self.db.cursor()
-        for row in c.execute("SELECT data FROM '%s'" % (table_name, )):
-            rows.append(json.loads(row[0], cls=Decoder))
-        c.close()
+
+        with self.lock:
+            c = self.db.cursor()
+            for row in c.execute("SELECT data FROM '%s'" % (table_name, )):
+                rows.append(json.loads(row[0], cls=Decoder))
+            c.close()
 
         if query:
             parser = TableQueryParser(compiler=attribute_compiler, tz=getattr(self, 'tz', None))
@@ -252,48 +269,52 @@ class SQLite(BaseClass):
         return rows
 
     def insert_table_row(self, table_name, row_data):
-        c = self.db.cursor()
-        c.execute("INSERT INTO '%s' (id, data) VALUES (?, ?)" % table_name, (row_data['id'], json.dumps(row_data, cls=Encoder)))
-        self.db.commit()
-        c.close()
+        with self.lock:
+            c = self.db.cursor()
+            c.execute("INSERT INTO '%s' (id, data) VALUES (?, ?)" % table_name, (row_data['id'], json.dumps(row_data, cls=Encoder)))
+            self.db.commit()
+            c.close()
 
     def update_table_row(self, table_name, row_id, row_data):
         """return the old row"""
-        c = self.db.cursor()
+        with self.lock:
+            c = self.db.cursor()
 
-        c.execute("SELECT data FROM '%s' WHERE id = ?" % table_name, (row_id,))
-        updated_row = c.fetchone()
-        if updated_row:
-            updated_row = json.loads(updated_row[0], cls=Decoder)
+            c.execute("SELECT data FROM '%s' WHERE id = ?" % table_name, (row_id,))
+            updated_row = c.fetchone()
+            if updated_row:
+                updated_row = json.loads(updated_row[0], cls=Decoder)
 
-        c.execute(
-            "UPDATE '%s' SET data = ? WHERE id = ?" % table_name,
-            (json.dumps(row_data, cls=Encoder), row_id))
+            c.execute(
+                "UPDATE '%s' SET data = ? WHERE id = ?" % table_name,
+                (json.dumps(row_data, cls=Encoder), row_id))
 
-        self.db.commit()
-        c.close()
+            self.db.commit()
+            c.close()
 
-        return updated_row
+            return updated_row
 
     def remove_table_row(self, table_name, row_id):
         """return the removed row"""
-        c = self.db.cursor()
+        with self.lock:
+            c = self.db.cursor()
 
-        c.execute("SELECT data FROM '%s' WHERE id = ?" % table_name, (row_id,))
-        deleted_row = c.fetchone()
-        if deleted_row:
-            deleted_row = json.loads(deleted_row[0], cls=Decoder)
+            c.execute("SELECT data FROM '%s' WHERE id = ?" % table_name, (row_id,))
+            deleted_row = c.fetchone()
+            if deleted_row:
+                deleted_row = json.loads(deleted_row[0], cls=Decoder)
 
-        c.execute("DELETE FROM '%s' WHERE id = ?" % table_name, (row_id,))
+            c.execute("DELETE FROM '%s' WHERE id = ?" % table_name, (row_id,))
 
-        self.db.commit()
-        c.close()
+            self.db.commit()
+            c.close()
 
-        return deleted_row
+            return deleted_row
 
     def clear_table(self, table_name):
-        c = self.db.cursor()
-        c.execute("DELETE FROM '%s'" % table_name)
-        self.db.commit()
-        c.close()
+        with self.lock:
+            c = self.db.cursor()
+            c.execute("DELETE FROM '%s'" % table_name)
+            self.db.commit()
+            c.close()
 

@@ -87,7 +87,7 @@ class YeelightProtocol(LineReader):
     RESPONSE_TIMEOUT = 10  # seconds
 
     def __init__(self, gateway):
-        super(YeelightProtocol, self).__init__(terminator = b'\n')
+        super(YeelightProtocol, self).__init__(terminator = b'\r\n')
         self.gateway = gateway
         # response management
         self._pending_cmds = {}
@@ -186,7 +186,7 @@ class YeelightProtocol(LineReader):
 
         if self.process.is_open:
 
-            self.log.debug("Yeelight: message send %s" % str(command))
+            self.log.debug("message send %s" % str(command))
 
             self.write_line(json.dumps(command))
 
@@ -216,7 +216,7 @@ class YeelightProtocol(LineReader):
         for id in list(self._pending_cmds):
             result = self._pending_cmds[id]
 
-            if now - result.send_ts > Controller.RESPONSE_TIMEOUT:
+            if now - result.send_ts > self.RESPONSE_TIMEOUT:
                 result.reject('response timeout', args = (self.gateway,))
                 del self._pending_cmds[id]
 
@@ -283,7 +283,7 @@ class YeelightAdvertisementProtocol(Protocol):
         id = dev_info.get('id')
         model = dev_info.get('model')
 
-        device = self.core.find(lambda r: r.isTypeof('resources/YeelightDevice') and r.dev_id == id and r.model == model)
+        device = self.core.findOne(lambda r: r.isTypeof('resources/YeelightDevice') and r._dev_id == id and r.model == model)
 
         if not device:
             self.log.debug('new device : id = %s, model = %s' % (id, model))
@@ -292,7 +292,7 @@ class YeelightAdvertisementProtocol(Protocol):
                 'dev_id': id,
                 'model': model,
                 'fw_ver': dev_info.get('fw_ver'),
-                'name': dev_info.get('name', model),
+                'name': dev_info.get('name', '').strip() or model,
                 'host': dev_info.get('ip')
             }
 
