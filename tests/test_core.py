@@ -25,4 +25,4 @@ def test_core(core):
 
     print(usage)
 
-    assert usage.get('used') > 0
+    assert usage.get('used') >= 0

@@ -1,6 +1,7 @@
 # coding: utf-8
 import pytest
 from ething.core import Core
+from ething.webserver import WebServer
 
 
 _core = Core({
@@ -10,11 +11,7 @@ _core = Core({
     'log': {
         'level': 'DEBUG'
     },
-    'debug': True,
-    'WebServer': {
-        "debug": True,
-        'port': 8001
-    }
+    'debug': True
 })
 
 @pytest.fixture

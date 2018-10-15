@@ -56,17 +56,20 @@ class SQLite(BaseClass):
 
     def __init__(self, **config):
         super(SQLite, self).__init__(**config)
-        self.file = os.path.join(USER_DIR, '%s.db' % self.database)
+        if self.database == ':memory:':
+            self.file = None
+        else:
+            self.file = os.path.join(USER_DIR, '%s.db' % self.database)
         self.lock = threading.Lock()
 
     def connect(self):
         with self.lock:
-            self.db = sqlite3.connect(self.file, check_same_thread=False)
+            self.db = sqlite3.connect(self.file or ':memory:', check_same_thread=False)
 
             if self.db is None:
                 raise Exception('unable to connect to the database')
 
-            self.log.info('connected to database: %s' % self.file)
+            self.log.info('connected to database: %s' % (self.file or 'memory'))
 
             c = self.db.cursor()
             c.execute('CREATE TABLE IF NOT EXISTS resources (id char(7), data text)')
@@ -83,13 +86,14 @@ class SQLite(BaseClass):
 
     def get_usage(self):
         try:
-            return os.path.getsize(self.file)
+            return os.path.getsize(self.file) if self.file else 0
         except:
             return 0
 
     def clear(self):
         self.disconnect()
-        os.remove(self.file)
+        if self.file:
+            os.remove(self.file)
         self.connect()
 
 

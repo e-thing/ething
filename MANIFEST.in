@@ -7,3 +7,11 @@ include *.rst
 recursive-include ething/webserver/webui *
 recursive-include ething/core/nodejs *
 recursive-include ething/plugins *
+
+# exclude tests directories
+prune tests
+prune ething/plugins/*/tests
+
+# exclude node_modules
+recursive-exclude node_modules *
+

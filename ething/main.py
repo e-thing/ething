@@ -292,7 +292,7 @@ def main():
     from .core import Core
 
     # import webserver + rule plugins
-    from .webserver.server import WebServer
+    from .webserver import WebServer
 
     # import the plugins here !
     from .plugins import import_all

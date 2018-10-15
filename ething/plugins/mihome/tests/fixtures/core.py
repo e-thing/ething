@@ -10,11 +10,7 @@ _core = Core({
     'log': {
         'level': 'DEBUG'
     },
-    'debug': True,
-    'WebServer': {
-        "debug": True,
-        'port': 8001
-    }
+    'debug': True
 })
 
 @pytest.fixture

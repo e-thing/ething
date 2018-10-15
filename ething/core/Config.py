@@ -179,20 +179,7 @@ class CoreConfig(Config):
         # logging. Set to false to disable logging.
         'log': {
             'level': 'INFO'
-        },
-
-        'script': {
-            'timeout': 300000  # in millisecondes
-        },
-
-        'nodejs': {
-            'executable': 'node'
-        },
-
-        'node-red': {
-            'port': 1880,
-            'target': ''  # http://localhost:1880
-        },
+        }
 
     }
 
@@ -216,17 +203,6 @@ class CoreConfig(Config):
                     ("level", {
                         "type": "string",
                         "enum": ['DEBUG', 'INFO', 'WARNING', 'ERROR']
-                    })
-                ])
-            }),
-            ("script", {
-                "type": "object",
-                "additionalProperties": False,
-                "properties": OrderedDict([
-                    ("timeout", {
-                        "description": "Expressed in milliseconds. 0 means unlimited.",
-                        "type": "integer",
-                        "minimum": 0
                     })
                 ])
             })
