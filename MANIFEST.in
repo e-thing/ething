@@ -13,5 +13,5 @@ prune tests
 prune ething/plugins/*/tests
 
 # exclude node_modules
-recursive-exclude node_modules *
-
+prune ething/plugins/*/node_modules
+prune ething/plugins/*/*/node_modules

@@ -1,7 +1,7 @@
 {
-  "name": "ething-quasar-plugin-template",
+  "name": "ething-quasar-plugin",
   "version": "0.1.0",
-  "description": "A template plugin for ething-quasar",
+  "description": "plugin for ething-quasar",
   "author": {
     "name": "Adrien Mezerette",
     "email": "a.mezerette@gmail.com"
@@ -22,9 +22,10 @@
     "vue-style-loader": "^4.1.2",
     "vue-template-compiler": "^2.5.17",
     "webpack": "^4.19.1",
+    "webpack-bundle-analyzer": "^3.0.2",
     "webpack-cli": "^3.1.1"
   },
-  "peerDependencies": {
-    "ething-quasar-core": "e-thing/ething-quasar-core#master"
+  "dependencies": {
+    "ething-quasar-dll": "e-thing/ething-quasar-dll#master"
   }
 }

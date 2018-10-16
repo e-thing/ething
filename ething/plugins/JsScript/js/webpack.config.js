@@ -14,11 +14,7 @@ module.exports = {
     path: resolve(__dirname)
   },
   resolve: {
-    extensions: ['.js', '.vue', '.css'],
-    alias: {
-        'quasar': resolve(__dirname, './node_modules/quasar-framework/dist/quasar.mat.esm.js'), // https://github.com/quasarframework/quasar/issues/1576
-        'variables': resolve(__dirname, './node_modules/quasar-framework/dist/quasar.mat.styl')
-    }
+    extensions: ['.js', '.vue', '.css']
   },
   module: {
     rules: [
@@ -61,13 +57,8 @@ module.exports = {
     }),
     new BundleAnalyzerPlugin()
   ],
-  externals: [
-      'vue',
-      'quasar',
-      'axios',
-      {
-        'ething-quasar-core': 'EThingUI',
-        'ething-js': 'EThing'
-      }
-  ]
+  externals: {
+    'ething-quasar-core': 'EThingUI',
+    'ething-js': 'EThing'
+  }
 }

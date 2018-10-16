@@ -1,7 +1,9 @@
 'use strict'
 
 const { VueLoaderPlugin } = require('vue-loader')
+const BundleAnalyzerPlugin = require('webpack-bundle-analyzer').BundleAnalyzerPlugin;
 const { resolve } = require('path')
+const webpack = require('webpack');
 
 module.exports = {
   mode: 'development',
@@ -12,11 +14,7 @@ module.exports = {
     path: resolve(__dirname)
   },
   resolve: {
-    extensions: ['.js', '.vue', '.css'],
-    alias: {
-        'quasar': resolve(__dirname, './node_modules/quasar-framework/dist/quasar.mat.esm.js'), // https://github.com/quasarframework/quasar/issues/1576
-        'variables': resolve(__dirname, './node_modules/quasar-framework/dist/quasar.mat.styl')
-    }
+    extensions: ['.js', '.vue', '.css']
   },
   module: {
     rules: [
@@ -52,15 +50,15 @@ module.exports = {
     ]
   },
   plugins: [
-    new VueLoaderPlugin()
+    new VueLoaderPlugin(),
+    new webpack.DllReferencePlugin({
+        context: ".",
+        manifest: require("./node_modules/ething-quasar-dll/dist/vendor-manifest.json")
+    }),
+    new BundleAnalyzerPlugin()
   ],
-  externals: [
-      'vue',
-      'quasar',
-      'axios',
-      {
-        'ething-quasar-core': 'EThingUI',
-        'ething-js': 'EThing'
-      }
-  ]
+  externals: {
+    'ething-quasar-core': 'EThingUI',
+    'ething-js': 'EThing'
+  }
 }

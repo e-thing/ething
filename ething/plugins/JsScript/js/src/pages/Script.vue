@@ -200,7 +200,6 @@ export default {
 </script>
 
 <style lang="stylus">
-@import '~variables'
 
 .vertical-panes > .pane {
   overflow: hidden;
@@ -265,23 +264,23 @@ export default {
 
 .console
   .output-line
-    padding-left: $space-x-base
-    padding-right: $space-x-base
+    padding-left: 16px
+    padding-right: 16px
 
     &.stdout
-      color: $faded
+      color: #777
     &.stderr
-      color: $negative
+      color: #DB2828
     &.info
-      color: $blue-7
+      color: #1e88e5
     &:not(:last-child)
-      border-bottom 1px solid $grey-3
+      border-bottom 1px solid #eee
 
 .CodeMirror
   height 100%
 
 .title.dirty:after
   content '*'
-  color $negative
+  color #DB2828
 
 </style>

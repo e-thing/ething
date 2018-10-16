@@ -4,6 +4,9 @@ from .MQTT import MQTT
 from ething.core.plugin import Plugin
 from ething.core.Process import Process
 import paho.mqtt.client as mqttClient
+import paho.mqtt.publish as publish
+from ething.core.entity import *
+from ething.core.rule.action import Action
 import threading
 
 
@@ -146,3 +149,31 @@ class Controller(Process):
         with self._lock:
             self.log.debug("MQTT: publish to topic %s" % topic)
             self._mqttClient.publish(topic, payload, 0, retain)
+
+
+
+@attr('topic', type=String(allow_empty=False), description="the topic string to which the payload will be published.")
+@attr('hostname', type=String(allow_empty=False), description="a string containing the address of the broker to connect to.")
+@attr('port', type=Integer(min=0, max=65535), default=1883, description="the port to connect to the broker on.")
+@attr('payload', type=String(), default='', description="the payload to be published. If an empty string is given, a zero length payload will be published.")
+@attr('qos', type=Enum([0,1,2]), default=0, description="the qos to use when publishing.")
+@attr('username', type=String(), description="username for the client. Leave empty to disable authentication.")
+@attr('password', type=String(), description="password for the client. Leave empty to disable authentication.")
+class MqttPublish(Action):
+    """ Publish a single message to a broker """
+    def run(self, signal):
+
+        auth = None
+
+        if self.username and self.password:
+            auth = {
+                'username': self.username,
+                'password': self.password
+            }
+
+        self.log.debug("publish: topic=%s hostname=%s port=%s" % (self.topic, self.hostname, self.port))
+
+        publish.single(self.topic, self.payload, hostname=self.hostname, port=self.port, qos=self.qos, auth=auth)
+
+
+

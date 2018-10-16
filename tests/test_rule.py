@@ -26,3 +26,17 @@ def test_rule(core):
     rule.trigger(signal)
 
     assert rule.execution_count == 1
+
+
+def test_HttpRequest():
+    signal = event.Custom('my_event')
+
+    req_action = action.HttpRequest.HttpRequest({
+        'url': 'http://www.google.fr'
+    })
+
+    req_action.run(signal)
+
+
+
+

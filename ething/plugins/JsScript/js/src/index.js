@@ -34,6 +34,21 @@ EThingUI.extend('resources/File', {
 
 })
 
+// extend RunScript action
+EThingUI.extend('actions/RunScript', {
+
+    properties: {
+        script: {
+          format: 'ething.resource',
+          filter: (r) => {
+            return (r instanceof EThing.File) && r.mime() == 'application/javascript'
+          }
+        },
+    }
+
+})
+
+
 
 // add a new route
 var router = EThingUI.router

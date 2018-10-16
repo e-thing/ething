@@ -103,10 +103,6 @@ export default {
                     type: 'string',
                     minLength: 1
                 },
-                appid: {
-                    type: 'string',
-                    minLength: 1
-                },
                 mode: {
                     enum: ['now', '24h', '5d']
                 }
@@ -116,7 +112,6 @@ export default {
 
     props: {
         location: String,
-        appid: String,
         mode: {
             type: String,
             default: 'now'
@@ -124,7 +119,14 @@ export default {
     },
 
     data () {
+        var appid = null
+
+        if (EThingUI.settings && EThingUI.settings.OpenWeatherMapPlugin) {
+            appid = EThingUI.settings.OpenWeatherMapPlugin.appid
+        }
+
         return {
+            appid,
             raw: {},
             timerId: null
         }
@@ -311,10 +313,14 @@ export default {
     },
 
     mounted () {
-        this.load()
-        this.timerId = setInterval(() => {
-          this.load()
-        }, 300000)
+        if (this.appid) {
+            this.load()
+            this.timerId = setInterval(() => {
+              this.load()
+            }, 300000)
+        } else {
+            this.setError('no appid set in the plugin settings')
+        }
     },
 
     beforeDestroy () {

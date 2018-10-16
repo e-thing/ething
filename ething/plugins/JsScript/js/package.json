@@ -1,7 +1,7 @@
 {
-  "name": "ething-quasar-plugin-template",
+  "name": "ething-quasar-plugin",
   "version": "0.1.0",
-  "description": "A template plugin for ething-quasar",
+  "description": "plugin for ething-quasar",
   "author": {
     "name": "Adrien Mezerette",
     "email": "a.mezerette@gmail.com"
@@ -26,8 +26,6 @@
     "webpack-cli": "^3.1.1"
   },
   "dependencies": {
-    "quasar-framework": "^0.17.16",
-    "ething-quasar-core": "e-thing/ething-quasar-core#master",
     "ething-quasar-dll": "e-thing/ething-quasar-dll#master"
   }
 }

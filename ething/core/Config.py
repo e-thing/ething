@@ -58,7 +58,7 @@ class ConfigBase(Mapping):
     def __init__(self, value=None, schema=None):
         self._store = value if value is not None else dict()
         self._schema = schema
-        self._lock = threading.Lock()
+        self._lock = threading.RLock()
         if self._schema:
             validate(self._store, self._schema)
 
@@ -220,5 +220,5 @@ class CoreConfig(Config):
 
     def on_change(self, updated_keys):
         self.core.log.info('config updated: %s' % updated_keys)
-        self.core.dispatchSignal('ConfigUpdated', updated_keys)
+        self.core.dispatchSignal('ConfigUpdated', updated_keys, self.toJson())
 
