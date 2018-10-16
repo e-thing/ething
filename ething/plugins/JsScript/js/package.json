@@ -27,7 +27,7 @@
   },
   "dependencies": {
     "quasar-framework": "^0.17.16",
-    "ething-quasar-core": "file:../../../../../ething-quasar-core",
+    "ething-quasar-core": "e-thing/ething-quasar-core#master",
     "ething-quasar-dll": "e-thing/ething-quasar-dll#master"
   }
 }
