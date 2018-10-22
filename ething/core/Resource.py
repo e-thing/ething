@@ -6,6 +6,7 @@ from .core import Core
 from .reg import get_definition_pathname
 from .rule.event import ResourceEvent, ResourceSignal
 from .Interface import Interface
+from collections import Mapping
 import datetime
 import inspect
 
@@ -221,32 +222,42 @@ class Resource(DbEntity):
                     }
 
                 value = self._get(a)
-                if isinstance(value, MutableMapping):
+                if isinstance(value, Mapping):
                     history_data[name]['data'].update(value)
                 else:
                     history_data[name]['data'][a.name] = value
 
         for table_name in history_data:
-
             history_data_item = history_data[table_name]
-
-            try:
-                table = self.ething.findOne(lambda r: r.createdBy == self and r.name == table_name and r.isTypeof('resources/Table'))
-
-                if not table:
-                    # create it !
-                    table = self.ething.create('resources/Table', {
-                        'name': table_name,
-                        'createdBy': self.id,
-                        'maxLength': history_data_item['length']
-                    })
-
-                if table:
-                    table.insert(history_data_item['data'])
-            except Exception as e:
-                self.ething.log.exception('history error for %s' % table_name)
+            self.store(table_name, history_data_item['data'], table_length = history_data_item['length'])
 
         self.ething.dispatchSignal(ResourceUpdated(self, list(dirty_keys)))
+
+    def store(self, table_name, data, name = None, table_length = 5000):
+        try:
+            table = self.ething.findOne(
+                lambda r: r.createdBy == self and r.name == table_name and r.isTypeof('resources/Table'))
+
+            if not table:
+                # create it !
+                table = self.ething.create('resources/Table', {
+                    'name': table_name,
+                    'createdBy': self.id,
+                    'maxLength': table_length
+                })
+
+            if table:
+
+                if not isinstance(data, Mapping):
+                    if not name:
+                        name = table_name
+                    data = {
+                        name: data
+                    }
+
+                table.insert(data)
+        except Exception as e:
+            self.ething.log.exception('history error for %s' % table_name)
 
     def match(self, expression):
         filter = self.ething.resourceQueryParser.compile(expression)

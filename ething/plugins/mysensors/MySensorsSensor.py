@@ -2,8 +2,6 @@
 
 from ething.core.Device import Device
 from ething.core.reg import *
-from .helpers import *
-from collections import MutableSequence
 
 
 @abstract
@@ -42,10 +40,5 @@ class MySensorsSensor (Device):
         return self.node.send(self.sensorId, type, subtype, payload)
 
     def _set_data(self, datatype, value):
-        name = valueTypeToName(datatype)
-
-        if isinstance(value, MutableSequence):
-            value = ','.join(value)
-
-        self.data[name] = value
+        pass
 
