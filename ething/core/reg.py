@@ -722,18 +722,19 @@ def build_schema(cls, root = False, **kwargs):
   
   schema['required'] = required
 
-  methods = list_registered_methods(cls)
+  if not no_methods:
+    methods = list_registered_methods(cls)
 
-  if methods and not no_methods:
-    # schema['type'] = 'class'
-    schema['methods'] = OrderedDict()
+    if methods:
+        # schema['type'] = 'class'
+        schema['methods'] = OrderedDict()
 
-    for method in methods:
+        for method in methods:
 
-      if (not flatted) and method.cls is not cls:
-        continue
-      
-      schema['methods'][method.name] = method.toSchema(**kwargs)
+          if (not flatted) and method.cls is not cls:
+            continue
+
+          schema['methods'][method.name] = method.toSchema(**kwargs)
 
   if not flatted:
     all_of = []

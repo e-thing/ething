@@ -170,6 +170,7 @@ def init_logger(console_log=False):
 
     frm = logging.Formatter("%(asctime)s :: %(name)s :: %(levelname)s :: %(message)s")
     log = logging.getLogger('ething')
+    log.setLevel(logging.INFO)
 
     if console_log:
         console = logging.StreamHandler(sys.stdout)
@@ -181,6 +182,7 @@ def init_logger(console_log=False):
         file_handler = RotatingFileHandler(LOG_FILE, encoding="utf8", maxBytes=10 * 1024 * 1024, backupCount=5)
         file_handler.setFormatter(frm)
         log.addHandler(file_handler)
+        log.info('LOG_FILE = %s' % LOG_FILE)
     else:
         log.error('the log file is not writeable : %s' % LOG_FILE)
 

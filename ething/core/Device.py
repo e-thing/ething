@@ -85,8 +85,7 @@ class DeviceDisconnectedEvent(ResourceEvent):
 @attr('location', type=Nullable(String()), default=None, description="The location of this device.")
 @attr('connected', type=Boolean(), default=True, watch=True, description="Set to true when this device is connected.")
 @attr('lastSeenDate', mode=READ_ONLY, default=None, description="The last time this device was reached or made a request.")
-@attr('methods', default=[], mode=READ_ONLY, description="The list of the methods available.")
-@attr('interfaces', default=[], mode=READ_ONLY, description="A list of interfaces this device inherit")
+@attr('methods', default=lambda cls: [m.name for m in list_registered_methods(cls)], mode=READ_ONLY, description="The list of the methods available.")
 class Device(Resource):
 
     BATTERY_NONE = None

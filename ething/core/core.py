@@ -114,9 +114,6 @@ class Core(object):
 
     def init(self):
 
-        self.log.info("ething %s" % self.version)
-        self.log.info("Using home directory: %s" % os.getcwd())
-
         self.signalDispatcher = SignalDispatcher()
         self.scheduler = Scheduler()
         
@@ -133,11 +130,11 @@ class Core(object):
 
         self.signalDispatcher.bind('ConfigUpdated', self._on_config_updated)
         
-        if self.config.get('debug'):
-            deadlock_trace_file = os.path.join(USER_DIR, 'deadlock_tracer.log')
+        if self.config.get('debug') and False:
+            deadlock_trace_file = os.path.join(USER_DIR, 'deadlock_tracer_%s.log' % (datetime.datetime.now().strftime("%Y%m%d_%H%M%S")))
             self.log.info('deadlock tracer thread started (%s)' % deadlock_trace_file)
             try:
-                trace_start(deadlock_trace_file)
+                trace_start(deadlock_trace_file, 5, True, False)
             except:
                 self.log.exception('unable to start deadlock tracer')
         

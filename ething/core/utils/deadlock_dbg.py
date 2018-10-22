@@ -43,7 +43,7 @@ def stacktraces():
 class TraceDumper(threading.Thread):
     """Dump stack traces into a given file periodically."""
 
-    def __init__(self, fpath, interval, auto):
+    def __init__(self, fpath, interval, auto, clean=True):
         """
         @param fpath: File path to output HTML (stack trace file)
         @param auto: Set flag (True) to update trace continuously.
@@ -53,6 +53,7 @@ class TraceDumper(threading.Thread):
         """
         assert (interval > 0.1)
         self.auto = auto
+        self.clean = clean
         self.interval = interval
         self.fpath = os.path.abspath(fpath)
         self.stop_requested = threading.Event()
@@ -68,7 +69,7 @@ class TraceDumper(threading.Thread):
         self.stop_requested.set()
         self.join()
         try:
-            if os.path.isfile(self.fpath):
+            if self.clean and os.path.isfile(self.fpath):
                 os.unlink(self.fpath)
         except:
             pass
@@ -84,11 +85,11 @@ class TraceDumper(threading.Thread):
 _tracer = None
 
 
-def trace_start(fpath, interval=5, auto=True):
+def trace_start(fpath, interval=5, auto=True, clean=True):
     """Start tracing into the given file."""
     global _tracer
     if _tracer is None:
-        _tracer = TraceDumper(fpath, interval, auto)
+        _tracer = TraceDumper(fpath, interval, auto, clean)
         _tracer.setDaemon(True)
         _tracer.start()
     else:

@@ -97,7 +97,7 @@ if bluepy_imported:
 
             if isNewDev or isNewData:
 
-                self.log.debug("BLEA: new device mac=%s rssi=%ddb connectable=%s data=%s", dev.addr, dev.rssi, str(dev.connectable), dev.getScanData())
+                self.log.debug("BLEA: device detected mac=%s rssi=%ddb connectable=%s data=%s", dev.addr, dev.rssi, str(dev.connectable), dev.getScanData())
 
                 mac = dev.addr.upper()
                 rssi = dev.rssi
