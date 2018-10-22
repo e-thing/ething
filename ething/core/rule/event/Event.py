@@ -39,7 +39,7 @@ class Event(Entity):
         try:
             return self._filter(signal)
         except:
-            self.ething.log.exception('error in event filter for : %s' % self)
+            self.log.exception('error in event filter for : %s' % self)
             return False
 
     def _filter(self, signal):

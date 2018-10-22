@@ -9,6 +9,7 @@ from .Interface import Interface
 from collections import Mapping
 import datetime
 import inspect
+import logging
 
 
 class ResourceCreated(ResourceSignal):
@@ -115,6 +116,7 @@ class Resource(DbEntity):
 
         super(Resource, self).__init__(data, create)
         object.__setattr__(self, '_Resource__ething', ething)
+        object.__setattr__(self, '_Resource__log', logging.getLogger('ething.r.%s' % data.get('id')))
 
     def __eq__(self, other):
         if isinstance(other, Resource):
@@ -134,6 +136,10 @@ class Resource(DbEntity):
     @property
     def ething(self):
         return self.__ething
+
+    @property
+    def log(self):
+        return self.__log
 
     def __getattr__(self,    name):
         value = super(Resource, self).__getattr__(name)
@@ -185,7 +191,7 @@ class Resource(DbEntity):
 
         self.ething.resource_db_cache.remove(self)
 
-        self.ething.log.debug("Resource deleted : %s" % str(self))
+        self.log.debug("Resource deleted : %s" % str(self))
 
         self.ething.dispatchSignal(ResourceDeleted(self))
 
@@ -196,7 +202,7 @@ class Resource(DbEntity):
 
         self.ething.dispatchSignal(ResourceCreated(self))
 
-        self.ething.log.debug("Resource created : %s" % str(self))
+        self.log.debug("Resource created : %s" % str(self))
 
     def _before_save(self):
         self._modifiedDate = datetime.datetime.utcnow()  # update the modification time
@@ -205,7 +211,7 @@ class Resource(DbEntity):
 
         dirty_keys = [a.name for a in dirty_attrs]
 
-        self.ething.log.debug("Resource update : %s , dirtyFields: %s" % (
+        self.log.debug("Resource update : %s , dirtyFields: %s" % (
             str(self), dirty_keys))
 
         self.ething.resource_db_cache.save(self)
@@ -257,7 +263,7 @@ class Resource(DbEntity):
 
                 table.insert(data)
         except Exception as e:
-            self.ething.log.exception('history error for %s' % table_name)
+            self.log.exception('history error for %s' % table_name)
 
     def match(self, expression):
         filter = self.ething.resourceQueryParser.compile(expression)

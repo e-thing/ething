@@ -108,26 +108,9 @@ class MQTT(Device):
                                 self.store(name, data)
                                 continue
 
-                self.ething.log.warning(
+                self.log.warning(
                     'unable to handle the message from topic %s' % topic)
 
-    def store(self, name, value):
+    def store(self, name, value, **kwargs):
+        super(MQTT, self).store(name, value, **kwargs)
         self.data[name] = value
-
-        try:
-            table = self.ething.findOne(lambda r: r.isTypeof('resources/Table') and r.name == name and r.createdBy == self)
-
-            if not table:
-                # create it !
-                table = self.ething.create('resources/Table', {
-                    'name': name,
-                    'createdBy': self.id,
-                    'maxLength': 5000
-                })
-
-            if table:
-                table.insert({
-                    name: value
-                })
-        except:
-            self.ething.log.exception('history error for %s' % name)

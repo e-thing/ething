@@ -35,7 +35,7 @@ class Rule(Resource):
                     if event.filter(signal):
                         dopass = True
                 except Exception as e:
-                    self.ething.log.exception('error while filtering the event[%d] %s of the rule %s' % (i, event, self))
+                    self.log.exception('error while filtering the event[%d] %s of the rule %s' % (i, event, self))
 
             return dopass
 
@@ -55,7 +55,7 @@ class Rule(Resource):
                         dopass = True
                         break
                 except Exception as e:
-                    self.ething.log.exception('error while testing the condition[%d] %s of the rule %s' % (i, condition, self))
+                    self.log.exception('error while testing the condition[%d] %s of the rule %s' % (i, condition, self))
 
             return dopass
 
@@ -95,6 +95,6 @@ class Rule(Resource):
                     action = actions[i]
                     action.run(signal)
                 except Exception as e:
-                    self.ething.log.exception('error while running the action[%d] %s of the rule %s' % (i, action, self))
+                    self.log.exception('error while running the action[%d] %s of the rule %s' % (i, action, self))
                     break
 

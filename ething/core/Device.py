@@ -114,8 +114,8 @@ class Device(Resource):
         elif attr == 'connected':
             if new_value != old_value:
                 if new_value:
-                    self.ething.log.debug("device connected %s" % self)
+                    self.log.debug("device connected %s" % self)
                     self.dispatchSignal(DeviceConnected(self))
                 else:
-                    self.ething.log.debug("device disconnected %s" % self)
+                    self.log.debug("device disconnected %s" % self)
                     self.dispatchSignal(DeviceDisconnected(self))

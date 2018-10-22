@@ -37,7 +37,7 @@ class Miflora(BleaDevice, Thermometer, LightSensor, MoistureSensor):
                 
                 
         except Exception as e:
-            self.ething.log.error(str(e))
+            self.log.error(str(e))
         
         return result
     
