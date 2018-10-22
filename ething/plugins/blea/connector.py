@@ -6,15 +6,6 @@ import struct
 import logging
 
 
-# monkey patching: force timeout to avoid infinite loop
-original_waitResp = btle.BluepyHelper._waitResp
-def _waitResp(self, wantType, timeout=None):
-    if timeout is None:
-        timeout = 30
-    return original_waitResp(self, wantType, timeout)
-btle.BluepyHelper._waitResp = _waitResp
-
-
 class Connector():
     def __init__(self, instance, type='public'):
         self.instance = instance

@@ -7,6 +7,7 @@ import os
 import random
 import string
 from collections import OrderedDict
+from io import open
 
 from ething.core.reg import build_schema_definitions
 from ething.core.dbentity import DbEntity, Entity
@@ -95,33 +96,13 @@ def install(core, app, auth, **kwargs):
             except:
                 pass
 
-        def tail(fname, linenb, filter = None):
-            bufsize = 32768 if filter else 8192
-            fsize = os.stat(fname).st_size
-
-            iter = 0
-            data = []
-            with open(fname) as f:
-                if bufsize > fsize:
-                    bufsize = fsize-1
-                while iter < 10:
-                    iter += 1
-                    pos = fsize-bufsize*iter
-                    if pos < 0:
-                        break;
-                    f.seek(pos)
-                    lines = f.readlines()
-                    if filter:
-                        lines = [l for l in lines if filter in l]
-                    if len(lines):
-                        data.extend(lines)
-                    if len(data) >= linenb or f.tell() == 0:
-                        break
-
-            return [l.strip() for l in data[-linenb:]]
-
         if logfilename:
-            lines = tail(logfilename, linenb, filter)
+            with open(logfilename, encoding='utf8') as f:
+                lines = f.readlines()
+                if filter:
+                    lines = [l for l in lines if filter in l]
+                if linenb:
+                    lines = lines[-linenb:]
 
         return app.jsonify(lines)
 

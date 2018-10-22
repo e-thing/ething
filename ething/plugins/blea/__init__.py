@@ -171,7 +171,7 @@ if bluepy_imported:
                         scanner.process(3)
                         self._set_connect_state(True)
                         self.errcount = 0
-                    except BTLEException as e:
+                    except Exception as e:
                         self._set_connect_state(False)
                         self.errcount += 1
                         self.log.exception("BLEA: scan thread exception")
