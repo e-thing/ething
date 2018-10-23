@@ -53,6 +53,8 @@ class Core(object):
         self.plugins = instanciate_plugins(self)
 
     def _init_database(self):
+        self.resourceQueryParser = ResourceQueryParser(tz=str(self.local_tz))
+
         try:
             db_type = self.config.get('db.type', 'unqlite').lower()
             if db_type == 'mongodb':
@@ -73,8 +75,6 @@ class Core(object):
         except Exception as e:
             self.log.exception('init database error')
             raise e
-
-        self.resourceQueryParser = ResourceQueryParser(tz = str(self.local_tz))
 
     def stop(self):
         self.log.info("stopping ...")

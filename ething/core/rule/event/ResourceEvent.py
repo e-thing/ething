@@ -44,8 +44,10 @@ class ResourceFilter(Basetype):
         super(ResourceFilter, self).__init__(**attributes)
         self.onlyTypes = onlyTypes
 
-    def _checkId(self, id, ething):
+    def _checkId(self, id, ething = None):
         # resource id
+        if not ething:
+            return
         resource = ething.get(id)
         if resource is None:
             raise ValueError("the resource with id '%s' does not exist." % id)

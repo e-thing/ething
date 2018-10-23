@@ -15,6 +15,7 @@ import datetime
 @attr('events', type=Array(event.Event, min_len = 1), description="A list of events describing when to execute this rule.")
 @attr('execution_count', default=0, mode=READ_ONLY, description="The number of times this rule has been executed")
 @attr('execution_date', default=None, mode=READ_ONLY, description="The last time this rule has been executed")
+@attr('execution_error', default=None, mode=READ_ONLY, description="The last error logged")
 class Rule(Resource):
     """
     Rule dictate the action to perform when an event occurs.
@@ -88,6 +89,8 @@ class Rule(Resource):
 
             self._execution_date = datetime.datetime.utcnow()
 
+            self._execution_error = None
+
             actions = self.actions
 
             for i in range(len(actions)):
@@ -95,6 +98,7 @@ class Rule(Resource):
                     action = actions[i]
                     action.run(signal)
                 except Exception as e:
+                    self._execution_error = 'error while running the action[%d] %s: %s' % (i, type(action).__name__, str(e))
                     self.log.exception('error while running the action[%d] %s of the rule %s' % (i, action, self))
                     break
 
