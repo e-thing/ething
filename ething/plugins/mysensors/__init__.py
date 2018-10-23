@@ -421,6 +421,11 @@ class MySensorsProtocol(LineReader):
                                 self.log.info("MySensors: nodeId=%d sensorId=%d %s" % (
                                     message.nodeId, message.childSensorId, message.value))
 
+                            elif message.subType == I_DISCOVER_RESPONSE:
+                                # the payload contains the parent node
+                                # useful to get the topology of the network
+                                pass
+
                             else:
                                 self.log.warning(
                                     "MySensors: message not processed : %s" % str(message))
