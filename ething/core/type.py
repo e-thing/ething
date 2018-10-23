@@ -323,6 +323,8 @@ class Email(String):
       # literal form, ipv4 address (SMTP 4.1.3)
       r'|^\[(25[0-5]|2[0-4]\d|[0-1]?\d?\d)'
       r'(\.(25[0-5]|2[0-4]\d|[0-1]?\d?\d)){3}\]$', re.IGNORECASE | re.UNICODE)
+
+  DOMAIN_WHITELIST = ("localhost",)
   
   def __init__(self, **attributes):
     super(Email, self).__init__(allow_empty=False, **attributes)
