@@ -35,7 +35,8 @@ class Mail(Plugin):
                 "type": "string"
             }),
             ("password", {
-                "type": "string"
+                "type": "string",
+                "format": "password"
             })
         ])
     }

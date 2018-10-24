@@ -17,6 +17,9 @@ class BleaDevice(Device):
     
     def connect(self):
         return Connector(self)
+
+    def read(self):
+        pass
     
     @classmethod
     def handleDiscovery(cls, gateway, mac, data, name, rssi, connectable):

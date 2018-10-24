@@ -17,8 +17,7 @@ class Miflora(BleaDevice, Thermometer, LightSensor, MoistureSensor):
             return True
     
     def read(self):
-        
-        result={}
+
         try:
             with self.connect() as conn:
                 batteryFirm = bytearray(conn.readCharacteristic('0x38'))
@@ -38,8 +37,6 @@ class Miflora(BleaDevice, Thermometer, LightSensor, MoistureSensor):
                 
         except Exception as e:
             self.log.error(str(e))
-        
-        return result
     
     
     def handleNotification(self,conn,handle,data):

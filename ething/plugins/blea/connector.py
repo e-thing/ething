@@ -27,7 +27,7 @@ class Connector():
         self.type = type
         self.p = None
         self.isconnected = False
-        self.iface = 0
+        self.iface = instance.createdBy.iface
         self.log = logging.getLogger('ething.blea')
     
     def __enter__(self):

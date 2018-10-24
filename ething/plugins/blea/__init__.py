@@ -160,15 +160,14 @@ if bluepy_imported:
 
             scanner = Scanner(self.gateway.iface).withDelegate(ScanDelegate(self))
 
-            scanner.clear()
-
             while not self.stopped():
                 self.scheduler.process()
 
                 with self._lock:
                     try:
+                        scanner.clear()
                         scanner.start()
-                        scanner.process(3)
+                        scanner.process(5)
                         self._set_connect_state(True)
                         self.errcount = 0
                     except Exception as e:

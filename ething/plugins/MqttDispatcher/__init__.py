@@ -36,7 +36,8 @@ class MqttDispatcher(Plugin):
                 'type': 'string'
             }),
             ('password', {
-                'type': 'string'
+                'type': 'string',
+                "format": "password"
             })
         ])
     }

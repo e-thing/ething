@@ -64,6 +64,7 @@ class WebServer(BuiltinPlugin):
                     }),
                     ('password', {
                         'type': 'string',
+                        "format": "password",
                         'minLength': 4
                     }),
                     ('localonly', {
