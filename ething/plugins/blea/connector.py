@@ -6,6 +6,20 @@ import struct
 import logging
 
 
+# bluepy patch to avoid device disconnect infinite loop
+def disconnect(self):
+    if self._helper is None:
+        return
+        # Unregister the delegate first
+    self.setDelegate(None)
+
+    self._writeCmd("disc\n")
+    self._getResp('stat', 5)
+    self._stopHelper()
+
+btle.Peripheral.disconnect = disconnect
+
+
 class Connector():
     def __init__(self, instance, type='public'):
         self.instance = instance
