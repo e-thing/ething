@@ -116,7 +116,7 @@ class Resource(DbEntity):
 
         super(Resource, self).__init__(data, create)
         object.__setattr__(self, '_Resource__ething', ething)
-        object.__setattr__(self, '_Resource__log', logging.getLogger('ething.r.%s' % data.get('id')))
+        object.__setattr__(self, '_Resource__log', logging.getLogger('ething.r.%s' % self.id))
 
     def __eq__(self, other):
         if isinstance(other, Resource):
