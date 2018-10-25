@@ -21,7 +21,8 @@ def item_to_monthly_time(monthday, hour, minute):
 @attr('items', type=Array(Dict(mapping = OrderedDict([('mode', Enum(['daily', 'weekly', 'monthly'])), ('start', Dict(optionals = ('monthday', 'weekday'), mapping = {'monthday': Integer(min=1, max=31), 'weekday': Integer(min=1, max=7), 'hour': Integer(min=0, max=23), 'minute': Integer(min=0, max=59)})), ('end', Dict(optionals = ('monthday', 'weekday'), mapping = {'monthday': Integer(min=1, max=31), 'weekday': Integer(min=1, max=7), 'hour': Integer(min=0, max=23), 'minute': Integer(min=0, max=59)}))])), min_len=1))
 class Scheduler(Condition):
     """ Activate this rule only within certain periods of time """
-    def test(self, signal):
+
+    def test(self, signal, core, rule):
         now = datetime.datetime.now()
         weekday = now.isoweekday() # 1: monday, 7: sunday
         hour = now.hour

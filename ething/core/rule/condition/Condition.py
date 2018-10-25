@@ -13,15 +13,7 @@ class Condition(Entity):
     def log(self):
         return logging.getLogger('ething.%s' % self.type)
 
-    @property
-    def rule(self):
-        return self.get_root()
-
-    @property
-    def ething(self):
-        return self.rule.ething
-
-    def test(self, signal):
+    def test(self, signal, core, rule):
         raise NotImplementedError()
 
     @classmethod

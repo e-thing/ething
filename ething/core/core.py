@@ -21,12 +21,13 @@ import pytz
 
 
 class Core(object):
-
-    __instance = None
+    __instances = []
 
     @staticmethod
     def get_instance():
-        return Core.__instance
+        if len(Core.__instances) == 1:
+            return Core.__instances[0]
+        return None
 
     def __init__(self, config=None):
         self.running = False
@@ -37,7 +38,7 @@ class Core(object):
         self._init_database()
         self._init_plugins()
 
-        Core.__instance = self
+        self.__instances.append(self)
 
     @property
     def local_tz (self):

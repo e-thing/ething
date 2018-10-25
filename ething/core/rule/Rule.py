@@ -33,7 +33,7 @@ class Rule(Resource):
             for i in range(len(events)):
                 try:
                     event = events[i]
-                    if event.filter(signal):
+                    if event.filter(signal, self.ething, self):
                         dopass = True
                 except Exception as e:
                     self.log.exception('error while filtering the event[%d] %s of the rule %s' % (i, event, self))
@@ -52,7 +52,7 @@ class Rule(Resource):
             for i in range(len(conditions)):
                 try:
                     condition = conditions[i]
-                    if condition.test(signal):
+                    if condition.test(signal, self.ething, self):
                         dopass = True
                         break
                 except Exception as e:
@@ -96,7 +96,7 @@ class Rule(Resource):
             for i in range(len(actions)):
                 try:
                     action = actions[i]
-                    action.run(signal)
+                    action.run(signal, self.ething, self)
                 except Exception as e:
                     self._execution_error = 'error while running the action[%d] %s: %s' % (i, type(action).__name__, str(e))
                     self.log.exception('error while running the action[%d] %s of the rule %s' % (i, action, self))

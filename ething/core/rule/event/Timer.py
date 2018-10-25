@@ -22,12 +22,12 @@ class Timer(Event):
 
     DELTA = 2
 
-    def _filter(self, signal):
+    def _filter(self, signal, core, rule):
 
         ts = signal.timestamp
         expr = self.cron_expression
 
-        local_tz = self.ething.config.get('timezone', 'UTC')
+        local_tz = core.config.get('timezone', 'UTC')
         local_ts = datetime.datetime.utcfromtimestamp(ts - self.DELTA)
         if local_tz != 'UTC':
             local_ts = pytz.utc.localize(local_ts).astimezone(pytz.timezone(local_tz))
@@ -42,7 +42,7 @@ class Timer(Event):
                 break
             n = iter.get_next()
 
-        # self.ething.log.debug("expr: %s, ts: %d, date: %s, c: %d, n: %d" % (expr, ts, local_ts, c, n))
+        # self.log.debug("expr: %s, ts: %d, date: %s, c: %d, n: %d" % (expr, ts, local_ts, c, n))
 
         if abs(n - c) <= 2*self.DELTA:
             return True

@@ -16,10 +16,13 @@ class Entity(with_metaclass(MetaReg, M_Class)):
       attribute.setdefault('model_key', attribute.name)
     
 
-    def __init__(self, value = {}, **kwargs):
+    def __init__(self, value = None, **kwargs):
 
         if is_abstract(self):
             raise Exception('Unable to create a new instance of the abstract class %s' % type(self).__name__)
+
+        if value is None:
+            value = {}
 
         M_Class.__init__(self)
 

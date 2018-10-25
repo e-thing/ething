@@ -10,7 +10,8 @@ from requests import Request, Session
 @attr('body', type=String(), default='', description="The body part.")
 class HttpRequest(Action):
     """ Make a HTTP request """
-    def run(self, signal):
+
+    def run(self, signal, core, rule):
         s = Session()
 
         req = Request(self.method, self.url)

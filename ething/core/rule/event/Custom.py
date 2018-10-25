@@ -19,6 +19,6 @@ class CustomEvent(Event):
 
     signal = Custom
 
-    def _filter(self, signal):
+    def _filter(self, signal, core, rule):
 
         return signal.name == self.name

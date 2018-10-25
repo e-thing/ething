@@ -63,7 +63,7 @@ class ResourceFilter(Basetype):
     def validate(self, value):
 
         resourceFilter = value
-        ething = Core.get_instance()
+        ething = Core.get_instance() # does not work when multiple core instances
 
         if isinstance(resourceFilter, string_types):
             # can either be an id or an expression
@@ -73,9 +73,10 @@ class ResourceFilter(Basetype):
                 self._checkId(resourceFilter, ething)
             else:
                 # expression
-                ok, message = ething.resourceQueryParser.check(resourceFilter)
-                if not ok:
-                    raise ValueError('invalid expression: %s' % message)
+                if ething:
+                    ok, message = ething.resourceQueryParser.check(resourceFilter)
+                    if not ok:
+                        raise ValueError('invalid expression: %s' % message)
 
         elif isinstance(resourceFilter, list):
             if len(resourceFilter) == 0:
@@ -109,10 +110,10 @@ class ResourceEvent(Event):
 
     signal = ResourceSignal
 
-    def _filter(self, signal):
+    def _filter(self, signal, core, rule):
         # the event accepts only signal emitted from a resource
 
-        resourceIdFromSignal = signal.resource
+        resourceFromSignal = signal.resource
 
         resourceFilter = self.resource
 
@@ -122,12 +123,12 @@ class ResourceEvent(Event):
         elif isinstance(resourceFilter, string_types):
 
             if ShortId.validate(resourceFilter):
-                return resourceFilter == resourceIdFromSignal
+                return resourceFilter == resourceFromSignal.id
             else:  # query string
                 # check if the resource from the signal match the expression
-                return bool(self.ething.findOne([lambda r: r.id == resourceIdFromSignal, resourceFilter]))
+                return resourceFromSignal.match(resourceFilter)
 
         elif isinstance(resourceFilter, list):  # array of resource ids
-            return resourceIdFromSignal in resourceFilter
+            return resourceFromSignal.id in resourceFilter
 
         return False
