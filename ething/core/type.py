@@ -1,6 +1,6 @@
 # coding: utf-8
 from future.utils import string_types, integer_types
-from collections import MutableSequence, MutableMapping, OrderedDict
+from collections import MutableSequence, Sequence, MutableMapping, Mapping, OrderedDict
 import re
 import datetime
 from dateutil.parser import parse
@@ -402,7 +402,7 @@ class Array(Type):
     self.max_len = max_len
   
   def validate(self, data):
-    if not isinstance(data, MutableSequence):
+    if not isinstance(data, Sequence) and not isinstance(data, string_types):
       raise ValueError('not an array')
     
     # check size
@@ -420,7 +420,7 @@ class Array(Type):
   
   def set(self, value, parent = None):
     if not (isinstance(value, M_Array) and value._type is self):
-      if isinstance(value, MutableSequence):
+      if isinstance(value, Sequence) and not isinstance(value, string_types):
         value = M_Array(self, value)
       else:
         raise ValueError('not an array')
@@ -453,7 +453,10 @@ class Array(Type):
   
 class M_Array(Memory, MutableSequence):
 
-    def __init__(self, dtype, value = []):
+    def __init__(self, dtype, value = None):
+      if value is None:
+        value = []
+
       Memory.__init__(self)
       self._list = list()
       self._type = dtype
@@ -523,7 +526,7 @@ class Dict(Type):
     raise KeyError('invalid key %s' % key)
   
   def validate(self, data):
-    if not isinstance(data, MutableMapping):
+    if not isinstance(data, Mapping):
       raise ValueError('not an object')
     
     for key in data:
@@ -537,7 +540,7 @@ class Dict(Type):
   
   def set(self, value, parent = None):
     if not (isinstance(value, M_Dict) and value._type is self):
-      if isinstance(value, MutableMapping):
+      if isinstance(value, Mapping):
         value = M_Dict(self, value)
       else :
         raise ValueError('not an object, got %s' % type(value).__name__)
@@ -590,7 +593,9 @@ class Dict(Type):
 
 class M_Dict(Memory, MutableMapping):
 
-  def __init__(self, dtype, value = {}):
+  def __init__(self, dtype, value = None):
+    if value is None:
+      value = []
     Memory.__init__(self)
     self._store = dict()
     self._type = dtype
@@ -704,24 +709,24 @@ def convert_type(t):
       return Number()
     if issubclass(t, string_types):
       return String()
-    if issubclass(t, MutableMapping):
+    if issubclass(t, Mapping):
       return Dict(allow_extra=True)
-    if issubclass(t, MutableSequence):
-      return Array()
     if issubclass(t, datetime.datetime):
       return Date()
     if issubclass(t, M_Class):
       return Class(t)
+    if issubclass(t, Sequence):
+      return Array()
 
     raise Exception('unknown type "%s"' % t.__name__)
 
-  if isinstance(t, MutableMapping):
+  if isinstance(t, Mapping):
     mapping = {}
     for key in t:
       mapping[key] = convert_type(t[key])
     return Dict(mapping = mapping)
 
-  if isinstance(t, MutableSequence):
+  if isinstance(t, Sequence):
     l = len(t)
     if l == 0:
       return Array()
@@ -732,13 +737,13 @@ def convert_type(t):
 
 def get_type_from_value(value):
 
-  if isinstance(value, MutableMapping):
+  if isinstance(value, Mapping):
     mapping = {}
     for key in value:
       mapping[key] = get_type_from_value(value[key])
     return Dict(mapping = mapping)
   
-  if isinstance(value, MutableSequence):
+  if not isinstance(value, string_types) and isinstance(value, Sequence):
     l = len(value)
     if l == 0:
       return Array()
