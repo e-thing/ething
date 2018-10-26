@@ -23,8 +23,8 @@ class BatteryLevelChangedEvent(ResourceEvent):
     """
     signal = BatteryLevelChanged
 
-    def _filter(self, signal):
-        if super(BatteryLevelChangedEvent, self)._filter(signal):
+    def _filter(self, signal, core, rule):
+        if super(BatteryLevelChangedEvent, self)._filter(signal, core, rule):
 
             new_value = signal.new_value
             old_value = signal.old_value

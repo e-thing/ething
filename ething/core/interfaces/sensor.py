@@ -23,8 +23,8 @@ class SensorValueChangedEvent(ResourceEvent):
     def _test(self, new_value, old_value):
         raise NotImplementedError()
 
-    def _filter(self, signal):
-        if super(SensorValueChangedEvent, self)._filter(signal):
+    def _filter(self, signal, core, rule):
+        if super(SensorValueChangedEvent, self)._filter(signal, core, rule):
 
             new_value = signal.new_value
             old_value = signal.old_value

@@ -49,9 +49,9 @@ class ResourceUpdatedEvent(ResourceEvent):
 
     signal = ResourceUpdated
 
-    def _filter(self, signal):
+    def _filter(self, signal, core, rule):
 
-        if super(ResourceUpdatedEvent, self)._filter(signal):
+        if super(ResourceUpdatedEvent, self)._filter(signal, core, rule):
             a = self.attributes
 
             if not a:

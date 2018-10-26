@@ -43,10 +43,10 @@ class TableDataThresholdEvent(ResourceEvent):
     """
     signal = TableDataAdded
 
-    def _filter(self, signal):
+    def _filter(self, signal, core, rule):
         ret = False
 
-        if super(TableDataThresholdEvent, self)._filter(signal):
+        if super(TableDataThresholdEvent, self)._filter(signal, core, rule):
             key = self.key
 
             if key in signal.data:
