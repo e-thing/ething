@@ -10,16 +10,16 @@ from ething.core.reg import *
 @attr('return_code', default=0, mode=READ_ONLY, description="The last exit code returned by the script")
 class RunScript(Action):
 
-    def run(self, signal):
-        script = self.script
+    def run(self, signal, core, rule):
+        script = core.get(self.script)
 
         if script is None:
             raise Exception("the script has been removed")
 
         try:
-            result = self.ething.get_plugin('JsScript').runFromFile(script, arguments=self.args, globals={
+            result = core.get_plugin('JsScript').runFromFile(script, arguments=self.args, globals={
                 'signal': signal,
-                'rule': self.rule
+                'rule': rule
             })
         except Exception as e:
             self.log.exception('error in script')
@@ -36,11 +36,3 @@ class RunScript(Action):
             # stdout = result.get('stdout')
             # if stdout:
             #    self.log.info(stdout)
-
-    def __getattr__(self, name):
-        value = super(RunScript, self).__getattr__(name)
-
-        if name == 'script':
-            return self.ething.get(value)
-        else:
-            return value

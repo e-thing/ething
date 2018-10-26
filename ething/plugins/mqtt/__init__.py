@@ -161,7 +161,7 @@ class Controller(Process):
 @attr('password', type=String(), description="password for the client. Leave empty to disable authentication.")
 class MqttPublish(Action):
     """ Publish a single message to a broker """
-    def run(self, signal):
+    def run(self, signal, core, rule):
 
         auth = None
 

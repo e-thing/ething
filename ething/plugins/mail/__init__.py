@@ -48,8 +48,8 @@ class Mail(Plugin):
 @attr('to', type=Email(), description="Recipient email address")
 class SendEmail(Action):
     """ Send an email """
-    def run(self, signal):
-        conf = self.ething.get_plugin('Mail').config
+    def run(self, signal, core, rule):
+        conf = core.get_plugin('Mail').config
         mailer = SmtpMail(host = conf.get('host'), port = conf.get('port'), user = conf.get('user'), password = conf.get('password'))
         mailer.send(subject = self.subject, message = self.message, to = self.to)
         self.log.debug('email "%s" send to %s' % (self.subject, self.to))
