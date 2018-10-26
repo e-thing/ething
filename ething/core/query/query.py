@@ -187,7 +187,7 @@ class Query(object):
   def _parseOperator(self, stream):
       stream.skipSpace()
 
-      op = stream.read('[^a-zA-Z0-9\.\-_\(\)\s]+')
+      op = stream.read('[^a-zA-Z0-9\.\-_\(\)\s\'"]+')
       if not op:
           op = stream.readWord()
       if op:

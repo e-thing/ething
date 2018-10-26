@@ -5,6 +5,8 @@ from ething.core.ResourceQueryParser import ResourceQueryParser
 
 @pytest.mark.parametrize("expr,valid", [
     ("name == 'toto'", True),
+    ("name=='toto'", True),
+    ('name=="toto"', True),
     ("id == 'abcdefg'", True),
     ("size > 0", True),
     ("  ", False),
