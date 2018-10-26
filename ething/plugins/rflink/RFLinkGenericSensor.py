@@ -42,10 +42,10 @@ class RFLinkGenericSensor(RFLinkNode):
 
 
     @classmethod
-    def unserialize(cls, data, **kwargs):
+    def unserialize(cls, data, context = None):
         interface_types = list(filter(lambda t: t.startswith('interfaces/'), data.get('extends', [])))
         dyn_cls = cls.create_dynamic_class(interface_types)
-        return RFLinkNode.unserialize.__func__(dyn_cls, data, **kwargs)
+        return RFLinkNode.unserialize.__func__(dyn_cls, data, context)
 
     @classmethod
     def create_class_from_data(cls, protocol, data):

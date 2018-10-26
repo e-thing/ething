@@ -17,18 +17,18 @@ class Condition(Entity):
         raise NotImplementedError()
 
     @classmethod
-    def unserialize(cls, data, **kwargs):
+    def unserialize(cls, data, context = None):
         type = data.get('type')
         _cls = get_registered_class(type)
         if _cls is None:
             raise Exception('unknown type "%s"' % type)
-        return Entity.unserialize.__func__(_cls, data, **kwargs)
+        return Entity.unserialize.__func__(_cls, data, context)
 
     @classmethod
-    def fromJson(cls, data, **kwargs):
+    def fromJson(cls, data, context = None):
         type = data.get('type')
         _cls = get_registered_class(type)
         if _cls is None:
             raise Exception('unknown type "%s"' % type)
-        return Entity.fromJson.__func__(_cls, data, **kwargs)
+        return Entity.fromJson.__func__(_cls, data, context)
 

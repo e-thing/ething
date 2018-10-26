@@ -5,12 +5,11 @@ class Expression(String):
     def __init__(self, **attributes):
         super(Expression, self).__init__(**attributes)
 
-    def validate(self, value):
-        from ..core import Core
+    def validate(self, value, context = None):
 
-        super(Expression, self).validate(value)
+        super(Expression, self).validate(value, context)
 
-        ething = Core.get_instance()
+        ething = context.get('ething')
 
         if ething:
             ok, message = ething.resourceQueryParser.check(value)

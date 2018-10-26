@@ -40,15 +40,18 @@ class ResourceSignal(Signal):
 
 class ResourceFilter(Basetype):
 
-    def __init__(self, onlyTypes=None, **attributes):
+    def __init__(self, onlyTypes=None, must_throw=None, **attributes):
         super(ResourceFilter, self).__init__(**attributes)
         self.onlyTypes = onlyTypes
+        self.must_throw = must_throw
 
     def _checkId(self, id, ething = None):
         # resource id
-        if not ething:
+        if not ething or not ething.is_db_loaded:
             return
-        resource = ething.get(id)
+
+        resource = ething.get(id) # raise an exception if the db is not already started
+
         if resource is None:
             raise ValueError("the resource with id '%s' does not exist." % id)
         if self.onlyTypes:
@@ -59,11 +62,22 @@ class ResourceFilter(Basetype):
             else:
                 raise ValueError("the resource %s must be one of the following types : %s" % (
                     str(resource), ', '.join(self.onlyTypes)))
+        if self.must_throw:
 
-    def validate(self, value):
+            signals_thrown_by_resource = [s.signal for s in list_registered_signals(resource)]
+
+            signal = self.must_throw
+            if isinstance(signal, string_types):
+                signal = get_registered_class(signal)
+
+            if signal not in signals_thrown_by_resource:
+                raise ValueError("the resource %s does not throw the signal : %s" % (
+                    str(resource),get_definition_pathname(signal)))
+
+    def validate(self, value, context = None):
 
         resourceFilter = value
-        ething = Core.get_instance() # does not work when multiple core instances
+        ething = context.get('ething')
 
         if isinstance(resourceFilter, string_types):
             # can either be an id or an expression
@@ -94,8 +108,8 @@ class ResourceFilter(Basetype):
 
         return value
 
-    def toSchema(self, **kwargs):
-        schema = super(ResourceFilter, self).toSchema(**kwargs)
+    def toSchema(self, context = None):
+        schema = super(ResourceFilter, self).toSchema(context)
         schema['type'] = "array"
         schema['items'] = {
             "type": "string"

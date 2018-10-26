@@ -38,24 +38,24 @@ class Event(Entity):
         return True
 
     @classmethod
-    def unserialize(cls, data, **kwargs):
+    def unserialize(cls, data, context = None):
         type = data.get('type')
         _cls = get_registered_class(type)
         if _cls is None:
             raise Exception('unknown type "%s"' % type)
-        return Entity.unserialize.__func__(_cls, data, **kwargs)
+        return Entity.unserialize.__func__(_cls, data, context)
 
     @classmethod
-    def fromJson(cls, data, **kwargs):
+    def fromJson(cls, data, context = None):
         type = data.get('type')
         _cls = get_registered_class(type)
         if _cls is None:
             raise Exception('unknown type "%s"' % type)
-        return Entity.fromJson.__func__(_cls, data, **kwargs)
+        return Entity.fromJson.__func__(_cls, data, context)
 
     @classmethod
-    def toSchema(cls, **kwargs):
-        schema = Entity.toSchema.__func__(cls, **kwargs)
+    def toSchema(cls, context = None):
+        schema = Entity.toSchema.__func__(cls, context)
         if cls.signal:
             schema['signal'] = cls.signal.__name__
         return schema

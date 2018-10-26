@@ -235,8 +235,8 @@ class File(Resource):
         super(File, self)._before_insert()
         self.updateMeta(File.META_ALL)
 
-    def export_instance(self, **kwargs):
-        s = self.serialize(**kwargs)
+    def export_instance(self):
+        s = super(File, self).export_instance()
         s['content'] = None
         s['thumb'] = None
         d = base64.b64encode(self.read())
@@ -246,8 +246,7 @@ class File(Resource):
         }
 
     @classmethod
-    def import_instance(cls, data, **kwargs):
-        instance = cls.unserialize(data.get('object'), create = True, **kwargs)
-        instance.save()
+    def import_instance(cls, data, context = None):
+        instance = super(File, cls).import_instance(data.get('object'), context)
         instance.write(base64.b64decode(data.get('content')))
         return instance

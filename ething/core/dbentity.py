@@ -3,9 +3,9 @@ from .entity import *
 
 
 class DbEntity(Entity):
-    def __init__(self, value=None, create=True):
+    def __init__(self, value=None, create=True, context=None):
 
-        Entity.__init__(self, value)
+        Entity.__init__(self, value, context)
 
         object.__setattr__(self, '_DbEntity__new', create)
         object.__setattr__(self, '_DbEntity__no_save', 0)
@@ -19,15 +19,14 @@ class DbEntity(Entity):
         self.save()
 
     @classmethod
-    def create(cls, attributes, **ctor_attr):
-        instance = cls(attributes, create=True, **ctor_attr)
+    def create(cls, attributes, context=None):
+        instance = cls(attributes, create=True, context=context)
         instance.save()
         return instance
 
     @classmethod
-    def unserialize(cls, data, **kwargs):
-        kwargs.setdefault('create', False)
-        return super(DbEntity, cls).unserialize(data, **kwargs)
+    def unserialize(cls, data, context = None):
+        return super(DbEntity, cls).unserialize(data, context, kwargs={'create': False})
 
     def save(self):
         with self._lock:
@@ -123,11 +122,9 @@ class DbEntity(Entity):
             if a.get('watch'):
                 self.__watch_data[a.name] = self._get(a)
 
-    def export_instance(self, **kwargs):
-        return self.serialize(**kwargs)
+    def export_instance(self):
+        return self.serialize()
 
     @classmethod
-    def import_instance(cls, data, **kwargs):
-        instance = cls.unserialize(data, create = True, **kwargs)
-        instance.save()
-        return instance
+    def import_instance(cls, data, context = None):
+        return cls.create(data, context)

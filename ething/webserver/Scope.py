@@ -81,7 +81,7 @@ class Scope(object):
 
 class ScopeType(String):
 
-    def validate(self, value):
-        super(ScopeType, self).validate(value)
+    def validate(self, value, context = None):
+        super(ScopeType, self).validate(value, context)
         if not Scope.validate(value):
             raise ValueError('not a valid scope')

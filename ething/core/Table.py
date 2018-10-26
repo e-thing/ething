@@ -486,8 +486,8 @@ class Table(Resource):
 
         return content
 
-    def export_instance(self, **kwargs):
-        s = self.serialize(**kwargs)
+    def export_instance(self):
+        s = super(Table, self).export_instance()
         d = self.select()
         return {
             'object': s,
@@ -495,8 +495,7 @@ class Table(Resource):
         }
 
     @classmethod
-    def import_instance(cls, data, **kwargs):
-        instance = cls.unserialize(data.get('object'), create=True, **kwargs)
-        instance.save()
+    def import_instance(cls, data, context = None):
+        instance = super(Table, cls).import_instance(data.get('object'), context)
         instance.importData(data.get('content'))
         return instance

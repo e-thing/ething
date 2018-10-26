@@ -35,9 +35,13 @@ def generate_apikey():
 @attr('id', default=lambda _: ShortId.generate(), mode=READ_ONLY, description="The id of the API key")
 class Apikey(DbEntity):
 
-    def __init__(self, data, create, manager):
-        super(Apikey, self).__init__(data, create)
-        object.__setattr__(self, '_Apikey__manager', manager)
+    def __init__(self, data, create, context = None):
+        if 'manager' not in context:
+            raise Exception('missing "manager" in context')
+
+        super(Apikey, self).__init__(data, create, context)
+
+        object.__setattr__(self, '_Apikey__manager', context.get('manager'))
 
     @property
     def manager(self):
@@ -91,23 +95,23 @@ class ApikeyManager(object):
         items = []
         for doc in self.db.get_table_rows(self.table_name):
             try:
-                items.append(Apikey.unserialize(doc, manager=self))
+                items.append(Apikey.unserialize(doc, context={'manager': self}))
             except:
                 self.log.exception('invalid apikey document')
         return items
 
     def create(self, attributes):
-        return Apikey.create(attributes, manager=self)
+        return Apikey.create(attributes, context={'manager': self})
 
     def get(self, id):
         doc = self.db.get_table_row_by_id(self.table_name, id)
         if doc:
-            return Apikey.unserialize(doc, manager=self)
+            return Apikey.unserialize(doc, context={'manager': self})
 
     def find(self, key):
         rows = self.db.get_table_rows(self.table_name, query="value == '%s'" % key, length=1)
         if len(rows)>0:
-            return Apikey.unserialize(rows[0], manager=self)
+            return Apikey.unserialize(rows[0], context={'manager': self})
 
     def remove(self, id):
         self.db.remove_table_row(self.table_name, id)

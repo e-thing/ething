@@ -1,3 +1,4 @@
+from future.utils import string_types
 from ..Helpers import toJson
 import datetime
 from ..reg import get_registered_class
@@ -31,7 +32,7 @@ def export_data(core):
             plugins_export[p.name] = d
     data['plugins'] = plugins_export
 
-    return toJson(data)
+    return data
 
 
 def import_data(core, data):
@@ -42,13 +43,13 @@ def import_data(core, data):
     # config
     config = data.get('config')
     if config:
-        core.config.set(config)
+        core.config.update(config)
 
     # resources
     for r in data.get('resources', []):
         cls = get_registered_class(r.get('type'))
         if cls:
-            cls.import_instance(r.get('resource'), ething=core)
+            cls.import_instance(r.get('resource'), context={'ething': core})
 
     # plugins
     plugins_export = data.get('plugins')

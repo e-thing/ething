@@ -31,7 +31,7 @@ class ResourceDbCache(object):
                 cl = get_registered_class(doc['type'])
                 if cl is not None:
                     try:
-                        instance = cl.unserialize(doc, ething=self.__core)
+                        instance = cl.unserialize(doc, context={'ething': self.__core})
 
                         self.__resources[instance.id] = instance
 

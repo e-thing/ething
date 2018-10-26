@@ -15,25 +15,25 @@ class Type (object):
   def __getattr__(self, name):
     return self._attributes.get(name)
   
-  def set(self, value, parent = None):
+  def set(self, value, context = None):
     return value
 
-  def get(self, value, parent = None):
+  def get(self, value, context = None):
     return value
   
-  def toJson(self, value, **kwargs):
+  def toJson(self, value, context = None):
     return value
   
-  def fromJson(self, value, **kwargs):
+  def fromJson(self, value, context = None):
     return value
   
-  def serialize(self, value, **kwargs):
+  def serialize(self, value, context = None):
     return value
   
-  def unserialize(self, value, **kwargs):
+  def unserialize(self, value, context = None):
     return value
   
-  def toSchema(self, **kwargs):
+  def toSchema(self, context = None):
     s = {}
     if self.description:
       s['description'] = self.description
@@ -46,22 +46,6 @@ class Memory (object):
 
   def __init__(self):
     object.__setattr__(self, '_Memory__dirty', False)
-    object.__setattr__(self, '_Memory__parent', None)
-  
-  def set_parent(self, parent):
-    object.__setattr__(self, '_Memory__parent', parent)
-  
-  def get_parent(self):
-    return self.__parent
-  
-  def get_root(self):
-    p = self.get_parent()
-    while p:
-      n = p.get_parent()
-      if not n:
-        break
-      p = n
-    return p
   
   def _set_dirty(self):
     object.__setattr__(self, '_Memory__dirty', True)
@@ -92,32 +76,32 @@ class Nullable (Type):
     super(Nullable, self).__init__(**attributes)
     self._type = convert_type(dtype)
   
-  def set(self, value, parent = None):
-    return value if value is None else self._type.set(value, parent)
+  def set(self, value, context = None):
+    return value if value is None else self._type.set(value, context)
 
-  def get(self, value, parent = None):
-    return value if value is None else self._type.get(value, parent)
+  def get(self, value, context = None):
+    return value if value is None else self._type.get(value, context)
   
-  def toJson(self, value, **kwargs):
-    return value if value is None else self._type.toJson(value, **kwargs)
+  def toJson(self, value, context = None):
+    return value if value is None else self._type.toJson(value, context)
   
-  def fromJson(self, value, **kwargs):
-    return value if value is None else self._type.fromJson(value, **kwargs)
+  def fromJson(self, value, context = None):
+    return value if value is None else self._type.fromJson(value, context)
   
-  def serialize(self, value, **kwargs):
-    return value if value is None else self._type.serialize(value, **kwargs)
+  def serialize(self, value, context = None):
+    return value if value is None else self._type.serialize(value, context)
   
-  def unserialize(self, value, **kwargs):
-    return value if value is None else self._type.unserialize(value, **kwargs)
+  def unserialize(self, value, context = None):
+    return value if value is None else self._type.unserialize(value, context)
   
-  def toSchema(self, **kwargs):
-    schema = super(Nullable, self).toSchema(**kwargs)
+  def toSchema(self, context = None):
+    schema = super(Nullable, self).toSchema(context)
 
     schema['anyOf'] = [
       {
         'type': 'null'
       },
-      self._type.toSchema(**kwargs)
+      self._type.toSchema(context)
     ]
 
     return schema
@@ -125,15 +109,15 @@ class Nullable (Type):
 
 class Basetype(Type):
   
-  def validate(self, data):
+  def validate(self, data, context = None):
     pass
   
-  def set(self, value, parent = None):
-    self.validate(value)
+  def set(self, value, context = None):
+    self.validate(value, context)
     return value
   
-  def fromJson(self, value, **kwargs):
-    self.validate(value)
+  def fromJson(self, value, context = None):
+    self.validate(value, context)
     return value
 
 
@@ -145,12 +129,12 @@ class Scalar(Basetype):
     def __init__(self, **attributes):
         super(Scalar, self).__init__(**attributes)
 
-    def validate(self, value):
+    def validate(self, value, context = None):
         if not ( (value is None) or isinstance(value, bool) or isinstance(value, float) or isinstance(value, integer_types) or isinstance(value, string_types)):
             raise ValueError('not of the following types: null, number, string, boolean')
 
-    def toSchema(self, **kwargs):
-        schema = super(Scalar, self).toSchema(**kwargs)
+    def toSchema(self, context = None):
+        schema = super(Scalar, self).toSchema(context)
 
         schema['anyOf'] = [{
             'type': 'number'
@@ -169,12 +153,12 @@ class Null(Basetype):
     def __init__(self, **attributes):
         super(Null, self).__init__(**attributes)
 
-    def validate(self, value):
+    def validate(self, value, context = None):
         if value is not None:
             raise ValueError('not null')
 
-    def toSchema(self, **kwargs):
-        schema = super(Null, self).toSchema(**kwargs)
+    def toSchema(self, context = None):
+        schema = super(Null, self).toSchema(context)
         schema['type'] = 'null'
         return schema
 
@@ -186,7 +170,7 @@ class Number(Basetype):
     self.min = min
     self.max = max
     
-  def validate(self, value):
+  def validate(self, value, context = None):
     if not isinstance(value, integer_types) and not isinstance(value, float):
       raise ValueError('not a number (%s)' % type(value).__name__)
     if self.min is not None:
@@ -196,8 +180,8 @@ class Number(Basetype):
       if value > self.max:
         raise ValueError('value > %s' % str(self.max))
   
-  def toSchema(self, **kwargs):
-    schema = super(Number, self).toSchema(**kwargs)
+  def toSchema(self, context = None):
+    schema = super(Number, self).toSchema(context)
     schema['type'] = 'number'
     if self.min is not None:
         schema['minimum'] = self.min
@@ -208,13 +192,13 @@ class Number(Basetype):
 
 class Integer(Number):
     
-  def validate(self, value):
+  def validate(self, value, context = None):
     if not isinstance(value, integer_types):
       raise ValueError('not an integer')
-    super(Integer, self).validate(value)
+    super(Integer, self).validate(value, context)
 
-  def toSchema(self, **kwargs):
-    schema = super(Integer, self).toSchema(**kwargs)
+  def toSchema(self, context = None):
+    schema = super(Integer, self).toSchema(context)
     schema['type'] = 'integer'
     return schema
 
@@ -223,12 +207,12 @@ class Boolean(Basetype):
   def __init__(self, **attributes):
     super(Boolean, self).__init__(**attributes)
     
-  def validate(self, value):
+  def validate(self, value, context = None):
     if not isinstance(value, bool):
       raise ValueError('not a boolean')
   
-  def toSchema(self, **kwargs):
-    schema = super(Boolean, self).toSchema(**kwargs)
+  def toSchema(self, context = None):
+    schema = super(Boolean, self).toSchema(context)
     schema['type'] = 'boolean'
     return schema
 
@@ -238,13 +222,13 @@ class Enum(Basetype):
     super(Enum, self).__init__(**attributes)
     self.enum = enum
     
-  def validate(self, value):
+  def validate(self, value, context = None):
     if value not in self.enum:
       raise ValueError("must be one of the following values: %s." %
                         ','.join(str(e) for e in self.enum))
   
-  def toSchema(self, **kwargs):
-    schema = super(Enum, self).toSchema(**kwargs)
+  def toSchema(self, context = None):
+    schema = super(Enum, self).toSchema(context)
     schema['enum'] = self.enum
     return schema
 
@@ -272,7 +256,7 @@ class String(Basetype):
 
         self.regex_c = re.compile(pattern, flags)
     
-  def validate(self, value):
+  def validate(self, value, context = None):
     
     if not isinstance(value, string_types):
         raise ValueError('not a string')
@@ -295,8 +279,8 @@ class String(Basetype):
         raise ValueError(
           "the length must not be greater than %d" % self.maxLength)
   
-  def toSchema(self, **kwargs):
-    schema = super(String, self).toSchema(**kwargs)
+  def toSchema(self, context = None):
+    schema = super(String, self).toSchema(context)
     schema['type'] = 'string'
     if not self.allow_empty:
       schema['minLength'] = 1
@@ -329,11 +313,11 @@ class Email(String):
   def __init__(self, **attributes):
     super(Email, self).__init__(allow_empty=False, **attributes)
   
-  def validate(self, value):
+  def validate(self, value, context = None):
     
     message = "not an email"
 
-    super(Email, self).validate(value)
+    super(Email, self).validate(value, context)
 
     if '@' not in value:
         raise ValueError(message)
@@ -354,8 +338,8 @@ class Email(String):
             return value
         raise ValueError(message)
   
-  def toSchema(self, **kwargs):
-    schema = super(Email, self).toSchema(**kwargs)
+  def toSchema(self, context = None):
+    schema = super(Email, self).toSchema(context)
     schema['type'] = 'string'
     schema['format'] = 'email'
     return schema
@@ -363,22 +347,22 @@ class Email(String):
 
 class Date(Basetype):
   
-  def validate(self, value):
+  def validate(self, value, context = None):
     if not isinstance(value, datetime.datetime):
       raise ValueError('not a date')
   
-  def toSchema(self, **kwargs):
-    schema = super(Date, self).toSchema(**kwargs)
+  def toSchema(self, context = None):
+    schema = super(Date, self).toSchema(context)
     schema['type'] = 'string'
     schema['format'] = 'date-time'
     return schema
   
-  def toJson(self, value, **kwargs):
+  def toJson(self, value, context = None):
     return value
   
-  def fromJson(self, value, **kwargs):
+  def fromJson(self, value, context = None):
     value = parse(value, languages=['en'])
-    self.validate(value)
+    self.validate(value, context)
     return value
   
 
@@ -386,8 +370,8 @@ class Color(String):
   def __init__(self, **attributes):
     super(Color, self).__init__(regex = '^#[0-9a-fA-F]{6}$', **attributes)
 
-  def toSchema(self, **kwargs):
-    schema = super(Color, self).toSchema(**kwargs)
+  def toSchema(self, context = None):
+    schema = super(Color, self).toSchema(context)
     schema['type'] = 'string'
     schema['format'] = 'color'
     return schema
@@ -401,7 +385,7 @@ class Array(Type):
     self.min_len = min_len
     self.max_len = max_len
   
-  def validate(self, data):
+  def validate(self, data, context = None):
     if not isinstance(data, Sequence) and not isinstance(data, string_types):
       raise ValueError('not an array')
     
@@ -418,32 +402,31 @@ class Array(Type):
             raise ValueError(
                 'the array must contain at most %d items (got %d)' % (self.max_len, l))
   
-  def set(self, value, parent = None):
+  def set(self, value, context = None):
     if not (isinstance(value, M_Array) and value._type is self):
       if isinstance(value, Sequence) and not isinstance(value, string_types):
-        value = M_Array(self, value)
+        value = M_Array(self, value, context)
       else:
         raise ValueError('not an array')
-    value.set_parent(parent)
     return value
 
-  def unserialize(self, data, **kwargs):
-      return [self.item_type.unserialize(el, **kwargs) for el in data]
+  def unserialize(self, data, context = None):
+      return [self.item_type.unserialize(el, context) for el in data]
 
-  def serialize(self, value, **kwargs):
-    return [self.item_type.serialize(el, **kwargs) for el in value]
+  def serialize(self, value, context = None):
+    return [self.item_type.serialize(el, context) for el in value]
   
-  def fromJson(self, data, **kwargs):
-      self.validate(data)
-      return [self.item_type.fromJson(el, **kwargs) for el in data]
+  def fromJson(self, data, context = None):
+      self.validate(data, context)
+      return [self.item_type.fromJson(el, context) for el in data]
   
-  def toJson(self, value, **kwargs):
-    return [self.item_type.toJson(el, **kwargs) for el in value]
+  def toJson(self, value, context = None):
+    return [self.item_type.toJson(el, context) for el in value]
   
-  def toSchema(self, **kwargs):
-    schema = super(Array, self).toSchema(**kwargs)
+  def toSchema(self, context = None):
+    schema = super(Array, self).toSchema(context)
     schema['type'] = 'array'
-    schema['items'] = self.item_type.toSchema(**kwargs)
+    schema['items'] = self.item_type.toSchema(context)
     if self.min_len is not None:
       schema['minItems'] = self.min_len
     if self.max_len is not None:
@@ -453,22 +436,23 @@ class Array(Type):
   
 class M_Array(Memory, MutableSequence):
 
-    def __init__(self, dtype, value = None):
+    def __init__(self, dtype, value = None, context = None):
       if value is None:
         value = []
 
       Memory.__init__(self)
       self._list = list()
       self._type = dtype
+      self._context = context
 
-      self._type.validate(value)
+      self._type.validate(value, context)
 
       for el in value:
-        self._list.append(self._type.item_type.set(el, self))
+        self._list.append(self._type.item_type.set(el, context))
 
     def __len__(self): return len(self._list)
 
-    def __getitem__(self, i): return self._type.item_type.get(self._list[i], self)
+    def __getitem__(self, i): return self._type.item_type.get(self._list[i], self._context)
 
     def __delitem__(self, i):
       if self._type.min_len is not None:
@@ -481,7 +465,7 @@ class M_Array(Memory, MutableSequence):
       self._set_dirty()
 
     def __setitem__(self, i, val):
-      self._list[i] = self._type.item_type.set(val, self)
+      self._list[i] = self._type.item_type.set(val, self._context)
       self._set_dirty()
 
     def insert(self, i, val):
@@ -491,7 +475,7 @@ class M_Array(Memory, MutableSequence):
             raise ValueError(
                 'the array must contain at most %d items' % (self._type.max_len))
       
-      self._list.insert(i, self._type.item_type.set(val, self))
+      self._list.insert(i, self._type.item_type.set(val, self._context))
       self._set_dirty()
 
     def __str__(self):
@@ -525,7 +509,7 @@ class Dict(Type):
       return Basetype()
     raise KeyError('invalid key %s' % key)
   
-  def validate(self, data):
+  def validate(self, data, context = None):
     if not isinstance(data, Mapping):
       raise ValueError('not an object')
     
@@ -538,54 +522,53 @@ class Dict(Type):
         if key not in self.optionals:
           raise ValueError("the key '%s' is not present" % key)
   
-  def set(self, value, parent = None):
+  def set(self, value, context = None):
     if not (isinstance(value, M_Dict) and value._type is self):
       if isinstance(value, Mapping):
-        value = M_Dict(self, value)
+        value = M_Dict(self, value, context)
       else :
         raise ValueError('not an object, got %s' % type(value).__name__)
-    value.set_parent(parent)
     return value
 
-  def unserialize(self, data, **kwargs):
+  def unserialize(self, data, context = None):
     j = {}
     for key in data:
       item_type = self.get_type_from_key(key)
-      j[key] = item_type.unserialize(data.get(key), **kwargs)
+      j[key] = item_type.unserialize(data.get(key), context)
     return j
   
-  def serialize(self, value, **kwargs):
+  def serialize(self, value, context = None):
     j = {}
     for key in value:
       item_type = self.get_type_from_key(key)
-      j[key] = item_type.serialize(value[key], **kwargs)
+      j[key] = item_type.serialize(value[key], context)
     return j
   
-  def fromJson(self, data, **kwargs):
-    self.validate(data)
+  def fromJson(self, data, context = None):
+    self.validate(data, context)
     j = {}
     for key in data:
       item_type = self.get_type_from_key(key)
-      j[key] = item_type.fromJson(data.get(key), **kwargs)
+      j[key] = item_type.fromJson(data.get(key), context)
     return j
   
-  def toJson(self, value, **kwargs):
+  def toJson(self, value, context = None):
     j = {}
     for key in value:
       item_type = self.get_type_from_key(key)
-      j[key] = item_type.toJson(value[key], **kwargs)
+      j[key] = item_type.toJson(value[key], context)
     return j
   
-  def toSchema(self, **kwargs):
-    schema = super(Dict, self).toSchema(**kwargs)
+  def toSchema(self, context = None):
+    schema = super(Dict, self).toSchema(context)
     schema['type'] = 'object'
-    schema['additionalProperties'] = self.allow_extra if isinstance(self.allow_extra, bool) else self.allow_extra.toSchema(**kwargs)
+    schema['additionalProperties'] = self.allow_extra if isinstance(self.allow_extra, bool) else self.allow_extra.toSchema(context)
     required = []
     schema['properties'] = OrderedDict()
     for key in self.mapping:
       if key not in self.optionals:
           required.append(key)
-      schema['properties'][key] = self.mapping[key].toSchema(**kwargs)
+      schema['properties'][key] = self.mapping[key].toSchema(context)
     if required:
       schema['required'] = required
     return schema
@@ -593,25 +576,26 @@ class Dict(Type):
 
 class M_Dict(Memory, MutableMapping):
 
-  def __init__(self, dtype, value = None):
+  def __init__(self, dtype, value = None, context = None):
     if value is None:
       value = []
     Memory.__init__(self)
     self._store = dict()
     self._type = dtype
+    self._context = context
 
-    self._type.validate(value)
+    self._type.validate(value, context)
 
     for i in value:
       self.__setitem__(i, value[i])
 
   def __getitem__(self, key):
     item_type = self._type.get_type_from_key(key)
-    return item_type.get(self._store[key], self)
+    return item_type.get(self._store[key], self._context)
 
   def __setitem__(self, key, value):
     item_type = self._type.get_type_from_key(key)
-    self._store[key] = item_type.set(value, self)
+    self._store[key] = item_type.set(value, self._context)
     self._set_dirty()
 
   def __delitem__(self, key):
@@ -639,46 +623,45 @@ class Class (Type):
     super(Class, self).__init__(**attributes)
     self.cls = cls
   
-  def set(self, value, parent = None):
+  def set(self, value, context = None):
     if not isinstance(value, self.cls):
       raise ValueError('not an instance of %s' % self.cls.__name__)
-    value.set_parent(parent)
     return value
   
-  def unserialize(self, data, **kwargs):
-    return self.cls.unserialize(data, **kwargs)
+  def unserialize(self, data, context = None):
+    return self.cls.unserialize(data, context)
   
-  def serialize(self, value, **kwargs):
-    return value.serialize(**kwargs)
+  def serialize(self, value, context = None):
+    return value.serialize(context)
 
-  def fromJson(self, data, **kwargs):
-    return self.cls.fromJson(data, **kwargs)
+  def fromJson(self, data, context = None):
+    return self.cls.fromJson(data, context)
 
-  def toJson(self, value, **kwargs):
-    return value.toJson(**kwargs)
+  def toJson(self, value, context = None):
+    return value.toJson(context)
   
-  def toSchema(self, **kwargs):
-    return self.cls.toSchema(**kwargs)
+  def toSchema(self, context = None):
+    return self.cls.toSchema(context)
 
 
 class M_Class(Memory):
 
-  def toJson(self, **kwargs):
+  def toJson(self, context = None):
     raise NotImplementedError()
   
-  def serialize(self, **kwargs):
-    raise NotImplementedError()
-  
-  @classmethod
-  def unserialize(cls, data, **kwargs):
+  def serialize(self, context = None):
     raise NotImplementedError()
   
   @classmethod
-  def fromJson(cls, data, **kwargs):
+  def unserialize(cls, data, context = None):
     raise NotImplementedError()
   
   @classmethod
-  def toSchema(cls, **kwargs):
+  def fromJson(cls, data, context = None):
+    raise NotImplementedError()
+  
+  @classmethod
+  def toSchema(cls, context = None):
     raise NotImplementedError()
 
 _none_type_class = type(None)
@@ -785,3 +768,12 @@ _type_map_ = {
     'null': Null(),
 }
 
+
+def merge_context(a, b):
+  if b is None:
+    return a
+  if a is None:
+    return b
+  merged = a.copy()
+  merged.update(b)
+  return merged

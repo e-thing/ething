@@ -315,10 +315,10 @@ def main():
         print('generating docs ...')
         outdir = args.generate_docs
         if outdir and os.path.isdir(outdir):
-            from ething.webserver.server import FlaskApp
-            from ething.webserver.routes import install_routes
-            from ething.webserver.auth import install_auth
-            from ething.webserver.specification import generate
+            from .webserver.server import FlaskApp
+            from .webserver.routes import install_routes
+            from .webserver.auth import install_auth
+            from .webserver.specification import generate
 
             app = FlaskApp(core)
             auth = install_auth(core=core, app=app, server=None)

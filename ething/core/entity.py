@@ -16,7 +16,7 @@ class Entity(with_metaclass(MetaReg, M_Class)):
       attribute.setdefault('model_key', attribute.name)
     
 
-    def __init__(self, value = None, **kwargs):
+    def __init__(self, value = None, context = None):
 
         if is_abstract(self):
             raise Exception('Unable to create a new instance of the abstract class %s' % type(self).__name__)
@@ -33,6 +33,7 @@ class Entity(with_metaclass(MetaReg, M_Class)):
         object.__setattr__(self, '_Entity__attributes', attributes)
         object.__setattr__(self, '_Entity__dirty_attrs', set())
         object.__setattr__(self, '_lock', threading.RLock())
+        object.__setattr__(self, '_context', context)
 
         for attribute in attributes:
             name = attribute.name
@@ -70,7 +71,7 @@ class Entity(with_metaclass(MetaReg, M_Class)):
         name = attribute.name
         value = self.__d[name]
         data_type = attribute['type']
-        return data_type.get(value, self)
+        return data_type.get(value, self._context)
 
     def __setattr__(self, name, value):
         with self._lock:
@@ -96,11 +97,11 @@ class Entity(with_metaclass(MetaReg, M_Class)):
     def _set(self, attribute, value):
         name = attribute.name
         data_type = attribute['type']
-        value = data_type.set(value, self)
+        value = data_type.set(value, self._context)
         self.__d[name] = value
         return value
     
-    def toJson(self, **kwargs):
+    def toJson(self, context = None):
       #with self._lock:
       j = {}
       for attribute in self.__attributes:
@@ -110,17 +111,17 @@ class Entity(with_metaclass(MetaReg, M_Class)):
           continue
 
         data_type = attribute['type']
-        j[name] = data_type.toJson(self.__d[name], **kwargs)
+        j[name] = data_type.toJson(self.__d[name], merge_context(self._context, context))
       return j
     
-    def serialize(self, **kwargs):
+    def serialize(self, context = None):
         with self._lock:
           j = {}
           for attribute in self.__attributes:
             name = attribute.name
             model_key = attribute.get('model_key', name)
             data_type = attribute['type']
-            j[model_key] = data_type.serialize(self.__d[name], **kwargs)
+            j[model_key] = data_type.serialize(self.__d[name], merge_context(self._context, context))
           return j
     
     def _children(self):
@@ -146,7 +147,7 @@ class Entity(with_metaclass(MetaReg, M_Class)):
 
         return dirty_attrs
     
-    def updateFromJson(self, data, **kwargs):
+    def updateFromJson(self, data, context = None):
         with self._lock:
           for key in data:
             attribute = self._getattr(key)
@@ -158,24 +159,26 @@ class Entity(with_metaclass(MetaReg, M_Class)):
               data_type = attribute.get('type')
 
               old_value = self._get(attribute)
-              new_value = self._set(attribute, data_type.fromJson(data[name], **kwargs))
+              new_value = self._set(attribute, data_type.fromJson(data[name], merge_context(self._context, context)))
 
               if isinstance(new_value, Memory) or old_value != new_value:
                   self._set_dirty(attribute)
     
     @classmethod
-    def unserialize(cls, data, **kwargs):
+    def unserialize(cls, data, context = None, kwargs = None):
       j = {}
       for attribute in list_registered_attr(cls):
         name = attribute.name
         data_type = attribute['type']
         model_key = attribute.get('model_key', name)
         if model_key in data:
-            j[name] = data_type.unserialize(data.get(model_key), **kwargs)
-      return cls(j, **kwargs)
+            j[name] = data_type.unserialize(data.get(model_key), context)
+      if kwargs is None:
+          kwargs = {}
+      return cls(j, context=context, **kwargs)
     
     @classmethod
-    def fromJson(cls, data, **kwargs):
+    def fromJson(cls, data, context = None, kwargs = None):
       j = {}
       for attribute in list_registered_attr(cls):
         name = attribute.name
@@ -185,12 +188,16 @@ class Entity(with_metaclass(MetaReg, M_Class)):
             raise AttributeError('attribute "%s" is not writable' % name)
           data_type = attribute['type']
           if name in data:
-            j[name] = data_type.fromJson(data.get(name), **kwargs)
-      return cls(j, **kwargs)
+            j[name] = data_type.fromJson(data.get(name), context)
+      if kwargs is None:
+          kwargs = {}
+      return cls(j, context=context, **kwargs)
     
     @classmethod
-    def toSchema(cls, **kwargs):
-      return build_schema(cls, **kwargs)
+    def toSchema(cls, context = None):
+      if context is None:
+          context = {}
+      return build_schema(cls, **context)
       
 
 

@@ -491,10 +491,10 @@ curl -H 'X-API-KEY: <YOUR_API_KEY>' http://localhost:8000/api/resources
 ```
 
 #### Query Params:
+- **sort** [string]: The key on which to do the sorting, by default the sort is made by modifiedDate descending. To make the sort descending, prepend the field name by minus "-". For instance, "-createdDate" will sort by createdDate descending.
 - **q** [string]: Query string for searching resources.
 - **skip** [integer]: Skips a number of resources.
 - **limit** [integer]: Limits the number of resources returned.
-- **sort** [string]: The key on which to do the sorting, by default the sort is made by modifiedDate descending. To make the sort descending, prepend the field name by minus "-". For instance, "-createdDate" will sort by createdDate descending.
 
 #### Responses:
   - 200: A list of resources
@@ -719,11 +719,11 @@ curl -H 'X-API-KEY: <YOUR_API_KEY>' http://localhost:8000/api/tables/<TABLE_ID>?
 
 #### Query Params:
 - **sort** [string]: the key on which to do the sorting, by default the sort is made by date ascending. To make the sort descending, prepend the field name by minus "-". For instance, "-date" will sort by date descending.
-- **datefmt** [string]: the format of the date field (default to RFC3339) : timestamp,timestamp_ms,rfc3339.
-- **fmt** [string]: the output format (default to JSON) : json,json_pretty,csv,csv_no_header.
-- **start** [integer]: Position of the first rows to return. If start is negative, the position will start from the end. (default to 0).
 - **length** [integer]: Maximum number of rows to return. If not set, returns until the end.
+- **start** [integer]: Position of the first rows to return. If start is negative, the position will start from the end. (default to 0).
+- **datefmt** [string]: the format of the date field (default to RFC3339) : timestamp,timestamp_ms,rfc3339.
 - **q** [string]: Query string for filtering results.
+- **fmt** [string]: the output format (default to JSON) : json,json_pretty,csv,csv_no_header.
 
 #### Responses:
   - 200: The records of this table
@@ -782,8 +782,8 @@ Set the content of a table. The new data will erase the previous one.
 - **id** [string]: An id representing a Resource.
 
 #### Query Params:
-- **skip_error** [boolean]: Whether to skip data on error or not.
 - **invalid_field** [string]: The behaviour to adopt when an invalid field name appears.
+- **skip_error** [boolean]: Whether to skip data on error or not.
 
 #### Request body:
 
@@ -848,9 +848,9 @@ Update records in a table
 - **id** [string]: An id representing a Resource.
 
 #### Query Params:
-- **q** [string]: A query that select the rows to update.
 - **invalid_field** [string]: The behaviour to adopt when an invalid field name appears.
 - **upsert** [boolean]: If true and no records was found, the data will be added to the table as a new record.
+- **q** [string]: A query that select the rows to update.
 
 #### Responses:
   - 200: The records was successfully updated
@@ -864,8 +864,8 @@ Compute statistics of a column (=key)
 - **id** [string]: An id representing a Resource.
 
 #### Query Params:
-- **q** [string]: A query string to select the rows used for the statistics computation.
 - **key** [string]: the name of the key. Statistics can only be computed for a single key.
+- **q** [string]: A query string to select the rows used for the statistics computation.
 
 #### Responses:
   - 200: The records was successfully updated
@@ -884,6 +884,17 @@ An object describing an error
   - **message** *(string)* *(readonly)*: A description of the error
 
 ### interfaces
+
+#### Anemometer
+
+##### INHERITED
+
+[#/interfaces/Sensor](##interfacessensor)
+
+##### PROPERTIES
+
+  - **wind_direction** *(readonly)*: The direction of wind (deg)
+  - **wind_speed** *(number)* *(readonly)*: The speed of wind (m/s)
 
 #### Camera
 
@@ -914,11 +925,21 @@ An object describing an error
 [#/interfaces/Switch](##interfacesswitch)
 [#/interfaces/Dimmable](##interfacesdimmable)
 
+#### DoorSensor
+
+##### INHERITED
+
+[#/interfaces/Sensor](##interfacessensor)
+
+##### PROPERTIES
+
+  - **state** *(boolean)* *(readonly)*: the state of the door. True if open.
+
 #### HumiditySensor
 
 ##### INHERITED
 
-[#/interfaces/Interface](##interfacesinterface)
+[#/interfaces/Sensor](##interfacessensor)
 
 ##### PROPERTIES
 
@@ -936,7 +957,7 @@ An object describing an error
 
 ##### INHERITED
 
-[#/interfaces/Interface](##interfacesinterface)
+[#/interfaces/Sensor](##interfacessensor)
 
 ##### PROPERTIES
 
@@ -946,7 +967,7 @@ An object describing an error
 
 ##### INHERITED
 
-[#/interfaces/Interface](##interfacesinterface)
+[#/interfaces/Sensor](##interfacessensor)
 
 ##### PROPERTIES
 
@@ -956,7 +977,7 @@ An object describing an error
 
 ##### INHERITED
 
-[#/interfaces/Interface](##interfacesinterface)
+[#/interfaces/Sensor](##interfacessensor)
 
 ##### PROPERTIES
 
@@ -979,6 +1000,12 @@ An object describing an error
 [#/interfaces/RGBLight](##interfacesrgblight)
 [#/interfaces/Dimmable](##interfacesdimmable)
 
+#### Sensor
+
+##### INHERITED
+
+[#/interfaces/Interface](##interfacesinterface)
+
 #### Switch
 
 ##### INHERITED
@@ -993,20 +1020,13 @@ An object describing an error
 
 ##### INHERITED
 
-[#/interfaces/Interface](##interfacesinterface)
+[#/interfaces/Sensor](##interfacessensor)
 
 ##### PROPERTIES
 
   - **temperature** *(number)* *(readonly)*: the temperature of the sensor
 
 ### resources
-
-#### CPUTempDevice
-
-##### INHERITED
-
-[#/resources/Device](##resourcesdevice)
-[#/interfaces/Thermometer](##interfacesthermometer)
 
 #### Denon
 
@@ -1031,7 +1051,6 @@ Denon Device resource representation
 
   - **battery** *(default=null)*: The battery level of this device (must be between 0 (empty) and 100 (full) , or null if the device has no battery information).
   - **connected** *(boolean)* *(default=true)*: Set to true when this device is connected.
-  - **interfaces** *(readonly)*: A list of interfaces this device inherit
   - **lastSeenDate** *(readonly)*: The last time this device was reached or made a request.
   - **location** *(default=null)*: The location of this device.
   - **methods** *(readonly)*: The list of the methods available.
@@ -1087,6 +1106,15 @@ Mihome Device base class
   - **ip**\* *(string)*: The IP address of the gateway
   - **password** *(string)* *(default="")*: The password of the gateway
 
+#### MihomeMagnet
+
+Mihome door Sensor.
+
+##### INHERITED
+
+[#/resources/MihomeDevice](##resourcesmihomedevice)
+[#/interfaces/DoorSensor](##interfacesdoorsensor)
+
 #### MihomeSensorHT
 
 Mihome temperature/humidity/pressure Sensor Device class.
@@ -1113,8 +1141,11 @@ MQTT Device resource representation
   - **port** *(integer)* *(default=1883)*: The port number of the MQTT broker to connect to.
   - **subscription** *(array)*
     - additionalProperties: False
-    - properties: OrderedDict([('name', {'minLength': 1, 'type': 'string'}), ('topic', {'minLength': 1, 'type': 'string'}), ('jsonPath', {'minLength': 1, 'type': 'string'}), ('regexp', {'minLength': 1, 'type': 'string'}), ('xpath', {'minLength': 1, 'type': 'string'})])
+
+    - properties: OrderedDict([('name', {'type': 'string', 'minLength': 1}), ('topic', {'type': 'string', 'minLength': 1}), ('jsonPath', {'type': 'string', 'minLength': 1}), ('regexp', {'type': 'string', 'minLength': 1}), ('xpath', {'type': 'string', 'minLength': 1})])
+
     - required: ['name', 'topic']
+
     - type: object
 
 #### MySensorsBinary
@@ -1139,8 +1170,8 @@ MQTT Device resource representation
 
 ##### PROPERTIES
 
-  - **host**\*: The ip address or hostname of the gateway.
-  - **port** *(default=5003)*: The port number of the gateway. The default port number is 5003.
+  - **host**\* *(string)*: The ip address or hostname of the gateway.
+  - **port** *(integer)* *(default=5003)*: The port number of the gateway. The default port number is 5003.
 
 #### MySensorsGateway
 
@@ -1240,6 +1271,21 @@ MySensorsSensor Device resource representation. This device is normally automati
 [#/resources/MySensorsSensor](##resourcesmysensorssensor)
 [#/interfaces/Thermometer](##interfacesthermometer)
 
+#### OpenWeatherMapDevice
+
+##### INHERITED
+
+[#/resources/Device](##resourcesdevice)
+[#/interfaces/Thermometer](##interfacesthermometer)
+[#/interfaces/PressureSensor](##interfacespressuresensor)
+[#/interfaces/HumiditySensor](##interfaceshumiditysensor)
+[#/interfaces/Anemometer](##interfacesanemometer)
+
+##### PROPERTIES
+
+  - **location**\* *(string)*: a city's name. See https://openweathermap.org/find
+  - **weather** *(string)* *(readonly)*: a string descibing the current weather
+
 #### Resource
 
 The base representation of a resource object
@@ -1329,8 +1375,9 @@ RTSP Device resource representation, usually IP camera.
 #### Rule
 
 Rule dictate the action to perform when an event occurs.
-    Rules consist of two parts:
+    Rules consist of three parts:
      - The event part specifies the conditions that triggers the invocation of the rule
+     - The condition part is a logical test that, if satisfied or evaluates to true, causes the action to be carried out
      - The action part specifies what to execute in response to the event
 
 ##### INHERITED
@@ -1341,16 +1388,17 @@ Rule dictate the action to perform when an event occurs.
 
   - **actions**\* *(array)*: A list of actions describing a flow. Actions will be executed one after another.
     - [#/actions/Action](##actionsaction)
+
+  - **conditions** *(array)* *(default=[])*: A list of conditions. All conditions must match to execute this rule.
+    - [#/conditions/Condition](##conditionscondition)
+
   - **enabled** *(boolean)* *(default=true)*: If True (default), the rule is enabled
   - **events**\* *(array)*: A list of events describing when to execute this rule.
     - [#/events/Event](##eventsevent)
+
   - **execution_count** *(readonly)*: The number of times this rule has been executed
   - **execution_date** *(readonly)*: The last time this rule has been executed
-  - **scheduler** *(array)* *(default=[])*: Activate this rule only within certain periods of time
-    - additionalProperties: False
-    - properties: OrderedDict([('start', {'additionalProperties': False, 'required': ['weekDay', 'hour'], 'type': 'object', 'properties': OrderedDict([('weekDay', {'minimum': 0, 'type': 'integer', 'maximum': 6}), ('hour', {'minimum': 0, 'type': 'integer', 'maximum': 24})])}), ('end', {'additionalProperties': False, 'required': ['weekDay', 'hour'], 'type': 'object', 'properties': OrderedDict([('weekDay', {'minimum': 0, 'type': 'integer', 'maximum': 6}), ('hour', {'minimum': 0, 'type': 'integer', 'maximum': 24})])})])
-    - required: ['start', 'end']
-    - type: object
+  - **execution_error** *(readonly)*: The last error logged
 
 #### SSH
 
@@ -1365,6 +1413,7 @@ SSH Device resource representation
   - **auth**\* *(object)*: An object describing the credentials to use.
     - **password** *(string)*
     - **user** *(string)*
+
   - **host**\* *(string)*: The ip address or hostname of the device to connect to.
   - **port** *(integer)* *(default=22)*: The port number of the device to connect to. The default port number is 22.
 
@@ -1406,4 +1455,47 @@ SSH Device resource representation
   - **fw_ver** *(string)* *(readonly)*: The firmware version of the device.
   - **host** *(string)* *(readonly)*: The ip address of the device.
   - **model** *(string)* *(readonly)*: The model of the device.
+
+#### ZigateAqaraTHP
+
+Mihome temperatire/humidity/pressure Sensor Device class.
+
+##### INHERITED
+
+[#/resources/ZigateDevice](##resourceszigatedevice)
+
+#### ZigateDevice
+
+ZigateDevice Device base class representation
+
+##### INHERITED
+
+[#/resources/Device](##resourcesdevice)
+
+##### PROPERTIES
+
+  - **address**\* *(string)*: The short address of this device on the zigbee network
+  - **manufacturer**\*: The manufacturer of this device
+  - **model**\*: The model of this device
+
+#### ZigateGateway
+
+##### INHERITED
+
+[#/resources/Device](##resourcesdevice)
+
+##### PROPERTIES
+
+  - **appVersion** *(default=null)*: The version of the Zigate firmware.
+  - **sdkVersion** *(default=null)*: The version of the Zigate SDK.
+
+#### ZigateSerialGateway
+
+##### INHERITED
+
+[#/resources/ZigateGateway](##resourceszigategateway)
+
+##### PROPERTIES
+
+  - **port**\* *(string)*: The serial port name.
 

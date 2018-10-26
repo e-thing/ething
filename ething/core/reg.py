@@ -88,7 +88,7 @@ class Attribute (MutableMapping):
       data_type = self.get('type')
 
       if data_type:
-        schema = data_type.toSchema(**kwargs)
+        schema = data_type.toSchema(context=kwargs)
       else:
         schema = {}
 
@@ -390,14 +390,14 @@ class Method(object):
 
             arg_type = arg_meta.get('type')
 
-            arg_schema = arg_type.toSchema(**kwargs)
+            arg_schema = arg_type.toSchema(context=kwargs)
 
             if 'description' in arg_meta:
               arg_schema['description'] = arg_meta.get('description').strip()
 
             if 'default' in arg_meta:
               try:
-                arg_schema['default'] = arg_type.toJson(arg_type.set(_make_default(arg_meta.get('default'))), **kwargs)
+                arg_schema['default'] = arg_type.toJson(arg_type.set(_make_default(arg_meta.get('default')), context=kwargs), context=kwargs)
               except Exception:
                 pass
 
@@ -410,7 +410,7 @@ class Method(object):
           schema['description'] = self.description
 
         if isinstance(self.return_type, Type):
-            schema['return'] = self.return_type.toSchema(**kwargs)
+            schema['return'] = self.return_type.toSchema(context=kwargs)
         else:
             schema['return'] = self.return_type
 
@@ -652,7 +652,7 @@ def get_definition_pathname(cls):
       return name
 
 
-def build_schema(cls, root = False, **kwargs):
+def build_schema(cls, root=False, **kwargs):
 
   if not inspect.isclass(cls):
     cls = type(cls)
@@ -708,7 +708,7 @@ def build_schema(cls, root = False, **kwargs):
     if mode != READ_ONLY:
         if 'default' in attribute:
             try:
-              attr_schema['default'] = data_type.toJson(attribute.make_default(cls), **kwargs)
+              attr_schema['default'] = data_type.toJson(attribute.make_default(cls), context=kwargs)
             except:
               pass
         else:
@@ -783,10 +783,8 @@ def build_schema_definitions(**kwargs):
 
     meta = getattr(cls, '__meta')
     path = meta.get('path')
-    if hasattr(cls, 'toSchema'):
-        schema = cls.toSchema(flatted = False, root = True, **kwargs)
-    else:
-        schema = build_schema(cls, flatted = False, root = True, **kwargs)
+
+    schema = build_schema(cls, flatted = False, root = True, **kwargs)
 
     rel_def = definitions
     if path:

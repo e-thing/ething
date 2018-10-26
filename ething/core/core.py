@@ -72,7 +72,9 @@ class Core(object):
             self.db = db_ctor(tz = str(self.local_tz), **(self.config.get('db', {})))
 
             self.db.connect()
+            self.is_db_loaded = False
             self.resource_db_cache = ResourceDbCache(self)
+            self.is_db_loaded = True
         except Exception as e:
             self.log.exception('init database error')
             raise e
@@ -210,7 +212,7 @@ class Core(object):
         if isinstance(cls, string_types):
             cls = get_registered_class(cls)
         if cls is not None:
-            return cls.create(attributes, ething=self)
+            return cls.create(attributes, context={'ething': self})
         else:
             raise Exception('the type "%s" is unknown' % type)
 

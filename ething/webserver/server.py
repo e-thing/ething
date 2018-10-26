@@ -103,7 +103,7 @@ class WebServer(BuiltinPlugin):
     def import_data(self, data):
         akm = ApikeyManager(self.core)
         for apikey in data:
-            Apikey.import_instance(apikey, manager=akm)
+            Apikey.import_instance(apikey, context={'manager': akm})
 
 
 class FlaskApp(Flask):
@@ -167,6 +167,8 @@ class FlaskApp(Flask):
             error['stack'] = traceback.format_exc()
             error['file'] = file
             error['line'] = line
+
+            self.log.exception('http request exception')
 
         return Response(json.dumps(error), status=error['code'], mimetype='application/json')
 
@@ -253,7 +255,7 @@ class FlaskApp(Flask):
     def create(self, type, attr):
         cls = get_registered_class(type)
         if cls is not None:
-            instance =  cls.fromJson(attr, create=True, ething=self.core)
+            instance =  cls.fromJson(attr, context = {'ething': self.core})
             instance.save()
             return instance
         else:

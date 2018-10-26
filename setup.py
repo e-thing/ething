@@ -39,7 +39,7 @@ requires = [
     "PyJWT",
     "netaddr",
     "webargs",
-    "apispec",  # http api
+    "apispec==0.38.0",  # http api
     "Jinja2",  # http api
     "xmltodict",
     "python-magic",

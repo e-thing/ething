@@ -2,7 +2,6 @@
 
 from .ShortId import ShortId, Id
 from .dbentity import *
-from .core import Core
 from .reg import get_definition_pathname
 from .rule.event import ResourceEvent, ResourceSignal
 from .Interface import Interface
@@ -71,24 +70,25 @@ class ResourceType(Id):
         super(ResourceType, self).__init__(**attributes)
         self.accepted_types = accepted_types
 
-    def check_existance(self, value):
-        ething = Core.get_instance()
-        r = ething.get(value)
+    def check_existance(self, value, context = {}):
+        ething = context.get('ething')
+        if ething and ething.is_db_loaded:
+            r = ething.get(value)  # raise an exception if the db is not already started
 
-        if r is None:
-            raise ValueError('the resource id=%s does not exist' % value)
+            if r is None:
+                raise ValueError('the resource id=%s does not exist' % value)
 
-        if self.accepted_types is not None:
-            for t in self.accepted_types:
-                if r.isTypeof(t):
-                    break
-            else:
-                raise ValueError('the Resource does not match the following types: %s' % ','.join(
-                    self.accepted_types))
+            if self.accepted_types is not None:
+                for t in self.accepted_types:
+                    if r.isTypeof(t):
+                        break
+                else:
+                    raise ValueError('the Resource does not match the following types: %s' % ','.join(
+                        self.accepted_types))
 
-    def fromJson(self, value, **kwargs):
-        value = super(ResourceType, self).fromJson(value)
-        self.check_existance(value)
+    def fromJson(self, value, context=None):
+        value = super(ResourceType, self).fromJson(value, context)
+        self.check_existance(value, context)
         return value
 
 
@@ -109,14 +109,18 @@ class Resource(DbEntity):
     The base representation of a resource object
     """
 
-    def __init__(self, data, create, ething):
+    def __init__(self, data, create=True, context=None):
+
+        if 'ething' not in context:
+            raise Exception('missing "ething" in context')
 
         if isinstance(data.get('createdBy'), Resource):
             data['createdBy'] = data.get('createdBy').id
 
-        super(Resource, self).__init__(data, create)
-        object.__setattr__(self, '_Resource__ething', ething)
-        object.__setattr__(self, '_Resource__log', logging.getLogger('ething.r.%s' % self.id))
+        super(Resource, self).__init__(data, create, context)
+
+        object.__setattr__(self, '_Resource__ething', context.get('ething'))
+        object.__setattr__(self, '_Resource__log', logging.getLogger('ething.r.%s' % data.get('id')))
 
     def __eq__(self, other):
         if isinstance(other, Resource):

@@ -38,33 +38,80 @@ def test_event_ResourceEvent(core):
         'name': 'file2.txt'
     })
 
-    assert core.get(f.id)
+    context = {
+        'ething': core
+    }
 
     signal = FileDataModified(f)
 
     evt0 = FileDataModifiedEvent({
         'resource': f.id
-    })
+    }, context)
 
     assert evt0.filter(signal, core, None)
 
     evt1 = FileDataModifiedEvent({
         'resource': f1.id
-    })
+    }, context)
 
     assert not evt1.filter(signal, core, None)
 
     evt2 = FileDataModifiedEvent({
         'resource': [f.id]
-    })
+    }, context)
 
     assert evt2.filter(signal, core, None)
 
-    evt2 = FileDataModifiedEvent({
+    evt3 = FileDataModifiedEvent({
         'resource': 'name == "file1.txt"'
+    }, context)
+
+    assert evt3.filter(signal, core, None)
+
+    with pytest.raises(Exception) as excinfo:
+        evt4 = FileDataModifiedEvent({
+            'resource': '0123456' # invalid id
+        }, context)
+
+        assert 'does not exist' in str(excinfo.value)
+
+
+def test_event_ResourceFilter(core):
+    f = core.create('resources/File', {
+        'name': 'file1.txt'
     })
 
-    assert evt2.filter(signal, core, None)
+    t = core.create('resources/Table', {
+        'name': 'table0'
+    })
+
+    context = {
+        'ething': core
+    }
+
+    rf = event.ResourceFilter(must_throw=FileDataModified)
+
+    rf.validate(f.id, context)
+
+    rf.validate([f.id], context)
+
+    rf.validate("name=='toto'", context)
+
+    with pytest.raises(Exception) as excinfo:
+        rf.validate(t.id, context)
+        assert 'does not throw the signal' in str(excinfo.value)
+
+    with pytest.raises(Exception) as excinfo:
+        rf.validate([t.id, f.id], context)
+        assert 'does not throw the signal' in str(excinfo.value)
+
+    rf2 = event.ResourceFilter(onlyTypes=('resources/File',))
+
+    rf2.validate(f.id, context)
+
+    with pytest.raises(Exception) as excinfo:
+        rf2.validate(t.id, context)
+        assert 'must be one of the following types' in str(excinfo.value)
 
 
 def test_condition_ResourceMatch(core):
@@ -73,19 +120,23 @@ def test_condition_ResourceMatch(core):
         'name': 'file1.txt'
     })
 
+    context = {
+        'ething': core
+    }
+
     signal = event.Custom('my_event')
 
     c1 = condition.ResourceMatch.ResourceMatch({
         'resource': f.id,
         'expression': 'name == "file1.txt"'
-    })
+    }, context)
 
     assert c1.test(signal, core, None)
 
     c2 = condition.ResourceMatch.ResourceMatch({
         'resource': f.id,
         'expression': 'name == "toto.txt"'
-    })
+    }, context)
 
     assert not c2.test(signal, core, None)
 

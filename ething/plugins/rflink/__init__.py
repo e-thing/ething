@@ -201,12 +201,12 @@ class RFLinkProtocol(LineReader):
         if 'SWITCH' in data:
             attributes['name'] = 'switch-%s' % data['ID']
             attributes['switchId'] = data['SWITCH']
-            return RFLinkSwitch.create(attributes, ething = self.core)
+            return self.core.create(RFLinkSwitch, attributes)
 
         # try to generate a generic sensor
         sensor_cls = RFLinkGenericSensor.create_class_from_data(protocol, data)
         if sensor_cls:
-            return sensor_cls.create(attributes, ething = self.core)
+            return self.core.create(sensor_cls, attributes)
 
 
     # $message message to send

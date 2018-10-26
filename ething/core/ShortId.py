@@ -40,8 +40,8 @@ class Id(String):
     def __init__(self, **attributes):
         super(Id, self).__init__(regex=id_re, **attributes)
 
-    def validate(self, value):
+    def validate(self, value, context = None):
         try:
-            return super(Id, self).validate(value)
+            return super(Id, self).validate(value, context)
         except ValueError:
             raise ValueError('not an id')
