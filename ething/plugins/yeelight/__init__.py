@@ -255,7 +255,7 @@ class YeelightAdvertisementProtocol(Protocol):
 
         self.log.debug('rec %s : %s' % (remote_ip_port, data))
 
-        if data[:15] == "HTTP/1.1 200 OK":
+        if data[:15] == "HTTP/1.1 200 OK" or data[:17] == "NOTIFY * HTTP/1.1":
 
             dev_info = {
                 'ip': remote_ip_port[0],

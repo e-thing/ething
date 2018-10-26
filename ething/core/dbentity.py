@@ -10,6 +10,7 @@ class DbEntity(Entity):
         object.__setattr__(self, '_DbEntity__new', create)
         object.__setattr__(self, '_DbEntity__no_save', 0)
         object.__setattr__(self, '_DbEntity__watch_data', dict())
+        object.__setattr__(self, '_DbEntity__destroyed', False)
 
         self._watch_init()
 
@@ -32,6 +33,10 @@ class DbEntity(Entity):
         with self._lock:
             if self.__no_save > 0:
                 return
+
+            if self.__destroyed:
+                # raise Exception('resource destroyed: %s' % self)
+                return # detroyed, ignore any change !
 
             if not self.__new and not self._is_dirty():
                 return  # nothing to save
@@ -80,6 +85,7 @@ class DbEntity(Entity):
         with self._lock:
             self._remove()
             object.__setattr__(self, '_DbEntity__new', True)
+            object.__setattr__(self, '_DbEntity__destroyed', True)
 
     def _before_insert(self):
         pass
