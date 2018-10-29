@@ -92,11 +92,22 @@ class ResourceType(Id):
         return value
 
 
+class RDict(Dict):
+    def toJson(self, value, context=None):
+        """ do not show keys that starts with '_'"""
+        j = {}
+        for key in value:
+            if not key.startswith('_'):
+                item_type = self.get_type_from_key(key)
+                j[key] = item_type.toJson(value[key], context)
+        return j
+
+
 @throw(ResourceCreated, ResourceDeleted, ResourceUpdated)
 @path('resources')
 @attr('public', type=Enum([False, 'readonly', 'readwrite']), default=False, description="False: this resource is not publicly accessible. 'readonly': this resource is accessible for reading by anyone. 'readwrite': this resource is accessible for reading and writing by anyone.")
 @attr('description', type=String(), default='', description="A description of this resource.")
-@attr('data', type=Dict(allow_extra=True), default={}, description="A collection of arbitrary key-value pairs. Entries with null values are cleared in update. The keys must not be empty or longer than 64 characters, and must contain only the following characters : letters, digits, underscore and dash. Values must be either a string or a boolean or a number")
+@attr('data', type=RDict(allow_extra=True), default={}, description="A collection of arbitrary key-value pairs.")
 @attr('createdBy', type=Nullable(Id()), default=None, description="The id of the resource responsible of the creation of this resource, or null.")
 @attr('modifiedDate', default=lambda _: datetime.datetime.utcnow(), mode=READ_ONLY, description="Last time this resource was modified")
 @attr('createdDate', default=lambda _: datetime.datetime.utcnow(), mode=READ_ONLY, description="Create time for this resource")

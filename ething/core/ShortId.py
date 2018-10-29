@@ -25,7 +25,7 @@ class ShortId(object):
         if ShortId.sid is None:
             ShortId.sid = ShortIdlib()
 
-        return ShortId.sid.generate()[:ShortId.length]
+        return ShortId.sid.generate()[-ShortId.length:]
 
     @staticmethod
     def validate(id):

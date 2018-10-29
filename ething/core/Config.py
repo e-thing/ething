@@ -54,6 +54,16 @@ def set_from_path(data, path, value, dict_cls = dict):
   p[last] = value
 
 
+def update(d, u):
+    for k in u:
+        v = u[k]
+        if isinstance(v, Mapping):
+            d[k] = update(d.get(k, {}), v)
+        else:
+            d[k] = v
+    return d
+
+
 class ConfigBase(Mapping):
     def __init__(self, value=None, schema=None):
         self._store = value if value is not None else dict()
@@ -70,7 +80,7 @@ class ConfigBase(Mapping):
         with self._lock:
             if self._schema:
                 dcopy = copy.deepcopy(self._store)
-                dcopy.update(data)
+                update(dcopy, data)
                 # raise an exception if the validation fail
                 validate(dcopy, self._schema)
 
@@ -79,7 +89,7 @@ class ConfigBase(Mapping):
             for k in data:
                 if k not in self._store or self._store[k] != data[k]:
                     updated_keys.append(k)
-            self._store.update(data)
+            update(self._store, data)
             if updated_keys:
                 self.on_change(updated_keys)
 

@@ -97,13 +97,16 @@ class UnQLiteDB(BaseClass):
 
     def __init__(self, **config):
         super(UnQLiteDB, self).__init__(**config)
-        self.file = os.path.join(USER_DIR, '%s.unqlite.db' % self.database)
+        if self.database == ':memory:':
+            self.file = None
+        else:
+            self.file = os.path.join(USER_DIR, '%s.unqlite.db' % self.database)
 
     def connect(self):
 
-        self.db = UnQLite(self.file)
+        self.db = UnQLite(self.file) if self.file else UnQLite()
 
-        self.log.info('connected to database: %s' % self.file)
+        self.log.info('connected to database: %s' % (self.file or 'memory'))
 
         self.resources = self.db.collection('resources')
         self.fs = self.db.collection('fs')
@@ -123,7 +126,8 @@ class UnQLiteDB(BaseClass):
 
     def clear(self):
         self.disconnect()
-        os.remove(self.file)
+        if self.file:
+            os.remove(self.file)
         self.connect()
 
 

@@ -186,6 +186,8 @@ def init_logger(console_log=False):
     else:
         log.error('the log file is not writeable : %s' % LOG_FILE)
 
+    return log
+
 
 def remove_logger():
     log = logging.getLogger('ething')
@@ -270,8 +272,7 @@ def main():
     if args.config:
         CONFIG_FILE = args.config
 
-    if not os.path.exists(CONFIG_FILE):
-
+    if not os.path.exists(CONFIG_FILE) or os.stat(CONFIG_FILE).st_size == 0:
         # copy default config
         old_umask = os.umask(0o177)
         save_config(CONFIG_FILE, {})
@@ -284,12 +285,13 @@ def main():
 
     from .core.utils import print_info
 
-    init_logger(not (getattr(args, 'daemon', None) or getattr(args, 'quiet', False)))
+    log = init_logger(not (getattr(args, 'daemon', None) or getattr(args, 'quiet', False)))
 
     try:
         config = load_config(CONFIG_FILE)
     except:
-        raise
+        log.exception('unable to load the configuration. Default configuration loaded instead.')
+        config = {}
 
     from .core import Core
 
@@ -341,7 +343,8 @@ def main():
     signal.signal(signal.SIGTERM, stop)
 
     def _save_config(signal):
-        save_config(CONFIG_FILE, core.config)
+        save_config(CONFIG_FILE, core.config.toJson())
+        core.log.info('configuration saved !')
 
     try:
 

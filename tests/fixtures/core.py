@@ -5,7 +5,8 @@ from ething.core import Core
 
 _core = Core({
     'db': {
-        'database': ':memory:'
+        'database': ':memory:',
+        'type': 'sqlite'
     },
     'log': {
         'level': 'DEBUG'

@@ -12,11 +12,10 @@ def test_shortid(id, valid):
     assert ShortId.validate(id) is valid
 
 
-@pytest.mark.skip()
 def test_shortid_duplicate():
 
     ids = []
-    for i in range(0, 1000):
+    for i in range(0, 100000):
         ids.append(ShortId.generate())
 
     import collections

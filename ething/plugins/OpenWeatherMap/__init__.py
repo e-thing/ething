@@ -41,17 +41,17 @@ class OpenWeatherMapPlugin(Plugin):
     def load(self):
         super(OpenWeatherMapPlugin, self).load()
 
-        self.core.signalDispatcher.bind('ResourceCreated ResourceDeleted ResourceUpdated', self.on_resource_event)
+        self.core.signalDispatcher.bind('ResourceCreated ResourceDeleted', self.on_resource_event)
 
-        self.start_process()
+        self.update_process()
 
     def unload(self):
         super(OpenWeatherMapPlugin, self).unload()
         self.stop_process()
 
     def start_process(self):
-        if self.config.get('appid') and self.has_devices():
-            self.process = OpenWeatherMapService(self.core, self.config)
+        if not hasattr(self, 'process'):
+            self.process = OpenWeatherMapService(self.core)
             self.process.start()
 
     def stop_process(self):
@@ -59,15 +59,24 @@ class OpenWeatherMapPlugin(Plugin):
             self.process.stop()
             del self.process
 
-    def restart_process(self):
+    def update_process(self):
+        if self.has_devices():
+
+            if self.config.get('appid'):
+                self.start_process()
+                return
+            else:
+                self.log.error('no appid set in the configuration')
+
         self.stop_process()
-        self.start_process()
+
+    def on_config_change(self):
+        self.update_process()
 
     def on_resource_event(self, signal):
         device = signal.resource
         if isinstance(device, OpenWeatherMapDevice):
-            if (not isinstance(signal, ResourceUpdated)) or ('location' in signal.attributes):
-                self.restart_process()
+            self.update_process()
 
     def has_devices(self):
         return len(self.core.find(lambda d: isinstance(d, OpenWeatherMapDevice))) > 0
@@ -87,10 +96,9 @@ class OpenWeatherMapDevice(Device, Thermometer, PressureSensor, HumiditySensor, 
 
 class OpenWeatherMapService(IntervalProcess):
 
-    def __init__(self, core, config):
+    def __init__(self, core):
         super(OpenWeatherMapService, self).__init__('OpenWeatherMap', refresh_interval)
         self.core = core
-        self.config = config
 
     def process(self):
         self.refresh()
@@ -104,8 +112,12 @@ class OpenWeatherMapService(IntervalProcess):
 
     def refresh_one_device(self, device):
         location = device.location
-        appid = self.config.get('appid')
-        if location and appid:
+        if not location:
+            self.log.error('no location set for device: %s' % device)
+            return
+
+        appid = self.core.config.get('OpenWeatherMapPlugin.appid')
+        if appid:
             self.log.debug('fetch weather data for %s' % device)
             r = requests.get(url=api_weather_url, params=dict(q=location, APPID=appid, units='metric'))
             r.raise_for_status()
