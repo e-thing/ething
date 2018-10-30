@@ -24,13 +24,18 @@ class Core(object):
     __instances = []
 
     @staticmethod
-    def get_instance():
-        if len(Core.__instances) == 1:
-            return Core.__instances[0]
-        return None
+    def get_instance(name=None):
+        if name is None:
+            if len(Core.__instances) == 1:
+                return Core.__instances[0]
+        else:
+            for instance in Core.__instances:
+                if instance.name == name:
+                    return instance
 
-    def __init__(self, config=None):
+    def __init__(self, config=None, name=None):
         self.running = False
+        self.name = name
 
         self.config = CoreConfig(self, config)
 

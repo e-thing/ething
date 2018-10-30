@@ -1,5 +1,6 @@
 # coding: utf-8
 from flask import Response, request
+from ething.core.rule.event import ResourceSignal
 try:
     import queue
 except ImportError:
@@ -8,11 +9,7 @@ except ImportError:
 
 def install(core, app, auth, server = None, **kwargs):
 
-    # SSE "protocol" is described here: http://mzl.la/UPFyxY
-    @app.route('/api/events')
-    @auth.required()
-    def events():
-
+    def generate_events_flow(filter = None):
         if not server.ready:
             raise Exception('Server not ready')
 
@@ -25,9 +22,12 @@ def install(core, app, auth, server = None, **kwargs):
             q = queue.Queue()
 
             def on_signal(signal):
-                q.put(signal)
+                if not filter or filter(signal):
+                    q.put(signal)
 
             core.signalDispatcher.bind('*', on_signal)
+
+            yield "event:init\ndata:\n\n"
 
             try:
                 while server.ready:
@@ -52,4 +52,17 @@ def install(core, app, auth, server = None, **kwargs):
 
             core.log.debug('SSE: stop listener %s' % remote_addr)
 
-        return Response(gen(), mimetype="text/event-stream")
+        return gen()
+
+
+    # SSE "protocol" is described here: http://mzl.la/UPFyxY
+    @app.route('/api/events')
+    @auth.required()
+    def events():
+        return Response(generate_events_flow(), mimetype="text/event-stream")
+
+    @app.route('/api/resources/<id>/events')
+    @auth.required()
+    def resource_events(id):
+        r = app.getResource(id)
+        return Response(generate_events_flow(lambda signal: isinstance(signal, ResourceSignal) and signal.resource == r), mimetype="text/event-stream")

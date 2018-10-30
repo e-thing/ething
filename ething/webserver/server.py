@@ -23,6 +23,7 @@ from ething.core.Process import Process
 from ething.core.Helpers import filter_obj
 from ething.core.reg import get_registered_class
 from collections import OrderedDict
+import time
 
 try:
     from cheroot.wsgi import Server as WSGIServer
@@ -281,9 +282,9 @@ class WebServerProcess(Process):
         self.config = config or {}
         self.debug = False
         self.server = None
-        self.app = None
         self.auth = None
         self.started = threading.Event()
+        self.app = FlaskApp(self.core, self.log, root_path=root_path)
 
     def stop(self):
         if self.server:
@@ -295,28 +296,24 @@ class WebServerProcess(Process):
 
     def main(self):
 
-        app = FlaskApp(self.core, self.log, root_path=root_path)
-
-        self.app = app
-
         self.log.info("web server root path = %s" % root_path)
 
         compress = Compress()
-        compress.init_app(app)
+        compress.init_app(self.app)
 
         port = self.config['port']
 
         self.server = WSGIServer(
             bind_addr=('0.0.0.0', port),
-            wsgi_app=app,
+            wsgi_app=self.app,
             server_name=socket.gethostname()
         )
 
-        auth = install_auth(core=self.core, app=app, config=self.config, debug=self.debug, server = self.server)
+        auth = install_auth(core=self.core, app=self.app, config=self.config, debug=self.debug, server = self.server)
 
         self.auth = auth
 
-        install_routes(core=self.core, app=app, auth=auth, debug=self.debug, server = self.server)
+        install_routes(core=self.core, app=self.app, auth=auth, debug=self.debug, server = self.server)
 
         current_ip = None
         try:
@@ -326,6 +323,9 @@ class WebServerProcess(Process):
                  [socket.socket(socket.AF_INET, socket.SOCK_DGRAM)]][0][1]]) if l][0][0]
         except:
             pass
+
+        # gives come time before the web server starts so other plugins can register routes
+        time.sleep(3)
 
         self.log.info("webserver: started at http://%s:%d" % (current_ip or 'localhost', port))
 
@@ -337,25 +337,20 @@ class WebServerProcess(Process):
 
         endpoint = options.pop('endpoint', fn.__name__)
 
-        if self.started.wait(5):
+        if self.app:
+            view_func = fn
 
-            if self.app:
-                view_func = fn
+            # handle permissions
+            permissions = options.pop('permissions', '')
+            if permissions is not False:
+                view_func = self.auth.required(permissions)(view_func)
 
-                # handle permissions
-                permissions = options.pop('permissions', '')
-                if permissions is not False:
-                    view_func = self.auth.required(permissions)(view_func)
+            #args
+            args = options.pop('args', None)
+            if args:
+                view_func = use_args(args)(view_func)
 
-                #args
-                args = options.pop('args', None)
-                if args:
-                    view_func = use_args(args)(view_func)
-
-                self.app.add_url_rule(url, endpoint, view_func=view_func, **options)
-            else:
-                self.log.error('unable to install route "%s" : %s' % (endpoint, url))
-
+            self.app.add_url_rule(url, endpoint, view_func=view_func, **options)
         else:
-            self.log.error('server is not started, unable to install route "%s" : %s' % (endpoint, url))
+            self.log.error('unable to install route "%s" : %s' % (endpoint, url))
 

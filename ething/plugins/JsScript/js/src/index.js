@@ -26,7 +26,9 @@ EThingUI.extend('resources/File', {
 
         if (resource.mime() === 'application/javascript') {
           return {
-            script: 'WScript'
+              widgets: {
+                script: 'WScript'
+              }
           }
         }
 

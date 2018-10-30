@@ -6,7 +6,10 @@ import serial
 import socket
 import struct
 import time
-from queue import Queue, Empty
+try:
+    import queue
+except ImportError:
+    import Queue as queue
 
 
 class Transport(object):
@@ -323,7 +326,7 @@ class ThreadedTransport(Transport):
     def __init__(self, transport, name = None, timeout=3):
         super(ThreadedTransport, self).__init__()
         self._transport = transport
-        self._q = Queue()
+        self._q = queue.Queue()
         self._thread = None
         self._name = name or 'ThreadedTransport.%s' % type(transport).__name__
         self._timeout = timeout
@@ -341,7 +344,7 @@ class ThreadedTransport(Transport):
     def read(self):
         try:
             data = self._q.get(timeout=self._timeout)
-        except Empty:
+        except queue.Empty:
             return None
 
         return data
