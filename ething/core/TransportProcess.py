@@ -6,6 +6,8 @@ import serial
 import socket
 import struct
 import time
+from queue import Queue, Empty
+
 
 class Transport(object):
 
@@ -188,6 +190,7 @@ class Protocol(object):
         #    self.log.error("Exception in transport process: %s" % str(exc))
         pass
 
+
 class Packetizer(Protocol):
     """
     Read binary packets from serial port. Packets are expected to be terminated
@@ -236,6 +239,7 @@ class LineReader(Packetizer):
             text = text.encode(self.encoding, self.unicode_handling)
         # + is not the best choice but bytes does not support % or .format in py3 and we want a single write call
         self.transport.write(text + self.terminator)
+
 
 class TransportProcess(Process):
 
@@ -288,7 +292,10 @@ class TransportProcess(Process):
                             error = e
 
             if self.is_open:
-                self.transport.close()
+                try:
+                    self.transport.close()
+                except Exception as e:
+                    self.log.exception('exception in transport.close()')
             
             self.is_open = False
 
@@ -301,6 +308,51 @@ class TransportProcess(Process):
                 t_end = time.time() + self.reconnect_delay
                 while not self.stopped() and time.time() < t_end:
                     time.sleep(0.5)
+
+
+class QueueProtocol(Protocol):
+    def __init__(self, queue):
+        self._q = queue
+
+    def data_received(self, data):
+        self._q.put(data)
+
+
+class ThreadedTransport(Transport):
+
+    def __init__(self, transport, name = None, timeout=3):
+        super(ThreadedTransport, self).__init__()
+        self._transport = transport
+        self._q = Queue()
+        self._thread = None
+        self._name = name or 'ThreadedTransport.%s' % type(transport).__name__
+        self._timeout = timeout
+
+    def init(self, process):
+        super(ThreadedTransport, self).init(process)
+        self._transport.init(process)
+
+    def open(self):
+        if self._thread:
+            raise Exception('already opened')
+        self._thread = TransportProcess(self._name, transport=self._transport, protocol=QueueProtocol(self._q))
+        self._thread.start()
+
+    def read(self):
+        try:
+            data = self._q.get(timeout=self._timeout)
+        except Empty:
+            return None
+
+        return data
+
+    def write(self, data):
+        return self._transport.write(data)
+
+    def close(self):
+        if self._thread:
+            self._thread.stop()
+            self._thread = None
 
 
 class BaseResult (object):

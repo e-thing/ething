@@ -4,7 +4,7 @@ from .MihomeGateway import MihomeGateway
 from .MihomeSensorHT import MihomeSensorHT
 from .MihomeMagnet import MihomeMagnet
 from ething.core.plugin import Plugin
-from ething.core.TransportProcess import Protocol, TransportProcess, UdpTransport
+from ething.core.TransportProcess import Protocol, TransportProcess, UdpTransport, ThreadedTransport
 from ething.core.Scheduler import Scheduler
 from .helpers import *
 import time
@@ -227,10 +227,10 @@ class Controller(TransportProcess):
     def __init__(self, core):
         super(Controller, self).__init__(
             'mihome',
-            transport=UdpTransport(
+            transport=ThreadedTransport(UdpTransport(
                 host=MULTICAST_ADDRESS,
                 port=MULTICAST_PORT
-            ),
+            ), 'mihome.read'),
 
             protocol=MihomeProtocol(core)
         )
