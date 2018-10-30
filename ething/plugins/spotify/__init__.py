@@ -78,9 +78,6 @@ class spotify(Plugin):
 
             url = "%s?%s" % (OAUTH_AUTHORIZE_URL, urlparams)
 
-            print(payload)
-            print(url)
-
             return redirect(url, code=302)
 
         def spotify_callback():
@@ -109,9 +106,6 @@ class spotify(Plugin):
 
             headers = make_authorization_headers(r.client_id, r.client_secret)
 
-            print(payload)
-            print(headers)
-
             response = requests.post(OAUTH_TOKEN_URL, data=payload, headers=headers, verify=True)
             if response.status_code != 200:
                 raise Exception(response.reason)
@@ -122,12 +116,6 @@ class spotify(Plugin):
             scope = token_info['scope']
             expires_in = token_info['expires_in']
             expires_at = int(time.time()) + expires_in
-
-            print('success')
-            print(access_token)
-            print(refresh_token)
-            print(scope)
-            print(expires_in)
 
             r._access_token = access_token
             r._refresh_token = refresh_token
