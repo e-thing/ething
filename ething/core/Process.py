@@ -30,15 +30,17 @@ def get_processes(name):
 
 class Process(StoppableThread):
 
-    def __init__(self, name, *args, **kwargs):
-        super(Process, self).__init__(name = name, *args, **kwargs)
+    def __init__(self, name, **kwargs):
+
+        super(Process, self).__init__(name = name, **kwargs)
+
         self.daemon = True
         self.log = logging.getLogger("ething.%s" % name)
 
         add_process(self)
 
     def run(self):
-        self.log.info('Start process "%s"' % self.name)
+        self.log.info('Process "%s" started' % self.name)
 
         self.setup()
 
@@ -54,7 +56,8 @@ class Process(StoppableThread):
         self.log.info('Process "%s" stopped' % self.name)
 
     def main(self):
-        pass
+        # run any target
+        super(Process, self).run()
 
     def setup(self):
         pass

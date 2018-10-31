@@ -26,6 +26,7 @@ WEB_API_URL = 'https://api.spotify.com/v1/'
 
 SCOPE = 'playlist-read-private user-read-playback-state user-read-currently-playing user-modify-playback-state'
 
+REFRESH_TOKEN_SURVEY_INTERVAL = 300
 
 def make_authorization_headers(client_id, client_secret):
     auth_header = "%s:%s" % (client_id, client_secret)
@@ -40,7 +41,9 @@ class spotify(Plugin):
     def load(self):
         super(spotify, self).load()
 
-        # install route
+        self._survey_task = self.core.scheduler.setInterval(REFRESH_TOKEN_SURVEY_INTERVAL, self._refresh_token_survey, name='spotify.refresh_token', thread=True)
+
+        # install specific http routes
 
         webserver_plugin = self.core.get_plugin('WebServer')
         webserver = webserver_plugin.process
@@ -129,6 +132,17 @@ class spotify(Plugin):
         webserver.install_route('/api/resources/<id>/spotify/login', spotify_login)
         webserver.install_route('/api/spotify/callback', spotify_callback)
 
+    def unload(self):
+        if hasattr(self, '_survey_task'):
+            self.core.scheduler.unbind(self._survey_task)
+
+    def _refresh_token_survey(self):
+        self.log.debug('verify refresh tokens ...')
+        accounts = self.core.find(lambda r: r.isTypeof('resources/SpotifyAccount'))
+        for account in accounts:
+            if account._is_token_expired(offset=2 * REFRESH_TOKEN_SURVEY_INTERVAL):
+                account._refresh_token()
+
 
 RETRIES = 3
 REQUESTS_TIMEOUT = None
@@ -157,10 +171,10 @@ class SpotifyException(Exception):
 @attr('client_id', type=String(allow_empty=False), description="Your client id.")
 class SpotifyAccount (Device):
 
-    def _is_token_expired(self):
+    def _is_token_expired(self, offset = 0):
         now = int(time.time())
         expires_at = self._access_token_expires_at
-        return expires_at and expires_at - now < 60
+        return expires_at and expires_at - now < 60 + offset
 
     def _refresh_token(self):
         refresh_token = self._refresh_token
@@ -280,7 +294,8 @@ class SpotifyAccount (Device):
             kwargs.update(args)
         return self._internal_call('PUT', url, payload, kwargs)
 
-    def devices(self):
+    @method
+    def listDevices(self):
         ''' Get a list of user's available devices.
         '''
         return self._get_request("me/player/devices")
@@ -291,4 +306,13 @@ class SpotifyAccount (Device):
                 - market - an ISO 3166-1 alpha-2 country code.
         '''
         return self._get_request("me/player", market=market)
+
+    @method
+    def listPlaylists(self, limit=50, offset=0):
+        """ Get current user playlists without required getting his profile
+            Parameters:
+                - limit  - the number of items to return
+                - offset - the index of the first item to return
+        """
+        return self._get_request("me/playlists", limit=limit, offset=offset)
 

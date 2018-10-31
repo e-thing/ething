@@ -32,7 +32,7 @@ export default {
         
         connect () {
             
-            window.location = this.$ething.toApiUrl('resources/'+this.resource.id()+'/spotify/login')
+            window.location = this.$ething.toApiUrl('resources/'+this.resource.id()+'/spotify/login?redirect_uri=' + encodeURIComponent(window.location))
             
         }
         
