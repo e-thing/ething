@@ -2,37 +2,39 @@
     <w-layout noFooter :title="r.basename()">
 
 
-      <div class="fit column items-center gutter-md">
-        <div class="col-auto overflow-hidden">
-          <div class="row items-center gutter-sm items-center">
-            <div class="col-auto">
+      <div class="fit column justify-center items-stretch">
+        <div class="col-auto overflow-hidden q-ma-md">
+          <div class="row gutter-sm items-center">
+            <div class="col">
               <q-select
                 v-model="selectedPlaylistId"
                :options="playlistOptions"
+               placeholder="playlist"
               />
             </div>
-            <div class="col-auto">
+            <div class="col">
               <q-select
                 v-model="selectedDeviceId"
                :options="deviceOptions"
+               placeholder="device"
               />
             </div>
             <div class="col-auto">
-              <q-btn color="primary" label="play" flat @click="playSelected"/>
+              <q-btn color="primary" label="play" @click="playSelected"/>
             </div>
           </div>
         </div>
-        <div class="col-auto text-center">
+        <div class="col-auto text-center q-ma-md">
           <div v-if="currentItem.name" class="text-faded">
             {{ currentItem.name }}
             <span v-if="currentItem.album"> - {{ currentItem.album.name }}</span>
           </div>
           <small v-if="currentDevice.name" class="text-faded">{{ currentDevice.name }}</small>
         </div>
-        <div class="col-auto">
+        <div class="col-auto q-ma-md">
 
-          <div class="row items-center gutter-sm items-center">
-            <div class="col-auto">
+          <div class="row gutter-sm items-center">
+            <div class="col text-right">
               <span v-if="time" class="text-faded">{{ time }}</span>
             </div>
 
@@ -42,7 +44,9 @@
               <q-btn icon="mdi-skip-next" round @click="next"/>
             </div>
 
-            <div class="col-auto">
+            <div class="col">
+              <q-btn icon="mdi-shuffle-variant" :color="state.shuffle_state ? 'primary' : ''" round size="sm" @click="setShuffle(!state.shuffle_state)"/>
+              <q-btn icon="mdi-repeat" :color="state.repeat_state=='off' ? '' : 'primary'" round size="sm" @click="setRepeat(state.repeat_state=='off'?'context':'off')"/>
               <q-btn icon="mdi-volume-low" round size="sm" @click="setVolume('down')"/>
               <q-btn icon="mdi-volume-high" round size="sm" @click="setVolume('up')"/>
             </div>
@@ -78,8 +82,8 @@ export default {
     metadata: {
         label: 'Spotify widget',
         description: 'play music on your device',
-        minHeight: 120,
-        minWidth: 120
+        minHeight: 250,
+        minWidth: 500
     },
 
     data () {
@@ -93,7 +97,9 @@ export default {
           state: {
             is_playing: false,
             device: {},
-            item: {}
+            item: {},
+            shuffle_state: false,
+            repeat_state: false
           },
           stateFetchTs: null,
           _currentReq: null,
@@ -233,7 +239,7 @@ export default {
           this.spotify.skipToPrevious((err, data) => {
             if (err) console.error(err);
             else {
-              this.current()
+              this.current(true)
             }
           })
         },
@@ -245,7 +251,7 @@ export default {
               if (err) console.error(err);
               else {
                 this.state.is_playing = false
-                this.current()
+                this.current(true)
               }
             })
           } else {
@@ -253,7 +259,7 @@ export default {
               if (err) console.error(err);
               else {
                 this.state.is_playing = true
-                this.current()
+                this.current(true)
               }
             })
           }
@@ -263,7 +269,7 @@ export default {
           this.spotify.skipToNext((err, data) => {
             if (err) console.error(err);
             else {
-              this.current()
+              this.current(true)
             }
           })
         },
@@ -284,13 +290,13 @@ export default {
               if (err) console.error(err);
               else {
                 this.state.is_playing = true
-                this.current()
+                this.current(true)
               }
             })
           }
         },
 
-        current () {
+        _current () {
 
           // abort previous request, if any
           if (this._currentReq) {
@@ -310,6 +316,37 @@ export default {
           })
 
           return this._currentReq
+        },
+
+        current (delay) {
+          if (delay) {
+            setTimeout(() => {
+              this._current()
+            }, 500)
+          } else {
+            this._current()
+          }
+        },
+
+        setShuffle (state) {
+          state = !!state
+          this.spotify.setShuffle(state, (err, data) => {
+            if (err) console.error(err);
+            else {
+              this.$set(this.state, 'shuffle_state', state)
+              this.current(true)
+            }
+          })
+        },
+
+        setRepeat (state) {
+          this.spotify.setRepeat(state, (err, data) => {
+            if (err) console.error(err);
+            else {
+              this.$set(this.state, 'repeat_state', state)
+              this.current(true)
+            }
+          })
         },
 
         setVolume (volume) {
@@ -332,7 +369,10 @@ export default {
           this.spotify.setVolume(volume, (err, data) => {
             if (err) console.error(err);
             else {
-              this.current()
+              if (this.state.device) {
+                this.$set(this.state.device, 'volume_percent', volume)
+              }
+              this.current(true)
             }
           })
         },
@@ -349,6 +389,8 @@ export default {
               sec -= min * 60
               return pad(min, 2) + ":" + pad(sec, 2)
             }
+
+            if (progress > duration) progress = duration
 
             return toString(progress) + "/" + toString(duration)
           }

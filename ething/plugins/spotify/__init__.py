@@ -120,9 +120,10 @@ class spotify(Plugin):
             expires_in = token_info['expires_in']
             expires_at = int(time.time()) + expires_in
 
-            r._access_token = access_token
-            r._refresh_token = refresh_token
-            r._access_token_expires_at = expires_at
+            with r:
+                r._access_token = access_token
+                r._refresh_token = refresh_token
+                r._access_token_expires_at = expires_at
 
             if not redirect_uri:
                 redirect_uri = url_for('static_client', path='index.html')
@@ -141,7 +142,7 @@ class spotify(Plugin):
         accounts = self.core.find(lambda r: r.isTypeof('resources/SpotifyAccount'))
         for account in accounts:
             if account._is_token_expired(offset=2 * REFRESH_TOKEN_SURVEY_INTERVAL):
-                account._refresh_token()
+                account._refresh_access_token()
 
 
 RETRIES = 3
@@ -176,7 +177,7 @@ class SpotifyAccount (Device):
         expires_at = self._access_token_expires_at
         return expires_at and expires_at - now < 60 + offset
 
-    def _refresh_token(self):
+    def _refresh_access_token(self):
         refresh_token = self._refresh_token
 
         if not refresh_token:
@@ -203,8 +204,9 @@ class SpotifyAccount (Device):
         expires_in = token_info['expires_in']
         expires_at = int(time.time()) + expires_in
 
-        self._access_token = access_token
-        self._access_token_expires_at = expires_at
+        with self:
+            self._access_token = access_token
+            self._access_token_expires_at = expires_at
 
 
 
