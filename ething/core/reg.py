@@ -388,7 +388,7 @@ class Method(object):
             if ('default' not in self.args[arg_name]) or self.args[arg_name].get('required', False):
                 required.append(arg_name)
 
-            arg_type = arg_meta.get('type')
+            arg_type = arg_meta.get('type', String())
 
             arg_schema = arg_type.toSchema(context=kwargs)
 

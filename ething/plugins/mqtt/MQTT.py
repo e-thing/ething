@@ -23,7 +23,7 @@ class MQTT(Device):
     """
 
     @method.arg('topic', type='string', minLength=1)
-    @method.arg('payload', payload='string')
+    @method.arg('payload', type='string')
     def publish(self, topic, payload=''):
         return get_process('mqtt.%s' % self.id).publish(topic, payload)
 

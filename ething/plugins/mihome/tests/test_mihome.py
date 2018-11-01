@@ -1,6 +1,6 @@
 # coding: utf-8
 import pytest
-from ething.plugins.mihome import MihomeProtocol
+from .. import MihomeProtocol
 from ething.core.interfaces import Thermometer, Light
 
 

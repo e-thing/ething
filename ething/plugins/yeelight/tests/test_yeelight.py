@@ -1,6 +1,6 @@
 # coding: utf-8
 import pytest
-from ething.plugins.yeelight import YeelightProtocol
+from .. import YeelightProtocol
 from ething.core.interfaces import Light
 
 

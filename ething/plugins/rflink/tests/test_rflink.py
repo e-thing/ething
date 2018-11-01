@@ -1,6 +1,6 @@
 # coding: utf-8
 import pytest
-import ething.plugins.rflink as RFLink
+from .. import RFLinkProtocol
 from  ething.core.interfaces import Switch
 
 
@@ -13,7 +13,7 @@ def test_rflink_controller(core, process):
 
     assert gateway
 
-    protocol = RFLink.RFLinkProtocol(gateway)
+    protocol = RFLinkProtocol(gateway)
 
     protocol.init(process)
 

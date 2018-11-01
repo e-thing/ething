@@ -1,7 +1,8 @@
 # coding: utf-8
 import pytest
-from ething.plugins.mysensors.Message import Message
-import ething.plugins.mysensors as MySensors
+from ..Message import Message
+from .. import helpers as MySensors
+from .. import MySensorsProtocol
 from ething.core.interfaces import Thermometer
 
 
@@ -51,7 +52,7 @@ def test_mysensors_protocol(core, process):
 
     assert gateway
 
-    protocol = MySensors.MySensorsProtocol(gateway)
+    protocol = MySensorsProtocol(gateway)
 
     protocol.init(process)
 

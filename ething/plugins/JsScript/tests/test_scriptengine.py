@@ -1,6 +1,6 @@
 # coding: utf-8
 import pytest
-from ething.plugins.JsScript import JsScript
+from .. import JsScript
 
 
 @pytest.mark.nodejs
