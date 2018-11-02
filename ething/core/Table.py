@@ -89,7 +89,7 @@ class Table(Resource):
     FIELD_VALID_CHAR = 'a-zA-Z0-9_\-'
     VALIDATE_FIELD = '^['+FIELD_VALID_CHAR+']{1,64}$'
 
-    reservedKeys = ['_id']
+    reservedKeys = ['_id'] # mongodb reserved key
 
     INVALID_FIELD_NONE = 0
     INVALID_FIELD_RENAME = 1

@@ -226,35 +226,6 @@ class Core(object):
             'used': self.db.get_usage()
         }
 
-    @staticmethod
-    def r_encode(data, showPrivateField=True, local_tz = None):
-        o = {}
-        for k in data:
-
-            v = data[k]
-
-            if k == '_id':
-                k = 'id'
-
-            if k[0] != '_':
-                if k[0] == '#':  # show the hidden field (apikey ...)
-                    if not showPrivateField:
-                        continue
-                    k = k[1:]
-
-                if isinstance(v, datetime.datetime):
-                    if local_tz is None:
-                        local_dt = v
-                    else:
-                        local_dt = v.replace(tzinfo=pytz.utc).astimezone(local_tz)
-                    o[k] = local_dt.isoformat()
-                elif isinstance(v, dict):
-                    o[k] = Core.r_encode(v)
-                else:
-                    o[k] = v
-
-        return o
-
     def dispatchSignal(self, signal, *args, **kwargs):
 
         if isinstance(signal, string_types):
