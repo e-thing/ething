@@ -46,7 +46,15 @@ class spotify(Plugin):
         # install specific http routes
 
         webserver_plugin = self.core.get_plugin('WebServer')
+
+        if not webserver_plugin:
+            self.log.warning('webserver plugin disabled')
+            return
+
         webserver = webserver_plugin.process
+
+        if not webserver:
+            return
 
 
         _states = dict()

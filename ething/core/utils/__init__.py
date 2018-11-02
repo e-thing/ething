@@ -43,3 +43,5 @@ def print_info(core, printer):
     platform_info = info.get('platform', {})
     printer("PLATFORM  : %s" % (platform_info.get('name')))
     printer("SYSTEM    : %s" % (platform_info.get('version')))
+
+

@@ -1,3 +1,5 @@
+# coding: utf-8
+
 import os
 from subprocess import check_output
 import sys
@@ -5,9 +7,8 @@ import re
 
 
 def list_bluetooth_interfaces():
-    
     interfaces = []
-    
+
     if os.name != 'nt':
         # does not work on windows
         try:
@@ -15,23 +16,23 @@ def list_bluetooth_interfaces():
             output = check_output("hciconfig -a", shell=True)
             for line in output.decode(sys.stdout.encoding or 'utf8').splitlines():
                 line = line.strip()
-                
+
                 matches = re.search('^(hci[0-9]+):', line)
                 if matches:
                     # new block
                     hci = matches.group(1)
-                    
+
                     interfaces.append({
                         'hci': hci
                     })
-                    
+
                     read_status = False
                 else:
                     if read_status:
                         read_status = False
                         if len(interfaces) > 0:
                             interfaces[-1]['status'] = line
-                    
+
                     else:
                         matches = re.search('^Name: *[\'"]?([^\'"]*)[\'"]?', line)
                         if matches:
@@ -51,13 +52,11 @@ def list_bluetooth_interfaces():
                                     manufacturer = matches.group(1).strip()
                                     if len(interfaces) > 0:
                                         interfaces[-1]['manufacturer'] = manufacturer
-                    
-                
+
+
         except Exception as e:
             pass
-    
-    return interfaces
-        
 
-if __name__ == "__main__":
-    print(list_bluetooth_interfaces())
+    return interfaces
+
+

@@ -56,10 +56,7 @@ class JsScript(Plugin):
         self.log.info("NODE.JS : %s" % (self.is_nodejs_installed() or "not found"))
 
         # install route
-
-        webserver_plugin = self.core.get_plugin('WebServer')
-
-        self.install_route(webserver_plugin.process)
+        self.install_route()
 
     def unload(self):
         super(JsScript, self).unload()
@@ -191,7 +188,18 @@ class JsScript(Plugin):
 
         return self.run(scriptcontent, scriptName=os.path.basename(script.name), globals=globals)
 
-    def install_route(self, webserver):
+    def install_route(self):
+
+        webserver_plugin = self.core.get_plugin('WebServer')
+
+        if not webserver_plugin:
+            self.log.warning('webserver plugin disabled')
+            return
+
+        webserver = webserver_plugin.process
+
+        if not webserver:
+            return
 
         file_action_execute_args = {
             'args': fields.Str(missing=None,
@@ -216,7 +224,7 @@ class JsScript(Plugin):
                 raise Exception('Not executable')
 
         webserver.install_route('/api/files/<id>/execute', file_execute, args=file_action_execute_args,
-                                       permissions='file:read resource:read')
+                permissions='file:read resource:read')
 
     def is_nodejs_installed(self):
         res = False
