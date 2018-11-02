@@ -1,7 +1,7 @@
 # coding: utf-8
 
-from .Action import Action
-from ...entity import *
+from ething.core.rule.action import Action
+from ething.core.entity import *
 from requests import Request, Session
 
 

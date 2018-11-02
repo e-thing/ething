@@ -296,7 +296,7 @@ class MySensorsProtocol(LineReader):
                             if sensorId == INTERNAL_CHILD:
                                 # node presentation :
                                 if node:
-                                    node._libVersion = message.value
+                                    node.libVersion = message.value
                             else:
                                 if sensor:
                                     sensor.description = message.value
@@ -352,7 +352,7 @@ class MySensorsProtocol(LineReader):
 
                             elif message.subType == I_VERSION:
                                 self.gatewayLibVersion = message.value
-                                gateway._libVersion = message.value
+                                gateway.libVersion = message.value
                                 self.log.info(
                                     "MySensors: gateway version = %s" % self.gatewayLibVersion)
 
@@ -385,14 +385,14 @@ class MySensorsProtocol(LineReader):
                             elif message.subType == I_SKETCH_NAME:
                                 if node:
                                     sketchName = message.value or ''
-                                    node._sketchName = sketchName
+                                    node.sketchName = sketchName
                                     # if the default name has not been changed by the user, overwrite it with the sketch name
                                     if re.search('/node-[0-9]+$', node.name) and sketchName:
                                         node.name = sketchName
 
                             elif message.subType == I_SKETCH_VERSION:
                                 if node:
-                                    node._sketchVersion = message.value
+                                    node.sketchVersion = message.value
 
                             elif message.subType == I_BATTERY_LEVEL:
                                 if node:

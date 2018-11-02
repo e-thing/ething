@@ -141,14 +141,6 @@ def test_condition_ResourceMatch(core):
     assert not c2.test(signal, core, None)
 
 
-def test_action_HttpRequest():
-    signal = event.Custom('my_event')
-
-    req_action = action.HttpRequest.HttpRequest({
-        'url': 'http://www.google.fr'
-    })
-
-    req_action.run(signal, None, None)
 
 
 

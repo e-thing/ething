@@ -13,5 +13,5 @@ class MihomeMagnet(MihomeDevice, DoorSensor):
     def processAttr(self, name, value):
 
         if name == 'status':
-            self._state = value == "open"
+            self.state = value == "open"
 

@@ -30,7 +30,7 @@ class MihomeDevice(MihomeBase):
                 value = data[k]
 
                 if k == 'voltage':
-                    self._voltage = int(value)/1000.  # volt
+                    self.voltage = int(value)/1000.  # volt
                 else:
                     self.processAttr(k, value)
 

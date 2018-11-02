@@ -35,8 +35,8 @@ class SensorValueChangedEvent(ResourceEvent):
             except Exception:
                 pass
 
-            last_state = self._last_state
-            self._last_state = result
+            last_state = self.last_state
+            self.last_state = result
 
             if result:
                 if not self.repeat:

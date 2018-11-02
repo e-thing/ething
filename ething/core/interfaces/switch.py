@@ -12,7 +12,7 @@ class Switch(Interface):
         """
         set the current state of the switch
         """
-        self._state = state
+        self.state = state
 
     @method
     def on(self):

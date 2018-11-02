@@ -283,7 +283,7 @@ class YeelightAdvertisementProtocol(Protocol):
         id = dev_info.get('id')
         model = dev_info.get('model')
 
-        device = self.core.findOne(lambda r: r.isTypeof('resources/YeelightDevice') and r._dev_id == id and r.model == model)
+        device = self.core.findOne(lambda r: r.isTypeof('resources/YeelightDevice') and r.dev_id == id and r.model == model)
 
         if not device:
             self.log.debug('new device : id = %s, model = %s' % (id, model))

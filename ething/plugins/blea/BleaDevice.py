@@ -48,7 +48,7 @@ class BleaDevice(Device):
         
         if device:
             with device:
-                device._rssi = rssi
+                device.rssi = rssi
                 device.setConnectState(True)
         
         return device

@@ -12,4 +12,4 @@ class Dimmable(Interface):
         """
         set the current level of this dimmable switch
         """
-        self._level = level
+        self.level = level

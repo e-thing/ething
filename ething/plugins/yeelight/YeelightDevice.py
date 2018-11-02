@@ -16,14 +16,14 @@ class YeelightDevice (Device, Light):
     def _update(self, params):
         if "power" in params:
             state = bool('on' in params["power"].lower())
-            self._state = state
+            self.state = state
 
     @property
     def controller(self):
         return get_process('yeelight.%s' % self.id)
 
     def setState(self, state):
-        result = self.controller.send("set_power", ['on' if state else 'off', "smooth", 500], done = lambda _, device : setattr(device, '_state', state) )
+        result = self.controller.send("set_power", ['on' if state else 'off', "smooth", 500], done = lambda _, device : setattr(device, 'state', state) )
 
         result.wait()
 

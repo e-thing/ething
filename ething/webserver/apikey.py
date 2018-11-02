@@ -67,7 +67,7 @@ class Apikey(DbEntity):
         self.manager.log.debug("apikey created : %s" % str(self))
 
     def _before_save(self):
-        self._modifiedDate = datetime.datetime.utcnow()  # update the modification time
+        self.modifiedDate = datetime.datetime.utcnow()  # update the modification time
 
     def _save(self, dirty_attrs):
         self.manager.save(self)

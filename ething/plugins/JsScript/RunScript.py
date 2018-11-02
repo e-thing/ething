@@ -23,9 +23,9 @@ class RunScript(Action):
             })
         except Exception as e:
             self.log.exception('error in script')
-            self._return_code = -1
+            self.return_code = -1
         else:
-            self._return_code = result.get('return_code', -1)
+            self.return_code = result.get('return_code', -1)
 
             stderr = result.get('stderr')
             if stderr:

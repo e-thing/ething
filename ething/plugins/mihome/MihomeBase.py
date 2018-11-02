@@ -45,7 +45,7 @@ class MihomeBase(Device):
             raise Exception('[mihome gateway] no password set')
         aes = pyaes.AESModeOfOperationCBC(
             just16(gateway.password).encode('utf8'), iv=IV)
-        ciphertext = aes.encrypt(just16(gateway._token))
+        ciphertext = aes.encrypt(just16(gateway.token))
         return binascii.hexlify(ciphertext).decode('utf8')
 
     def _write(self, data, **kwargs):

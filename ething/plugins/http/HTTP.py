@@ -24,7 +24,7 @@ class HTTP(Device):
 
         url = 'http'
 
-        if self._secure:
+        if self.secure:
             url += 's'
 
         url += '://' + self.host

@@ -14,13 +14,13 @@ class YeelightBulbRGBW (YeelightDevice, RGBWLight):
         super(YeelightBulbRGBW, self)._update(params)
 
         if 'color_mode' in params:
-            self._color = parse_color(params)
+            self.color = parse_color(params)
 
         if 'bright' in params:
-            self._level = parse_brightness(params)
+            self.level = parse_brightness(params)
 
     def setLevel(self, level):
-        result = self.controller.send("set_bright", [level, "smooth", 100], done=lambda _, device: setattr(device, '_level', level))
+        result = self.controller.send("set_bright", [level, "smooth", 100], done=lambda _, device: setattr(device, 'level', level))
 
         result.wait()
 
@@ -30,7 +30,7 @@ class YeelightBulbRGBW (YeelightDevice, RGBWLight):
     def setColor(self, color):
         color_int = int(color.replace('0x', '').replace('#', ''), 16)
 
-        result = self.controller.send("set_rgb", [color_int, "smooth", 100], done=lambda _, device: setattr(device, '_color', color))
+        result = self.controller.send("set_rgb", [color_int, "smooth", 100], done=lambda _, device: setattr(device, 'color', color))
 
         result.wait()
 

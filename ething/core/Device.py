@@ -45,8 +45,8 @@ class BatteryLevelChangedEvent(ResourceEvent):
             except Exception:
                 pass
 
-            last_state = self._last_state
-            self._last_state = result
+            last_state = self.last_state
+            self.last_state = result
 
             if result:
                 if not self.repeat:
@@ -100,7 +100,7 @@ class Device(Resource):
             connected = bool(connected)
 
             if connected:
-                self._lastSeenDate = datetime.datetime.utcnow()
+                self.lastSeenDate = datetime.datetime.utcnow()
 
             if self.connected != connected:
                 self.connected = connected

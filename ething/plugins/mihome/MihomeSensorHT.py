@@ -13,9 +13,9 @@ class MihomeSensorHT(MihomeDevice, Thermometer, HumiditySensor, PressureSensor):
     def processAttr(self, name, value):
 
         if name == 'temperature':
-            self._temperature = int(value)/100.0
+            self.temperature = int(value)/100.0
         elif name == 'humidity':
-            self._humidity = int(value)/100.0
+            self.humidity = int(value)/100.0
         elif name == 'pressure':  # hPa
-            self._pressure = int(value)
+            self.pressure = int(value)
 

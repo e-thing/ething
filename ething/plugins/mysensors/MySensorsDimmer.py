@@ -11,12 +11,12 @@ class MySensorsDimmer (MySensorsSensor, DimmableSwitch):
         super(MySensorsDimmer, self)._set_data(datatype, value)
 
         if datatype == V_PERCENTAGE or datatype == V_DIMMER:
-            self._level = value
+            self.level = value
         elif datatype == V_STATUS or datatype == V_LIGHT:
-            self._state = value
+            self.state = value
 
     def setState(self, state):
-        self.send(SET, V_STATUS, state, done = lambda _: setattr(self, '_state', state))
+        self.send(SET, V_STATUS, state, done = lambda _: setattr(self, 'state', state))
 
     def setLevel(self, level):
-        self.send(SET, V_PERCENTAGE, level, done=lambda _: setattr(self, '_level', level))
+        self.send(SET, V_PERCENTAGE, level, done=lambda _: setattr(self, 'level', level))

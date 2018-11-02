@@ -69,8 +69,8 @@ class TableDataThresholdEvent(ResourceEvent):
                         if value <= threshold_value:
                             ret = True
 
-                last_status = self._last_status
-                self._last_status = ret
+                last_status = self.last_status
+                self.last_status = ret
 
                 if not self.repeat and ret and last_status:
                     ret = False
@@ -82,7 +82,7 @@ class TableDataThresholdEvent(ResourceEvent):
 @attr('maxLength', type=Nullable(Integer(min=1)), default=5000, description="The maximum of records allowed in this table. When this number is reached, the oldest records will be removed to insert the new ones (first in, first out). Set it to null or 0 to disable this feature.")
 @attr('expireAfter', type=Nullable(Integer(min=1)), default=None, description="The amount of time (in seconds) after which a records will be automatically removed. Set it to null or 0 to disable this feature.")
 @attr('length', default=0, mode=READ_ONLY, description="The number of records in the table")
-@attr('keys', type=Dict(), default={}, mode=READ_ONLY, description="A key/value object where the keys correspond to the fields available in this table, and the corresponding value is the number of rows where the field is set. __The default keys ('_id' and 'date' are not listed)__")
+@attr('keys', type=Dict(), default={}, mode=READ_ONLY, description="A key/value object where the keys correspond to the fields available in this table, and the corresponding value is the number of rows where the field is set. __The default keys ('id' and 'date' are not listed)__")
 @attr('contentModifiedDate', default=lambda _: datetime.datetime.utcnow(), mode=READ_ONLY, description="Last time the content of this table was modified.")
 class Table(Resource):
 
@@ -138,9 +138,9 @@ class Table(Resource):
             self.db.remove_table(self.collectionName)
             self.db.create_table(self.collectionName)
 
-            self._length = 0
-            self._keys = {}
-            self._contentModifiedDate = datetime.datetime.utcnow()
+            self.length = 0
+            self.keys = {}
+            self.contentModifiedDate = datetime.datetime.utcnow()
 
     # is called regularly
 
@@ -173,7 +173,7 @@ class Table(Resource):
                 nb += 1
 
             if nb > 0:
-                self._length = self.length - nb
+                self.length = self.length - nb
 
         if added_rows is not None:
             keys = self.keys
@@ -191,15 +191,15 @@ class Table(Resource):
                 nb += 1
 
             if nb > 0:
-                self._length = self.length + nb
+                self.length = self.length + nb
 
         if reset is True:
             meta = self.db.get_table_metadata(self.collectionName)
-            self._length = meta.get('length', 0)
-            self._keys = meta.get('keys', {})
+            self.length = meta.get('length', 0)
+            self.keys = meta.get('keys', {})
             self.data = {}
 
-        self._contentModifiedDate = datetime.datetime.utcnow()
+        self.contentModifiedDate = datetime.datetime.utcnow()
 
     def updateMeta(self):
         with self:

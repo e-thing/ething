@@ -22,7 +22,7 @@ class MihomeGateway(MihomeBase, RGBWLight, LightSensor):
     def _processData(self, response):
         
         if 'token' in response:
-            self._token = response['token']
+            self.token = response['token']
 
         if 'data' in response:
             data = json.loads(response['data'])
@@ -31,11 +31,11 @@ class MihomeGateway(MihomeBase, RGBWLight, LightSensor):
                 rgb = data['rgb'] & 0xffffff
                 brightness = data['rgb'] >> 24
 
-                self._color = '#' + format(rgb, '06X')
-                self._level = int(brightness)
+                self.color = '#' + format(rgb, '06X')
+                self.level = int(brightness)
 
             if 'illumination' in data:
-                self._light_level = int(data['illumination']) - 300  # lm
+                self.light_level = int(data['illumination']) - 300  # lm
 
         if response.get('cmd') == 'iam':
             def read(result, gateway):
@@ -52,7 +52,7 @@ class MihomeGateway(MihomeBase, RGBWLight, LightSensor):
 
         self._write({
             "rgb": hrgb
-        }, done = lambda _, device : setattr(device, '_level', level))
+        }, done = lambda _, device : setattr(device, 'level', level))
 
     def setColor(self, color):
 
@@ -62,7 +62,7 @@ class MihomeGateway(MihomeBase, RGBWLight, LightSensor):
 
         self._write({
             "rgb": hrgb
-        }, done=lambda _, device: setattr(device, '_color', color))
+        }, done=lambda _, device: setattr(device, 'color', color))
 
     @method.arg('music', enum=musicMap)
     @method.arg('volume', minimum=0, maximum=100)

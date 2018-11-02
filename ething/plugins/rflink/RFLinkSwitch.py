@@ -11,12 +11,12 @@ class RFLinkSwitch(RFLinkNode, Switch):
 
     def setState(self, state):
         self._send(CMD = 'ON' if state else 'OFF', SWITCH = self.switchId)
-        self._state = state
+        self.state = state
 
 
     def _handle_incoming_data(self, protocol, data):
         super(RFLinkSwitch, self)._handle_incoming_data(protocol, data)
 
         if 'CMD' in data:
-            self._state = bool(data['CMD']=='ON')
+            self.state = bool(data['CMD']=='ON')
 

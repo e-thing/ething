@@ -170,8 +170,8 @@ class RFLinkProtocol(LineReader):
                 'Nodo RadioFrequencyLink - RFLink Gateway V([\d\.]+) - R([\d]+)', parts[2])
             if matches:
                 with gateway:
-                    gateway._version = matches.group(1)
-                    gateway._revision = matches.group(2)
+                    gateway.version = matches.group(1)
+                    gateway.revision = matches.group(2)
                 self.log.info("RFLink: ver:%s rev:%s" %
                               (matches.group(1), matches.group(2)))
             else:
@@ -179,9 +179,9 @@ class RFLinkProtocol(LineReader):
                     ';VER=([\d\.]+);REV=([\d]+);BUILD=([0-9a-fA-F]+);', line)
                 if matches:
                     with gateway:
-                        gateway._version = matches.group(1)
-                        gateway._revision = matches.group(2)
-                        gateway._build = matches.group(3)
+                        gateway.version = matches.group(1)
+                        gateway.revision = matches.group(2)
+                        gateway.build = matches.group(3)
                     self.log.info("RFLink: ver:%s rev:%s build:%s" % (
                         matches.group(1), matches.group(2), matches.group(3)))
 

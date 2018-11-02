@@ -40,16 +40,16 @@ class File(Resource):
 
     def toJson(self, **kwargs):
         o = super(File, self).toJson(**kwargs)
-        o['hasThumbnail'] = bool(self._thumb)
+        o['hasThumbnail'] = bool(self.thumb)
         return o
 
     def remove(self, removeChildren=False):
 
         # remove the file from GridFS
-        self.ething.db.removeFile(self._content)
+        self.ething.db.removeFile(self.content)
 
         # remove any thumbnail
-        self.ething.db.removeFile(self._thumb)
+        self.ething.db.removeFile(self.thumb)
 
         # remove the resource
         super(File, self).remove(removeChildren)
@@ -75,7 +75,7 @@ class File(Resource):
         return False
 
     def read(self, encoding=None):
-        contents = self.ething.db.retrieveFile(self._content)
+        contents = self.ething.db.retrieveFile(self.content)
 
         if contents is None:
             contents = b''
@@ -94,17 +94,17 @@ class File(Resource):
                 bytes = bytes.encode(encoding)
 
             # remove that file if it exists
-            self.ething.db.removeFile(self._content)
-            self._content = None
-            self._size = 0
+            self.ething.db.removeFile(self.content)
+            self.content = None
+            self.size = 0
 
             if bytes:
-                self._content = self.ething.db.storeFile('File/%s/content' % self.id, bytes, {
+                self.content = self.ething.db.storeFile('File/%s/content' % self.id, bytes, {
                     'parent': self.id
                 })
-                self._size = self.ething.db.getFileSize(self._content)
+                self.size = self.ething.db.getFileSize(self.content)
 
-            self._contentModifiedDate = datetime.datetime.utcnow()
+            self.contentModifiedDate = datetime.datetime.utcnow()
 
             self.updateMeta(File.META_ALL, bytes)
 
@@ -154,7 +154,7 @@ class File(Resource):
                 if mime is None:
                     mime = 'text/plain' # default
 
-                self._mime = mime
+                self.mime = mime
 
             if opt & File.META_TEXT:
 
@@ -175,7 +175,7 @@ class File(Resource):
 
                     isText = File.isPrintable(content)
 
-                self._isText = isText
+                self.isText = isText
 
             if opt & File.META_THUMB:
 
@@ -191,11 +191,11 @@ class File(Resource):
                     except:
                         pass
 
-                self.ething.db.removeFile(self._thumb)
-                self._thumb = None
+                self.ething.db.removeFile(self.thumb)
+                self.thumb = None
 
                 if thumb:
-                    self._thumb = self.ething.db.storeFile('App/%s/thumb' % self.id, thumb, {
+                    self.thumb = self.ething.db.storeFile('App/%s/thumb' % self.id, thumb, {
                         'parent': self.id
                     })
 
@@ -214,7 +214,7 @@ class File(Resource):
         return True
 
     def readThumbnail(self):
-        return self.ething.db.retrieveFile(self._thumb)
+        return self.ething.db.retrieveFile(self.thumb)
 
     @staticmethod
     def createThumb(imagedata, thumbWidth):

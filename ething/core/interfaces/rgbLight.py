@@ -12,4 +12,4 @@ class RGBLight (Light):
         """
         set the color of the light (#ffffff format)
         """
-        self._color = color
+        self.color = color

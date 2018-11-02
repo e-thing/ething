@@ -85,11 +85,11 @@ class Rule(Resource):
     def run(self, signal=None):
 
         with self:
-            self._execution_count = self.execution_count + 1
+            self.execution_count = self.execution_count + 1
 
-            self._execution_date = datetime.datetime.utcnow()
+            self.execution_date = datetime.datetime.utcnow()
 
-            self._execution_error = None
+            self.execution_error = None
 
             actions = self.actions
 
@@ -98,7 +98,7 @@ class Rule(Resource):
                     action = actions[i]
                     action.run(signal, self.ething, self)
                 except Exception as e:
-                    self._execution_error = 'error while running the action[%d] %s: %s' % (i, type(action).__name__, str(e))
+                    self.execution_error = 'error while running the action[%d] %s: %s' % (i, type(action).__name__, str(e))
                     self.log.exception('error while running the action[%d] %s of the rule %s' % (i, action, self))
                     break
 

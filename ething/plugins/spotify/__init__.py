@@ -121,9 +121,9 @@ class spotify(Plugin):
             expires_at = int(time.time()) + expires_in
 
             with r:
-                r._access_token = access_token
-                r._refresh_token = refresh_token
-                r._access_token_expires_at = expires_at
+                r.access_token = access_token
+                r.refresh_token = refresh_token
+                r.access_token_expires_at = expires_at
 
             if not redirect_uri:
                 redirect_uri = url_for('static_client', path='index.html')
@@ -174,11 +174,11 @@ class SpotifyAccount (Device):
 
     def _is_token_expired(self, offset = 0):
         now = int(time.time())
-        expires_at = self._access_token_expires_at
+        expires_at = self.access_token_expires_at
         return expires_at and expires_at - now < 60 + offset
 
     def _refresh_access_token(self):
-        refresh_token = self._refresh_token
+        refresh_token = self.refresh_token
 
         if not refresh_token:
             self.log.error("no refresh_token")
@@ -205,8 +205,8 @@ class SpotifyAccount (Device):
         expires_at = int(time.time()) + expires_in
 
         with self:
-            self._access_token = access_token
-            self._access_token_expires_at = expires_at
+            self.access_token = access_token
+            self.access_token_expires_at = expires_at
 
 
 
@@ -214,7 +214,7 @@ class SpotifyAccount (Device):
 
     def _internal_call(self, method, url, payload, params):
 
-        access_token = self._access_token
+        access_token = self.access_token
 
         if not access_token:
             raise Exception('Not connected')

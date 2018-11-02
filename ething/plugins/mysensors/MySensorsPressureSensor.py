@@ -10,4 +10,4 @@ class MySensorsPressureSensor (MySensorsSensor, PressureSensor):
     def _set_data(self, datatype, value):
         super(MySensorsPressureSensor, self)._set_data(datatype, value)
         if datatype == V_PRESSURE:
-            self._pressure = value
+            self.pressure = value

@@ -26,7 +26,7 @@ class Miflora(BleaDevice, Thermometer, LightSensor, MoistureSensor):
                 firmware = "".join([chr(c) for c in batteryFirm[2:]])
                 
                 with self:
-                    self._firmware = firmware
+                    self.firmware = firmware
                     self.battery = battery
                     self.setConnectState(True)
                     
@@ -48,9 +48,9 @@ class Miflora(BleaDevice, Thermometer, LightSensor, MoistureSensor):
             fertility = received[9] * 256 + received[8]
 
             with self:
-                self._temperature = temperature
-                self._light_level = sunlight
-                self._moisture = sunlight
+                self.temperature = temperature
+                self.light_level = sunlight
+                self.moisture = sunlight
 
                 self.data.update({
                     'sunlight': sunlight,

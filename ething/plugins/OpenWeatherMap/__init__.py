@@ -131,24 +131,24 @@ class OpenWeatherMapService(IntervalProcess):
                     main = data.get('main', {})
 
                     if 'temp' in main:
-                        device._temperature = main.get('temp')
+                        device.temperature = main.get('temp')
                     if 'pressure' in main:
-                        device._pressure = main.get('pressure') * 100
+                        device.pressure = main.get('pressure') * 100
                     if 'humidity' in main:
-                        device._humidity = main.get('humidity')
+                        device.humidity = main.get('humidity')
 
                     weather = data.get('weather', [])
 
                     if len(weather) > 0:
                         weather = weather[0]
                         if isinstance(weather, dict):
-                            device._weather = weather.get('description', '')
+                            device.weather = weather.get('description', '')
 
                     if 'wind' in data:
                         wind = data.get('wind', {})
 
                         if 'speed' in wind:
-                            device._wind_speed = wind.get('speed')
-                            device._wind_direction = wind.get('deg', None)
+                            device.wind_speed = wind.get('speed')
+                            device.wind_direction = wind.get('deg', None)
 
 
