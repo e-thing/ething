@@ -20,7 +20,7 @@ from .Message import Message
 from ething.core.utils import NullContextManager
 from ething.core.plugin import Plugin
 from ething.core.TransportProcess import LineReader, TransportProcess, SerialTransport, NetTransport, BaseResult
-from ething.core.Scheduler import Scheduler
+from ething.core.scheduler import Scheduler
 import time
 import re
 import datetime

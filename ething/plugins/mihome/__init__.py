@@ -5,7 +5,7 @@ from .MihomeSensorHT import MihomeSensorHT
 from .MihomeMagnet import MihomeMagnet
 from ething.core.plugin import Plugin
 from ething.core.TransportProcess import Protocol, TransportProcess, UdpTransport, ThreadedTransport
-from ething.core.Scheduler import Scheduler
+from ething.core.scheduler import Scheduler
 from .helpers import *
 import time
 import re

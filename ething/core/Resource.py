@@ -133,6 +133,8 @@ class Resource(DbEntity):
         object.__setattr__(self, '_Resource__ething', context.get('ething'))
         object.__setattr__(self, '_Resource__log', logging.getLogger('ething.r.%s' % data.get('id')))
 
+        self.ething.scheduler.bind_instance(self)
+
     def __eq__(self, other):
         if isinstance(other, Resource):
             return self.id == other.id

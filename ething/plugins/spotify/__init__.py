@@ -44,25 +44,17 @@ class spotify(Plugin):
         self._survey_task = self.core.scheduler.setInterval(REFRESH_TOKEN_SURVEY_INTERVAL, self._refresh_token_survey, name='spotify.refresh_token', thread=True)
 
         # install specific http routes
-
         webserver_plugin = self.core.get_plugin('WebServer')
+        if webserver_plugin:
+            webserver_plugin.register_installer(self._webserver_install)
 
-        if not webserver_plugin:
-            self.log.warning('webserver plugin disabled')
-            return
-
-        webserver = webserver_plugin.process
-
-        if not webserver:
-            return
-
+    def _webserver_install(self, app, auth, **kwargs):
 
         _states = dict()
 
-
+        @app.route('/api/resources/<id>/spotify/login')
+        @auth.required()
         def spotify_login(id):
-
-            app = webserver.app
 
             r = app.getResource(id, ['SpotifyAccount'])
 
@@ -91,9 +83,9 @@ class spotify(Plugin):
 
             return redirect(url, code=302)
 
+        @app.route('/api/spotify/callback')
+        @auth.required()
         def spotify_callback():
-
-            app = webserver.app
 
             error = request.args.get('error')
 
@@ -137,9 +129,6 @@ class spotify(Plugin):
                 redirect_uri = url_for('static_client', path='index.html')
 
             return redirect(redirect_uri, code=302)
-
-        webserver.install_route('/api/resources/<id>/spotify/login', spotify_login)
-        webserver.install_route('/api/spotify/callback', spotify_callback)
 
     def unload(self):
         if hasattr(self, '_survey_task'):

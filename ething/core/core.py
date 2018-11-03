@@ -8,7 +8,7 @@ from .Config import CoreConfig
 from .SignalDispatcher import SignalDispatcher
 from .version import __version__
 from .plugin import instanciate_plugins
-from .Scheduler import Scheduler
+from .scheduler import Scheduler
 from .ResourceDbCache import ResourceDbCache
 from .utils.deadlock_dbg import trace_start, trace_stop
 from .env import USER_DIR
@@ -40,6 +40,10 @@ class Core(object):
         self.config = CoreConfig(self, config)
 
         self._init_logger()
+
+        self.signalDispatcher = SignalDispatcher()
+        self.scheduler = Scheduler()
+
         self._init_database()
         self._init_plugins()
 
@@ -121,11 +125,8 @@ class Core(object):
         self.restart_flag = True
 
     def init(self):
-
-        self.signalDispatcher = SignalDispatcher()
-        self.scheduler = Scheduler()
         
-        self.scheduler.at(self._tick, hour='*', min='*')
+        self.scheduler.at(self._tick, hour='*', min='*', thread=False)
 
         # load the plugins
         for plugin in self.plugins:

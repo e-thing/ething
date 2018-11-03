@@ -6,7 +6,6 @@ from ething.core.Helpers import toJson
 from .utils import addslashes, Output
 from .RunScript import RunScript
 from collections import OrderedDict
-from webargs import fields
 import os
 import tempfile
 import time
@@ -55,8 +54,10 @@ class JsScript(Plugin):
 
         self.log.info("NODE.JS : %s" % (self.is_nodejs_installed() or "not found"))
 
-        # install route
-        self.install_route()
+        # install specific http routes
+        webserver_plugin = self.core.get_plugin('WebServer')
+        if webserver_plugin:
+            webserver_plugin.register_installer(self._webserver_install)
 
     def unload(self):
         super(JsScript, self).unload()
@@ -188,26 +189,19 @@ class JsScript(Plugin):
 
         return self.run(scriptcontent, scriptName=os.path.basename(script.name), globals=globals)
 
-    def install_route(self):
+    def _webserver_install(self, app, auth, **kwargs):
 
-        webserver_plugin = self.core.get_plugin('WebServer')
-
-        if not webserver_plugin:
-            self.log.warning('webserver plugin disabled')
-            return
-
-        webserver = webserver_plugin.process
-
-        if not webserver:
-            return
+        from ething.webserver.server_utils import use_args, fields
 
         file_action_execute_args = {
             'args': fields.Str(missing=None,
                                description="A string representing the arguments to be passed to the script.")
         }
 
+        @app.route('/api/files/<id>/execute')
+        @use_args(file_action_execute_args)
+        @auth.required('file:read resource:read')
         def file_execute(args, id):
-            app = webserver.app
 
             r = app.getResource(id, ['File'])
 
@@ -222,9 +216,6 @@ class JsScript(Plugin):
 
             else:
                 raise Exception('Not executable')
-
-        webserver.install_route('/api/files/<id>/execute', file_execute, args=file_action_execute_args,
-                permissions='file:read resource:read')
 
     def is_nodejs_installed(self):
         res = False

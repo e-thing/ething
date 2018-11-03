@@ -1,17 +1,9 @@
 # coding: utf-8
 from .type import *
+from .utils import get_cls_methods
 from collections import MutableMapping, OrderedDict
 import copy
 import inspect
-import sys
-
-
-if sys.version_info >= (3, 0):
-    def get_cls_methods(cls):
-      return inspect.getmembers(cls, inspect.isfunction)
-else:
-    def get_cls_methods(cls):
-      return [(n,m.__func__) for n,m in inspect.getmembers(cls, inspect.ismethod)]
 
 
 def _make_default(value, *arg, **kwargs):
@@ -539,7 +531,7 @@ def register_class(cls):
 
         cls_name = get_definition_pathname(cls)
         if cls_name in registered_cls:
-            raise Exception('A class with the name "%s" already exists' % cls_name)
+            raise Exception('A class with the name "%s" already exists: %s' % (cls_name, registered_cls.get(cls_name)))
 
         registered_cls[cls_name] = cls
 

@@ -3,7 +3,7 @@ from .YeelightDevice import YeelightDevice
 from .YeelightBulbRGBW import YeelightBulbRGBW
 from ething.core.plugin import Plugin
 from ething.core.TransportProcess import LineReader, TransportProcess, NetTransport, UdpTransport, Protocol
-from ething.core.Scheduler import Scheduler
+from ething.core.scheduler import Scheduler
 from . import yeelight
 import time
 import random

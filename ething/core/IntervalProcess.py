@@ -1,7 +1,7 @@
 # coding: utf-8
 
 from .Process import Process
-from .Scheduler import Scheduler
+from .scheduler import Scheduler
 import time
 
 

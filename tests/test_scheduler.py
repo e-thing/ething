@@ -1,6 +1,6 @@
 # coding: utf-8
 import pytest
-from ething.core.Scheduler import Scheduler
+from ething.core.scheduler import Scheduler
 import time
 
 

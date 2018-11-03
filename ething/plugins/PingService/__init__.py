@@ -2,7 +2,7 @@
 
 from ething.core.plugin import Plugin
 from ething.core.Process import Process
-from ething.core.Scheduler import Scheduler
+from ething.core.scheduler import Scheduler
 import threading
 import time
 import datetime

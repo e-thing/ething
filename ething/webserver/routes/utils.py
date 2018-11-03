@@ -66,8 +66,14 @@ def install(core, app, auth, **kwargs):
     @app.route('/api/utils/net_list')
     @auth.required()
     def net_list():
-        import ething.core.utils.net_scan
-        return app.jsonify(ething.core.utils.net_scan.scan(), indent=4)
+        from ething.core.utils.net_scan import scan
+        return app.jsonify(scan(), indent=4)
+
+    @app.route('/api/utils/bluetooth_list')
+    @auth.required()
+    def bluetooth_list():
+        from ething.core.utils.bluetooth import list_bluetooth_interfaces
+        return app.jsonify(list_bluetooth_interfaces(), indent=4)
 
     read_log_args = {
         'line': fields.Int(validate=validate.Range(min=0), missing=50),

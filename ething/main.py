@@ -299,9 +299,8 @@ def main():
     from .webserver import WebServer
 
     # import the plugins here !
-    from .plugins import import_all
-    import_all()
-    from .core.plugin import import_from_modules
+    from .core.plugin import import_from_package, import_from_modules
+    import_from_package('ething.plugins')
     import_from_modules()
 
     core = Core(config)

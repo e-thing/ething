@@ -25,7 +25,7 @@
           </div>
         </div>
         <div class="col-auto text-center q-ma-md">
-          <div v-if="currentItem.name" class="text-faded">
+          <div v-if="currentItem.name" class="text-faded ellipsis">
             {{ currentItem.name }}
             <span v-if="currentItem.album"> - {{ currentItem.album.name }}</span>
           </div>

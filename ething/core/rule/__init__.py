@@ -1,7 +1,7 @@
 # coding: utf-8
 
 from ..plugin import BuiltinPlugin
-from ..Scheduler import Scheduler
+from ..scheduler import Scheduler
 from ..Process import Process
 from .Rule import Rule
 import threading

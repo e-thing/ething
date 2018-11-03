@@ -2,6 +2,7 @@
 
 from .ShortId import ShortId
 from .Process import Process
+import inspect
 import time
 import datetime
 import logging
@@ -12,7 +13,7 @@ from .utils.weak_ref import weak_ref
 
 class Task(object):
 
-    def __init__(self, target, args=(), kwargs=None, name = None, thread = False):
+    def __init__(self, target, args=(), kwargs=None, name = None, thread = False, instance = None):
 
         if not callable(target):
             raise Exception('target must be callable')
@@ -23,10 +24,11 @@ class Task(object):
         self._kwargs = kwargs or {}
         self._name = name or target.__name__
         self._thread = thread
+        self._instance = weak_ref(instance) if instance is not None else None
 
         self._last_run = None
         self._executed_count = 0
-        self._log = logging.getLogger('ething.Scheduler.%s' % self._name)
+        self._log = logging.getLogger('ething.scheduler.%s' % self._name)
         self._valid = True
         self._t0 = time.time()
 
@@ -37,6 +39,14 @@ class Task(object):
     @property
     def executed_count(self):
         return self._executed_count
+
+    @property
+    def target(self):
+        return self._target()
+
+    @property
+    def instance(self):
+        return self._instance() if self._instance is not None else None
 
     def run(self):
         target = self._target()
@@ -93,7 +103,7 @@ class DelayTask(Task):
             return (t - self._t0) >= self._delay
 
     def run(self):
-        super(DelayTask, self).run(self)
+        super(DelayTask, self).run()
         self._valid = False # run only one time
 
 
@@ -132,10 +142,41 @@ class AtTask(Task):
             return True
 
 
+def tick(**kwargs):
+    def d(func):
+        setattr(func, '_scheduler', ('tick', (), kwargs))
+        return func
+    return d
+
+
+def setInterval(interval, start_in_sec=0, **kwargs):
+    def d(func):
+        kwargs['start_in_sec'] = start_in_sec
+        setattr(func, '_scheduler', ('setInterval', (interval,), kwargs))
+        return func
+    return d
+
+
+def delay(delay, **kwargs):
+    def d(func):
+        setattr(func, '_scheduler', ('delay', (delay,), kwargs))
+        return func
+    return d
+
+
+def at(hour='*', min=0, **kwargs):
+    def d(func):
+        kwargs['hour'] = hour
+        kwargs['min'] = min
+        setattr(func, '_scheduler', ('at', (), kwargs))
+        return func
+    return d
+
+
 class Scheduler(object):
 
     def __init__(self):
-        self.log = logging.getLogger('ething.Scheduler')
+        self.log = logging.getLogger('ething.scheduler')
         super(Scheduler, self).__init__()
         self.tasks = []
         self.r_lock = threading.RLock()
@@ -169,10 +210,25 @@ class Scheduler(object):
             if task.id == task_id:
                 return task
 
+    def bind_instance(self, instance):
+        for name, func in inspect.getmembers(instance, inspect.ismethod):
+            if hasattr(func, '_scheduler'):
+                scheduler_func_name, args, kwargs = getattr(func, '_scheduler')
+                try:
+                    getattr(self, scheduler_func_name)(*args, callback=getattr(instance, name), **kwargs)
+                except:
+                    self.log.exception('unable to create instance task')
+
     def unbind(self, task):
         with self.r_lock:
-            if task in self.tasks:
-                self.tasks.remove(task)
+            if isinstance(task, Task):
+                if task in self.tasks:
+                    self.tasks.remove(task)
+            else:
+                to_remove = [task for task in self.tasks if task.target is task or task.instance is task]
+
+                for t in to_remove:
+                    self.unbind(t)
 
     def process(self):
         now = time.time()

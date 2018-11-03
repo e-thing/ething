@@ -78,10 +78,16 @@ class WebServer(BuiltinPlugin):
 
     def load(self):
         super(WebServer, self).load()
-        self.start_process()
+
+        if not hasattr(self, '_installers'):
+            self._installers = []
+
+        # gives come time before the web server starts so other plugins can register routes
+        self.core.scheduler.delay(3, self.start_process, thread=False)
 
     def unload(self):
         super(WebServer, self).unload()
+        self.core.scheduler.unbind(self.start_process)
         self.stop_process()
 
     def on_config_change(self):
@@ -89,7 +95,7 @@ class WebServer(BuiltinPlugin):
         self.start_process()
 
     def start_process(self):
-        self.process = WebServerProcess(self.core, self.config)
+        self.process = WebServerProcess(self.core, self.config, custom_installers = getattr(self, '_installers', None))
         self.process.start()
 
     def stop_process(self):
@@ -105,6 +111,19 @@ class WebServer(BuiltinPlugin):
         akm = ApikeyManager(self.core)
         for apikey in data:
             Apikey.import_instance(apikey, context={'manager': akm})
+
+    def register_installer(self, installer):
+        if not hasattr(self, '_installers'):
+            self._installers = []
+        self._installers.append(installer)
+
+    def unregister_installer(self, installer):
+        if hasattr(self, '_installers') and installer in self._installers:
+            self._installers.remove(installer)
+            # restart webserver if it was started
+            if hasattr(self, 'process'):
+                self.stop_process()
+                self.start_process()
 
 
 class FlaskApp(Flask):
@@ -276,7 +295,7 @@ class FlaskApp(Flask):
 
 
 class WebServerProcess(Process):
-    def __init__(self, core, config=None):
+    def __init__(self, core, config=None, custom_installers = None):
         super(WebServerProcess, self).__init__('webserver')
         self.core = core
         self.config = config or {}
@@ -285,6 +304,7 @@ class WebServerProcess(Process):
         self.auth = None
         self.started = threading.Event()
         self.app = FlaskApp(self.core, self.log, root_path=root_path)
+        self.custom_installers = custom_installers or []
 
     def stop(self):
         if self.server:
@@ -313,8 +333,15 @@ class WebServerProcess(Process):
 
         self.auth = auth
 
-        install_routes(core=self.core, app=self.app, auth=auth, debug=self.debug, server = self.server)
+        install_route_args = dict(core=self.core, app=self.app, auth=auth, debug=self.debug, server = self.server)
 
+        install_routes(**install_route_args)
+
+        # install registered routes :
+        for installer in self.custom_installers:
+            installer(**install_route_args)
+
+        # retrieve current ip:
         current_ip = None
         try:
             current_ip = [l for l in (
@@ -323,9 +350,6 @@ class WebServerProcess(Process):
                  [socket.socket(socket.AF_INET, socket.SOCK_DGRAM)]][0][1]]) if l][0][0]
         except:
             pass
-
-        # gives come time before the web server starts so other plugins can register routes
-        time.sleep(3)
 
         self.log.info("webserver: started at http://%s:%d" % (current_ip or 'localhost', port))
 

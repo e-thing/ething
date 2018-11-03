@@ -16,18 +16,14 @@ if bluepy_imported:
 
     from ething.core.plugin import Plugin
     from ething.core.Process import Process
-    from ething.core.Scheduler import Scheduler
+    from ething.core.scheduler import Scheduler
     from .BleaGateway import BleaGateway
     from .devices import devices
-    from .utils import list_bluetooth_interfaces
 
     class Blea(Plugin):
 
         def load(self):
             super(Blea, self).load()
-
-            # install specific http routes
-            self._install_web_routes()
 
             # controllers :
             self.controllers = {}
@@ -88,24 +84,6 @@ if bluepy_imported:
             if hasattr(self, 'controllers'):
                 for id in list(self.controllers):
                     self._stop_controller(id)
-
-        def _install_web_routes(self):
-            webserver_plugin = self.core.get_plugin('WebServer')
-
-            if not webserver_plugin:
-                self.log.warning('webserver plugin disabled')
-                return
-
-            webserver = webserver_plugin.process
-
-            if not webserver:
-                return
-
-            def bluetooth_list():
-                return webserver.app.jsonify(list_bluetooth_interfaces(), indent=4)
-
-            webserver_plugin.install_route('/api/utils/bluetooth_list', bluetooth_list)
-
 
 
     class ScanDelegate(DefaultDelegate):

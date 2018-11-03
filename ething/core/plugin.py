@@ -9,6 +9,7 @@ import copy
 from io import open
 import traceback
 import pkgutil
+import importlib
 
 
 class PluginMount(type):
@@ -192,8 +193,7 @@ class Plugin(BasePlugin):
 
 
 def import_from_path(path):
-
-    for loader, module_name, is_pkg in  pkgutil.iter_modules(path):
+    for loader, module_name, is_pkg in pkgutil.iter_modules(path):
         try:
             module = loader.find_module(module_name).load_module(module_name)
         except Exception as e:
@@ -201,6 +201,15 @@ def import_from_path(path):
             traceback.print_exc()
         #else:
         #    globals()[module_name] = module
+
+def import_from_package(package):
+    pkg = importlib.import_module(package)
+    for loader, module_name, is_pkg in pkgutil.iter_modules(pkg.__path__):
+        try:
+            importlib.import_module('.%s' % module_name, package)
+        except Exception as e:
+            print('plugin "%s" import failed: %s' % (module_name, str(e)))
+            traceback.print_exc()
 
 def import_from_modules():
     for loader, module_name, is_pkg in pkgutil.iter_modules():

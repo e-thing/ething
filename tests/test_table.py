@@ -3,6 +3,7 @@ import pytest
 from ething.core.Table import Table
 from ething.core import Core
 import time
+import importlib
 
 
 def test_table_create(core):
@@ -94,14 +95,24 @@ def test_benchmark(core):
     print("select time: %f s" % ((end - start) / 10))
 
 
-@pytest.mark.parametrize("type,database", [
-    ("sqlite", ':memory:'),
-    ("sqlite", 'benchmark'),
-    ("unqlite", ':memory:'),
-    ("unqlite", 'benchmark'),
-    ("mongodb", 'benchmark'),
+@pytest.mark.parametrize("type,database,module", [
+    ("sqlite", ':memory:', 'sqlite3'),
+    ("sqlite", 'benchmark', 'sqlite3'),
+    ("unqlite", ':memory:', 'UnQLite'),
+    ("unqlite", 'benchmark', 'UnQLite'),
+    ("mongodb", 'benchmark', 'pymongo'),
 ])
-def test_benchmark_all(type, database):
+def test_benchmark_all(type, database, module):
+
+    if module:
+        try:
+            importlib.import_module(module)
+        except ImportError:
+            print('module %s not installed, skip test' % module)
+            return
+
+    name = '%s:%s' % (type, database)
+
     core = Core({
         'db': {
             'database': database,
@@ -129,7 +140,7 @@ def test_benchmark_all(type, database):
 
     end = time.time()
 
-    print("insertion time: %f s" % ((end - start) / 100))
+    print("[%s] insertion time: %f s" % (name, (end - start) / 100))
 
     start = time.time()
 
@@ -138,7 +149,7 @@ def test_benchmark_all(type, database):
 
     end = time.time()
 
-    print("select time: %f s" % ((end - start) / 10))
+    print("[%s] select time: %f s" % (name, (end - start) / 10))
 
     start = time.time()
 
@@ -147,4 +158,4 @@ def test_benchmark_all(type, database):
 
     end = time.time()
 
-    print("filter time: %f s" % ((end - start) / 10))
+    print("[%s] filter time: %f s" % (name, (end - start) / 10))
