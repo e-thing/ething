@@ -22,7 +22,12 @@ class Task(object):
         self._target = weak_ref(target)
         self._args = args
         self._kwargs = kwargs or {}
-        self._name = name or target.__name__
+        self._name = name
+        if not self._name:
+            if instance is not None:
+                self._name = "%s.%s" % (type(instance).__name__, target.__name__)
+            else:
+                self._name = target.__name__
         self._thread = thread
         self._instance = weak_ref(instance) if instance is not None else None
 
@@ -214,6 +219,7 @@ class Scheduler(object):
         for name, func in inspect.getmembers(instance, inspect.ismethod):
             if hasattr(func, '_scheduler'):
                 scheduler_func_name, args, kwargs = getattr(func, '_scheduler')
+                kwargs['instance'] = instance
                 try:
                     getattr(self, scheduler_func_name)(*args, callback=getattr(instance, name), **kwargs)
                 except:

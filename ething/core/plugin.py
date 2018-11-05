@@ -219,3 +219,31 @@ def import_from_modules():
             except Exception as e:
                 print('plugin "%s" import failed: %s' % (module_name, str(e)))
                 traceback.print_exc()
+
+
+
+
+####################
+
+_plugins_cache = None
+
+
+def find_plugins():
+    global _plugins_cache
+
+    if _plugins_cache is None:
+        _plugins_cache = {}
+
+        # find installed packages in PYTHON_PATH
+        for loader, module_name, is_pkg in pkgutil.iter_modules():
+            if module_name.startswith('ething_'):
+                print(loader.find_module(module_name))
+
+        # load builtin plugins
+
+
+    return list(_plugins_cache.keys())
+
+
+if __name__ == '__main__':
+    find_plugins()

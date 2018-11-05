@@ -1,6 +1,4 @@
 # coding: utf-8
-from scapy.sendrecv import sr1
-from scapy.layers.inet import IP, ICMP
 try:
     from urllib.parse import urlparse
 except ImportError:
@@ -35,11 +33,32 @@ def pingable(attr='host'):
     return d
 
 
-def ping(host, timeout=1):
+# on windows winpcap must be installed
+#def ping(host, timeout=1):
+#
+#    try:#
+#        result = sr1(IP(dst=host)/ICMP(), timeout=timeout, verbose=False)
+#    except Exception as e:
+#        result = False
+#
+#    return bool(result)
 
-    try:
-        result = sr1(IP(dst=host)/ICMP(), timeout=timeout, verbose=False)
-    except:
-        result = False
 
-    return bool(result)
+from platform   import system as system_name  # Returns the system/OS name
+from subprocess import call   as system_call  # Execute a shell command
+
+
+def ping(host, **kwargs):
+    """
+    Returns True if host (str) responds to a ping request.
+    Remember that a host may not respond to a ping (ICMP) request even if the host name is valid.
+    """
+
+    # Ping command count option as function of OS
+    param = '-n' if system_name().lower()=='windows' else '-c'
+
+    # Building the command. Ex: "ping -c 1 google.com"
+    command = ['ping', param, '1', host]
+
+    # Pinging
+    return system_call(command, stdout=False, stderr=False) == 0
