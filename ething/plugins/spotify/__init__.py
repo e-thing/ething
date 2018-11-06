@@ -38,8 +38,10 @@ def make_authorization_headers(client_id, client_secret):
 
 class spotify(Plugin):
 
-    def load(self):
-        super(spotify, self).load()
+    JS_INDEX = './js/index.js'
+
+    def setup(self):
+        super(spotify, self).setup()
 
         self._survey_task = self.core.scheduler.setInterval(REFRESH_TOKEN_SURVEY_INTERVAL, self._refresh_token_survey, name='spotify.refresh_token', thread=True)
 
@@ -129,10 +131,6 @@ class spotify(Plugin):
                 redirect_uri = url_for('static_client', path='index.html')
 
             return redirect(redirect_uri, code=302)
-
-    def unload(self):
-        if hasattr(self, '_survey_task'):
-            self.core.scheduler.unbind(self._survey_task)
 
     def _refresh_token_survey(self):
         self.log.debug('verify refresh tokens ...')

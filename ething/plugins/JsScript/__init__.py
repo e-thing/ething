@@ -16,7 +16,6 @@ import sys
 import json
 
 
-version = '0.1.0'
 
 PROG = os.path.abspath(os.path.join(os.path.dirname(__file__), './nodejs/vm2.js'))
 
@@ -27,7 +26,7 @@ class JsScript(Plugin):
     JsScript plugin. This plugin allows you to execute JavaScript script using the ething-js library.
     """
 
-    VERSION = version
+    JS_INDEX = './js/index.js'
 
     CONFIG_DEFAULTS = {
         'executable': 'node',
@@ -54,13 +53,11 @@ class JsScript(Plugin):
 
         self.log.info("NODE.JS : %s" % (self.is_nodejs_installed() or "not found"))
 
+    def setup(self):
         # install specific http routes
         webserver_plugin = self.core.get_plugin('WebServer')
         if webserver_plugin:
             webserver_plugin.register_installer(self._webserver_install)
-
-    def unload(self):
-        super(JsScript, self).unload()
 
     def run(self, script, scriptName='anonymous', apiKey=None, globals=None):
 
@@ -191,7 +188,7 @@ class JsScript(Plugin):
 
     def _webserver_install(self, app, auth, **kwargs):
 
-        from ething.webserver.server_utils import use_args, fields
+        from ething.plugins.webserver.server_utils import use_args, fields
 
         file_action_execute_args = {
             'args': fields.Str(missing=None,

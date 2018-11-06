@@ -9,12 +9,12 @@ import datetime
 
 
 class PingPlugin(Plugin):
-    def load(self):
+    def start(self):
         super(PingPlugin, self).load()
         self.service = PingService(self.core)
         self.service.start()
 
-    def unload(self):
+    def stop(self):
         super(PingPlugin, self).unload()
         if hasattr(self, 'service'):
             self.service.stop()

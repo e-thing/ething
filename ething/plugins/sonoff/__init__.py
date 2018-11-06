@@ -1,6 +1,5 @@
 # coding: utf-8
-from ething.core.plugin import Plugin
+# see: https://github.com/arendst/Sonoff-Tasmota/wiki
+
 from . import http
 
-class Sonoff(Plugin):
-    pass

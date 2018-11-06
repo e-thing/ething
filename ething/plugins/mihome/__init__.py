@@ -14,12 +14,12 @@ import datetime
 
 class Mihome(Plugin):
 
-    def load(self):
-        super(Mihome, self).load()
+    def start(self):
+        super(Mihome, self).start()
         self._start_controller()
 
-    def unload(self):
-        super(Mihome, self).unload()
+    def stop(self):
+        super(Mihome, self).stop()
         self._stop_controller()
 
     def _start_controller(self):

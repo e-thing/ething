@@ -18,7 +18,7 @@ from future.utils import binary_type, string_types
 from .method_override import HTTPMethodOverrideMiddleware
 from .server_utils import ServerException, tb_extract_info, root_path, use_args, use_multi_args
 from .apikey import ApikeyManager, Apikey
-from ething.core.plugin import BuiltinPlugin
+from ething.core.plugin import Plugin
 from ething.core.Process import Process
 from ething.core.Helpers import filter_obj
 from ething.core.reg import get_registered_class
@@ -31,7 +31,7 @@ except ImportError:
     from cherrypy.wsgiserver import CherryPyWSGIServer as WSGIServer
 
 
-class WebServer(BuiltinPlugin):
+class WebServer(Plugin):
     CONFIG_DEFAULTS = {
         'port': 8000,
         'debug': True,
@@ -82,12 +82,12 @@ class WebServer(BuiltinPlugin):
         if not hasattr(self, '_installers'):
             self._installers = []
 
-        # gives come time before the web server starts so other plugins can register routes
-        self.core.scheduler.delay(3, self.start_process, thread=False)
+    def start(self):
+        super(WebServer, self).start()
+        self.start_process()
 
-    def unload(self):
-        super(WebServer, self).unload()
-        self.core.scheduler.unbind(self.start_process)
+    def stop(self):
+        super(WebServer, self).stop()
         self.stop_process()
 
     def on_config_change(self):

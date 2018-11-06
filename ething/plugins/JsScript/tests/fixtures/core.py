@@ -1,7 +1,7 @@
 # coding: utf-8
 import pytest
 from ething.core import Core
-from ething.webserver import WebServer
+from ething.plugins.webserver import WebServer
 
 
 _core = Core({

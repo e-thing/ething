@@ -108,6 +108,9 @@ class ConfigBase(Mapping):
     def __getitem__(self, key):
         return get_from_path(self._store, key)
 
+    def __setitem__(self, key, value):
+        return self.set(key, value)
+
     def __iter__(self):
         return iter(self._store)
 

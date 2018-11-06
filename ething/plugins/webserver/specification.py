@@ -345,7 +345,7 @@ def get_headers(input):
 
 
 if __name__ == "__main__":
-    from ething.webserver.server import FlaskApp
+    from .server import FlaskApp
     from ething.core.core import Core
 
     core = Core({

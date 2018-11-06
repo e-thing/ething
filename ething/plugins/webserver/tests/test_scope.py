@@ -1,6 +1,6 @@
 # coding: utf-8
 import pytest
-from ething.webserver.Scope import Scope
+from ..Scope import Scope
 
 
 def test_scope_validate():

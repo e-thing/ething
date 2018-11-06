@@ -1,159 +1,64 @@
-from future.utils import with_metaclass
+# coding: utf-8
+from future.utils import string_types
 from .Config import ConfigItem
-from .Helpers import topological_sort
 import logging
 import inspect
 import os
-import json
 import copy
-from io import open
-import traceback
 import pkgutil
 import importlib
+import pkg_resources
+from email.parser import FeedParser
 
 
-class PluginMount(type):
-    """plugin metaclass"""
+class BasePlugin(object):
 
-    def __init__(cls, name, bases, attrs):
-        """Called when a Plugin derived class is imported"""
+    # if this plugin come from a package, this attribute will contain his name
+    PACKAGE = None
 
-        if name == 'BuiltinPlugin' or name == 'Plugin':
-            return
+    # the path to the plugin javascript file (metadata, widgets ...). This file is loaded by the web interface. (default to index.js)
+    JS_INDEX = './index.js'
 
-        if not hasattr(cls, 'plugins'):
-            # Called when the metaclass is first instantiated
-            cls.plugins = []
-        else:
-            # Called when a plugin class is imported
-            cls.register_plugin(cls)
-
-    def register_plugin(cls, plugin):
-        """Add the plugin to the plugin list and perform any registration logic"""
-
-        if not plugin.NAME:
-            plugin.NAME = cls.__name__
-
-        if not plugin.DESCRIPTION:
-            plugin.DESCRIPTION = (plugin.__doc__ or '').strip()
-
-        plugin.register()
-
-        # save the plugin reference
-        cls.plugins.append(plugin)
-
-
-
-
-class BasePlugin(with_metaclass(PluginMount, object)):
-    """A plugin abstract class"""
-
-    # the name of the plugin (default to the plugin class name)
-    NAME = None
-
-    # the version of the plugin
-    VERSION = None
-
-    # a string describing this plugin (default to the doc string of this class)
-    DESCRIPTION = None
-
-    # a dictionary object defining the default configuration of the plugin
-    CONFIG_DEFAULTS = None
-
-    # a json schema describing the configuration data. The web interface use this to create the configuration form
-    CONFIG_SCHEMA = None
-
-    # the path to the plugin javascript file (metadata, widgets ...). This file is loaded by the web interface.
-    JS_INDEX = None
-
-    # a list of other plugins that need to be loaded before this plugin
-    DEPENDENCIES = None
-
-    def __init__(self, core, **kwargs):
+    def __init__(self, core, js_index = None):
         self.core = core
-        self.log = logging.getLogger("ething.%s" % self.name)
-
-        self.config = ConfigItem(core.config, self.name, schema = self.CONFIG_SCHEMA, defaults = copy.deepcopy(self.CONFIG_DEFAULTS))
-
-        self.loaded = False
+        package = getattr(self, 'PACKAGE', None) or {}
+        self._name = package.get('name') or type(self).__name__
+        self._js_index = js_index or getattr(self, 'JS_INDEX')
 
     @property
     def name(self):
-        return self.NAME
+        return self._name
+
+    @property
+    def js_index(self):
+        # make it absolute !
+        package = getattr(self, 'PACKAGE', None) or {}
+        root = package.get('location')
+        return os.path.join(root or os.getcwd(), self._js_index)
+
+    def is_js_index_valid(self):
+        return os.path.isfile(self.js_index)
 
     def __str__(self):
-        return self.name
+        return '<pluginInstance %s>' % self.name
 
     def __repr__(self):
-        return self.name
-
-    @classmethod
-    def register(cls):
-
-        root_dir = os.path.dirname(inspect.getfile(cls))
-
-        plugin_info = {
-            'ui': './index.js',
-            'version': None,
-            'description': None,
-            'name': None,
-            'config': None,
-            'configSchema': None,
-            'dependencies': []
-        }
-
-        # read plugin information stored in the json file 'plugin.json'
-        try:
-            plugin_json_file = os.path.join(root_dir, 'plugin.json')
-            if os.path.isfile(plugin_json_file):
-                with open(plugin_json_file) as f:
-                    plugin_info.update(json.load(f))
-        except:
-            pass
-
-        if plugin_info.get('name'):
-            cls.NAME = plugin_info.get('name')
-
-        if plugin_info.get('ui'):
-            js_index_file = os.path.join(root_dir, plugin_info.get('ui'))
-            if os.path.isfile(js_index_file):
-                cls.JS_INDEX = js_index_file
-
-        if plugin_info.get('version') is not None:
-            cls.VERSION = plugin_info.get('version')
-
-        if plugin_info.get('description'):
-            cls.DESCRIPTION = plugin_info.get('description')
-
-        if plugin_info.get('config'):
-            cls.CONFIG_DEFAULTS = plugin_info.get('config')
-
-        if plugin_info.get('configSchema'):
-            cls.CONFIG_SCHEMA = plugin_info.get('configSchema')
-
-        if plugin_info.get('dependencies'):
-            cls.DEPENDENCIES = plugin_info.get('dependencies', [])
-
-        cls.ROOT_DIR = root_dir
+        return str(self)
 
     def load(self):
-        if self.loaded:
-            raise Exception('plugin "%s" already loaded' % self)
-        self.loaded = True
-        self.log.info('load plugin version=%s' % str(self.VERSION))
-        self.core.signalDispatcher.bind('ConfigUpdated', self._on_core_config_updated)
-
-    def unload(self):
-        self.core.signalDispatcher.unbind('ConfigUpdated', self._on_core_config_updated)
-        self.loaded = False
-        self.log.info('unload plugin')
-
-    def on_config_change(self):
         pass
 
-    def _on_core_config_updated(self, signal):
-        if self.name in signal.updated_keys:
-            self.on_config_change()
+    def setup(self):
+        pass
+
+    def start(self):
+        pass
+
+    def stop(self):
+        pass
+
+    def unload(self):
+        pass
 
     def export_data(self):
         pass
@@ -161,89 +66,182 @@ class BasePlugin(with_metaclass(PluginMount, object)):
     def import_data(self, data):
         pass
 
-
-def instanciate_plugins(core, **kwargs):
-    plugin_instances = []
-
-    plugins_dep = []
-
-    for plugin in BasePlugin.plugins:
-        plugins_dep.append((plugin.NAME, plugin.DEPENDENCIES or []))
-
-    ordered = list(topological_sort(plugins_dep))
-
-    for plugin_name in ordered:
-        for plugin in BasePlugin.plugins:
-            if plugin.NAME == plugin_name:
-                try:
-                    plugin_instances.append(plugin(core, **kwargs))
-                except:
-                    core.log.exception('unable to instanciate plugin "%s"' % plugin.NAME)
-                break
-
-    return plugin_instances
-
-
-class BuiltinPlugin(BasePlugin):
-    pass
+    def toJson(self):
+        return {
+            'name': self.name,
+            'package': self.PACKAGE
+        }
 
 
 class Plugin(BasePlugin):
+
+    # a dictionary object defining the default configuration of the plugin
+    CONFIG_DEFAULTS = None
+
+    # a json schema describing the configuration data. The web interface use this to create the configuration form
+    CONFIG_SCHEMA = None
+
+    def __init__(self, core, js_index=None, config_defaults=None, config_schema=None):
+        super(Plugin, self).__init__(core, js_index)
+
+        self._log = getattr(self, 'log', None) or logging.getLogger("ething.%s" % self.name)
+
+        self._config = ConfigItem(core.config, self.name, schema=config_schema or getattr(self, 'CONFIG_SCHEMA'),
+                                 defaults=copy.deepcopy(config_defaults or getattr(self, 'CONFIG_DEFAULTS')))
+
+    @property
+    def config(self):
+        return self._config
+
+    @property
+    def log(self):
+        return self._log
+
+    def start(self):
+        self.core.signalDispatcher.bind('ConfigUpdated', self._on_core_config_updated)
+
+    def on_config_change(self):
+        pass
+
+    def stop(self):
+        self.core.signalDispatcher.unbind('ConfigUpdated', self._on_core_config_updated)
+
+    def _on_core_config_updated(self, signal):
+        if self.name in signal.updated_keys:
+            self.on_config_change()
+
+    def toJson(self):
+        data = super(Plugin, self).toJson()
+        data['config'] = self.config
+        return data
+
+
+def get_package_info(mod):
+    package = {}
+
+    if inspect.ismodule(mod):
+
+        name = mod.__name__
+
+        if name.startswith('ething.plugins.'):
+            name = name[15:]
+
+        package['name'] = name
+
+        if mod.__path__:
+            package['location'] = mod.__path__[0]
+
+        if hasattr(mod, '__version__'):
+            package['version'] = mod.__version__
+        if hasattr(mod, 'version'):
+            package['version'] = mod.version
+
+        mod = mod.__name__
+
+    try:
+        dist = pkg_resources.get_distribution(mod)
+    except pkg_resources.DistributionNotFound:
+        return package
+
+    package.update({
+        'name': dist.project_name,
+        'version': dist.version,
+        'location': dist.location,
+        'requires': [dep.project_name for dep in dist.requires()],
+    })
+
+    metadata = None
+
+    if isinstance(dist, pkg_resources.DistInfoDistribution):
+        if dist.has_metadata('METADATA'):
+            metadata = dist.get_metadata('METADATA')
+    else:
+        if dist.has_metadata('PKG-INFO'):
+            metadata = dist.get_metadata('PKG-INFO')
+
+    feed_parser = FeedParser()
+    feed_parser.feed(metadata)
+    pkg_info_dict = feed_parser.close()
+    for key in ('summary', 'home-page', 'author', 'author-email', 'license'):
+        package[key] = pkg_info_dict.get(key)
+
+    return package
+
+
+def install_func_to_plugin(install_func, name = 'AnonymousPlugin'):
+
+    def load(self):
+        return install_func(self.core)
+
+    return type(name, (BasePlugin,), {
+        'load': load
+    })
+
+
+class EmptyPlugin(BasePlugin):
     pass
 
 
-def import_from_path(path):
-    for loader, module_name, is_pkg in pkgutil.iter_modules(path):
-        try:
-            module = loader.find_module(module_name).load_module(module_name)
-        except Exception as e:
-            print('plugin "%s" import failed: %s' % (module_name, str(e)))
-            traceback.print_exc()
-        #else:
-        #    globals()[module_name] = module
+def extract_plugin_from_module(mod):
 
-def import_from_package(package):
-    pkg = importlib.import_module(package)
-    for loader, module_name, is_pkg in pkgutil.iter_modules(pkg.__path__):
-        try:
-            importlib.import_module('.%s' % module_name, package)
-        except Exception as e:
-            print('plugin "%s" import failed: %s' % (module_name, str(e)))
-            traceback.print_exc()
+    for attr_name in dir(mod):
+        attr = getattr(mod, attr_name, None)
+        if inspect.isclass(attr) and issubclass(attr, Plugin) and attr is not Plugin:
+            return attr
+    else:
+        install_func = getattr(mod, 'install', None)
+        if install_func and callable(install_func):
+            return install_func_to_plugin(install_func)
 
-def import_from_modules():
-    for loader, module_name, is_pkg in pkgutil.iter_modules():
-        if module_name.startswith('ething_plugin_'):
-            try:
-                module = loader.find_module(module_name).load_module(module_name)
-            except Exception as e:
-                print('plugin "%s" import failed: %s' % (module_name, str(e)))
-                traceback.print_exc()
+    # raise Exception('module "%s" has no plugin install function found nor plugin class found' % mod)
+
+    # no install found -> EmptyPlugin
+    return EmptyPlugin
 
 
+def search_plugin_cls(something):
+    mod = None
+    plugin_cls = None
 
+    if isinstance(something, string_types):
+        mod = importlib.import_module(something)
+        plugin_cls = extract_plugin_from_module(mod)
+    elif inspect.ismodule(something):
+        mod = something
+        plugin_cls = extract_plugin_from_module(mod)
+    elif issubclass(something, Plugin):
+        mod = getattr(something, '__module__', None)
+        plugin_cls = something
+    elif callable(something):
+        mod = getattr(something, '__module__', None)
+        plugin_cls = install_func_to_plugin(something)
+    else:
+        raise ValueError('invalid argument in use()')
 
-####################
+    # bind plugin meta information
+    if not getattr(plugin_cls, 'PACKAGE', None) and mod:
+        setattr(plugin_cls, 'PACKAGE', get_package_info(mod))
+
+    return plugin_cls
+
 
 _plugins_cache = None
+
+
+def clear_cache():
+    global _plugins_cache
+    _plugins_cache = None
 
 
 def find_plugins():
     global _plugins_cache
 
     if _plugins_cache is None:
-        _plugins_cache = {}
+        _plugins_cache = []
 
         # find installed packages in PYTHON_PATH
         for loader, module_name, is_pkg in pkgutil.iter_modules():
             if module_name.startswith('ething_'):
-                print(loader.find_module(module_name))
+                _plugins_cache.append(module_name)
 
-        # load builtin plugins
-
-
-    return list(_plugins_cache.keys())
-
-
-if __name__ == '__main__':
-    find_plugins()
+    return _plugins_cache

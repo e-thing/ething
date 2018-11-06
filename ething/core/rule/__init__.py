@@ -1,6 +1,6 @@
 # coding: utf-8
 
-from ..plugin import BuiltinPlugin
+from ..plugin import Plugin
 from ..scheduler import Scheduler
 from ..Process import Process
 from .Rule import Rule
@@ -8,7 +8,7 @@ import threading
 import time
 
 
-class RuleManager(BuiltinPlugin):
+class RuleManager(Plugin):
 
     def load(self):
         super(RuleManager, self).load()

@@ -12,7 +12,7 @@ from io import open
 from ething.core.reg import build_schema_definitions
 from ething.core.dbentity import DbEntity, Entity
 from ething.core.utils.export import export_data, import_data
-from ething.core.plugin import BuiltinPlugin
+from ething.core.plugin import Plugin
 
 from ..Scope import Scope
 
@@ -128,16 +128,13 @@ def install(core, app, auth, **kwargs):
 
             for plugin in core.plugins:
                 name = plugin.name
-                schema = getattr(plugin, 'CONFIG_SCHEMA', None)
                 definition = {
-                    'js_index': bool(getattr(plugin, 'JS_INDEX', False)),
-                    'version': getattr(plugin, 'VERSION', None),
-                    'description': getattr(plugin, 'DESCRIPTION', ''),
-                    'builtin': isinstance(plugin, BuiltinPlugin)
+                    'js_index': plugin.is_js_index_valid(),
+                    'schema': None
                 }
 
-                if schema:
-                    definition['schema'] = schema
+                if isinstance(plugin, Plugin):
+                    definition['schema'] = plugin.config.schema
 
                 _meta['plugins'][name] = definition
         else:

@@ -295,31 +295,22 @@ def main():
 
     from .core import Core
 
-    # import webserver + rule plugins
-    from .webserver import WebServer
-
-    # import the plugins here !
-    from .core.plugin import import_from_package, import_from_modules
-    import_from_package('ething.plugins')
-    import_from_modules()
-
     core = Core(config)
 
     print_info(core, core.log.info)
 
-    if args.repair:
-        core.log.info("repairing...")
-        core.repair()
-        sys.exit()
+    # import builtin plugins here !
+    from .plugins import install_builtin_plugins
+    install_builtin_plugins(core)
 
     if args.generate_docs:
         print('generating docs ...')
         outdir = args.generate_docs
         if outdir and os.path.isdir(outdir):
-            from .webserver.server import FlaskApp
-            from .webserver.routes import install_routes
-            from .webserver.auth import install_auth
-            from .webserver.specification import generate
+            from .plugins.webserver.server import FlaskApp
+            from .plugins.webserver.routes import install_routes
+            from .plugins.webserver.auth import install_auth
+            from .plugins.webserver.specification import generate
 
             app = FlaskApp(core)
             auth = install_auth(core=core, app=app, server=None)
@@ -329,6 +320,16 @@ def main():
 
         else:
             raise Exception('the directory does not exist %s' % outdir)
+        sys.exit()
+
+    # import plugins
+    from .core.plugin import find_plugins
+    for module_name in find_plugins():
+        core.use(module_name)
+
+    if args.repair:
+        core.log.info("repairing...")
+        core.repair()
         sys.exit()
 
     exit_code = 0
@@ -345,17 +346,14 @@ def main():
         save_config(CONFIG_FILE, core.config.toJson())
         core.log.info('configuration saved !')
 
+    core.signalDispatcher.bind('ConfigUpdated', _save_config)
+
     try:
 
         if PID_FILE:
             writePidFile()
 
-        core.start()
-
-        core.signalDispatcher.bind(
-            'ConfigUpdated', _save_config)
-
-        core.loop_forever()
+        core.run()
 
     except KeyboardInterrupt:
         core.log.warning("killed ething from Terminal")

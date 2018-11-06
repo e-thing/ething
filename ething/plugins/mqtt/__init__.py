@@ -12,8 +12,8 @@ import threading
 
 class mqtt(Plugin):
 
-    def load(self):
-        super(mqtt, self).load()
+    def start(self):
+        super(mqtt, self).start()
 
         self.controllers = {}
 
@@ -29,8 +29,8 @@ class mqtt(Plugin):
         self.core.signalDispatcher.bind('ResourceDeleted', self._on_resource_deleted)
         self.core.signalDispatcher.bind('ResourceUpdated', self._on_resource_updated)
 
-    def unload(self):
-        super(mqtt, self).unload()
+    def stop(self):
+        super(mqtt, self).stop()
         self.core.signalDispatcher.unbind('ResourceCreated', self._on_resource_created)
         self.core.signalDispatcher.unbind('ResourceDeleted', self._on_resource_deleted)
         self.core.signalDispatcher.unbind('ResourceUpdated', self._on_resource_updated)

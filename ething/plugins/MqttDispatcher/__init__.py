@@ -42,11 +42,11 @@ class MqttDispatcher(Plugin):
         ])
     }
 
-    def load(self):
+    def start(self):
         super(MqttDispatcher, self).load()
         self.start_process()
 
-    def unload(self):
+    def stop(self):
         super(MqttDispatcher, self).unload()
         self.stop_process()
 

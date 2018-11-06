@@ -22,8 +22,8 @@ if bluepy_imported:
 
     class Blea(Plugin):
 
-        def load(self):
-            super(Blea, self).load()
+        def start(self):
+            super(Blea, self).start()
 
             # controllers :
             self.controllers = {}
@@ -40,8 +40,8 @@ if bluepy_imported:
             self.core.signalDispatcher.bind('ResourceDeleted', self._on_resource_deleted)
             self.core.signalDispatcher.bind('ResourceUpdated', self._on_resource_updated)
 
-        def unload(self):
-            super(Blea, self).unload()
+        def stop(self):
+            super(Blea, self).stop()
             self.core.signalDispatcher.unbind('ResourceCreated', self._on_resource_created)
             self.core.signalDispatcher.unbind('ResourceDeleted', self._on_resource_deleted)
             self.core.signalDispatcher.unbind('ResourceUpdated', self._on_resource_updated)

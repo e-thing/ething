@@ -1,8 +1,8 @@
 # coding: utf-8
 import pytest
-from ething.webserver.server import FlaskApp
-from ething.webserver.routes import install_routes
-from ething.webserver.auth import install_auth
+from ...server import FlaskApp
+from ...routes import install_routes
+from ...auth import install_auth
 import base64
 
 

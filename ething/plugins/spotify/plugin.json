@@ -1,4 +1,0 @@
-{
-  "ui": "./js/index.js",
-  "dependencies": ["WebServer"]
-}

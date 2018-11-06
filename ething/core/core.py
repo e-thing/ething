@@ -7,16 +7,11 @@ from .ResourceQueryParser import ResourceQueryParser
 from .Config import CoreConfig
 from .SignalDispatcher import SignalDispatcher
 from .version import __version__
-from .plugin import instanciate_plugins
+from .plugin import search_plugin_cls
 from .scheduler import Scheduler
 from .ResourceDbCache import ResourceDbCache
-from .utils.deadlock_dbg import trace_start, trace_stop
-from .env import USER_DIR
 
 import logging
-import sys
-import os
-import datetime
 import pytz
 
 
@@ -44,8 +39,7 @@ class Core(object):
         self.signalDispatcher = SignalDispatcher()
         self.scheduler = Scheduler()
 
-        self._init_database()
-        self._init_plugins()
+        self.plugins = list()
 
         self.__instances.append(self)
 
@@ -59,8 +53,23 @@ class Core(object):
         self.log.setLevel(
             getattr(logging, self.config.get('log', {}).get('level', 'info').upper(), logging.INFO))
 
-    def _init_plugins(self):
-        self.plugins = instanciate_plugins(self)
+    def use(self, something):
+        plugin_cls = search_plugin_cls(something)
+
+        # instanciate:
+        try:
+            plugin = plugin_cls(self)
+        except:
+            self.log.exception('plugin %s: unable to load' % getattr(plugin_cls, 'PACKAGE', {}).get('name', type(plugin_cls).__name__))
+        else:
+            self.plugins.append(plugin)
+            plugin.load()
+
+            info = getattr(plugin, 'PACKAGE', None)
+            if info:
+                info = ', '.join(['%s: %s' % (k, str(info[k])) for k in info])
+
+            self.log.info('plugin %s loaded, info: %s' % (plugin.name, info))
 
     def _init_database(self):
         self.resourceQueryParser = ResourceQueryParser(tz=str(self.local_tz))
@@ -83,21 +92,16 @@ class Core(object):
             self.db.connect()
             self.is_db_loaded = False
             self.resource_db_cache = ResourceDbCache(self)
-            self.is_db_loaded = True
+
         except Exception as e:
             self.log.exception('init database error')
             raise e
 
     def stop(self):
         self.log.info("stopping ...")
+        self._plugins_call('stop')
         self.dispatchSignal('DaemonStopped')
         self.running = False
-        
-        if self.config.get('debug'):
-            try:
-                trace_stop()
-            except:
-                pass
 
     @property
     def version(self):
@@ -109,13 +113,7 @@ class Core(object):
 
         self.running = False
 
-        for plugin in self.plugins:
-            plugin_name = type(plugin).__name__
-            try:
-                plugin.unload()
-                self.log.info('plugin %s unloaded' % plugin_name)
-            except Exception as e:
-                self.log.exception("error while unload plugin %s" % plugin_name)
+        self._plugins_call('unload')
 
         if hasattr(self, 'db'):
             self.db.disconnect()
@@ -127,31 +125,22 @@ class Core(object):
     def init(self):
         
         self.scheduler.at(self._tick, hour='*', min='*', thread=False)
-
-        # load the plugins
-        for plugin in self.plugins:
-            plugin_name = type(plugin).__name__
-            try:
-                plugin.load()
-                self.log.info('plugin %s loaded (version=%s)' % (plugin_name, plugin.VERSION))
-            except Exception:
-                self.log.exception('unable to load the plugin %s (version=%s)' % (plugin_name, plugin.VERSION))
-
         self.signalDispatcher.bind('ConfigUpdated', self._on_config_updated)
-        
-        if self.config.get('debug') and False:
-            deadlock_trace_file = os.path.join(USER_DIR, 'deadlock_tracer_%s.log' % (datetime.datetime.now().strftime("%Y%m%d_%H%M%S")))
-            self.log.info('deadlock tracer thread started (%s)' % deadlock_trace_file)
-            try:
-                trace_start(deadlock_trace_file, 5, True, False)
-            except:
-                self.log.exception('unable to start deadlock tracer')
-        
-        
+
+        # load db
+        self._init_database()
+
+        # setup plugins
+        self._plugins_call('setup')
+
+        #load the resources from the database
+        self.resource_db_cache.load()
+        self.is_db_loaded = True
 
     def start(self):
         self.init()
         self.running = True
+        self._plugins_call('start')
         self.dispatchSignal('DaemonStarted')
 
     def loop(self, timeout=1):
@@ -161,6 +150,11 @@ class Core(object):
     def loop_forever(self):
         while self.running:
             self.loop(1)
+
+    def run(self):
+        self.start()
+        self.loop_forever()
+        self.stop()
     
     def _tick(self):
         self.dispatchSignal('Tick')
@@ -279,3 +273,11 @@ class Core(object):
             if p.name == name:
                 return p
 
+    def _plugins_call(self, method, *args, **kwargs):
+        for p in self.plugins:
+            try:
+                getattr(p, method)(*args, **kwargs)
+                if method == 'unload':
+                    self.log.info('plugin %s unloaded' % p.name)
+            except:
+                self.log.exception("plugin %s: error while executing '%s'" % (p.name, method))

@@ -42,17 +42,20 @@ class SignalDispatcher(object):
             event_type = type(signal).__name__
 
             for weakref_handlers in [self.handlers.get('*', []), self.handlers.get(event_type, [])]:
-                for weakref_handler in weakref_handlers:
+                for weakref_handler_info in weakref_handlers:
+                    weakref_handler, once = weakref_handler_info
                     handler = weakref_handler()
                     if handler is not None:
                         try:
                             handler(signal)
                         except Exception as e:
                             self.log.exception("Error calling signal handler with signal: %s handler: %s" % (str(signal), handler))
+                        if once:
+                            weakref_handlers.remove(weakref_handler_info)
                     else: # lost reference
-                        weakref_handlers.remove(weakref_handler)
+                        weakref_handlers.remove(weakref_handler_info)
 
-    def bind(self, event_types, handler):
+    def bind(self, event_types, handler, once = False):
         """Adds an event listener for event name"""
         with self.r_lock:
             for event_type in event_types.split(' '):
@@ -62,18 +65,22 @@ class SignalDispatcher(object):
                 if event_type not in self.handlers:
                     self.handlers[event_type] = []
 
-                self.handlers[event_type].append(weak_ref(handler))
+                self.handlers[event_type].append((weak_ref(handler), once))
 
-    def unbind(self, event_types, handler):
+    def unbind(self, event_types, handler = None):
         """removes previously added event listener"""
         with self.r_lock:
             for event_type in event_types.split(' '):
                 if not event_type:
                     continue
 
-                for type in self.handlers:
+                for type in list(self.handlers.keys()):
                     if event_type == '*' or event_type == type:
-                        for index, weakref_handler in enumerate(self.handlers[event_type]):
-                            if handler == weakref_handler():
-                                del self.handlers[event_type][index]
-                                break
+                        if handler is None:
+                            del self.handlers[type]
+                        else:
+                            for index, weakref_handler_info in enumerate(self.handlers[type]):
+                                weakref_handler, once = weakref_handler_info
+                                if handler == weakref_handler():
+                                    del self.handlers[type][index]
+                                    break

@@ -13,8 +13,8 @@ import re
 
 class Yeelight(Plugin):
 
-    def load(self):
-        super(Yeelight, self).load()
+    def start(self):
+        super(Yeelight, self).start()
 
         self.controllers = {}
 
@@ -33,8 +33,8 @@ class Yeelight(Plugin):
         self.advertisement_controller = AdvertisementController(self.core)
         self.advertisement_controller.start()
 
-    def unload(self):
-        super(Yeelight, self).unload()
+    def stop(self):
+        super(Yeelight, self).stop()
         self.core.signalDispatcher.unbind('ResourceCreated', self._on_resource_created)
         self.core.signalDispatcher.unbind('ResourceDeleted', self._on_resource_deleted)
         self.core.signalDispatcher.unbind('ResourceUpdated', self._on_resource_updated)

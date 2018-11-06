@@ -16,9 +16,7 @@ class ResourceDbCache(object):
         self.__log = logging.getLogger("ething.ResourceDbCache")
         self.__lock = threading.RLock()
 
-        self._load()
-
-    def _load(self):
+    def load(self):
         with self.__lock:
 
             self.__resources.clear()

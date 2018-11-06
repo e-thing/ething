@@ -9,7 +9,6 @@ from ething.core.interfaces.sensor import SensorValueChanged
 import requests
 import json
 
-version = '0.1.0'
 
 api_weather_url = 'http://api.openweathermap.org/data/2.5/weather'
 
@@ -22,7 +21,7 @@ class OpenWeatherMapPlugin(Plugin):
     OpenWeatherMap plugin. Allow you to get the weather for any city.
     """
 
-    VERSION = version
+    JS_INDEX = './js/index.js'
 
     CONFIG_DEFAULTS = {
         'appid': '',
@@ -38,14 +37,14 @@ class OpenWeatherMapPlugin(Plugin):
         ])
     }
 
-    def load(self):
+    def start(self):
         super(OpenWeatherMapPlugin, self).load()
 
         self.core.signalDispatcher.bind('ResourceCreated ResourceDeleted', self.on_resource_event)
 
         self.update_process()
 
-    def unload(self):
+    def stop(self):
         super(OpenWeatherMapPlugin, self).unload()
         self.stop_process()
 
