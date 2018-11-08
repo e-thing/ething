@@ -71,7 +71,7 @@ class Core(object):
 
             self.log.info('plugin %s loaded, info: %s' % (plugin.name, info))
 
-    def _init_database(self):
+    def _init_database(self, clear_db=False):
         self.resourceQueryParser = ResourceQueryParser(tz=str(self.local_tz))
 
         try:
@@ -90,6 +90,10 @@ class Core(object):
             self.db = db_ctor(tz = str(self.local_tz), **(self.config.get('db', {})))
 
             self.db.connect()
+
+            if clear_db:
+                self.db.clear()
+
             self.is_db_loaded = False
             self.resource_db_cache = ResourceDbCache(self)
 
@@ -122,13 +126,13 @@ class Core(object):
         self.stop()
         self.restart_flag = True
 
-    def init(self):
+    def init(self, clear_db=False):
         
         self.scheduler.at(self._tick, hour='*', min='*', thread=False)
         self.signalDispatcher.bind('ConfigUpdated', self._on_config_updated)
 
         # load db
-        self._init_database()
+        self._init_database(clear_db=clear_db)
 
         # setup plugins
         self._plugins_call('setup')
@@ -239,13 +243,6 @@ class Core(object):
 
     def notify(self, message, subject = None):
         self.dispatchSignal('Notified', message = message, subject = subject)
-
-    def reset(self):
-        """
-        clear all the database !
-        """
-        self.db.clear()
-        self.resource_db_cache.reload()
 
     def repair(self):
         """

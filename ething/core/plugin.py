@@ -31,10 +31,12 @@ class BasePlugin(object):
 
     @property
     def js_index(self):
+        if os.path.isabs(self._js_index):
+            return self._js_index
         # make it absolute !
         package = getattr(self, 'PACKAGE', None) or {}
         root = package.get('location')
-        return os.path.join(root or os.getcwd(), self._js_index)
+        return os.path.normpath(os.path.join(root or os.getcwd(), self._js_index))
 
     def is_js_index_valid(self):
         return os.path.isfile(self.js_index)
@@ -125,6 +127,7 @@ def get_package_info(mod):
 
         if name.startswith('ething.plugins.'):
             name = name[15:]
+            package['builtin'] = True
 
         package['name'] = name
 
@@ -141,29 +144,33 @@ def get_package_info(mod):
     try:
         dist = pkg_resources.get_distribution(mod)
     except pkg_resources.DistributionNotFound:
-        return package
-
-    package.update({
-        'name': dist.project_name,
-        'version': dist.version,
-        'location': dist.location,
-        'requires': [dep.project_name for dep in dist.requires()],
-    })
-
-    metadata = None
-
-    if isinstance(dist, pkg_resources.DistInfoDistribution):
-        if dist.has_metadata('METADATA'):
-            metadata = dist.get_metadata('METADATA')
+        pass
     else:
-        if dist.has_metadata('PKG-INFO'):
-            metadata = dist.get_metadata('PKG-INFO')
+        package.update({
+            'name': dist.project_name,
+            'project_name': dist.project_name,
+            'version': dist.version,
+            'location': dist.location,
+            'requires': [dep.project_name for dep in dist.requires()],
+        })
 
-    feed_parser = FeedParser()
-    feed_parser.feed(metadata)
-    pkg_info_dict = feed_parser.close()
-    for key in ('summary', 'home-page', 'author', 'author-email', 'license'):
-        package[key] = pkg_info_dict.get(key)
+        metadata = None
+
+        if isinstance(dist, pkg_resources.DistInfoDistribution):
+            if dist.has_metadata('METADATA'):
+                metadata = dist.get_metadata('METADATA')
+        else:
+            if dist.has_metadata('PKG-INFO'):
+                metadata = dist.get_metadata('PKG-INFO')
+
+        feed_parser = FeedParser()
+        feed_parser.feed(metadata)
+        pkg_info_dict = feed_parser.close()
+        for key in ('summary', 'home-page', 'author', 'author-email', 'license'):
+            package[key] = pkg_info_dict.get(key)
+
+    if 'location' in package and not os.path.isabs(package['location']):
+        package['location'] = os.path.abspath(package['location'])
 
     return package
 
@@ -178,8 +185,8 @@ def install_func_to_plugin(install_func, name = 'AnonymousPlugin'):
     })
 
 
-class EmptyPlugin(BasePlugin):
-    pass
+#class EmptyPlugin(BasePlugin):
+#    pass
 
 
 def extract_plugin_from_module(mod):
@@ -196,7 +203,7 @@ def extract_plugin_from_module(mod):
     # raise Exception('module "%s" has no plugin install function found nor plugin class found' % mod)
 
     # no install found -> EmptyPlugin
-    return EmptyPlugin
+    return type('EmptyPlugin', (BasePlugin,), {})
 
 
 def search_plugin_cls(something):

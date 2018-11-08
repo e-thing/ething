@@ -1,24 +1,21 @@
 # coding: utf-8
 import pytest
 from ething.core import Core
-from ething.plugins.webserver import WebServer
 
-
-_core = Core({
-    'db': {
-        'database': ':memory:'
-    },
-    'log': {
-        'level': 'DEBUG'
-    },
-    'debug': True
-})
 
 @pytest.fixture
 def core():
-    _core.reset()
+    _core = Core({
+        'db': {
+            'database': ':memory:'
+        },
+        'log': {
+            'level': 'DEBUG'
+        },
+        'debug': True
+    })
 
-    _core.init()
+    _core.init(clear_db=True)
 
     return _core
 

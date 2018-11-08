@@ -120,8 +120,7 @@ def test_benchmark_all(type, database, module):
         }
     })
 
-    core.reset()
-    core.init()
+    core.init(clear_db=True)
 
     f = core.create('resources/Table', {
         'name': 'table.tb'

@@ -102,10 +102,11 @@ export default {
             repeat_state: false
           },
           stateFetchTs: null,
-          _currentReq: null,
-          _timer: null,
-          _cnt: 0,
-          time: null
+          p_currentReq: null,
+          p_timer: null,
+          p_cnt: 0,
+          time: null,
+          p_observer: null
         }
     },
 
@@ -168,6 +169,10 @@ export default {
           var progress = this.currentTrackEstimatedProgress
           var duration = this.currentItem.duration_ms
           return duration ? (100 * progress / duration) : 0
+        },
+
+        pollingActivated () {
+          return this.p_timer !== null
         }
 
     },
@@ -299,14 +304,14 @@ export default {
         _current () {
 
           // abort previous request, if any
-          if (this._currentReq) {
-            this._currentReq.abort();
+          if (this.p_currentReq) {
+            this.p_currentReq.abort();
           }
 
-          this._currentReq = this.spotify.getMyCurrentPlaybackState((err, data) => {
+          this.p_currentReq = this.spotify.getMyCurrentPlaybackState((err, data) => {
 
             // clean the promise so it doesn't call abort
-            this._currentReq = null;
+            this.p_currentReq = null;
 
             if (err) console.error(err);
             else {
@@ -315,7 +320,7 @@ export default {
             }
           })
 
-          return this._currentReq
+          return this.p_currentReq
         },
 
         current (delay) {
@@ -394,35 +399,62 @@ export default {
 
             return toString(progress) + "/" + toString(duration)
           }
+        },
+
+        _installPolling () {
+          if (this.p_timer === null) {
+            this.current()
+            this.p_cnt = 0
+            this.p_timer = setInterval(this._pollFunc, 1000)
+          }
+        },
+
+        _uninstallPolling () {
+          if(this.p_timer !== null) {
+            clearInterval(this.p_timer)
+            this.p_timer = null
+          }
+        },
+
+        _pollFunc () {
+          this.p_cnt = (this.p_cnt || 0) + 1
+
+          if ((this.p_cnt % 5) == 0) {
+            this.current()
+          }
+
+          if (this.currentTrackEstimatedProgressPercent >= 100) {
+            this.current()
+          }
+
+          this.time = this.currentTrackTimeToString()
         }
 
     },
 
     mounted () {
-      this._timer = setInterval(() => {
 
-        this._cnt = (this._cnt || 0) + 1
+      this._installPolling()
 
-        if ((this._cnt % 5) == 0) {
-          this.current()
-        }
-
-        if (this.currentTrackEstimatedProgressPercent >= 100) {
-          this.current()
-        }
-
-        this.time = this.currentTrackTimeToString()
-
-      }, 1000)
-
-      this.current()
       this.refresh()
+
+      this.p_observer = new EThingUI.utils.VisibilityObserver((visible, reason) => {
+        if (visible) {
+          this._installPolling()
+        } else {
+          this._uninstallPolling()
+        }
+      }, this.$el, {
+        'waitHidden': 10000
+      })
     },
 
     beforeDestroy () {
-      if(this._timer !== null) {
-        clearInterval(this._timer)
+      if (this.p_observer) {
+        this.p_observer.destroy()
       }
+
+      this._uninstallPolling()
     }
 }
 

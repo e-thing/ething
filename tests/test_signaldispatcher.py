@@ -11,11 +11,12 @@ class Foo(Signal):
 def test_signaldispatcher():
     signaldispatcher = SignalDispatcher()
 
-    cnt = 0
+    ctx = {
+        'cnt': 0
+    }
 
-    def inc():
-        global cnt
-        cnt += 1
+    def inc(signal):
+        ctx['cnt'] += 1
 
     foo = Foo()
 
@@ -24,29 +25,30 @@ def test_signaldispatcher():
     signaldispatcher.dispatch(foo)
     signaldispatcher.dispatch(foo)
 
-    assert cnt == 2
+    assert ctx['cnt'] == 2
 
     signaldispatcher.bind('*', inc)
 
     signaldispatcher.dispatch(foo)
 
-    assert cnt == 4
+    assert ctx['cnt'] == 4
 
     signaldispatcher.unbind('*', inc)
 
     signaldispatcher.dispatch(foo)
 
-    assert cnt == 4
+    assert ctx['cnt'] == 4
 
 
 def test_signaldispatcher_once():
     signaldispatcher = SignalDispatcher()
 
-    cnt = 0
+    ctx = {
+        'cnt': 0
+    }
 
-    def inc():
-        global cnt
-        cnt += 1
+    def inc(signal):
+        ctx['cnt'] += 1
 
     foo = Foo()
 
@@ -54,8 +56,8 @@ def test_signaldispatcher_once():
 
     signaldispatcher.dispatch(foo)
 
-    assert cnt == 1
+    assert ctx['cnt'] == 1
 
     signaldispatcher.dispatch(foo)
 
-    assert cnt == 1
+    assert ctx['cnt'] == 1

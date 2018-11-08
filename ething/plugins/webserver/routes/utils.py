@@ -130,7 +130,8 @@ def install(core, app, auth, **kwargs):
                 name = plugin.name
                 definition = {
                     'js_index': plugin.is_js_index_valid(),
-                    'schema': None
+                    'schema': None,
+                    'package': plugin.PACKAGE
                 }
 
                 if isinstance(plugin, Plugin):

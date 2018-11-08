@@ -86,7 +86,8 @@ class TickTask(Task):
 
 
 class IntervalTask(Task):
-    def __init__(self, interval, *args, start_in_sec=0, **kwargs):
+    def __init__(self, interval, *args, **kwargs):
+        start_in_sec = kwargs.pop('start_in_sec', 0)
         super(IntervalTask, self).__init__(*args, **kwargs)
         self._interval = interval
         self._start_in_sec = start_in_sec
@@ -113,7 +114,9 @@ class DelayTask(Task):
 
 
 class AtTask(Task):
-    def __init__(self, *args, hour='*', min=0, **kwargs):
+    def __init__(self, *args, **kwargs):
+        hour = kwargs.pop('hour', '*')
+        min = kwargs.pop('min', 0)
         super(AtTask, self).__init__(*args, **kwargs)
         self._hour = hour
         self._min = min

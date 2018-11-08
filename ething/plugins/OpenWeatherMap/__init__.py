@@ -50,7 +50,7 @@ class OpenWeatherMapPlugin(Plugin):
 
     def start_process(self):
         if not hasattr(self, 'process'):
-            self.process = OpenWeatherMapService(self.core)
+            self.process = OpenWeatherMapService(self.core, self.config)
             self.process.start()
 
     def stop_process(self):
@@ -95,9 +95,10 @@ class OpenWeatherMapDevice(Device, Thermometer, PressureSensor, HumiditySensor, 
 
 class OpenWeatherMapService(IntervalProcess):
 
-    def __init__(self, core):
+    def __init__(self, core, config):
         super(OpenWeatherMapService, self).__init__('OpenWeatherMap', refresh_interval)
         self.core = core
+        self.config = config
 
     def process(self):
         self.refresh()
@@ -115,7 +116,7 @@ class OpenWeatherMapService(IntervalProcess):
             self.log.error('no location set for device: %s' % device)
             return
 
-        appid = self.core.config.get('OpenWeatherMapPlugin.appid')
+        appid = self.config.get('appid')
         if appid:
             self.log.debug('fetch weather data for %s' % device)
             r = requests.get(url=api_weather_url, params=dict(q=location, APPID=appid, units='metric'))
