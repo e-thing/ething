@@ -1,6 +1,5 @@
 # coding: utf-8
 
-from .pingable import pingable
 from .null_context_manager import NullContextManager
 import inspect
 import sys

@@ -2,7 +2,7 @@
 
 
 from ething.core.Device import *
-from ething.core.utils import pingable
+from ething.plugins.ping import pingable
 from ething.core.interfaces import Camera
 import subprocess
 

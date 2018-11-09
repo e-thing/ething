@@ -1,6 +1,6 @@
 from ething.core.Device import Device
 from ething.core.reg import *
-from ething.core.utils import pingable
+from ething.plugins.ping import pingable
 from ething.core.interfaces import Switch
 import requests
 import xmltodict

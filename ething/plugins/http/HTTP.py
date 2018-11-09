@@ -2,7 +2,7 @@
 
 from ething.core.Device import *
 import requests
-from ething.core.utils import pingable
+from ething.plugins.ping import pingable
 
 
 REQUESTS_TIMEOUT=None

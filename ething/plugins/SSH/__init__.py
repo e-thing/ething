@@ -3,7 +3,7 @@
 
 from ething.core.Device import *
 import paramiko
-from ething.core.utils import pingable
+from ething.plugins.ping import pingable
 
 
 @pingable()
