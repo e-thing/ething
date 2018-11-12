@@ -35,7 +35,7 @@ requires = [
     "croniter",
     "dateparser",
     "pyaes",
-    "scapy",
+    "scapy",# replace by "multiping"
     "PyJWT",
     "netaddr",
     "webargs",
