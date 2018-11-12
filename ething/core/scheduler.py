@@ -234,7 +234,7 @@ class Scheduler(object):
                 if task in self.tasks:
                     self.tasks.remove(task)
             else:
-                to_remove = [task for task in self.tasks if task.target is task or task.instance is task]
+                to_remove = [t for t in self.tasks if t.target is task or t.instance is task]
 
                 for t in to_remove:
                     self.unbind(t)

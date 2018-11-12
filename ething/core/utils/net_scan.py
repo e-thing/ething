@@ -1,115 +1,137 @@
 # coding: utf-8
-# cf. https://github.com/bwaldvogel/neighbourhood/blob/master/neighbourhood.py
 
-from __future__ import absolute_import, division, print_function
-import scapy.layers.l2
-import scapy.config
-import scapy.route
-import math
-import errno
 import socket
+import subprocess
+import re
+import sys
+from multiping import multi_ping, MultiPingError
 import requests
+import time
+from platform import system as system_name  # Returns the system/OS name
 
 
-def long2net(arg):
-    if arg <= 0 or arg >= 0xFFFFFFFF:
-        raise ValueError("illegal netmask value", hex(arg))
-    return 32 - int(round(math.log(0xFFFFFFFF - arg, 2)))
+def get_my_ip():
+    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    s.connect(("8.8.8.8", 80))
+    ip = s.getsockname()[0]
+    s.close()
+    return ip
 
 
-def to_CIDR_notation(bytes_network, bytes_netmask):
-    network = scapy.utils.ltoa(bytes_network)
-    netmask = long2net(bytes_netmask)
-    net = "%s/%s" % (network, netmask)
-    if netmask < 16:
-        return None
-
-    return net
+arp_ip_mac_re_win = re.compile(r'^\s*([0-9\.]+)\s+([0-9a-fA-F\-:]+)\s')
+arp_ip_mac_re_unix = re.compile(r'\(([0-9\.]+)\)\s+at\s+([0-9a-fA-F\-:]+)\s')
 
 
-def scan_and_print_neighbors(net, interface, timeout=1):
-    results = []
-    # print("arping %s on %s" % (net, interface))
-    try:
-        ans, unans = scapy.layers.l2.arping(
-            net, iface=interface, timeout=timeout, verbose=False)
-        for s, r in ans.res:
-            mac = r.src
-            ip = r.psrc
-            hostname = ''
-            try:
-                tup = socket.gethostbyaddr(r.psrc)
-                hostname = tup[0]
-            except socket.herror:
-                # failed to resolve
-                pass
+def read_arp_table():
+    arp_map = {}
 
-            vendor = get_vendor(mac)
-
-            # print(ip, mac, hostname, vendor)
-
-            results.append({
-                'mac': mac,
-                'ip': ip,
-                'hostname': hostname,
-                'vendor': vendor
-            })
-
-    except socket.error as e:
-        if e.errno == errno.EPERM:     # Operation not permitted
-            #print("%s. Did you run as root?", e.strerror)
-            pass
-        else:
-            raise
-    return results
-
-
-_vendor_cache = {}
-
-
-def get_vendor(mac):
-
-    if mac in _vendor_cache:
-        return _vendor_cache[mac]
+    if system_name().lower() == 'windows':
+        arp_ip_mac_re = arp_ip_mac_re_win
+        args = ["arp", "-a"]
+    else:
+        arp_ip_mac_re = arp_ip_mac_re_unix
+        args = ["arp", "-an"]
 
     try:
-        url = 'http://api.macvendors.com/' + mac
-        r = requests.get(url)
-        if r.status_code == 200:
-            _vendor_cache[mac] = r.text
-            return r.text
-    except Exception as e:
+        out = subprocess.check_output(args)
+
+        if out:
+            out = out.decode(sys.stdout.encoding or 'utf8', errors="ignore")
+
+            for line in out.splitlines():
+                matches = arp_ip_mac_re.match(line)
+                if matches:
+                    ip = matches.group(1)
+                    mac = matches.group(2)
+
+                    arp_map[ip] = mac.replace('-', ':')
+    except:
         pass
-    return ""
+
+    return arp_map
 
 
-def scan():
+def get_vendor_from_mac(mac, retries=3):
+
+    vendor = None
+    i=0
+
+    while i<retries:
+        r = requests.get('https://api.macvendors.com/%s' % mac.replace(':', '-'))
+
+        print(mac, r)
+        if r.status_code == 200:
+            vendor = r.text
+            break
+        elif r.status_code == 429:
+            # need to wait before retry
+            time.sleep(0.5)
+        else:
+            break
+
+    return vendor
+
+
+_cache_mac_vendor = {}
+_cache_scan = {}
+
+SCAN_CACHE_VALIDITY = 10
+
+
+def scan(force=False, cache_validity=SCAN_CACHE_VALIDITY):
+
+    # check cache
+    if not force:
+        cache_ts = _cache_scan.get('ts')
+        if cache_ts and time.time() - cache_ts <= cache_validity:
+            return _cache_scan.get('results')
+
     results = []
 
-    for route in scapy.config.conf.route.routes:
+    # get my IP and compose a base like 192.168.1.xxx
+    myip = get_my_ip() or '192.168.1.0'
+    ip_parts = myip.split('.')
+    base_ip = ip_parts[0] + '.' + ip_parts[1] + '.' + ip_parts[2] + '.'
 
-        network = route[0]
-        netmask = route[1]
-        interface = route[3]
-        address = route[4]
+    ips = []
+    for i in range(1, 255):
+        ips.append(base_ip + '{0}'.format(i))
 
-        # skip loopback network and default gw
-        if network == 0 or interface == 'lo' or address == '127.0.0.1' or address == '0.0.0.0':
-            continue
+    try:
+        res, _ = multi_ping(ips, timeout=1)
+    except MultiPingError:
+        # need root privileges
+        return results
 
-        if netmask <= 0 or netmask == 0xFFFFFFFF:
-            continue
+    ip_detected = list(res.keys())
 
-        if interface != scapy.config.conf.iface:
-            # see http://trac.secdev.org/scapy/ticket/537
-            # skipping because scapy currently doesn't support arping on non-primary network interfaces
-            continue
+    arp_map = read_arp_table()
 
-        net = to_CIDR_notation(network, netmask)
+    for ip in ip_detected:
 
-        if net:
-            # print(network, netmask, interface, address, net)
-            r = scan_and_print_neighbors(net, interface)
-            results += r
+        # get its mac address
+        mac = arp_map.get(ip)
+
+        # get vendor information
+        if mac in _cache_mac_vendor:
+            vendor = _cache_mac_vendor.get(mac)
+        else:
+            vendor = get_vendor_from_mac(mac)
+            _cache_mac_vendor[mac] = vendor
+
+        results.append({
+            'ip': ip,
+            'mac': mac,
+            'vendor': vendor
+        })
+
+    _cache_scan['results'] = results
+    _cache_scan['ts'] = time.time()
 
     return results
+
+
+if __name__ == '__main__':
+    results = scan()
+
+    print(results)

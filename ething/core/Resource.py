@@ -201,6 +201,8 @@ class Resource(DbEntity):
 
         super(Resource, self).remove()
 
+        self.ething.scheduler.unbind(self)
+
         for child in children:
             if removeChildren:
                 child.remove(removeChildren)

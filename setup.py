@@ -19,35 +19,48 @@ with open(os.path.join(here, 'README.md'), encoding='utf-8') as f:
 exec(open(os.path.join(here, NAME, 'core', 'version.py')).read())
 
 requires = [
+    # --core
     "future",
-    #"pymongo==3.5.1",
     "python-dateutil",
-    "pillow",
+    "pillow", # used for thumbnail
     "shortid",
     "python-magic",
-    "Flask",
-    "flask-cors",
-    "paramiko",
-    "jsonderef",
     "pyserial",
-    "paho-mqtt",
-    "jsonpath-rw",
     "croniter",
     "dateparser",
-    "pyaes",
-    "scapy",# replace by "multiping"
+    "pytz",
+    "jsonschema",
+
+    # --db
+    #"pymongo==3.5.1",
+    #"unqlite",
+
+    # --webserver
+    "Flask",
+    "flask-cors",
+    "flask-compress",
     "PyJWT",
     "netaddr",
     "webargs",
     "apispec==0.38.0",  # http api
     "Jinja2",  # http api
-    "xmltodict",
-    "python-magic",
     "cherrypy",
-    "pytz",
-    "flask-compress",
-    "jsonschema",
-    #"unqlite"
+
+    # --ssh
+    "paramiko",
+
+    # --mqtt
+    "paho-mqtt",
+    "jsonpath-rw",
+
+    # --mihome
+    "pyaes",
+
+    # --ping
+    "multiping",
+
+    # --denon
+    "xmltodict",
 ]
 
 if os.name != "nt":
