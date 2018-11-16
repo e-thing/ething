@@ -146,7 +146,7 @@ class AtTask(Task):
 
     def is_time_to_run(self, t):
         if t > self._next:
-            self._next = self._compute_next_time(self._t0)
+            self._next = self._compute_next_time(t)
             return True
 
 

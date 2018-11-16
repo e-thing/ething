@@ -26,7 +26,7 @@ def pingable(attr='host', interval=PING_DEFAULT_INTERVAL):
     def d(cls):
 
         @scheduler.setInterval(interval, thread=True)
-        def do_ping(self):
+        def ping(self):
 
             host = getattr(self, attr, None)
             online = False
@@ -39,7 +39,7 @@ def pingable(attr='host', interval=PING_DEFAULT_INTERVAL):
                 if host == 'localhost' or host == '127.0.0.1':
                     online = True
                 else:
-                    online = ping(host)
+                    online = _ping(host)
                     self.log.debug('ping %s, online=%s' % (host, online))
 
             with self:
@@ -47,13 +47,13 @@ def pingable(attr='host', interval=PING_DEFAULT_INTERVAL):
 
             return online
 
-        setattr(cls, 'ping', do_ping)
+        setattr(cls, 'ping', ping)
         return cls
 
     return d
 
 
-def ping(host):
+def _ping(host):
     """
     Returns True if host (str) responds to a ping request.
     Remember that a host may not respond to a ping (ICMP) request even if the host name is valid.

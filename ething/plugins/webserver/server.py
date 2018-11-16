@@ -3,6 +3,7 @@
 from flask import Flask, Response, request, g
 from flask_cors import CORS
 from flask_compress import Compress
+from flask_socketio import SocketIO
 from werkzeug.exceptions import HTTPException
 from werkzeug.http import unquote_etag
 from .auth import install_auth
@@ -23,12 +24,14 @@ from ething.core.Process import Process
 from ething.core.Helpers import filter_obj
 from ething.core.reg import get_registered_class
 from collections import OrderedDict
-import time
 
 try:
     from cheroot.wsgi import Server as WSGIServer
 except ImportError:
     from cherrypy.wsgiserver import CherryPyWSGIServer as WSGIServer
+
+
+use_eventlet=True
 
 
 class WebServer(Plugin):
@@ -302,7 +305,6 @@ class WebServerProcess(Process):
         self.debug = False
         self.server = None
         self.auth = None
-        self.started = threading.Event()
         self.app = FlaskApp(self.core, self.log, root_path=root_path)
         self.custom_installers = custom_installers or []
 
@@ -310,8 +312,9 @@ class WebServerProcess(Process):
         if self.server:
             self.server.stop()
 
+        super(WebServerProcess, self).stop()
+
     def end(self):
-        self.started.clear()
         self.server = None
 
     def main(self):
@@ -321,19 +324,25 @@ class WebServerProcess(Process):
         compress = Compress()
         compress.init_app(self.app)
 
+        if use_eventlet:
+            socketio = SocketIO()
+            socketio.init_app(self.app, async_mode='eventlet', logger=True, engineio_logger=True)
+            self.socketio = socketio
+
         port = self.config['port']
 
-        self.server = WSGIServer(
-            bind_addr=('0.0.0.0', port),
-            wsgi_app=self.app,
-            server_name=socket.gethostname()
-        )
+        if not use_eventlet:
+            self.server = WSGIServer(
+                bind_addr=('0.0.0.0', port),
+                wsgi_app=self.app,
+                server_name=socket.gethostname()
+            )
 
-        auth = install_auth(core=self.core, app=self.app, config=self.config, debug=self.debug, server = self.server)
+        auth = install_auth(core=self.core, app=self.app, config=self.config, debug=self.debug, server = self)
 
         self.auth = auth
 
-        install_route_args = dict(core=self.core, app=self.app, auth=auth, debug=self.debug, server = self.server)
+        install_route_args = dict(core=self.core, app=self.app, auth=auth, debug=self.debug, server = self)
 
         install_routes(**install_route_args)
 
@@ -353,9 +362,10 @@ class WebServerProcess(Process):
 
         self.log.info("webserver: started at http://%s:%d" % (current_ip or 'localhost', port))
 
-        self.started.set()
-
-        self.server.start()
+        if use_eventlet:
+            socketio.run(self.app, host='0.0.0.0', port=port, use_reloader=False, minimum_chunk_size=0)
+        else:
+            self.server.start()
 
     def install_route(self, url, fn, **options):
 

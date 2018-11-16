@@ -32,6 +32,8 @@ class Process(StoppableThread):
 
     def __init__(self, name, **kwargs):
 
+        self._loop = kwargs.pop('loop', None)
+
         super(Process, self).__init__(name = name, **kwargs)
 
         self.daemon = True
@@ -56,8 +58,19 @@ class Process(StoppableThread):
         self.log.info('Process "%s" stopped' % self.name)
 
     def main(self):
-        # run any target
-        super(Process, self).run()
+        if self._loop is not None:
+            try:
+                while not self.stopped():
+                    if self._loop(*self._args, **self._kwargs) is False:
+                        self.stop(timeout=False)
+                        break
+            finally:
+                # Avoid a refcycle if the thread is running a function with
+                # an argument that has a member that points to the thread.
+                del self._loop, self._args, self._kwargs
+        else:
+            # run any target
+            super(Process, self).run()
 
     def setup(self):
         pass

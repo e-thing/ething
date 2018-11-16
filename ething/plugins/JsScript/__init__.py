@@ -55,7 +55,7 @@ class JsScript(Plugin):
 
     def setup(self):
         # install specific http routes
-        webserver_plugin = self.core.get_plugin('WebServer')
+        webserver_plugin = self.core.get_plugin('webserver')
         if webserver_plugin:
             webserver_plugin.register_installer(self._webserver_install)
 

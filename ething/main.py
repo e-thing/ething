@@ -6,6 +6,10 @@
 """
 
 from __future__ import print_function
+
+import eventlet
+eventlet.monkey_patch()
+
 from .core.version import __version__
 
 import argparse

@@ -7,11 +7,20 @@ except ImportError:
     import Queue as queue
 
 
+def on_signal_sio(signal, server, app):
+    signal_name = type(signal).__name__
+    server.socketio.emit(signal_name, app.toJson(signal), namespace="/events")
+
+
 def install(core, app, auth, server = None, **kwargs):
 
+    if hasattr(server, 'socketio'):
+        core.signalDispatcher.bind('*', on_signal_sio, args=(server,app))
+
     def generate_events_flow(filter = None):
-        if not server.ready:
-            raise Exception('Server not ready')
+
+        #if server.stopped():
+        #    raise Exception('Server not ready')
 
         remote_addr = request.remote_addr
 
@@ -30,11 +39,12 @@ def install(core, app, auth, server = None, **kwargs):
             yield "event:init\ndata:\n\n"
 
             try:
-                while server.ready:
+                while not server.stopped():
 
                     try:
                         signal = q.get(True, 1)
                     except queue.Empty:
+                        yield "event:ping\ndata:\n\n"
                         continue
 
                     data = app.toJson(signal)
@@ -53,7 +63,6 @@ def install(core, app, auth, server = None, **kwargs):
             core.log.debug('SSE: stop listener %s' % remote_addr)
 
         return gen()
-
 
     # SSE "protocol" is described here: http://mzl.la/UPFyxY
     @app.route('/api/events')

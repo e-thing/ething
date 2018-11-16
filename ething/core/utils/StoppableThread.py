@@ -9,9 +9,11 @@ class StoppableThread(threading.Thread):
         super(StoppableThread, self).__init__(**kwargs)
         self._stop_evt = threading.Event()
 
-    def stop(self):
+    def stop(self, timeout=5):
         self._stop_evt.set()
-        self.join(5)
+        if timeout is not False:
+            self.join(timeout)
 
     def stopped(self):
         return self._stop_evt.isSet()
+
