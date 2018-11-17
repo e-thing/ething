@@ -17,7 +17,7 @@ class HTTP(Device):
     HTTP Device resource representation
     """
 
-    def _make_request(self, method, path='', params = None, body = None, headers = None):
+    def _make_request(self, method, path='', params = None, body = None, headers = None, **options):
 
         args = dict(params=params)
         args["timeout"] = REQUESTS_TIMEOUT
@@ -39,7 +39,7 @@ class HTTP(Device):
 
         self.log.debug('request: %s %s' % (method, url))
 
-        r = requests.request(method.upper(), url, headers=headers, params=params, data=body)
+        r = requests.request(method.upper(), url, headers=headers, params=params, data=body, **options)
 
         self.log.debug('request status: %s' % (r.status_code))
 

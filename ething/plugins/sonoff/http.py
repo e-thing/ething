@@ -21,10 +21,15 @@ class Sonoff_http(HTTP, Switch):
 
     @scheduler.setInterval(STATE_POLLING_PERIOD, thread=True)
     def updateState(self):
-        r = self._make_request('GET', '/cm?cmnd=Power')
-        data = r.json()
-        new_state = True if data.get('POWER') == 'ON' else False
-        if self.state != new_state:
-            self.state = new_state
+        try:
+            r = self._make_request('GET', '/cm?cmnd=Power', timeout=2)
+            data = r.json()
+            new_state = True if data.get('POWER') == 'ON' else False
+            with self:
+                self.setConnectState(True)
+                if self.state != new_state:
+                    self.state = new_state
+        except:
+            self.setConnectState(False)
 
 

@@ -1,2 +1,12 @@
+# coding: utf-8
 
-__version__ = '0.1.2'
+try:
+    import pkg_resources
+except ImportError:
+    pass
+
+
+try:
+    __version__ = pkg_resources.require('ething')[0].version
+except Exception:
+    __version__ = 'unknown'

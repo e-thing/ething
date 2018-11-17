@@ -3,6 +3,7 @@
 from .utils.StoppableThread import StoppableThread
 import logging
 import threading
+import time
 
 processes_map_lock = threading.Lock()
 
@@ -27,6 +28,13 @@ def get_processes(name):
     with processes_map_lock:
         return processes_map.get(name, [])
 
+def list_processes():
+    processes = []
+    with processes_map_lock:
+        for n in processes_map:
+            processes += processes_map[n]
+    return processes
+
 
 class Process(StoppableThread):
 
@@ -38,6 +46,7 @@ class Process(StoppableThread):
 
         self.daemon = True
         self.log = logging.getLogger("ething.%s" % name)
+        self.start_ts = time.time()
 
         add_process(self)
 
@@ -77,3 +86,10 @@ class Process(StoppableThread):
 
     def end(self):
         pass
+
+    def toJson(self):
+        return {
+            'name': self.name,
+            'active': self.is_alive() and not self.stopped(),
+            'start_ts': int(self.start_ts)
+        }

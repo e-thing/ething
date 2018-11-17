@@ -7,8 +7,12 @@
 
 from __future__ import print_function
 
-import eventlet
-eventlet.monkey_patch()
+try:
+    import eventlet
+except ImportError:
+    pass
+else:
+    eventlet.monkey_patch()
 
 from .core.version import __version__
 

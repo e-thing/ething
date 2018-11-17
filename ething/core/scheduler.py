@@ -13,7 +13,7 @@ from .utils.weak_ref import weak_ref
 
 class Task(object):
 
-    def __init__(self, target, args=(), kwargs=None, name = None, thread = False, instance = None):
+    def __init__(self, target, args=(), kwargs=None, name=None, thread=False, instance=None, condition=None):
 
         if not callable(target):
             raise Exception('target must be callable')
@@ -30,6 +30,7 @@ class Task(object):
                 self._name = target.__name__
         self._thread = thread
         self._instance = weak_ref(instance) if instance is not None else None
+        self._condition = condition
 
         self._last_run = None
         self._executed_count = 0
@@ -59,6 +60,10 @@ class Task(object):
 
             self._last_run = time.time()
             self._executed_count += 1
+
+            if self._condition is not None:
+                if not self._condition(self):
+                    return False
 
             if self._thread:
                 p = Process(self._name, target=target, args=self._args, kwargs=self._kwargs)

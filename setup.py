@@ -16,8 +16,6 @@ here = os.path.abspath(os.path.dirname(__file__))
 with open(os.path.join(here, 'README.md'), encoding='utf-8') as f:
     long_description = f.read()
 
-exec(open(os.path.join(here, NAME, 'core', 'version.py')).read())
-
 requires = [
     # --core
     "future",
@@ -30,6 +28,7 @@ requires = [
     "dateparser",
     "pytz",
     "jsonschema",
+    "multiping",
 
     # --db
     #"pymongo==3.5.1",
@@ -39,6 +38,8 @@ requires = [
     "Flask",
     "flask-cors",
     "flask-compress",
+    "flask_socketio",
+    "eventlet",
     "PyJWT",
     "netaddr",
     "webargs",
@@ -56,9 +57,6 @@ requires = [
     # --mihome
     "pyaes",
 
-    # --ping
-    "multiping",
-
     # --denon
     "xmltodict",
 ]
@@ -69,7 +67,7 @@ if os.name != "nt":
 setup(
     name=NAME,
 
-    version=__version__,
+    version='0.1.2',
 
     description='A home automation project',
 

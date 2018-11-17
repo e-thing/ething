@@ -116,12 +116,16 @@ class SSHPlugin(Plugin):
             if shell:
                 shell.send(data.get('data'))
 
-        self.core.scheduler.setInterval(10, self.interactive_shell_manager.clean, thread=True)
+        self.core.scheduler.setInterval(10, self.interactive_shell_manager.clean, thread=True, name="ssh.clean_session", condition=lambda _: not self.interactive_shell_manager.is_empty)
 
 
 class Interactive_Shell_Manager(object):
     def __init__(self):
         self._shells = {}
+
+    @property
+    def is_empty(self):
+        return not bool(self._shells)
 
     def add(self, shell):
         if shell.id not in self._shells:

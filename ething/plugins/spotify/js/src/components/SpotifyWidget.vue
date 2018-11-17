@@ -160,7 +160,7 @@ export default {
           get: function () {
             if (!this.stateFetchTs) return 0
             var readProgress = this.state.progress_ms || 0
-            var deltaT = Date.now() - this.stateFetchTs
+            var deltaT = this.state.is_playing ? (Date.now() - this.stateFetchTs) : 0
             return readProgress + deltaT
           }
         },

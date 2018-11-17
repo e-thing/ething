@@ -17,6 +17,7 @@ from ething.core.plugin import Plugin
 from ..Scope import Scope
 
 from ething.core.utils import get_info
+from ething.core.Process import list_processes
 
 
 _meta = None
@@ -160,3 +161,8 @@ def install(core, app, auth, **kwargs):
             return '', 204
 
         raise Exception('Invalid request')
+
+    @app.route('/api/process')
+    @auth.required()
+    def list_processes_ep():
+        return app.jsonify(list_processes())
