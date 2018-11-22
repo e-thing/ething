@@ -136,7 +136,7 @@ class BaseProcess(object):
         return {
             'name': self.name,
             'active': self.is_active(),
-            'start_ts': int(self.start_ts)
+            'start_ts': int(self.start_ts) if self.start_ts is not None else self.start_ts
         }
 
 

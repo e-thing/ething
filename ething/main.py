@@ -12,7 +12,7 @@ try:
 except ImportError:
     pass
 else:
-    eventlet.monkey_patch()
+    eventlet.monkey_patch(select=False) # every use of select (blocking) must be done in a ThreadProcess
     # from eventlet.debug import hub_blocking_detection, spew
     # hub_blocking_detection(state=True, resolution=1)
 

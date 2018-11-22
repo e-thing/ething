@@ -15,7 +15,7 @@ else:
 if bluepy_imported:
 
     from ething.core.plugin import Plugin
-    from ething.core.Process import Process
+    from ething.core.Process import ThreadProcess # do not use GreenProcess since bluepy use select (blocking and not patchable)
     from ething.core.scheduler import Scheduler
     from .BleaGateway import BleaGateway
     from .devices import devices
@@ -122,7 +122,7 @@ if bluepy_imported:
                         cls.handleDiscovery(self.gateway, mac, data, name, rssi, connectable)
                         break
 
-    class ReadThread(Process):
+    class ReadThread(ThreadProcess):
 
         def __init__(self, controller, device):
             super(ReadThread, self).__init__(name="bleaReadThread")
@@ -135,7 +135,7 @@ if bluepy_imported:
                 self.device.read()
                 self.log.info("BLEA: read thread terminated for device %s" % self.device)
 
-    class Controller(Process):
+    class Controller(ThreadProcess):
         RESET_ATTR = ['iface']
 
         def __init__(self, gateway):
@@ -148,7 +148,7 @@ if bluepy_imported:
             self.errcount = 0
             self.connected = False
 
-            self.scheduler.setInterval(5, self._read, startInSec=30)
+            self.scheduler.setInterval(5, self._read, start_in_sec=30)
             self.scheduler.setInterval(60, self._check)
 
         def main(self):
