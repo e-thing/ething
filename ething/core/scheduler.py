@@ -66,7 +66,7 @@ class Task(object):
                     return False
 
             if self._thread:
-                p = Process(self._name, target=target, args=self._args, kwargs=self._kwargs)
+                p = Process(name=self._name, target=target, args=self._args, kwargs=self._kwargs)
                 p.start()
             else:
                 try:

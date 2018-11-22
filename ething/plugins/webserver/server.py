@@ -299,7 +299,7 @@ class FlaskApp(Flask):
 
 class WebServerProcess(Process):
     def __init__(self, core, config=None, custom_installers = None):
-        super(WebServerProcess, self).__init__('webserver')
+        super(WebServerProcess, self).__init__(name='webserver')
         self.core = core
         self.config = config or {}
         self.debug = False
