@@ -203,7 +203,7 @@ class Interactive_Shell(Process):
     BUFFER_SIZE = 2000
 
     def __init__(self, device, id=None, on_data=None, on_open=None, on_close=None):
-        super(Interactive_Shell, self).__init__('ssh.interactive_shell')
+        super(Interactive_Shell, self).__init__(name='ssh.interactive_shell')
         self.device = device
         self.id = uuid.uuid4() if id is None else id
         self.session = None

@@ -25,7 +25,7 @@ class RuleManager(Plugin):
 class RuleProcess(Process):
 
     def __init__(self, core):
-        super(RuleProcess, self).__init__('rule')
+        super(RuleProcess, self).__init__(name='rule')
 
         self.core = core
 
@@ -117,7 +117,7 @@ class RuleProcess(Process):
                             if rule.signal_match(signal):
                                 self.log.debug(
                                     "process rule %s from signal %s" % (rule, signal_type))
-                                threading.Thread(target=self.process_signal, args=(signal, rule), name='rule').start()
+                                Process(target=self.process_signal, args=(signal, rule), name='rule').start()
                             # else:
                             #     rule.save() # done in signal_match
 

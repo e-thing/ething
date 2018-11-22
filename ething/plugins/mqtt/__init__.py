@@ -80,7 +80,7 @@ class Controller(Process):
     KEEPALIVE = 60  # seconds
 
     def __init__(self, gateway):
-        super(Controller, self).__init__('mqtt.%s' % gateway.id)
+        super(Controller, self).__init__(name='mqtt.%s' % gateway.id)
         self.device = gateway
         self._lock = threading.Lock()
 

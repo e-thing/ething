@@ -39,8 +39,13 @@ def pingable(attr='host', interval=PING_DEFAULT_INTERVAL):
                 if host == 'localhost' or host == '127.0.0.1':
                     online = True
                 else:
-                    online = _ping(host)
-                    self.log.debug('ping %s, online=%s' % (host, online))
+                    try:
+                        online = _ping(host)
+                    except Exception as e:
+                        self.log.error('ping() raises an exception: %s' % str(e))
+                        return False
+
+                self.log.debug('ping %s, online=%s' % (host, online))
 
             with self:
                 self.setConnectState(online)

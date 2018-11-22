@@ -7,7 +7,7 @@ import time
 
 class IntervalProcess(Process):
     def __init__(self, name, interval):
-        super(IntervalProcess, self).__init__(name)
+        super(IntervalProcess, self).__init__(name=name)
         self.scheduler = Scheduler()
         self.scheduler.setInterval(interval, self.process)
 

@@ -1,9 +1,14 @@
 # coding: utf-8
 
-from .utils.StoppableThread import StoppableThread
 import logging
 import threading
 import time
+try:
+    import eventlet
+    enable_greenlet = True
+except ImportError:
+    enable_greenlet = False
+
 
 processes_map_lock = threading.Lock()
 
@@ -36,21 +41,53 @@ def list_processes():
     return processes
 
 
-class Process(StoppableThread):
+class BaseProcess(object):
 
-    def __init__(self, name, **kwargs):
+    def __init__(self, name=None, loop=None, target=None, args=(), kwargs=None):
+        self._name = name or 'process'
 
-        self._loop = kwargs.pop('loop', None)
+        if kwargs is None:
+            kwargs = {}
 
-        super(Process, self).__init__(name = name, **kwargs)
+        self._loop = loop
+        self._target = target
+        self._args = args
+        self._kwargs = kwargs
 
-        self.daemon = True
-        self.log = logging.getLogger("ething.%s" % name)
-        self.start_ts = time.time()
+        self._log = logging.getLogger("ething.%s" % self._name)
+        self._start_ts = None
+        self._start_evt = threading.Event()
+        self._stop_evt = threading.Event()
 
         add_process(self)
 
+    @property
+    def name(self):
+        return self._name
+
+    @property
+    def log(self):
+        return self._log
+
+    @property
+    def start_ts(self):
+        return self._start_ts
+
+    def is_active(self):
+        return self._start_evt.isSet() and not self._stop_evt.isSet()
+
+    def start(self):
+        self._start_ts = time.time()
+        self._start_evt.set()
+
+    def stop(self, timeout=5):
+        self._stop_evt.set()
+
+    def stopped(self):
+        return self._stop_evt.isSet()
+
     def run(self):
+
         self.log.info('Process "%s" started' % self.name)
 
         self.setup()
@@ -61,6 +98,8 @@ class Process(StoppableThread):
             self.log.exception('Exception in process "%s"' % self.name)
 
         self.end()
+
+        self._stop_evt.set()
 
         remove_process(self)
 
@@ -76,10 +115,16 @@ class Process(StoppableThread):
             finally:
                 # Avoid a refcycle if the thread is running a function with
                 # an argument that has a member that points to the thread.
-                del self._loop, self._args, self._kwargs
+                del self._loop, self._target, self._args, self._kwargs
         else:
             # run any target
-            super(Process, self).run()
+            try:
+                if self._target:
+                    self._target(*self._args, **self._kwargs)
+            finally:
+                # Avoid a refcycle if the thread is running a function with
+                # an argument that has a member that points to the thread.
+                del self._loop, self._target, self._args, self._kwargs
 
     def setup(self):
         pass
@@ -90,6 +135,47 @@ class Process(StoppableThread):
     def toJson(self):
         return {
             'name': self.name,
-            'active': self.is_alive() and not self.stopped(),
+            'active': self.is_active(),
             'start_ts': int(self.start_ts)
         }
+
+
+class ThreadProcess(BaseProcess):
+
+    def __init__(self, **kwargs):
+        super(ThreadProcess, self).__init__(**kwargs)
+
+        self._thread = threading.Thread(name=self.name, target=self.run)
+        self._thread.daemon = True
+
+    def start(self):
+        # start the thread
+        super(ThreadProcess, self).start()
+        self._thread.start()
+
+    def stop(self, timeout=5):
+        super(ThreadProcess, self).stop()
+        if timeout is not False:
+            self._thread.join(timeout)
+
+
+if enable_greenlet:
+    class GreenThreadProcess(BaseProcess):
+        def __init__(self, **kwargs):
+            super(GreenThreadProcess, self).__init__(**kwargs)
+
+            self._g = None
+
+        def start(self):
+            super(GreenThreadProcess, self).start()
+            self._g = eventlet.spawn_n(self.run)
+
+        def stop(self, timeout=5):
+            super(GreenThreadProcess, self).stop()
+            if self._g is not None:
+                eventlet.greenthread.kill(self._g)
+
+
+    Process = GreenThreadProcess
+else:
+    Process = ThreadProcess

@@ -72,7 +72,7 @@ class MqttDispatcherService(Process):
     RECONNECT_DELAY = 30
 
     def __init__(self, core, config):
-        super(MqttDispatcherService, self).__init__('mqttDispatcher')
+        super(MqttDispatcherService, self).__init__(name='mqttDispatcher')
         self.core = core
         self.config = config
         self._lock = threading.Lock()

@@ -122,16 +122,14 @@ if bluepy_imported:
                         cls.handleDiscovery(self.gateway, mac, data, name, rssi, connectable)
                         break
 
-    class ReadThread(threading.Thread):
+    class ReadThread(Process):
 
         def __init__(self, controller, device):
             super(ReadThread, self).__init__(name="bleaReadThread")
-            self.daemon = True
             self.controller = controller
             self.device = device
-            self.log = controller.log
 
-        def run(self):
+        def main(self):
             with self.controller._lock:
                 self.log.info("BLEA: start read thread for device %s" % self.device)
                 self.device.read()
@@ -141,7 +139,7 @@ if bluepy_imported:
         RESET_ATTR = ['iface']
 
         def __init__(self, gateway):
-            super(Controller, self).__init__('blea')
+            super(Controller, self).__init__(name='blea')
             self.gateway = gateway
             self.core = gateway.ething
             self.scheduler = Scheduler()

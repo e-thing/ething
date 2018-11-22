@@ -247,7 +247,7 @@ class LineReader(Packetizer):
 class TransportProcess(Process):
 
     def __init__(self, name, transport, protocol, reconnect = True, reconnect_delay = 15, **kwargs):
-        super(TransportProcess, self).__init__(name, **kwargs)
+        super(TransportProcess, self).__init__(name=name, **kwargs)
         self.transport = transport
         self.protocol = protocol
         self.reconnect = reconnect

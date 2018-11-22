@@ -13,6 +13,8 @@ except ImportError:
     pass
 else:
     eventlet.monkey_patch()
+    # from eventlet.debug import hub_blocking_detection, spew
+    # hub_blocking_detection(state=True, resolution=1)
 
 from .core.version import __version__
 
