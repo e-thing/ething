@@ -25,14 +25,6 @@ from ething.core.Helpers import filter_obj
 from ething.core.reg import get_registered_class
 from collections import OrderedDict
 
-try:
-    from cheroot.wsgi import Server as WSGIServer
-except ImportError:
-    from cherrypy.wsgiserver import CherryPyWSGIServer as WSGIServer
-
-
-use_eventlet=True
-
 
 class WebServer(Plugin):
     CONFIG_DEFAULTS = {
@@ -81,9 +73,7 @@ class WebServer(Plugin):
 
     def load(self):
         super(WebServer, self).load()
-
-        if not hasattr(self, '_installers'):
-            self._installers = []
+        self.app = FlaskApp(self.core, config=self.config, logger=self.log, root_path=root_path)
 
     def start(self):
         super(WebServer, self).start()
@@ -93,12 +83,8 @@ class WebServer(Plugin):
         super(WebServer, self).stop()
         self.stop_process()
 
-    def on_config_change(self):
-        self.stop_process()
-        self.start_process()
-
     def start_process(self):
-        self.process = WebServerProcess(self.core, self.config, custom_installers = getattr(self, '_installers', None))
+        self.process = WebServerProcess(self.app)
         self.process.start()
 
     def stop_process(self):
@@ -107,40 +93,32 @@ class WebServer(Plugin):
             del self.process
 
     def export_data(self):
-        akm = ApikeyManager(self.core)
-        return [apikey.export_instance() for apikey in akm.list()]
+        return [apikey.export_instance() for apikey in self.app.apikey_manager.list()]
 
     def import_data(self, data):
-        akm = ApikeyManager(self.core)
+        akm = self.app.apikey_manager
         for apikey in data:
             Apikey.import_instance(apikey, context={'manager': akm})
-
-    def register_installer(self, installer):
-        if not hasattr(self, '_installers'):
-            self._installers = []
-        self._installers.append(installer)
-
-    def unregister_installer(self, installer):
-        if hasattr(self, '_installers') and installer in self._installers:
-            self._installers.remove(installer)
-            # restart webserver if it was started
-            if hasattr(self, 'process'):
-                self.stop_process()
-                self.start_process()
 
 
 class FlaskApp(Flask):
 
-    def __init__(self, core, log = None, **kwargs):
+    def __init__(self, core, config=None, logger = None, **kwargs):
         kwargs.setdefault('static_url_path', '')
         super(FlaskApp, self).__init__(__name__, **kwargs)
 
         self.core = core
+        self._config = config
 
-        if log is None:
+        if logger is None:
             self.log = logging.getLogger("ething.FlaskApp")
         else:
-            self.log = log
+            self.log = logger
+
+        # debug
+        self.debug = bool(self._config.get('debug'))
+        if self.debug:
+            self.log.info('webserver: debug mode enabled')
 
         # for PATCH request
         self.wsgi_app = HTTPMethodOverrideMiddleware(self.wsgi_app)
@@ -153,13 +131,24 @@ class FlaskApp(Flask):
             r"/auth/*": cors_opt
         })
 
+        # compress
+        compress = Compress()
+        compress.init_app(self)
+
+        # auth
+        self.auth = install_auth(self, self._config)
+
+        # socketio
+        socketio = SocketIO()
+        socketio.init_app(self, async_mode='eventlet', logger=self.debug, engineio_logger=self.debug)
+        self.socketio = socketio
+
+        @socketio.on('connect')
+        def connect_handler():
+            self.auth.check()
+
         #logging
         logging.getLogger('werkzeug').setLevel(logging.ERROR)
-
-        # debug
-        self.debug = bool(self.core.config.get('debug'))
-        if self.debug:
-            self.log.info('webserver: debug mode enabled')
 
         #error handler
         @self.errorhandler(Exception)
@@ -172,6 +161,33 @@ class FlaskApp(Flask):
         # apikeys manager
         self.apikey_manager = ApikeyManager(core)
 
+        self.running = threading.Event()
+
+        # routes
+        install_routes(core=self.core, app=self, auth=self.auth, debug=self.debug)
+
+    def run(self):
+        port = self._config.get('port', 80)
+
+        # retrieve current ip:
+        current_ip = None
+        try:
+            current_ip = [l for l in (
+                [ip for ip in socket.gethostbyname_ex(socket.gethostname())[2] if not ip.startswith("127.")][:1], [
+                    [(s.connect(('8.8.8.8', 53)), s.getsockname()[0], s.close()) for s in
+                     [socket.socket(socket.AF_INET, socket.SOCK_DGRAM)]][0][1]]) if l][0][0]
+        except:
+            pass
+
+        self.log.info("web server started at http://%s:%d" % (current_ip or 'localhost', port))
+        self.log.info("web server root path = %s" % self.root_path)
+
+        self.running.set()
+
+        self.socketio.run(self, host='0.0.0.0', port=port, use_reloader=False, minimum_chunk_size=0)
+
+    def stop(self):
+        self.running.clear()
 
     def error_handler(self, e):
 
@@ -298,93 +314,14 @@ class FlaskApp(Flask):
 
 
 class WebServerProcess(Process):
-    def __init__(self, core, config=None, custom_installers = None):
+    def __init__(self, app):
         super(WebServerProcess, self).__init__(name='webserver')
-        self.core = core
-        self.config = config or {}
-        self.debug = False
-        self.server = None
-        self.auth = None
-        self.app = FlaskApp(self.core, self.log, root_path=root_path)
-        self.custom_installers = custom_installers or []
+        self.app = app
 
     def stop(self):
-        if self.server:
-            self.server.stop()
-
+        self.app.stop()
         super(WebServerProcess, self).stop()
 
-    def end(self):
-        self.server = None
-
     def main(self):
-
-        self.log.info("web server root path = %s" % root_path)
-
-        compress = Compress()
-        compress.init_app(self.app)
-
-        if use_eventlet:
-            socketio = SocketIO()
-            socketio.init_app(self.app, async_mode='eventlet', logger=True, engineio_logger=True)
-            self.socketio = socketio
-
-        port = self.config['port']
-
-        if not use_eventlet:
-            self.server = WSGIServer(
-                bind_addr=('0.0.0.0', port),
-                wsgi_app=self.app,
-                server_name=socket.gethostname()
-            )
-
-        auth = install_auth(core=self.core, app=self.app, config=self.config, debug=self.debug, server = self)
-
-        self.auth = auth
-
-        install_route_args = dict(core=self.core, app=self.app, auth=auth, debug=self.debug, server = self)
-
-        install_routes(**install_route_args)
-
-        # install registered routes :
-        for installer in self.custom_installers:
-            installer(**install_route_args)
-
-        # retrieve current ip:
-        current_ip = None
-        try:
-            current_ip = [l for l in (
-            [ip for ip in socket.gethostbyname_ex(socket.gethostname())[2] if not ip.startswith("127.")][:1], [
-                [(s.connect(('8.8.8.8', 53)), s.getsockname()[0], s.close()) for s in
-                 [socket.socket(socket.AF_INET, socket.SOCK_DGRAM)]][0][1]]) if l][0][0]
-        except:
-            pass
-
-        self.log.info("webserver: started at http://%s:%d" % (current_ip or 'localhost', port))
-
-        if use_eventlet:
-            socketio.run(self.app, host='0.0.0.0', port=port, use_reloader=False, minimum_chunk_size=0)
-        else:
-            self.server.start()
-
-    def install_route(self, url, fn, **options):
-
-        endpoint = options.pop('endpoint', fn.__name__)
-
-        if self.app:
-            view_func = fn
-
-            # handle permissions
-            permissions = options.pop('permissions', '')
-            if permissions is not False:
-                view_func = self.auth.required(permissions)(view_func)
-
-            #args
-            args = options.pop('args', None)
-            if args:
-                view_func = use_args(args)(view_func)
-
-            self.app.add_url_rule(url, endpoint, view_func=view_func, **options)
-        else:
-            self.log.error('unable to install route "%s" : %s' % (endpoint, url))
+        self.app.run()
 

@@ -243,8 +243,6 @@ def main():
                             help='stop any running instance and exit')
     parser.add_argument('--repair', action='store_true',
                         help='try to repair the database and exit')
-    parser.add_argument('--generate-docs', type=str, metavar="OUTPUT_DIRECTORY",
-                        help='generate the webserver documentations (openapi + markdown) and exit')
 
     args = parser.parse_args()
 
@@ -312,25 +310,6 @@ def main():
     # import builtin plugins here !
     from .plugins import install_builtin_plugins
     install_builtin_plugins(core)
-
-    if args.generate_docs:
-        print('generating docs ...')
-        outdir = args.generate_docs
-        if outdir and os.path.isdir(outdir):
-            from .plugins.webserver.server import FlaskApp
-            from .plugins.webserver.routes import install_routes
-            from .plugins.webserver.auth import install_auth
-            from .plugins.webserver.specification import generate
-
-            app = FlaskApp(core)
-            auth = install_auth(core=core, app=app, server=None)
-            install_routes(core=core, app=app, auth=auth)
-            generate(app, core, specification=os.path.join(
-                outdir, 'openapi.json'), documentation=os.path.join(outdir, 'http_api.md'))
-
-        else:
-            raise Exception('the directory does not exist %s' % outdir)
-        sys.exit()
 
     # import plugins
     from .core.plugin import find_plugins

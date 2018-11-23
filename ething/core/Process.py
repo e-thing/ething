@@ -76,11 +76,17 @@ class BaseProcess(object):
     def is_active(self):
         return self._start_evt.isSet() and not self._stop_evt.isSet()
 
+    def __repr__(self):
+        return str(self)
+
+    def __str__(self):
+        return '<%s name=%s>' % (type(self).__name__, self.name)
+
     def start(self):
         self._start_ts = time.time()
         self._start_evt.set()
 
-    def stop(self, timeout=5):
+    def stop(self):
         self._stop_evt.set()
 
     def stopped(self):
@@ -90,14 +96,20 @@ class BaseProcess(object):
 
         self.log.info('Process "%s" started' % self.name)
 
-        self.setup()
+        try:
+            self.setup()
+        except Exception:
+            self.log.exception('Exception in process "%s" in setup()' % self.name)
 
         try:
             self.main()
         except Exception:
-            self.log.exception('Exception in process "%s"' % self.name)
+            self.log.exception('Exception in process "%s" in main()' % self.name)
 
-        self.end()
+        try:
+            self.end()
+        except Exception:
+            self.log.exception('Exception in process "%s" in end()' % self.name)
 
         self._stop_evt.set()
 
@@ -110,7 +122,7 @@ class BaseProcess(object):
             try:
                 while not self.stopped():
                     if self._loop(*self._args, **self._kwargs) is False:
-                        self.stop(timeout=False)
+                        self.stop()
                         break
             finally:
                 # Avoid a refcycle if the thread is running a function with
@@ -144,19 +156,23 @@ class ThreadProcess(BaseProcess):
 
     def __init__(self, **kwargs):
         super(ThreadProcess, self).__init__(**kwargs)
-
-        self._thread = threading.Thread(name=self.name, target=self.run)
-        self._thread.daemon = True
+        self._thread = None
 
     def start(self):
+        if self._thread:
+            raise Exception('Process "%s" already running' % self.name)
         # start the thread
         super(ThreadProcess, self).start()
+        self._thread = threading.Thread(name=self.name, target=self.run)
+        self._thread.daemon = True
         self._thread.start()
 
     def stop(self, timeout=5):
         super(ThreadProcess, self).stop()
-        if timeout is not False:
-            self._thread.join(timeout)
+        if self._thread:
+            if self._thread is not threading.current_thread():
+                self._thread.join(timeout)
+            self._thread = None
 
 
 if enable_greenlet:
@@ -167,13 +183,16 @@ if enable_greenlet:
             self._g = None
 
         def start(self):
+            if self._g:
+                raise Exception('Process "%s" already running' % self.name)
             super(GreenThreadProcess, self).start()
             self._g = eventlet.spawn_n(self.run)
 
-        def stop(self, timeout=5):
+        def stop(self):
             super(GreenThreadProcess, self).stop()
             if self._g is not None:
                 eventlet.greenthread.kill(self._g)
+                self._g = None
 
 
     Process = GreenThreadProcess

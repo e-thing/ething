@@ -71,6 +71,7 @@ class Core(object):
                 info = ', '.join(['%s: %s' % (k, str(info[k])) for k in info])
 
             self.log.info('plugin %s loaded, info: %s' % (plugin.name, info))
+            return plugin
 
     def _init_database(self, clear_db=False):
         self.resourceQueryParser = ResourceQueryParser(tz=str(self.local_tz))

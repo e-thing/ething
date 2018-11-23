@@ -85,11 +85,17 @@ class ApikeyManager(object):
 
     def __init__(self, core):
         self.core = core
-        self.db = core.db
+        self._db = None
         self.log = logging.getLogger('ething.apikeys')
 
-        if not self.db.table_exists(self.table_name):
-            self.db.create_table(self.table_name)
+    @property
+    def db(self):
+        if self._db is None:
+            db = self.core.db
+            if not db.table_exists(self.table_name):
+                db.create_table(self.table_name)
+            self._db = db
+        return self._db
 
     def list(self):
         items = []

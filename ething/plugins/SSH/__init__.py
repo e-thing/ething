@@ -18,11 +18,18 @@ class SSHPlugin(Plugin):
 
     def setup(self):
         # install specific http routes
-        webserver_plugin = self.core.get_plugin('webserver')
-        if webserver_plugin:
-            webserver_plugin.register_installer(self._webserver_install)
+        self._webserver_install()
 
-    def _webserver_install(self, app, auth, server, **kwargs):
+    def _webserver_install(self):
+
+        # install specific http routes
+        webserver_plugin = self.core.get_plugin('webserver')
+        if not webserver_plugin:
+            return
+
+        app = webserver_plugin.app
+        auth = app.auth
+        socketio = app.socketio
 
         from flask import request, copy_current_request_context
         from flask_socketio import emit
@@ -34,16 +41,16 @@ class SSHPlugin(Plugin):
         def list_interactive_shell():
             return app.jsonify(self.interactive_shell_manager)
 
-        @server.socketio.on('connect', namespace='/ssh')
+        @socketio.on('connect', namespace='/ssh')
         def client_disconnect():
             self.log.debug('Client connected %s' % request.sid)
 
-        @server.socketio.on('disconnect', namespace='/ssh')
+        @socketio.on('disconnect', namespace='/ssh')
         def client_disconnect():
             self.log.debug('Client disconnected %s' % request.sid)
             self.interactive_shell_manager.leave(request.sid)
 
-        @server.socketio.on('open', namespace='/ssh')
+        @socketio.on('open', namespace='/ssh')
         def open_interactive_shell(data):
 
             device_id = data.get('device_id')
@@ -63,7 +70,7 @@ class SSHPlugin(Plugin):
 
             @copy_current_request_context
             def on_data(data):
-                # server.socketio.emit('data', data, namespace="/ssh", room=interactive_shell_instance.id)
+                # socketio.emit('data', data, namespace="/ssh", room=interactive_shell_instance.id)
                 emit('data', {
                     'id': shell.id,
                     'data': data
@@ -71,7 +78,7 @@ class SSHPlugin(Plugin):
 
             @copy_current_request_context
             def on_close():
-                # server.socketio.close_room(interactive_shell_instance.id, namespace="/ssh")
+                # socketio.close_room(interactive_shell_instance.id, namespace="/ssh")
                 emit('closed', {
                     'id': shell.id
                 }, namespace='/ssh')
@@ -90,7 +97,7 @@ class SSHPlugin(Plugin):
                 'buffer': shell.buffer
             }, namespace='/ssh')
 
-        @server.socketio.on('close', namespace='/ssh')
+        @socketio.on('close', namespace='/ssh')
         def close_interactive_shell(data):
             self.log.debug('ssh close, client %s' % (request.sid))
 
@@ -100,7 +107,7 @@ class SSHPlugin(Plugin):
                 shell.close()
                 self.interactive_shell_manager.remove(shell)
 
-        @server.socketio.on('detach', namespace='/ssh')
+        @socketio.on('detach', namespace='/ssh')
         def detach_interactive_shell(data):
             self.log.debug('ssh detach, client %s' % (request.sid))
 
@@ -109,7 +116,7 @@ class SSHPlugin(Plugin):
             if shell:
                 self.interactive_shell_manager.leave(request.sid, shell)
 
-        @server.socketio.on('send', namespace='/ssh')
+        @socketio.on('send', namespace='/ssh')
         def send_interactive_shell(data):
             shell_id = data.get('id')
             shell = self.interactive_shell_manager.get(shell_id)

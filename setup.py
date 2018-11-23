@@ -45,7 +45,6 @@ requires = [
     "webargs",
     "apispec==0.38.0",  # http api
     "Jinja2",  # http api
-    "cherrypy",
 
     # --ssh
     "paramiko",

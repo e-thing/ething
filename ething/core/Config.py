@@ -35,7 +35,7 @@ def get_from_path(data, path):
       if isinstance(p, Mapping) and (part in p):
           p = p[part]
       else:
-          raise KeyError('invalid key')
+          raise KeyError('invalid key %s' % path)
   return p
 
 

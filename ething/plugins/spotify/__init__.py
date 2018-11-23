@@ -46,11 +46,17 @@ class spotify(Plugin):
         self._survey_task = self.core.scheduler.setInterval(REFRESH_TOKEN_SURVEY_INTERVAL, self._refresh_token_survey, name='spotify.refresh_token', thread=True)
 
         # install specific http routes
-        webserver_plugin = self.core.get_plugin('webserver')
-        if webserver_plugin:
-            webserver_plugin.register_installer(self._webserver_install)
+        self._webserver_install()
 
-    def _webserver_install(self, app, auth, **kwargs):
+    def _webserver_install(self):
+
+        # install specific http routes
+        webserver_plugin = self.core.get_plugin('webserver')
+        if not webserver_plugin:
+            return
+
+        app = webserver_plugin.app
+        auth = app.auth
 
         _states = dict()
 

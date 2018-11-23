@@ -55,9 +55,7 @@ class JsScript(Plugin):
 
     def setup(self):
         # install specific http routes
-        webserver_plugin = self.core.get_plugin('webserver')
-        if webserver_plugin:
-            webserver_plugin.register_installer(self._webserver_install)
+        self._webserver_install()
 
     def run(self, script, scriptName='anonymous', apiKey=None, globals=None):
 
@@ -186,7 +184,15 @@ class JsScript(Plugin):
 
         return self.run(scriptcontent, scriptName=os.path.basename(script.name), globals=globals)
 
-    def _webserver_install(self, app, auth, **kwargs):
+    def _webserver_install(self):
+
+        # install specific http routes
+        webserver_plugin = self.core.get_plugin('webserver')
+        if not webserver_plugin:
+            return
+
+        app = webserver_plugin.app
+        auth = app.auth
 
         from ething.plugins.webserver.server_utils import use_args, fields
 

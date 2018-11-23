@@ -130,7 +130,7 @@ class Auth(object):
                     return AuthContext('public', scope='resource:read resource:write')
 
 
-def install_auth(core, app, config = {}, **kwargs):
+def install_auth(app, config):
 
     auth = Auth(app, config)
 

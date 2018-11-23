@@ -7,20 +7,20 @@ except ImportError:
     import Queue as queue
 
 
-def on_signal_sio(signal, server, app):
+def on_signal_sio(signal, app):
     signal_name = type(signal).__name__
-    server.socketio.emit(signal_name, app.toJson(signal), namespace="/events")
+    app.socketio.emit(signal_name, app.toJson(signal), namespace="/events")
 
 
-def install(core, app, auth, server = None, **kwargs):
+def install(core, app, auth, **kwargs):
 
-    if hasattr(server, 'socketio'):
-        core.signalDispatcher.bind('*', on_signal_sio, args=(server,app))
+    if hasattr(app, 'socketio'):
+        core.signalDispatcher.bind('*', on_signal_sio, args=(app,))
 
     def generate_events_flow(filter = None):
 
-        #if server.stopped():
-        #    raise Exception('Server not ready')
+        if not app.running:
+            raise Exception('web server not running')
 
         remote_addr = request.remote_addr
 
@@ -39,7 +39,7 @@ def install(core, app, auth, server = None, **kwargs):
             yield "event:init\ndata:\n\n"
 
             try:
-                while not server.stopped():
+                while app.running:
 
                     try:
                         signal = q.get(True, 1)
