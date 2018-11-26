@@ -14,13 +14,16 @@ except ImportError:
 
 class Transport(object):
 
+    def __init__(self):
+        self.opened = threading.Event()
+
     def init(self, process):
         self.process = process
         self.protocol = process.protocol
         self.log = process.log
     
     def open(self):
-        pass
+        self.opened.set()
 
     def read(self):
         raise NotImplementedError()
@@ -29,7 +32,7 @@ class Transport(object):
         pass
 
     def close(self):
-        pass
+        self.opened.clear()
 
 class SerialTransport(Transport):
 
@@ -41,8 +44,8 @@ class SerialTransport(Transport):
         self.baudrate = baudrate
 
     def open(self):
-        super(SerialTransport, self).open()
         self.serial = serial.serial_for_url(self.port, baudrate=self.baudrate, timeout=1)
+        super(SerialTransport, self).open()
         self.log.info("(serial) connected to port=%s baudrate=%d" % (self.port, self.baudrate))
 
     def read(self):
@@ -63,6 +66,7 @@ class SerialTransport(Transport):
     def close(self):
         if self.serial is not None:
             with self._lock:
+                super(SerialTransport, self).close()
                 self.serial.close()
                 self.serial = None
                 self.log.info("(serial) closed from port=%s baudrate=%d" % (self.port, self.baudrate))
@@ -77,10 +81,10 @@ class NetTransport(Transport):
         self.port = port
 
     def open(self):
-        super(NetTransport, self).open()
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.sock.connect((self.host, self.port))
         self.sock.settimeout(1)
+        super(NetTransport, self).open()
         self.log.info("(net) connected to host=%s port=%d" % (self.host, self.port))
 
     def read(self):
@@ -108,6 +112,7 @@ class NetTransport(Transport):
     def close(self):
         if self.sock is not None:
             with self._lock:
+                super(NetTransport, self).close()
                 self.sock.close()
                 self.sock = None
                 self.log.info("(net) closed from host=%s port=%d" % (self.host, self.port))
@@ -123,7 +128,6 @@ class UdpTransport(Transport):
         self.port = port
 
     def open(self):
-        super(UdpTransport, self).open()
         
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)  # UDP
 
@@ -139,6 +143,8 @@ class UdpTransport(Transport):
         # join multicast group and bind to port
         self.sock.setsockopt(socket.IPPROTO_IP, socket.IP_ADD_MEMBERSHIP, mreq)
         self.sock.settimeout(1)
+
+        super(UdpTransport, self).open()
 
         self.log.info("(udp): connection opened, host: %s , port: %d" % (
             str(self.host), self.port))
@@ -167,6 +173,7 @@ class UdpTransport(Transport):
     def close(self):
         if self.sock is not None:
             with self._lock:
+                super(UdpTransport, self).close()
                 self.sock.close()
                 self.sock = None
                 self.log.info("(udp) closed from host=%s port=%d" % (self.host, self.port))
@@ -340,6 +347,10 @@ class ThreadedTransport(Transport):
             raise Exception('already opened')
         self._thread = TransportProcess(self._name, transport=self._transport, protocol=QueueProtocol(self._q))
         self._thread.start()
+        # wait for the Process to be opened
+        self._transport.opened.wait(5)
+
+        super(ThreadedTransport, self).open()
 
     def read(self):
         try:
@@ -354,6 +365,7 @@ class ThreadedTransport(Transport):
 
     def close(self):
         if self._thread:
+            super(ThreadedTransport, self).close()
             self._thread.stop()
             self._thread = None
 
