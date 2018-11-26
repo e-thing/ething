@@ -30,6 +30,7 @@ requires = [
     "jsonschema",
     "multiping",
     "requests",
+    "eventlet",
 
     # --db
     #"pymongo==3.5.1",
@@ -40,12 +41,9 @@ requires = [
     "flask-cors",
     "flask-compress",
     "flask_socketio",
-    "eventlet",
     "PyJWT",
     "netaddr",
     "webargs",
-    "apispec==0.38.0",  # http api
-    "Jinja2",  # http api
 
     # --ssh
     "paramiko",
@@ -102,6 +100,8 @@ setup(
     extras_require={
         "dev": [
             "pytest",  # unit test
+            "apispec==0.38.0",  # http api
+            "Jinja2",  # http api
         ]
     },
 

@@ -271,6 +271,8 @@ def main():
             print("if it is not true, delete manually the file '%s' and try again." % PID_FILE)
             sys.exit(1)
 
+    print("pid=%s" % os.getpid())
+
     if not os.path.exists(USER_DIR):
         # first start
         # some settup can be done here !
@@ -383,7 +385,15 @@ def main():
 
     if getattr(core, 'restart_flag', False):
         print("restarting...")
-        os.execl(sys.executable, sys.executable, *sys.argv)
+        python = sys.executable
+
+        script=sys.argv[0]
+        args = sys.argv[1:]
+
+        if not os.path.isfile(script):
+            script = 'ething'
+
+        os.execl(python, python, script, *args)
 
     sys.exit(exit_code)
 
