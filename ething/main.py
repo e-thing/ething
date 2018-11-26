@@ -380,7 +380,7 @@ def main():
         if PID_FILE:
             try:
                 deletePidFile()
-            except:
+            except Exception as e:
                 print("exception in deletePidFile(): %s" % str(e))
 
     if getattr(core, 'restart_flag', False):
