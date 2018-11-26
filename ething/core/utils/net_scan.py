@@ -111,13 +111,15 @@ def scan(force=False, cache_validity=SCAN_CACHE_VALIDITY):
 
         # get its mac address
         mac = arp_map.get(ip)
+        vendor = None
 
-        # get vendor information
-        if mac in _cache_mac_vendor:
-            vendor = _cache_mac_vendor.get(mac)
-        else:
-            vendor = get_vendor_from_mac(mac)
-            _cache_mac_vendor[mac] = vendor
+        if mac:
+            # get vendor information
+            if mac in _cache_mac_vendor:
+                vendor = _cache_mac_vendor.get(mac)
+            else:
+                vendor = get_vendor_from_mac(mac)
+                _cache_mac_vendor[mac] = vendor
 
         results.append({
             'ip': ip,

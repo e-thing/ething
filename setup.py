@@ -29,6 +29,7 @@ requires = [
     "pytz",
     "jsonschema",
     "multiping",
+    "requests",
 
     # --db
     #"pymongo==3.5.1",

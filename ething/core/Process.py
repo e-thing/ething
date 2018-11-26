@@ -83,8 +83,7 @@ class BaseProcess(object):
         return '<%s name=%s>' % (type(self).__name__, self.name)
 
     def start(self):
-        self._start_ts = time.time()
-        self._start_evt.set()
+        pass
 
     def stop(self):
         self._stop_evt.set()
@@ -93,6 +92,9 @@ class BaseProcess(object):
         return self._stop_evt.isSet()
 
     def run(self):
+
+        self._start_ts = time.time()
+        self._start_evt.set()
 
         self.log.info('Process "%s" started' % self.name)
 
@@ -166,6 +168,7 @@ class ThreadProcess(BaseProcess):
         self._thread = threading.Thread(name=self.name, target=self.run)
         self._thread.daemon = True
         self._thread.start()
+        self._start_evt.wait(5)
 
     def stop(self, timeout=5):
         super(ThreadProcess, self).stop()
@@ -187,6 +190,7 @@ if enable_greenlet:
                 raise Exception('Process "%s" already running' % self.name)
             super(GreenThreadProcess, self).start()
             self._g = eventlet.spawn_n(self.run)
+            self._start_evt.wait(5)
 
         def stop(self):
             super(GreenThreadProcess, self).stop()
