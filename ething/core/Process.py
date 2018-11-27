@@ -195,9 +195,8 @@ if enable_greenlet:
                 self._g = None
 
 
-#    Process = GreenThreadProcess
-#else:
-#    Process = ThreadProcess
+    Process = GreenThreadProcess
+else:
+    Process = ThreadProcess
 
 
-Process = ThreadProcess

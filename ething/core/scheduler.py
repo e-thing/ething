@@ -1,7 +1,7 @@
 # coding: utf-8
 
 from .ShortId import ShortId
-from .Process import Process
+from .Process import Process, BaseProcess
 import inspect
 import time
 import datetime
@@ -66,7 +66,8 @@ class Task(object):
                     return False
 
             if self._thread:
-                p = Process(name=self._name, target=target, args=self._args, kwargs=self._kwargs)
+                processCls = self._thread if inspect.isclass(self._thread) else Process
+                p = processCls(name=self._name, target=target, args=self._args, kwargs=self._kwargs)
                 p.start()
             else:
                 try:

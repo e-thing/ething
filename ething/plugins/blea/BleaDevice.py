@@ -4,6 +4,7 @@ from ething.core.Device import Device
 from ething.core.reg import *
 from .connector import Connector
 
+
 @abstract
 @attr('mac', type=String(allow_empty=False, regex='^([0-9A-Fa-f]{2}:){5}([0-9A-Fa-f]{2})$'), description="The MAC address of the device.")
 @attr('rssi', mode=READ_ONLY, default=None, description="The last received signal strength indicator of this device.")
@@ -13,13 +14,14 @@ class BleaDevice(Device):
     """
     
     name = 'unknown'
-    readPeriod = 60
-    
-    def connect(self):
-        return Connector(self)
 
-    def read(self):
-        pass
+    def __init__(self, data, create=True, context=None):
+        self._peripheral = None
+        self._iface_lock = None
+        super(BleaDevice, self).__init__(data, create, context)
+
+    def connect(self):
+        return Connector(self.createdBy.iface, self.mac)
     
     @classmethod
     def handleDiscovery(cls, gateway, mac, data, name, rssi, connectable):
