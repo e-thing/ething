@@ -15,11 +15,6 @@ class BleaDevice(Device):
     
     name = 'unknown'
 
-    def __init__(self, data, create=True, context=None):
-        self._peripheral = None
-        self._iface_lock = None
-        super(BleaDevice, self).__init__(data, create, context)
-
     def connect(self):
         return Connector(self.createdBy.iface, self.mac)
     
