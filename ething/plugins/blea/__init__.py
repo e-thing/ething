@@ -17,12 +17,6 @@ SCAN_INTERVAL = 30
 
 if bluepy_imported:
 
-    from ething.core.plugin import Plugin
-    from ething.core.Process import ThreadProcess # do not use GreenProcess since bluepy use select (blocking and not patchable)
-    from .BleaGateway import BleaGateway
-    from .devices import devices
-
-
     _locks = {}
     _ifaces_initialized = []
 
@@ -37,6 +31,12 @@ if bluepy_imported:
         if force or (iface not in _ifaces_initialized):
             _ifaces_initialized.append(iface)
             os.system('hciconfig hci%d up' % iface)
+
+
+    from ething.core.plugin import Plugin
+    from ething.core.Process import ThreadProcess # do not use GreenProcess since bluepy use select (blocking and not patchable)
+    from .BleaGateway import BleaGateway
+    from .devices import devices
 
 
     class Blea(Plugin):
