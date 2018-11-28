@@ -28,9 +28,6 @@ class Miflora(BleaDevice, Thermometer, LightSensor, MoistureSensor):
     @scheduler.setInterval(READ_INTERVAL, thread=ThreadProcess, name="blea.miflora.read")
     def read(self):
 
-        batteryFirmData = None
-        rawData = None
-
         try:
             with self.connect() as connector:
 
@@ -41,44 +38,35 @@ class Miflora(BleaDevice, Thermometer, LightSensor, MoistureSensor):
                 self.log.debug('read battery:%s firmware:%s' % (battery, firmware))
 
                 with self:
+                    self.setConnectState(True)
                     self.firmware = firmware
                     self.battery = battery
-                    self.setConnectState(True)
 
-                if firmware >= "2.6.6":
-                    # for the newer models a magic number must be written before we can read the current data
-                    connector.write_handle('0x33', 'a01f')  # change into write mode
-
-                rawData = bytearray(connector.read_handle('0x35'))  # read data
+                connector.write_handle('0x33', 'a01f')  # change into write mode
+                connector.wait_for_notification('0x36', self, notification_timeout=2)
 
         except Exception:
             self.log.exception('error in read()')
             self.setConnectState(False)
-        finally:
+
+    def handleNotification(self,handle,data):
+        if hex(handle) == '0x35':
+            received = bytearray(data)
+            temperature = float(received[1] * 256 + received[0]) / 10
+            sunlight = received[4] * 256 + received[3]
+            moisture = received[7]
+            fertility = received[9] * 256 + received[8]
+
+            self.log.debug('read temperature:%s sunlight:%s moisture:%s fertility:%s' % (temperature, sunlight, moisture, fertility))
 
             with self:
-                self.setConnectState(batteryFirmData is not None or rawData is not None)
+                self.temperature = temperature
+                self.light_level = sunlight
+                self.moisture = sunlight
 
-                if batteryFirmData is not None:
-                    self.firmware = firmware
-                    self.battery = battery
-
-                if rawData is not None:
-                    temperature = float(rawData[1] * 256 + rawData[0]) / 10
-                    sunlight = rawData[4] * 256 + rawData[3]
-                    moisture = rawData[7]
-                    fertility = rawData[9] * 256 + rawData[8]
-
-                    self.log.debug('read data:%s temperature:%s sunlight:%s moisture:%s fertility:%s' % (rawData, temperature, sunlight, moisture, fertility))
-
-                    self.temperature = temperature
-                    self.light_level = sunlight
-                    self.moisture = sunlight
-
-                    self.data.update({
-                        'sunlight': sunlight,
-                        'moisture': moisture,
-                        'fertility': fertility,
-                        'temperature': temperature
-                    })
-
+                self.data.update({
+                    'sunlight': sunlight,
+                    'moisture': moisture,
+                    'fertility': fertility,
+                    'temperature': temperature
+                })
