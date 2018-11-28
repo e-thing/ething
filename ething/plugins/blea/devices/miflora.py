@@ -31,7 +31,7 @@ class Miflora(BleaDevice, Thermometer, LightSensor, MoistureSensor):
         try:
             with self.connect() as connector:
 
-                batteryFirmData = bytearray(connector.read_handle('0x38')) # read version & battery
+                batteryFirmData = bytearray(connector.read_handle(0x38)) # read version & battery
                 battery = batteryFirmData[0]
                 firmware = "".join([chr(c) for c in batteryFirmData[2:]])
 
@@ -42,15 +42,15 @@ class Miflora(BleaDevice, Thermometer, LightSensor, MoistureSensor):
                     self.firmware = firmware
                     self.battery = battery
 
-                connector.write_handle('0x33', 'a01f')  # change into write mode
-                connector.wait_for_notification('0x36', self, notification_timeout=2)
+                connector.write_handle(0x33, bytearray([0xA0, 0x1F]))  # change into write mode
+                connector.wait_for_notification(0x36, self, notification_timeout=2)
 
         except Exception:
             self.log.exception('error in read()')
             self.setConnectState(False)
 
     def handleNotification(self,handle,data):
-        if hex(handle) == '0x35':
+        if handle == 0x35:
             received = bytearray(data)
             temperature = float(received[1] * 256 + received[0]) / 10
             sunlight = received[4] * 256 + received[3]
@@ -70,3 +70,5 @@ class Miflora(BleaDevice, Thermometer, LightSensor, MoistureSensor):
                     'fertility': fertility,
                     'temperature': temperature
                 })
+        else:
+            self.log.debug('unknown handle %X' % handle)

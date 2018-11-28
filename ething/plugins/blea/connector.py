@@ -89,13 +89,14 @@ class Connector(object):
         """
         if self._peripheral is None:
             raise Exception('not connected to backend')
+
         return self._peripheral.writeCharacteristic(handle, value, True)
 
     @wrap_exception
     def wait_for_notification(self, handle, delegate, notification_timeout):
         if self._peripheral is None:
             raise Exception('not connected to backend')
-        self.write_handle(handle, '0100') # bytes([0x01, 0x00])
+        self.write_handle(handle, bytearray([0x01, 0x00]))
         self._peripheral.withDelegate(delegate)
         return self._peripheral.waitForNotifications(notification_timeout)
 

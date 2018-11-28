@@ -5,6 +5,7 @@ import threading
 import time
 try:
     import eventlet
+    import greenlet
     enable_greenlet = True
 except ImportError:
     enable_greenlet = False
@@ -191,7 +192,10 @@ if enable_greenlet:
         def stop(self):
             super(GreenThreadProcess, self).stop()
             if self._g is not None:
-                eventlet.greenthread.kill(self._g)
+                try:
+                    eventlet.greenthread.kill(self._g)
+                except greenlet.GreenletExit:
+                    pass
                 self._g = None
 
 
