@@ -108,7 +108,7 @@ class FlaskApp(Flask):
         super(FlaskApp, self).__init__(__name__, **kwargs)
 
         self.core = core
-        self._config = config
+        self._config = config if config is not None else dict()
 
         if logger is None:
             self.log = logging.getLogger("ething.FlaskApp")
@@ -116,7 +116,7 @@ class FlaskApp(Flask):
             self.log = logger
 
         # debug
-        self.debug = bool(self._config.get('debug'))
+        self.debug = bool(self._config.get('debug', False))
         if self.debug:
             self.log.info('webserver: debug mode enabled')
 

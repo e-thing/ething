@@ -25,7 +25,7 @@ def get_hostname(url):
 def pingable(attr='host', interval=PING_DEFAULT_INTERVAL):
     def d(cls):
 
-        @scheduler.setInterval(interval, thread=True)
+        @scheduler.setInterval(interval)
         def ping(self):
 
             host = getattr(self, attr, None)

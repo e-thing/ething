@@ -11,15 +11,19 @@ import threading
 from .utils.weak_ref import weak_ref
 
 
+_LOGGER = logging.getLogger('ething.scheduler')
+
 class Task(object):
 
-    def __init__(self, target, args=(), kwargs=None, name=None, thread=False, instance=None, condition=None):
+    def __init__(self, target, args=(), kwargs=None, name=None, thread=True, instance=None, condition=None, allow_multiple=True):
 
         if not callable(target):
             raise Exception('target must be callable')
 
         self._id = ShortId.generate()
         self._target = weak_ref(target)
+        if instance is None and getattr(target, '__self__', None) is not None:
+            instance = target.__self__
         self._args = args
         self._kwargs = kwargs or {}
         self._name = name
@@ -31,16 +35,22 @@ class Task(object):
         self._thread = thread
         self._instance = weak_ref(instance) if instance is not None else None
         self._condition = condition
+        self._allow_multiple = allow_multiple
 
         self._last_run = None
         self._executed_count = 0
-        self._log = logging.getLogger('ething.scheduler.%s' % self._name)
         self._valid = True
         self._t0 = time.time()
+
+        self._p = None # last process ran
 
     @property
     def id(self):
         return self._id
+
+    @property
+    def name(self):
+        return self._name
 
     @property
     def executed_count(self):
@@ -62,18 +72,25 @@ class Task(object):
             self._executed_count += 1
 
             if self._condition is not None:
-                if not self._condition(self):
+                try:
+                    if not self._condition(self):
+                        return False
+                except:
                     return False
 
             if self._thread:
+
+                if self._p and not self._p.stopped() and not self._allow_multiple:
+                    return
+
                 processCls = self._thread if inspect.isclass(self._thread) else Process
-                p = processCls(name=self._name, target=target, args=self._args, kwargs=self._kwargs)
-                p.start()
+                self._p = processCls(name=self._name, target=target, args=self._args, kwargs=self._kwargs)
+                self._p.start()
             else:
                 try:
                     target(*self._args, **self._kwargs)
                 except:
-                    self._log.exception('exception in task')
+                    _LOGGER.exception('exception in task "%s"' % self._name)
 
             return True
         else:  # lost reference
@@ -190,7 +207,6 @@ def at(hour='*', min=0, **kwargs):
 class Scheduler(object):
 
     def __init__(self):
-        self.log = logging.getLogger('ething.scheduler')
         super(Scheduler, self).__init__()
         self.tasks = []
         self.r_lock = threading.RLock()
@@ -232,7 +248,7 @@ class Scheduler(object):
                 try:
                     getattr(self, scheduler_func_name)(*args, callback=getattr(instance, name), **kwargs)
                 except:
-                    self.log.exception('unable to create instance task')
+                    _LOGGER.exception('unable to create instance task')
 
     def unbind(self, task):
         with self.r_lock:
@@ -240,7 +256,7 @@ class Scheduler(object):
                 if task in self.tasks:
                     self.tasks.remove(task)
             else:
-                to_remove = [t for t in self.tasks if t.target is task or t.instance is task]
+                to_remove = [t for t in self.tasks if t.target == task or t.instance is task]
 
                 for t in to_remove:
                     self.unbind(t)

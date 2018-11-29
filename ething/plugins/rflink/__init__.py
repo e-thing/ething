@@ -15,7 +15,7 @@ import datetime
 class RFLink(Plugin):
 
     def start(self):
-        super(RFLink, self).load()
+        super(RFLink, self).start()
 
         self.controllers = {}
 
@@ -32,7 +32,7 @@ class RFLink(Plugin):
         self.core.signalDispatcher.bind('ResourceUpdated', self._on_resource_updated)
 
     def stop(self):
-        super(RFLink, self).unload()
+        super(RFLink, self).stop()
         self.core.signalDispatcher.unbind('ResourceCreated', self._on_resource_created)
         self.core.signalDispatcher.unbind('ResourceDeleted', self._on_resource_deleted)
         self.core.signalDispatcher.unbind('ResourceUpdated', self._on_resource_updated)
@@ -91,18 +91,14 @@ class RFLinkProtocol(LineReader):
         self.core = gateway.ething
         # response management
         self._responseListeners = []
-        self.scheduler = Scheduler()
-
-        self.scheduler.setInterval(0.5, self.check_response_timeout)
-        self.scheduler.setInterval(60, self.check_disconnect)
 
     def connection_made(self):
         super(RFLinkProtocol, self).connection_made()
         self._responseListeners = []
         self.gateway.setConnectState(True)
-    
-    def loop(self):
-        self.scheduler.process()
+
+        self.core.scheduler.setInterval(1, self.check_response_timeout)
+        self.core.scheduler.setInterval(60, self.check_disconnect)
 
     # exemple of messages :
     #     20;00;Nodo RadioFrequencyLink - RFLink Gateway V1.1 - R46;
@@ -228,6 +224,9 @@ class RFLinkProtocol(LineReader):
         return result
 
     def connection_lost(self, exc):
+
+        self.core.scheduler.unbind(self.check_response_timeout)
+        self.core.scheduler.unbind(self.check_disconnect)
 
         self.gateway.setConnectState(False)
 

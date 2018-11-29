@@ -19,7 +19,7 @@ class Sonoff_http(HTTP, Switch):
         self._make_request('GET', '/cm?cmnd=Power%%20%s' % ('On' if state else 'Off'))
         self.state = state
 
-    @scheduler.setInterval(STATE_POLLING_PERIOD, thread=True)
+    @scheduler.setInterval(STATE_POLLING_PERIOD)
     def updateState(self):
         try:
             r = self._make_request('GET', '/cm?cmnd=Power', timeout=2)

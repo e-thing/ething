@@ -4,6 +4,7 @@ import os
 import time
 import threading
 import datetime
+from collections import OrderedDict
 try:
     from bluepy.btle import Scanner, DefaultDelegate, BTLEException
 except Exception as e:
@@ -12,8 +13,6 @@ except Exception as e:
 else:
     bluepy_imported = True
 
-
-SCAN_INTERVAL = 30
 
 if bluepy_imported:
 
@@ -41,8 +40,24 @@ if bluepy_imported:
 
     class Blea(Plugin):
 
+        CONFIG_DEFAULTS = {
+            'scan_interval': 60,
+        }
+
+        CONFIG_SCHEMA = {
+            'type': 'object',
+            'properties': OrderedDict([
+                ('scan_interval', {
+                    'title': 'scan interval',
+                    'description': 'Seconds between each scan for new devices',
+                    'type': 'integer',
+                    'minimum': 5
+                })
+            ])
+        }
+
         def setup(self):
-            self.core.scheduler.setInterval(SCAN_INTERVAL, self.scan, thread=ThreadProcess, name="blea.scan")
+            self.core.scheduler.setInterval(self.config['scan_interval'], self.scan, thread=ThreadProcess, name="blea.scan", allow_multiple=False)
 
         def scan(self):
 

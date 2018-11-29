@@ -1,47 +1,19 @@
 # coding: utf-8
 
 from ..plugin import Plugin
-from ..scheduler import Scheduler
 from ..Process import Process
 from .Rule import Rule
 import threading
-import time
 
 
 class RuleManager(Plugin):
 
     def load(self):
-        super(RuleManager, self).load()
-        self.process = RuleProcess(self.core)
-        self.process.start()
-
-    def unload(self):
-        super(RuleManager, self).unload()
-        if hasattr(self, 'process'):
-            self.process.stop()
-            del self.process
-
-
-class RuleProcess(Process):
-
-    def __init__(self, core):
-        super(RuleProcess, self).__init__(name='rule')
-
-        self.core = core
-
         self._queue = []
         self._cache = {}
-
-        self.scheduler = Scheduler()
-
-        self.scheduler.setInterval(1, self.process)
-
         self._lock = threading.Lock()
 
-
-    def main(self):
-        self._queue = []
-        self._cache = {}
+    def setup(self):
         self._build_cache()
 
         self.core.signalDispatcher.bind(
@@ -51,16 +23,7 @@ class RuleProcess(Process):
 
         self.core.signalDispatcher.bind('*', self.dispatchSignal)
 
-        while not self.stopped():
-            time.sleep(0.5)
-            self.scheduler.process()
-
-        self.core.signalDispatcher.unbind(
-            'ResourceCreated ResourceDeleted', self.onResourceCreatedOrDeleted)
-        self.core.signalDispatcher.unbind(
-            'ResourceUpdated', self.onResourceUpdated)
-
-        self.core.signalDispatcher.unbind('*', self.dispatchSignal)
+        self.core.scheduler.setInterval(1, self.process)
 
     def onResourceCreatedOrDeleted(self, signal):
         if isinstance(signal.resource, Rule):

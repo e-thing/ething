@@ -17,10 +17,10 @@ class ResourceSignal(Signal):
         self.resource = resource
     
     def __str__(self):
-        return "%s [%s]" % (type(self).__name__, self.resource.id)
+        return "<%s %s>" % (type(self).__name__, self.resource.id)
 
     def __repr__(self):
-        return "%s [%s]" % (type(self).__name__, self.resource.id)
+        return str(self)
 
 #    def toJson(self):
 #        j = super(ResourceSignal, self).toJson()

@@ -9,8 +9,6 @@ import base64
 @pytest.fixture
 def webapp(core):
     app = FlaskApp(core)
-    auth = install_auth(core=core, app=app, server=None)
-    install_routes(core=core, app=app, auth=auth)
 
     # add a global context
     ctx = app.app_context()

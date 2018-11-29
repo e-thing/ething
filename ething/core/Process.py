@@ -95,7 +95,7 @@ class BaseProcess(object):
 
     def run(self):
 
-        self.log.info('Process "%s" started' % self.name)
+        self.log.debug('Process "%s" started' % self.name)
 
         try:
             self.setup()
@@ -116,7 +116,7 @@ class BaseProcess(object):
 
         remove_process(self)
 
-        self.log.info('Process "%s" stopped' % self.name)
+        self.log.debug('Process "%s" stopped' % self.name)
 
     def main(self):
         if self._loop is not None:

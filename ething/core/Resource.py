@@ -146,10 +146,10 @@ class Resource(DbEntity):
             return False
 
     def __str__(self):
-        return '%s(id=%s, name=%s)' % (self.type, self.id, self.name)
+        return '<%s id=%s name=%s>' % (self.type, self.id, self.name)
 
     def __repr__(self):
-        return '%s(id=%s, name=%s)' % (self.type, self.id, self.name)
+        return str(self)
 
     def __hash__(self):
         return hash(self.id)

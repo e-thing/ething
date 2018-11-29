@@ -89,19 +89,16 @@ class YeelightProtocol(LineReader):
     def __init__(self, gateway):
         super(YeelightProtocol, self).__init__(terminator = b'\r\n')
         self.gateway = gateway
+        self.core = gateway.ething
         # response management
         self._pending_cmds = {}
-        self.scheduler = Scheduler()
-
-        self.scheduler.setInterval(0.5, self.check_response_timeout)
 
     def connection_made(self):
         super(YeelightProtocol, self).connection_made()
         self._pending_cmds.clear()
         self.gateway.setConnectState(True)
-    
-    def loop(self):
-        self.scheduler.process()
+
+        self.core.scheduler.setInterval(1, self.check_response_timeout)
 
     def handle_line(self, line):
         self.log.debug('read: %s' % line)
@@ -199,6 +196,8 @@ class YeelightProtocol(LineReader):
 
 
     def connection_lost(self, exc):
+
+        self.core.scheduler.unbind(self.check_response_timeout)
 
         self.gateway.setConnectState(False)
 

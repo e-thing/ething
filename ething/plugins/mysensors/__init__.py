@@ -174,17 +174,13 @@ class MySensorsProtocol(LineReader):
 
         self._pendingMessages = []
 
-        self.scheduler.setInterval(1, self.check_timeout)
-        self.scheduler.setInterval(60, self.check_disconnect)
-        
-
     def connection_made(self):
         super(MySensorsProtocol, self).connection_made()
         self._pendingMessages = []
         self.gateway.setConnectState(True)
-    
-    def loop(self):
-        self.scheduler.process()
+
+        self.core.scheduler.setInterval(1, self.check_timeout)
+        self.core.scheduler.setInterval(60, self.check_disconnect)
 
     def createNode(self, nodeId):
         gateway = self.gateway
@@ -506,6 +502,9 @@ class MySensorsProtocol(LineReader):
         return result
 
     def connection_lost(self, exc):
+
+        self.core.scheduler.unbind(self.check_timeout)
+        self.core.scheduler.unbind(self.check_disconnect)
 
         self.gateway.setConnectState(False)
 

@@ -123,7 +123,7 @@ class SSHPlugin(Plugin):
             if shell:
                 shell.send(data.get('data'))
 
-        self.core.scheduler.setInterval(10, self.interactive_shell_manager.clean, thread=True, name="ssh.clean_session", condition=lambda _: not self.interactive_shell_manager.is_empty)
+        self.core.scheduler.setInterval(10, self.interactive_shell_manager.clean, name="ssh.clean_session", condition=lambda _: not self.interactive_shell_manager.is_empty)
 
 
 class Interactive_Shell_Manager(object):

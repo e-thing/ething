@@ -60,18 +60,23 @@ class Connector(object):
     @wrap_exception
     def connect(self):
         """Connect to a device."""
-        self._lock.acquire()
-        init_iface(self._iface)
-        self._peripheral = Peripheral(self._mac, iface=self._iface)
+        try:
+            self._lock.acquire()
+            init_iface(self._iface)
+            self._peripheral = Peripheral(self._mac, iface=self._iface)
+        except:
+            self._lock.release()
+            raise
 
     @wrap_exception
     def disconnect(self):
         """Disconnect from a device if connected."""
-        if self._peripheral is not None:
-            self._peripheral.disconnect()
-            self._peripheral = None
-
-        self._lock.release()
+        try:
+            if self._peripheral is not None:
+                self._peripheral.disconnect()
+                self._peripheral = None
+        finally:
+            self._lock.release()
 
     @wrap_exception
     def read_handle(self, handle):

@@ -13,12 +13,14 @@ IV = "\x17\x99\x6d\x09\x3d\x28\xdd\xb3\xba\x69\x5a\x2e\x6f\x58\x56\x2e"
 
 from future.utils import listvalues
 
-
-def scan():
+#
+# returns: [{'cmd': 'iam', 'model': 'gateway', 'sid': '34ce00fb61a9', 'port': '9898', 'ip': '192.168.1.8'}]
+#
+def scan_gateways():
 
     gateways = {}
 
-    message = '{"cmd":"whois"}'
+    message = b'{"cmd":"whois"}'
 
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 

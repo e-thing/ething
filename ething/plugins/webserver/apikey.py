@@ -54,10 +54,10 @@ class Apikey(DbEntity):
             return False
 
     def __str__(self):
-        return 'Apikey(id=%s, name=%s)' % (self.id, self.name)
+        return '<apikey id=%s name=%s>' % (self.id, self.name)
 
     def __repr__(self):
-        return 'Apikey(id=%s, name=%s)' % (self.id, self.name)
+        return str(self)
 
     def __hash__(self):
         return hash(self.id)

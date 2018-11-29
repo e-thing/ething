@@ -260,7 +260,7 @@ class UnQLiteDB(BaseClass):
 
     def get_table_rows(self, table_name, query = None, start=0, length=None, keys=None, sort=None):
         table = self.db.collection(table_name)
-        rows = map(decode, table.all())
+        rows = list(map(decode, table.all()))
 
         if query:
             parser = TableQueryParser(compiler=attribute_compiler, tz=getattr(self, 'tz', None))

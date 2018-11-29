@@ -42,7 +42,7 @@ class BasePlugin(object):
         return os.path.isfile(self.js_index)
 
     def __str__(self):
-        return '<pluginInstance %s>' % self.name
+        return '<plugin %s>' % self.name
 
     def __repr__(self):
         return str(self)

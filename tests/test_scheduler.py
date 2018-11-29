@@ -1,10 +1,10 @@
 # coding: utf-8
 import pytest
-from ething.core.scheduler import Scheduler, setInterval
+from ething.core.scheduler import Scheduler, tick
 import time
 
 
-def test_taskmanager():
+def test_scheduler():
 
     g = {
         'i': 0
@@ -15,7 +15,7 @@ def test_taskmanager():
     def increase():
         g['i'] += 1
 
-    scheduler.setInterval(0.5, increase)
+    scheduler.setInterval(0.5, increase, thread=False)
 
     tf = time.time() + 3.2
     while time.time() < tf:
@@ -23,6 +23,71 @@ def test_taskmanager():
         time.sleep(0.2)
 
     assert g['i'] == 6
+
+    scheduler.unbind(increase)
+
+    tf = time.time() + 1.2
+    while time.time() < tf:
+        scheduler.process()
+        time.sleep(0.2)
+
+    assert g['i'] == 6
+
+
+def test_class_method():
+
+    class Foo(object):
+        def __init__(self):
+            self.cnt = 0
+
+        def increase(self):
+            self.cnt += 1
+
+    foo = Foo()
+
+    scheduler = Scheduler()
+
+    scheduler.tick(foo.increase, thread=False)
+
+    scheduler.process()
+    scheduler.process()
+    scheduler.process()
+
+    assert foo.cnt == 3
+
+    scheduler.unbind(foo.increase)
+
+    scheduler.process()
+
+    assert foo.cnt == 3
+
+
+def test_class_method2():
+
+    class Foo(object):
+        def __init__(self):
+            self.cnt = 0
+
+        def increase(self):
+            self.cnt += 1
+
+    foo = Foo()
+
+    scheduler = Scheduler()
+
+    scheduler.tick(foo.increase, thread=False)
+
+    scheduler.process()
+    scheduler.process()
+    scheduler.process()
+
+    assert foo.cnt == 3
+
+    scheduler.unbind(foo)
+
+    scheduler.process()
+
+    assert foo.cnt == 3
 
 
 def test_instance():
@@ -33,7 +98,7 @@ def test_instance():
         def __init__(self):
             self.i = 0
 
-        @setInterval(0.5)
+        @tick(thread=False)
         def bar(self):
             self.i += 1
 
@@ -43,19 +108,14 @@ def test_instance():
 
     assert foo.i == 0
 
-    tf = time.time() + 1.2
-    while time.time() < tf:
-        scheduler.process()
-        time.sleep(0.2)
+    scheduler.process()
+    scheduler.process()
 
     assert foo.i == 2
 
     scheduler.unbind(foo)
 
-    tf = time.time() + 1.2
-    while time.time() < tf:
-        scheduler.process()
-        time.sleep(0.2)
+    scheduler.process()
 
     assert foo.i == 2
 

@@ -9,7 +9,7 @@ class IntervalProcess(Process):
     def __init__(self, name, interval):
         super(IntervalProcess, self).__init__(name=name)
         self.scheduler = Scheduler()
-        self.scheduler.setInterval(interval, self.process)
+        self.scheduler.setInterval(interval, self.process, thread=False)
 
     def main(self):
         self.begin()

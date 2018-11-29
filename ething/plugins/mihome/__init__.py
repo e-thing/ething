@@ -39,20 +39,16 @@ class MihomeProtocol(Protocol):
     def __init__(self, core):
         super(MihomeProtocol, self).__init__()
         self.core = core
-        self.scheduler = Scheduler()
 
         # response management
         self._responseListeners = []
 
-        self.scheduler.setInterval(1, self.check_timeout)
-        self.scheduler.setInterval(60, self.check_disconnect)
-    
-    def loop(self):
-        self.scheduler.process()
-
     def connection_made(self):
         super(MihomeProtocol, self).connection_made()
         self._responseListeners = []
+
+        self.core.scheduler.setInterval(1, self.check_timeout, condition=lambda _: len(self._responseListeners)>0)
+        self.core.scheduler.setInterval(60, self.check_disconnect)
 
         self.search()
 
@@ -182,6 +178,9 @@ class MihomeProtocol(Protocol):
         return result
 
     def connection_lost(self, exc):
+
+        self.core.scheduler.unbind(self.check_timeout)
+        self.core.scheduler.unbind(self.check_disconnect)
 
         for responseListener in self._responseListeners:
             responseListener.reject('disconnected')
