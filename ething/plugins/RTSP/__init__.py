@@ -49,7 +49,7 @@ class RTSP(Device, Camera):
         self.log.debug(err)
 
         if p.returncode != 0:
-            raise Exception('avconv error. The device may be unavailabled. Also check that avconv is installed.')
+            raise Exception('avconv error. The device may be unavailable.')
 
         return out
 
