@@ -21,7 +21,7 @@ sshSocket.on('disconnect', () => {
 });
 
 sshSocket.on('data', (data) => {
-  console.log('[socketio:SSH] data:', data)
+  //console.log('[socketio:SSH] data:', data)
 
   var shell = interactiveShellManager.get(data.id);
 
@@ -37,7 +37,7 @@ sshSocket.on('opened', (data) => {
   var shell = interactiveShellManager.get(data.id);
 
   if (shell) {
-      shell._set_opened(data.buffer)
+      shell._set_opened(data.id, data.buffer)
   }
 
 });
@@ -166,7 +166,7 @@ function InteractiveShell (device, id) {
       release_socket(this)
     }
 
-    this._set_opened = (buffer) => {
+    this._set_opened = (id, buffer) => {
         _setState('opened')
 
         if (_onopen) {

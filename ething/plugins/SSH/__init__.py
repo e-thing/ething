@@ -41,6 +41,14 @@ class SSHPlugin(Plugin):
         def list_interactive_shell():
             return app.jsonify(self.interactive_shell_manager)
 
+        @app.route('/api/ssh/shells/<id>')
+        @auth.required()
+        def interactive_shell(id):
+            shell = self.interactive_shell_manager.get(id)
+            if not shell:
+                raise Exception('shell not found')
+            return app.jsonify(shell)
+
         @socketio.on('connect', namespace='/ssh')
         def client_disconnect():
             self.log.debug('Client connected %s' % request.sid)
@@ -64,9 +72,11 @@ class SSHPlugin(Plugin):
             # does the shell already exist !
             resume = True
             shell = self.interactive_shell_manager.get(shell_id)
-            if not shell or shell.device != device:
+            if not shell:
                 shell = Interactive_Shell(device, id=shell_id)
                 resume = False
+
+            self.log.debug('ssh shell %s , resume=%s' % (shell, resume))
 
             @copy_current_request_context
             def on_data(data):
@@ -79,6 +89,7 @@ class SSHPlugin(Plugin):
             @copy_current_request_context
             def on_close():
                 # socketio.close_room(interactive_shell_instance.id, namespace="/ssh")
+                self.interactive_shell_manager.remove(shell)
                 emit('closed', {
                     'id': shell.id
                 }, namespace='/ssh')
@@ -105,7 +116,6 @@ class SSHPlugin(Plugin):
             shell = self.interactive_shell_manager.get(shell_id)
             if shell:
                 shell.close()
-                self.interactive_shell_manager.remove(shell)
 
         @socketio.on('detach', namespace='/ssh')
         def detach_interactive_shell(data):

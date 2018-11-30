@@ -5,6 +5,26 @@ from ething.core.Device import *
 from ething.plugins.ping import pingable
 from ething.core.interfaces import Camera
 import subprocess
+import re
+import sys
+
+
+def is_avconv_installed ():
+    version = 'unknown'
+    try:
+        output = subprocess.check_output('avconv -version', shell=True, stderr=False)
+    except:
+        return False
+    else:
+        line0 = output.decode(sys.stdout.encoding or 'utf8').split('\n')[0]
+        m = re.search(r'version ([^\s]+)', line0)
+        if m:
+            version = m.group(1)
+    return version
+
+
+if not is_avconv_installed():
+    raise Exception('avconv is not installed')
 
 
 @pingable('url')
@@ -24,6 +44,9 @@ class RTSP(Device, Camera):
 
         p = subprocess.Popen(cmd, stdout=subprocess.PIPE, shell=True)
         out, err = p.communicate()
+
+        self.log.debug(out)
+        self.log.debug(err)
 
         if p.returncode != 0:
             raise Exception('avconv error. The device may be unavailabled. Also check that avconv is installed.')
