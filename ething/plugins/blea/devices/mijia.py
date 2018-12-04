@@ -16,7 +16,7 @@ class Mijia(BleaDevice, Thermometer, HumiditySensor):
     
     @classmethod
     def isvalid(cls, name, mac, manufacturer):
-        if name is not None and name.lower().startswith('MJ_HT_'):
+        if name is not None and name.upper().startswith('MJ_HT_'):
             return True
 
     @scheduler.setInterval(READ_INTERVAL, thread=process_mode, name="blea.mijia.read")
