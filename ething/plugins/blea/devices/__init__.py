@@ -1,6 +1,8 @@
 
 from .miflora import Miflora
+from .mijia import Mijia
 
 devices = [
-    Miflora
+    Miflora,
+    Mijia
 ]

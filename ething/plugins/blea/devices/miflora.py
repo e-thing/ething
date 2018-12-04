@@ -43,7 +43,7 @@ class Miflora(BleaDevice, Thermometer, LightSensor, MoistureSensor):
                     self.battery = battery
 
                 connector.write_handle(0x33, bytearray([0xA0, 0x1F]))  # change into write mode
-                connector.wait_for_notification(0x36, self, notification_timeout=2)
+                connector.wait_for_notification(0x36, self, notification_timeout=5)
 
         except Exception:
             self.log.exception('error in read()')
