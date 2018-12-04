@@ -29,7 +29,7 @@ class BleaDevice(Device):
         if not device:
             if gateway.learning:
                 device = ething.create(cls, {
-                    'name': name or getattr(cls, 'name', None) or 'dev',
+                    'name': getattr(cls, 'name', None) or name or 'dev',
                     'mac': mac,
                     'createdBy': gateway.id
                 })
