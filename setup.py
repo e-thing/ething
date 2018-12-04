@@ -30,7 +30,7 @@ requires = [
     "jsonschema",
     "multiping",
     "requests",
-    "eventlet",
+    "gevent", #eventlet
 
     # --db
     #"pymongo==3.5.1",

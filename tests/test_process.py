@@ -1,8 +1,7 @@
 # coding: utf-8
-import eventlet
-eventlet.monkey_patch()
+from ething.core.green import mode
 import pytest
-from ething.core.Process import Process, ThreadProcess, GreenThreadProcess
+from ething.core.Process import Process, ThreadProcess
 import time
 
 
@@ -35,30 +34,33 @@ def test_thread_process():
     assert counter['index'] > 5
 
 
-def test_greenlet_process():
+if mode != 'threading':
+    from ething.core.Process import GreenThreadProcess
 
-    counter = {
-        'index': 0
-    }
+    def test_greenlet_process():
 
-    def count(counter):
-        counter['index'] += 1
-        time.sleep(0.1)
+        counter = {
+            'index': 0
+        }
 
-    p = GreenThreadProcess(name='foobar', loop=count, args=(counter,))
+        def count(counter):
+            counter['index'] += 1
+            time.sleep(0.1)
 
-    assert not p.is_active()
+        p = GreenThreadProcess(name='foobar', loop=count, args=(counter,))
 
-    p.start()
+        assert not p.is_active()
 
-    assert p.is_active()
+        p.start()
 
-    time.sleep(1)
+        assert p.is_active()
 
-    p.stop()
+        time.sleep(1)
 
-    assert p.stopped()
+        p.stop()
 
-    print(counter['index'])
+        assert p.stopped()
 
-    assert counter['index'] > 5
+        print(counter['index'])
+
+        assert counter['index'] > 5

@@ -3,13 +3,8 @@
 import logging
 import threading
 import time
-try:
-    import eventlet
-    import greenlet
-    enable_greenlet = True
-except ImportError:
-    enable_greenlet = False
 
+from .green import mode
 
 processes_map_lock = threading.Lock()
 
@@ -176,7 +171,11 @@ class ThreadProcess(BaseProcess):
             self._thread = None
 
 
-if enable_greenlet:
+if mode == 'greenlet':
+
+    import eventlet
+    import greenlet
+
     class GreenThreadProcess(BaseProcess):
         def __init__(self, **kwargs):
             super(GreenThreadProcess, self).__init__(**kwargs)
@@ -200,6 +199,35 @@ if enable_greenlet:
 
 
     Process = GreenThreadProcess
+
+elif mode == 'gevent':
+
+    import gevent
+
+    class GreenThreadProcess(BaseProcess):
+        def __init__(self, **kwargs):
+            super(GreenThreadProcess, self).__init__(**kwargs)
+
+            self._g = None
+
+        def start(self):
+            if self._g:
+                raise Exception('Process "%s" already running' % self.name)
+            super(GreenThreadProcess, self).start()
+            self._g = gevent.spawn(self.run)
+
+        def stop(self):
+            super(GreenThreadProcess, self).stop()
+            if self._g is not None:
+                try:
+                    gevent.kill(self._g)
+                except gevent.GreenletExit:
+                    pass
+                self._g = None
+
+
+    Process = GreenThreadProcess
+
 else:
     Process = ThreadProcess
 

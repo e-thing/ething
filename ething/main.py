@@ -7,15 +7,7 @@
 
 from __future__ import print_function
 
-try:
-    import eventlet
-except ImportError:
-    pass
-else:
-    eventlet.monkey_patch(select=False) # every use of select (blocking) must be done in a ThreadProcess
-    # from eventlet.debug import hub_blocking_detection, spew
-    # hub_blocking_detection(state=True, resolution=1)
-
+from .core.green import mode
 from .core.version import __version__
 
 import argparse
