@@ -23,8 +23,9 @@ def is_avconv_installed ():
     return version
 
 
-if not is_avconv_installed():
-    raise Exception('avconv is not installed')
+def install(core):
+    if not is_avconv_installed():
+        core.log.warning('[RTSP] avconv is not installed')
 
 
 @pingable('url')

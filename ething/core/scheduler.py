@@ -81,6 +81,7 @@ class Task(object):
             if self._thread:
 
                 if self._p and not self._p.stopped() and not self._allow_multiple:
+                    _LOGGER.debug('task "%s" already running: skipped' % self._name)
                     return
 
                 processCls = self._thread if inspect.isclass(self._thread) else Process

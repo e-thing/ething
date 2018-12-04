@@ -71,23 +71,28 @@ if bluepy_imported:
 
                     init_iface(iface)
 
-                    self.log.info("BLEA: start scan thread on hci%s" % iface)
+                    self.log.debug("BLEA: start scan thread on hci%s" % iface)
 
                     scanner = Scanner(iface).withDelegate(ScanDelegate(gateway))
 
+                    self.log.debug("BLEA: db0")
                     try:
                         scanner.clear()
                         scanner.start()
+                        self.log.debug("BLEA: db1")
                         scanner.process(5)
+                        self.log.debug("BLEA: db2")
                         gateway.setConnectState(True)
                     except Exception:
                         gateway.setConnectState(False)
                         self.log.exception("BLEA: scan exception")
                     finally:
+                        self.log.debug("BLEA: db3")
                         try:
                             scanner.stop()
                         except:
                             pass
+                    self.log.debug("BLEA: db4")
 
 
     class ScanDelegate(DefaultDelegate):
