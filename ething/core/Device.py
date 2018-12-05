@@ -81,7 +81,7 @@ class DeviceDisconnectedEvent(ResourceEvent):
 @abstract
 @throw(BatteryLevelChanged, DeviceConnected, DeviceDisconnected)
 # 0-100 : the battery level, if None it means that no battery information is provided
-@attr('battery', type=Nullable(Integer(min=0, max=100)), default=None, watch=True, description="The battery level of this device (must be between 0 (empty) and 100 (full) , or null if the device has no battery information).")
+@attr('battery', type=Nullable(Number(min=0, max=100)), default=None, watch=True, description="The battery level of this device (must be between 0 (empty) and 100 (full) , or null if the device has no battery information).")
 @attr('location', type=Nullable(String()), default=None, description="The location of this device.")
 @attr('connected', type=Boolean(), default=True, watch=True, description="Set to true when this device is connected.")
 @attr('lastSeenDate', mode=READ_ONLY, default=None, description="The last time this device was reached or made a request.")

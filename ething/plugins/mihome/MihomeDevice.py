@@ -30,7 +30,14 @@ class MihomeDevice(MihomeBase):
                 value = data[k]
 
                 if k == 'voltage':
-                    self.voltage = int(value)/1000.  # volt
+                    voltage = int(value)/1000.  # volt
+                    max_volt = 3.300
+                    min_volt = 2.800
+                    voltage = min(voltage, max_volt)
+                    voltage = max(voltage, min_volt)
+                    percent = ((voltage - min_volt) / (max_volt - min_volt)) * 100
+                    self.voltage = voltage
+                    self.battery = round(percent)
                 else:
                     self.processAttr(k, value)
 

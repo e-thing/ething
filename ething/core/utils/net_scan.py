@@ -11,7 +11,7 @@ from platform import system as system_name  # Returns the system/OS name
 import logging
 
 
-_LOGGER = logging.getLogger('ething.net_scan')
+# _LOGGER = logging.getLogger('ething.net_scan')
 
 
 def get_my_ip():
@@ -63,7 +63,6 @@ def get_vendor_from_mac(mac, retries=3):
     while i<retries:
         r = requests.get('https://api.macvendors.com/%s' % mac.replace(':', '-'))
 
-        print(mac, r)
         if r.status_code == 200:
             vendor = r.text
             break
@@ -97,7 +96,7 @@ def scan(force=False, cache_validity=SCAN_CACHE_VALIDITY):
     ip_parts = myip.split('.')
     base_ip = ip_parts[0] + '.' + ip_parts[1] + '.' + ip_parts[2] + '.'
 
-    _LOGGER.debug('myip = %s , base_ip = %s' % (myip,base_ip))
+    # _LOGGER.debug('myip = %s , base_ip = %s' % (myip,base_ip))
 
     ips = []
     for i in range(1, 255):
@@ -111,15 +110,15 @@ def scan(force=False, cache_validity=SCAN_CACHE_VALIDITY):
 
     ip_detected = list(res.keys())
 
-    _LOGGER.debug('ip detected: %s' % (ip_detected))
+    # _LOGGER.debug('ip detected: %s' % (ip_detected))
 
     arp_map = read_arp_table()
 
-    _LOGGER.debug('arp_map: %s' % (arp_map))
+    # _LOGGER.debug('arp_map: %s' % (arp_map))
 
     for ip in ip_detected:
 
-        _LOGGER.debug('process ip: %s' % (ip))
+        # _LOGGER.debug('process ip: %s' % (ip))
 
         # get its mac address
         mac = arp_map.get(ip)
@@ -136,7 +135,8 @@ def scan(force=False, cache_validity=SCAN_CACHE_VALIDITY):
         results.append({
             'ip': ip,
             'mac': mac,
-            'vendor': vendor
+            'vendor': vendor,
+            'is_localhost': ip == myip
         })
 
     _cache_scan['results'] = results
