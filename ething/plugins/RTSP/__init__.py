@@ -46,9 +46,6 @@ class RTSP(Device, Camera):
         p = subprocess.Popen(cmd, stdout=subprocess.PIPE, shell=True)
         out, err = p.communicate()
 
-        self.log.debug(out)
-        self.log.debug(err)
-
         if p.returncode != 0:
             raise Exception('avconv error. The device may be unavailable.')
 

@@ -65,8 +65,6 @@ class SSHPlugin(Plugin):
             shell_id = data.get('id')
             client_id = request.sid
 
-            self.log.debug('ssh open, client %s , device %s' % (client_id, device_id))
-
             device = app.getResource(device_id, ['SSH'])
 
             # does the shell already exist !
@@ -76,7 +74,7 @@ class SSHPlugin(Plugin):
                 shell = Interactive_Shell(device, id=shell_id)
                 resume = False
 
-            self.log.debug('ssh shell %s , resume=%s' % (shell, resume))
+            self.log.debug('ssh open, client %s , shell %s , resume=%s' % (client_id, shell, resume))
 
             @copy_current_request_context
             def on_data(data):
@@ -229,11 +227,11 @@ class Interactive_Shell(Process):
         self.on_close = on_close
         self.buffer = b''
 
-    def __repr__(self):
+    def __str__(self):
         return '<SSH.Interactive_Shell device=%s id=%s>' % (self.device, self.id)
 
     @property
-    def active(self):
+    def opened(self):
         return self.session and self.session.active and not self.session.closed
 
     def open(self):
@@ -281,7 +279,7 @@ class Interactive_Shell(Process):
             self.session = None
 
     def loop(self):
-        if not self.active:
+        if not self.opened:
             return False # exit the loop
 
         try:
@@ -302,11 +300,13 @@ class Interactive_Shell(Process):
             self.on_data(data)
 
     def toJson(self):
-        return {
+        data = super(Interactive_Shell, self).toJson()
+        data.update({
             'id': self.id,
-            'active': self.active,
+            'opened': self.opened,
             'device_id': self.device.id
-        }
+        })
+        return data
 
     ## process
     def main(self):

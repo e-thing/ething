@@ -12,7 +12,8 @@ STATE_POLLING_PERIOD = 5
 @attr('secure', default=False, mode=PRIVATE)
 class Sonoff_http(HTTP, Switch):
     """
-    Sonoff_http Device resource representation
+    Sonoff_http Device resource representation.
+    See https://github.com/arendst/Sonoff-Tasmota for more details.
     """
 
     def setState(self, state):

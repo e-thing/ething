@@ -8,7 +8,7 @@
       <div v-else class="text-right">
         <q-btn label="close terminal" flat color="faded" icon="mdi-close-box-outline" @click="close"/>
       </div>
-      <div v-if="shell_status==='opening' || shell_status==='closing'" class="text-center test-faded">
+      <div v-if="shell_status==='opening' || shell_status==='closing'" class="text-center text-faded">
         {{ shell_status }}
       </div>
       <div ref="term"></div>

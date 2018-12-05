@@ -82,8 +82,18 @@ class BaseProcess(object):
         self._start_ts = time.time()
         self._start_evt.set()
 
-    def stop(self):
+    def stop(self, timeout=None):
+        if not self._start_evt.is_set():
+            # not started !
+            return
         self._stop_evt.set()
+        if timeout is not None:
+            if not self._stop_evt.wait(timeout):
+                # kill the process
+                self.kill()
+
+    def kill(self):
+        pass # to be implemented if possible
 
     def stopped(self):
         return self._stop_evt.isSet()
@@ -163,11 +173,15 @@ class ThreadProcess(BaseProcess):
         self._thread.daemon = True
         self._thread.start()
 
-    def stop(self, timeout=5):
-        super(ThreadProcess, self).stop()
-        if self._thread:
-            if self._thread is not threading.current_thread():
-                self._thread.join(timeout)
+    def run(self):
+        t = self._thread
+        super(ThreadProcess, self).run()
+        if self._thread is t:
+            self._thread = None
+
+    def kill(self):
+        if self._thread is not None:
+            # unable to kill a thread ! just leave the reference
             self._thread = None
 
 
@@ -188,8 +202,13 @@ if mode == 'greenlet':
             super(GreenThreadProcess, self).start()
             self._g = eventlet.spawn_n(self.run)
 
-        def stop(self):
-            super(GreenThreadProcess, self).stop()
+        def run(self):
+            g = self._g
+            super(GreenThreadProcess, self).run()
+            if self._g is g:
+                self._g = None
+
+        def kill(self):
             if self._g is not None:
                 try:
                     eventlet.greenthread.kill(self._g)
@@ -216,8 +235,13 @@ elif mode == 'gevent':
             super(GreenThreadProcess, self).start()
             self._g = gevent.spawn(self.run)
 
-        def stop(self):
-            super(GreenThreadProcess, self).stop()
+        def run(self):
+            g = self._g
+            super(GreenThreadProcess, self).run()
+            if self._g is g:
+                self._g = None
+
+        def kill(self):
             if self._g is not None:
                 try:
                     gevent.kill(self._g)

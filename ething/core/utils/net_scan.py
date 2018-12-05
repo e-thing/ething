@@ -8,6 +8,10 @@ from multiping import multi_ping, MultiPingError
 import requests
 import time
 from platform import system as system_name  # Returns the system/OS name
+import logging
+
+
+_LOGGER = logging.getLogger('ething.net_scan')
 
 
 def get_my_ip():
@@ -39,7 +43,7 @@ def read_arp_table():
             out = out.decode(sys.stdout.encoding or 'utf8', errors="ignore")
 
             for line in out.splitlines():
-                matches = arp_ip_mac_re.match(line)
+                matches = arp_ip_mac_re.search(line)
                 if matches:
                     ip = matches.group(1)
                     mac = matches.group(2)
@@ -93,6 +97,8 @@ def scan(force=False, cache_validity=SCAN_CACHE_VALIDITY):
     ip_parts = myip.split('.')
     base_ip = ip_parts[0] + '.' + ip_parts[1] + '.' + ip_parts[2] + '.'
 
+    _LOGGER.debug('myip = %s , base_ip = %s' % (myip,base_ip))
+
     ips = []
     for i in range(1, 255):
         ips.append(base_ip + '{0}'.format(i))
@@ -105,9 +111,15 @@ def scan(force=False, cache_validity=SCAN_CACHE_VALIDITY):
 
     ip_detected = list(res.keys())
 
+    _LOGGER.debug('ip detected: %s' % (ip_detected))
+
     arp_map = read_arp_table()
 
+    _LOGGER.debug('arp_map: %s' % (arp_map))
+
     for ip in ip_detected:
+
+        _LOGGER.debug('process ip: %s' % (ip))
 
         # get its mac address
         mac = arp_map.get(ip)
