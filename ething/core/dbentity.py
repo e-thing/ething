@@ -128,3 +128,7 @@ class DbEntity(Entity):
     @classmethod
     def import_instance(cls, data, context = None):
         return cls.create(data, context)
+
+    @classmethod
+    def upgrade(cls, data, version):
+        pass

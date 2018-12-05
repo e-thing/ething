@@ -5,6 +5,7 @@ import logging
 import threading
 from future.utils import string_types
 import re
+from pkg_resources import parse_version
 
 
 class ResourceDbCache(object):
@@ -20,6 +21,38 @@ class ResourceDbCache(object):
         with self.__lock:
 
             self.__resources.clear()
+
+            # db_version = self.__db.kv_get('VERSION')
+            # current_version = self.__core.version
+            # need_upgrade = False
+            # if db_version is not None and current_version != 'unknown':
+            #     if current_version == db_version:
+            #         pass # nothing to do !
+            #     elif parse_version(current_version) > parse_version(db_version):
+            #         # need to upgrade
+            #         need_upgrade = True
+            #     else:
+            #         raise Exception('Version mismatch : the database version (%s) is newer than your ething version (%s). You need to upgrade ething.' % (db_version, current_version))
+            #
+            # self.__log.info('DB version: %s , need_upgrade: %s' % (db_version, need_upgrade))
+            #
+            # if need_upgrade:
+            #     self.__log.info('upgrading database %s --> %s' % (db_version, current_version))
+            #     for doc in self.__db.list_resources():
+            #         cl = get_registered_class(doc['type'])
+            #         if cl is not None:
+            #             try:
+            #                 cl.upgrade(doc, db_version, current_version, self.__core)
+            #             except:
+            #                 self.__log.warning('error upgrading resource: name=%s type=%s id=%s , this resource is no more compatible with your current version' % (
+            #                     doc.get('name'), doc.get('type'), doc.get('id')))
+            #                 self.__db.remove_resource(doc.get('id'))
+            #             else:
+            #                 self.__db.update_resource(doc)
+            #
+            #     self.__db.kv_set('VERSION', current_version)
+            # elif db_version is None and current_version != 'unknown':
+            #     self.__db.kv_set('VERSION', current_version)
 
             cnt = 0
             loaded = 0
@@ -44,7 +77,7 @@ class ResourceDbCache(object):
             self.__log.debug('%d resources loaded in cache (%d skipped)' % (loaded, cnt - loaded))
 
     def reload(self):
-        self._load()
+        self.load()
 
     def remove(self, resource):
         with self.__lock:

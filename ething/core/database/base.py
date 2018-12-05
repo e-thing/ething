@@ -1,6 +1,7 @@
 # coding: utf-8
 
 from future.utils import integer_types
+from ..ShortId import ShortId
 import math
 import logging
 
@@ -19,6 +20,9 @@ class BaseClass (object):
     def connect(self):
         raise NotImplementedError()
 
+    def init(self):
+        self._load_key_value_store()
+
     def disconnect(self):
         raise NotImplementedError()
 
@@ -28,6 +32,45 @@ class BaseClass (object):
     def clear(self):
         raise NotImplementedError()
 
+    #
+    # key/value
+    #
+    def _load_key_value_store(self):
+        self._key_value_store_tablename = '_key_value_store'
+
+        if not self.table_exists(self._key_value_store_tablename):
+            self.create_table(self._key_value_store_tablename)
+
+        rows = self.get_table_rows(self._key_value_store_tablename, length=1)
+        if len(rows)==1:
+            self._key_value_store_id = rows[0]['id']
+            self._key_value_store_cache = rows[0]
+        else:
+            self._key_value_store_id = ShortId.generate()
+            self._key_value_store_cache = {
+                'id': self._key_value_store_id
+            }
+            self.insert_table_row(self._key_value_store_tablename, self._key_value_store_cache)
+
+    def _update_key_value_store(self):
+        self.update_table_row(self._key_value_store_tablename, self._key_value_store_id, self._key_value_store_cache)
+
+    def kv_set(self, key, value):
+        if key == 'id':
+            raise Exception('invalid key')
+        self._key_value_store_cache[key] = value
+        self._update_key_value_store()
+
+    def kv_get(self, key, default=None):
+        return self._key_value_store_cache.get(key, default)
+
+    def kv_remove(self, key):
+        if key in self._key_value_store_cache:
+            self._key_value_store_cache.pop(key)
+            self._update_key_value_store()
+
+    def kv_list(self):
+        return [k for k in self._key_value_store_cache]
 
     #
     # Resources

@@ -3,9 +3,25 @@ import pytest
 import datetime
 
 
+def test_db_kv(core):
+
+    assert core.db.kv_get('foo') is None
+
+    core.db.kv_set('foo', 'bar')
+
+    assert core.db.kv_get('foo') == 'bar'
+
+    assert 'foo' in core.db.kv_list()
+
+    core.db.kv_remove('foo')
+
+    assert core.db.kv_get('foo') is None
+
+
 def test_db_fs(core):
 
     content = b'hello world'
+    l = len(core.db.listFiles())
 
     id = core.db.storeFile('fff.txt', content, {
         'attr': 'attrvalue'
@@ -13,7 +29,7 @@ def test_db_fs(core):
 
     result = core.db.retrieveFile(id)
 
-    assert len(core.db.listFiles()) == 1
+    assert len(core.db.listFiles()) == l+1
 
     assert core.db.getFileSize(id) == len(content)
 
@@ -23,7 +39,7 @@ def test_db_fs(core):
 
     core.db.removeFile(id)
 
-    assert core.db.listFiles() == []
+    assert len(core.db.listFiles()) == l
 
 
 def test_db_table(core):

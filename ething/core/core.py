@@ -96,6 +96,13 @@ class Core(object):
             if clear_db:
                 self.db.clear()
 
+            self.db.init()
+
+            db_version = self.db.kv_get('VERSION')
+            self.log.info('db version: %s' % (db_version))
+            if db_version is None and self.version != 'unknown':
+                self.db.kv_set('VERSION', self.version)
+
             self.is_db_loaded = False
             self.resource_db_cache = ResourceDbCache(self)
 
