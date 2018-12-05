@@ -1,3 +1,5 @@
+from . import green
+
 from .core import Core
 
 # import base resources

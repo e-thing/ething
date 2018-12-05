@@ -4,10 +4,8 @@
  @author Adrien Mezerette <a.mezerette@gmail.com>
  @package ething
 """
-
 from __future__ import print_function
 
-from .core.green import mode
 from .core.version import __version__
 
 import argparse

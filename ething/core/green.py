@@ -4,7 +4,7 @@
 mode = 'threading'
 
 try:
-    from gevent import monkey
+    from gevent import monkey, events, config
 
 except ImportError:
 
@@ -22,6 +22,16 @@ except ImportError:
 else:
     mode = 'gevent'
     monkey.patch_all()
+
+    config.max_blocking_time = 1.0
+    config.monitor_thread = True
+
+    def event_handler(event):
+        print('DBG: %s' % event)
+
+    events.subscribers.append(event_handler)
+
+
 
 
 print('initialized for %s' % mode)
