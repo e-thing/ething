@@ -499,3 +499,4 @@ class Table(Resource):
         instance = super(Table, cls).import_instance(data.get('object'), context)
         instance.importData(data.get('content'))
         return instance
+

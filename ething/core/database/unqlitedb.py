@@ -6,6 +6,7 @@ from ..query import attribute_compiler
 from ..Helpers import filter_obj
 from ..env import USER_DIR
 from ..ShortId import ShortId
+from ..green import make_it_green
 from unqlite import UnQLite
 import os
 import datetime
@@ -93,6 +94,15 @@ def encode(obj):
     return encode_db(obj)
 
 
+class gUnQLite(UnQLite):
+    """ A greenlet friendly sub-class of UnQLite. """
+
+for method in [UnQLite.commit,
+               UnQLite.commit_on_success,
+               UnQLite.rollback]:
+    setattr(gUnQLite, method.__name__, make_it_green(method))
+
+
 class UnQLiteDB(BaseClass):
 
     def __init__(self, **config):
@@ -104,7 +114,7 @@ class UnQLiteDB(BaseClass):
 
     def connect(self):
 
-        self.db = UnQLite(self.file) if self.file else UnQLite()
+        self.db = gUnQLite(self.file) if self.file else gUnQLite()
 
         self.log.info('connected to database: %s' % (self.file or 'memory'))
 
@@ -258,6 +268,7 @@ class UnQLiteDB(BaseClass):
             self.db.store('collections', ' '.join(collections))
             self.db.commit()
 
+    @make_it_green
     def get_table_rows(self, table_name, query = None, start=0, length=None, keys=None, sort=None):
         table = self.db.collection(table_name)
         rows = list(map(decode, table.all()))
