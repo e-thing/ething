@@ -1,6 +1,6 @@
 # coding: utf-8
 
-from ..green import get_current
+from ..green import get_current, mode
 import threading
 import sys
 
@@ -118,6 +118,10 @@ class SecureLockBase(object):
 
     def __enter__(self):
         if not self.acquire(timeout = self._timeout):
+            # print stack trace
+            if mode == 'gevent':
+                from gevent.util import print_run_info
+                print_run_info()
             raise RuntimeError('Lock is blocked by %s' % self._owner)
         return self
 
