@@ -3,6 +3,7 @@
 from .MySensorsSensor import MySensorsSensor
 from .helpers import *
 from collections import Sequence
+import time
 
 
 class MySensorsGenericSensor (MySensorsSensor):
@@ -18,5 +19,7 @@ class MySensorsGenericSensor (MySensorsSensor):
 
         self.data[name] = dvalue
 
+        t0 = time.time()
         self.store(name, value)
+        self.log.debug('store time %f' % (time.time() - t0))
 
