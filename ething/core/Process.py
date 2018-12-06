@@ -121,7 +121,7 @@ class BaseProcess(object):
 
         remove_process(self)
 
-        self.log.debug('Process "%s" stopped' % self.name)
+        self.log.debug('Process "%s" stopped after %f sec' % (self.name, time.time() - self._start_ts))
 
     def main(self):
         if self._loop is not None:

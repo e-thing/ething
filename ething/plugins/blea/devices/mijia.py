@@ -25,6 +25,7 @@ class Mijia(BleaDevice, Thermometer, HumiditySensor):
         try:
             with self.connect() as connector:
 
+                self.log.debug('a')
                 batteryData = bytearray(connector.read_handle(0x18)) # battery
                 battery = batteryData[0]
 
@@ -34,7 +35,11 @@ class Mijia(BleaDevice, Thermometer, HumiditySensor):
                     self.setConnectState(True)
                     self.battery = battery
 
+                self.log.debug('b')
+
                 connector.wait_for_notification(0x10, self, notification_timeout=5)
+
+                self.log.debug('c')
 
         except Exception:
             self.log.exception('error in read()')
