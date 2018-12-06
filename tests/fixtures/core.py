@@ -7,6 +7,7 @@ from ething.core import Core
 def core():
     _core = Core({
         'db': {
+            'type': 'sqlite',
             'database': ':memory:'
         },
         'log': {

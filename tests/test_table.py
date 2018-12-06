@@ -97,10 +97,10 @@ def test_benchmark(core):
 
 @pytest.mark.parametrize("type,database,module", [
     ("sqlite", ':memory:', 'sqlite3'),
-    ("sqlite", 'benchmark', 'sqlite3'),
-    ("unqlite", ':memory:', 'UnQLite'),
-    ("unqlite", 'benchmark', 'UnQLite'),
-    ("mongodb", 'benchmark', 'pymongo'),
+    ("sqlite", 'dbfile', 'sqlite3'),
+    ("unqlite", ':memory:', 'unqlite'),
+    ("unqlite", 'dbfile', 'unqlite'),
+    ("mongodb", 'db', 'pymongo'),
 ])
 def test_benchmark_all(type, database, module):
 

@@ -275,9 +275,9 @@ class MongoDB(BaseClass):
             del row_data['id']
         self.db[table_name].insert_many(rows_data, ordered=False)
 
-    def update_table_row(self, table_name, row_data):
+    def update_table_row(self, table_name, row_id, row_data):
         """return the old row"""
-        old_row = self.db[table_name].find_one_and_replace({'_id': row_data['id']}, row_data)
+        old_row = self.db[table_name].find_one_and_replace({'_id': row_id}, row_data)
         if old_row:
             old_row['id'] = old_row['_id']
             del old_row['_id']
