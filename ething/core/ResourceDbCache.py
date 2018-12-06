@@ -1,7 +1,7 @@
 # coding: utf-8
 
 from .reg import get_registered_class
-from .utils.lock import DbgRLock
+from .utils.lock import SecureRLock
 import logging
 import threading
 from future.utils import string_types
@@ -16,7 +16,7 @@ class ResourceDbCache(object):
         self.__db = core.db
         self.__resources = dict()
         self.__log = logging.getLogger("ething.ResourceDbCache")
-        self.__lock = DbgRLock() # threading.RLock()
+        self.__lock = SecureRLock() # threading.RLock()
 
     def load(self):
         with self.__lock:

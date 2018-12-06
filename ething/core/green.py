@@ -5,7 +5,7 @@ from functools import wraps
 mode = 'threading'
 
 try:
-    from gevent import monkey, events, config
+    from gevent import monkey, events, config, getcurrent
 
 except ImportError:
 
@@ -13,8 +13,13 @@ except ImportError:
         import eventlet
     except ImportError:
 
+        import threading
+
         def _non_blocking_run(method, args, kwargs):
             return method(*args, **kwargs)
+
+        def get_current():
+            return threading.current_thread()
 
     else:
         mode = 'eventlet'
@@ -27,6 +32,9 @@ except ImportError:
 
         def _non_blocking_run(method, args, kwargs):
             return tpool.execute(method, *args, **kwargs)
+
+        def get_current():
+            return eventlet.getcurrent()
 
 else:
     mode = 'gevent'
@@ -49,6 +57,9 @@ else:
 
     def _non_blocking_run(method, args, kwargs):
         return get_hub().threadpool.apply(method, args, kwargs)
+
+    def get_current():
+        return getcurrent()
 
 
 def make_it_green(method):

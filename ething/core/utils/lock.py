@@ -1,5 +1,6 @@
 # coding: utf-8
 
+from ..green import get_current
 import threading
 import sys
 
@@ -10,14 +11,13 @@ else:
     py3 = False
 
 if py3:
-    Lock = threading.Lock
-    RLock = threading.RLock
+    _Lock = threading.Lock
+    _RLock = threading.RLock
 else:
 
-    from threading import ThreadError, current_thread
     from Queue import Queue, Full, Empty
 
-    class Lock(object):
+    class _Lock(object):
         """
         Thread-safe lock mechanism with timeout support.
         """
@@ -43,7 +43,7 @@ else:
             - > 0 : Wait x seconds.
             """
 
-            th = current_thread()
+            th = threading.current_thread()
             try:
                 self._queue.put(
                     th, block=blocking,
@@ -62,16 +62,16 @@ else:
             the lock. If another thread attempts to release the lock a
             ThreadException is raised.
             """
-            th = current_thread()
+            th = threading.current_thread()
             if self._mutex and th != self._owner:
-                raise ThreadError('This lock isn\'t owned by this thread.')
+                raise threading.ThreadError('This lock isn\'t owned by this thread.')
 
             self._owner = None
             try:
                 self._queue.get(False)
                 return True
             except Empty:
-                raise ThreadError('This lock was released already.')
+                raise threading.ThreadError('This lock was released already.')
 
         def __enter__(self):
             self.acquire()
@@ -80,44 +80,68 @@ else:
         def __exit__(self, type, value, traceback):
             self.release()
 
-    RLock = None # todo
+
+    class _RLock(object):
+
+        def __init__(self):
+            self._lock = threading.RLock()
+
+        def acquire(self, blocking=True, timeout=-1):
+            return self._lock.acquire(blocking)
+
+        def release(self):
+            return self._lock.release()
+
+        def __enter__(self):
+            self.acquire()
+            return self
+
+        def __exit__(self, type, value, traceback):
+            self.release()
 
 
-class DbgLockBase(object):
+class SecureLockBase(object):
 
-    def __init__(self, LockCls, timeout=5):
-        self._lock = LockCls()
+    def __init__(self, lock_cls, timeout=30):
+        self._lock = lock_cls()
         self._timeout = timeout
+        self._owner = None
 
     def acquire(self, blocking=True, timeout=-1):
-        return self._lock.acquire(blocking, timeout)
+        res = self._lock.acquire(blocking, timeout)
+        if res:
+            self._owner = get_current()
+        return res
 
     def release(self):
         return self._lock.release()
 
     def __enter__(self):
         if not self.acquire(timeout = self._timeout):
-            raise RuntimeError('Lock is blocked')
+            raise RuntimeError('Lock is blocked by %s' % self._owner)
         return self
 
     def __exit__(self, type, value, traceback):
         self.release()
 
 
-class DbgLock(DbgLockBase):
-    def __init__(self, timeout=5):
-        super(DbgLock, self).__init__(Lock, timeout)
+class SecureLock(SecureLockBase):
+    def __init__(self, timeout=30):
+        super(SecureLock, self).__init__(_Lock, timeout)
 
 
-class DbgRLock(DbgLockBase):
-    def __init__(self, timeout=5):
-        super(DbgRLock, self).__init__(RLock, timeout)
+class SecureRLock(SecureLockBase):
+    def __init__(self, timeout=30):
+        super(SecureRLock, self).__init__(_RLock, timeout)
 
 
 if __name__ == '__main__':
+    from gevent import monkey, spawn, joinall
+
+    monkey.patch_all()
     import time
 
-    l = DbgLock()
+    l = SecureLock(3)
 
     def acquire_and_wait():
         with l:
@@ -128,12 +152,20 @@ if __name__ == '__main__':
         with l:
             print('acquired 2')
 
-    t1 = threading.Thread(target=acquire_and_wait)
-    t1.start()
 
+    t1 = spawn(acquire_and_wait)
     time.sleep(1)
+    t2 = spawn(acquire)
 
-    t2 = threading.Thread(target=acquire)
-    t2.start()
+    joinall([t1, t2])
 
-    t2.join()
+
+    #t1 = threading.Thread(target=acquire_and_wait)
+    #t1.start()
+#
+    #time.sleep(1)
+#
+    #t2 = threading.Thread(target=acquire)
+    #t2.start()
+#
+    #t2.join()
