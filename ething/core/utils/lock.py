@@ -11,6 +11,7 @@ else:
 
 if py3:
     Lock = threading.Lock
+    RLock = threading.RLock
 else:
 
     from threading import ThreadError, current_thread
@@ -79,12 +80,13 @@ else:
         def __exit__(self, type, value, traceback):
             self.release()
 
+    RLock = None # todo
 
 
-class DbgLock(object):
+class DbgLockBase(object):
 
-    def __init__(self, timeout=5):
-        self._lock = Lock()
+    def __init__(self, LockCls, timeout=5):
+        self._lock = LockCls()
         self._timeout = timeout
 
     def acquire(self, blocking=True, timeout=-1):
@@ -100,6 +102,16 @@ class DbgLock(object):
 
     def __exit__(self, type, value, traceback):
         self.release()
+
+
+class DbgLock(DbgLockBase):
+    def __init__(self, timeout=5):
+        super(DbgLock, self).__init__(Lock, timeout)
+
+
+class DbgRLock(DbgLockBase):
+    def __init__(self, timeout=5):
+        super(DbgRLock, self).__init__(RLock, timeout)
 
 
 if __name__ == '__main__':
