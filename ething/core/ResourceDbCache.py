@@ -1,11 +1,12 @@
 # coding: utf-8
 
 from .reg import get_registered_class
+from .utils.lock import DbgLock
 import logging
 import threading
 from future.utils import string_types
 import re
-from pkg_resources import parse_version
+# from pkg_resources import parse_version
 
 
 class ResourceDbCache(object):
@@ -15,7 +16,7 @@ class ResourceDbCache(object):
         self.__db = core.db
         self.__resources = dict()
         self.__log = logging.getLogger("ething.ResourceDbCache")
-        self.__lock = threading.RLock()
+        self.__lock = DbgLock() # threading.RLock()
 
     def load(self):
         with self.__lock:

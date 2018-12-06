@@ -7,6 +7,7 @@ from ..Helpers import filter_obj
 from ..env import USER_DIR
 from ..ShortId import ShortId
 from ..green import make_it_green
+from ..utils.lock import DbgLock
 import sqlite3
 import os
 import json
@@ -78,7 +79,7 @@ class SQLite(BaseClass):
             self.file = None
         else:
             self.file = os.path.join(USER_DIR, '%s.db' % self.database)
-        self.lock = threading.Lock()
+        self.lock = DbgLock() # threading.Lock()
 
     def connect(self):
         with self.lock:
