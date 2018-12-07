@@ -298,7 +298,7 @@ class SQLite(BaseClass):
             asc = sort[0][1]
             rows = sorted(rows, key=lambda r: r.get(sort_attr, None), reverse=not asc)
 
-            start = start or 0
+        start = start or 0
 
         rows = rows[start:(length + start if length is not None else None)]
 
