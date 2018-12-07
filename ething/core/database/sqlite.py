@@ -79,7 +79,7 @@ class SQLite(BaseClass):
             self.file = None
         else:
             self.file = os.path.join(USER_DIR, '%s.db' % self.database)
-        self.lock = SecureLock() # threading.Lock()
+        self.lock = SecureLock(name='sqlite') # threading.Lock()
 
     def connect(self):
         with self.lock:

@@ -1,6 +1,6 @@
 # coding: utf-8
 
-from ..green import get_current, mode
+from ething.core.green import get_current, mode
 import threading
 import sys
 
@@ -75,7 +75,6 @@ else:
 
         def __enter__(self):
             self.acquire()
-            return self
 
         def __exit__(self, type, value, traceback):
             self.release()
@@ -94,7 +93,6 @@ else:
 
         def __enter__(self):
             self.acquire()
-            return self
 
         def __exit__(self, type, value, traceback):
             self.release()
@@ -102,64 +100,93 @@ else:
 
 class SecureLockBase(object):
 
-    def __init__(self, lock_cls, timeout=30):
+    def __init__(self, lock_cls, timeout=30, name='anonym'):
         self._lock = lock_cls()
         self._timeout = timeout
         self._owner = None
+        self._name = name
 
     def acquire(self, blocking=True, timeout=-1):
+        print('[lock] %s wait acquire' % self._name)
         res = self._lock.acquire(blocking, timeout)
         if res:
+            print('[lock] %s acquired' % self._name)
             self._owner = get_current()
+        else:
+            print('[lock] %s not acquired' % self._name)
         return res
 
     def release(self):
+        print('[lock] %s release' % self._name)
         return self._lock.release()
 
     def __enter__(self):
-        if not self.acquire(timeout = self._timeout):
+        if not self.acquire(True, self._timeout):
             # print stack trace
             if mode == 'gevent':
                 from gevent.util import print_run_info
                 print_run_info()
             raise RuntimeError('Lock is blocked by %s' % self._owner)
-        return self
 
     def __exit__(self, type, value, traceback):
         self.release()
 
 
 class SecureLock(SecureLockBase):
-    def __init__(self, timeout=30):
-        super(SecureLock, self).__init__(_Lock, timeout)
+    def __init__(self, *args, **kwargs):
+        super(SecureLock, self).__init__(_Lock, *args, **kwargs)
 
 
 class SecureRLock(SecureLockBase):
-    def __init__(self, timeout=30):
-        super(SecureRLock, self).__init__(_RLock, timeout)
+    def __init__(self, *args, **kwargs):
+        super(SecureRLock, self).__init__(_RLock, *args, **kwargs)
 
 
 if __name__ == '__main__':
-    from gevent import monkey, spawn, joinall
+    from gevent import monkey, spawn, joinall, get_hub, lock
+    import gevent
 
     monkey.patch_all()
     import time
 
-    l = SecureLock(3)
+    h = get_hub()
+    print(h)
+
+    time.sleep(5)
+
+    l = lock.Semaphore() # SecureRLock(3)
 
     def acquire_and_wait():
+        print('<acquire_and_wait')
+        #spawn(get_hub().threadpool.apply, sleep, (5,))
         with l:
             print('acquired')
-            time.sleep(60)
+            time.sleep(5)
+        print('release')
+        print('acquire_and_wait>')
 
     def acquire():
+        print('<acquire')
+        print('try acq')
         with l:
             print('acquired 2')
+        print('acquire>')
 
+    def acthre():
+        t2 = spawn(sleep)
+        t1 = spawn(acquire)
+        joinall([t1, t2])
+
+    def sleep(d=30):
+        print('<sleep')
+        gevent.sleep(d)
+        print('sleep>')
 
     t1 = spawn(acquire_and_wait)
-    time.sleep(1)
-    t2 = spawn(acquire)
+    gevent.sleep(0.5)
+    t2 = spawn(sleep, 5)
+    gevent.sleep(0.5)
+    spawn(h.threadpool.apply(acthre))
 
     joinall([t1, t2])
 

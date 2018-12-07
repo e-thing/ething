@@ -16,7 +16,7 @@ class ResourceDbCache(object):
         self.__db = core.db
         self.__resources = dict()
         self.__log = logging.getLogger("ething.ResourceDbCache")
-        self.__lock = SecureRLock() # threading.RLock()
+        self.__lock = SecureRLock(name='DbCache') # threading.RLock()
 
     def load(self):
         with self.__lock:

@@ -62,7 +62,7 @@ if bluepy_imported:
         }
 
         def setup(self):
-            self.core.scheduler.setInterval(self.config['scan_interval'], self.scan, thread=process_mode, name="blea.scan", allow_multiple=False)
+            self.core.scheduler.setInterval(self.config['scan_interval'], self.scan, thread=process_mode, name="blea.scan")
 
         def scan(self):
 

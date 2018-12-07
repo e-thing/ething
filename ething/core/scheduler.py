@@ -15,7 +15,7 @@ _LOGGER = logging.getLogger('ething.scheduler')
 
 class Task(object):
 
-    def __init__(self, target, args=(), kwargs=None, name=None, thread=True, instance=None, condition=None, allow_multiple=True):
+    def __init__(self, target, args=(), kwargs=None, name=None, thread=True, instance=None, condition=None, allow_multiple=False):
 
         if not callable(target):
             raise Exception('target must be callable')
