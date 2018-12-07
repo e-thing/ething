@@ -134,7 +134,7 @@ class SecureLockBase(object):
             if mode == 'gevent':
                 from gevent.util import print_run_info
                 print_run_info()
-            raise RuntimeError('Lock is blocked by %s' % self._owner)
+            raise RuntimeError('Lock %s is blocked by %s' % (self._name, self._owner))
 
     def __exit__(self, type, value, traceback):
         self.release()

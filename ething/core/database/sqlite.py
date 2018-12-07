@@ -23,6 +23,20 @@ else:
     py3 = False
 
 
+class Cursor(sqlite3.Cursor):
+    """ A greenlet friendly sub-class of sqlite3.Cursor. """
+
+
+for method in [sqlite3.Cursor.executemany,
+               sqlite3.Cursor.executescript,
+               sqlite3.Cursor.fetchone,
+               sqlite3.Cursor.fetchmany,
+               sqlite3.Cursor.fetchall]:
+    setattr(Cursor, method.__name__, make_it_green(method))
+
+setattr(Cursor, 'execute', make_it_green(sqlite3.Cursor.execute))
+
+
 class Connection(sqlite3.Connection):
     """ A greenlet friendly sub-class of sqlite3.Connection. """
 
@@ -34,6 +48,11 @@ class Connection(sqlite3.Connection):
         # Luckily for us we can switch this check off.
         kwargs['check_same_thread'] = False
         super(Connection, self).__init__(*args, **kwargs)
+
+    def cursor(self):
+        return Cursor(self)
+
+setattr(Connection, 'execute', make_it_green(sqlite3.Connection.execute))
 
 for method in [sqlite3.Connection.commit,
                sqlite3.Connection.rollback]:
@@ -265,16 +284,16 @@ class SQLite(BaseClass):
             self.db.commit()
             c.close()
 
-    @make_it_green
     def get_table_rows(self, table_name, query = None, start=0, length=None, keys=None, sort=None):
-        rows = []
+        _rows = []
 
         with self.lock:
             c = self.db.cursor()
             c.execute("SELECT data FROM '%s'" % (table_name,))
-            for row in c.fetchall():
-                rows.append(json.loads(row[0], cls=Decoder))
+            _rows = c.fetchall()
             c.close()
+
+        rows = [json.loads(row[0], cls=Decoder) for row in _rows]
 
         if query:
             parser = TableQueryParser(compiler=attribute_compiler, tz=getattr(self, 'tz', None))
