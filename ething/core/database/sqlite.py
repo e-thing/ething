@@ -284,16 +284,9 @@ class SQLite(BaseClass):
             self.db.commit()
             c.close()
 
-    def get_table_rows(self, table_name, query = None, start=0, length=None, keys=None, sort=None):
-        _rows = []
-
-        with self.lock:
-            c = self.db.cursor()
-            c.execute("SELECT data FROM '%s'" % (table_name,))
-            _rows = c.fetchall()
-            c.close()
-
-        rows = [json.loads(row[0], cls=Decoder) for row in _rows]
+    @make_it_green
+    def _select_table_rows(self, raw_rows, query = None, start=0, length=None, keys=None, sort=None):
+        rows = [json.loads(row[0], cls=Decoder) for row in raw_rows]
 
         if query:
             parser = TableQueryParser(compiler=attribute_compiler, tz=getattr(self, 'tz', None))
@@ -308,11 +301,22 @@ class SQLite(BaseClass):
             start = start or 0
 
         rows = rows[start:(length + start if length is not None else None)]
-        
+
         if keys:
             rows = [filter_obj(row, keys) for row in rows]
-        
+
         return rows
+
+    def get_table_rows(self, table_name, query = None, start=0, length=None, keys=None, sort=None):
+        _rows = []
+
+        with self.lock:
+            c = self.db.cursor()
+            c.execute("SELECT data FROM '%s'" % (table_name,))
+            _rows = c.fetchall()
+            c.close()
+
+        return self._select_table_rows(_rows, query, start, length, keys, sort)
 
     def insert_table_row(self, table_name, row_data):
         with self.lock:

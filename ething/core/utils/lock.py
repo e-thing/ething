@@ -3,23 +3,27 @@
 from ething.core.green import get_current, mode
 import threading
 import sys
-import logging
-import time
+#import logging
+#import time
 
 
-_LOGGER = logging.getLogger('ething.lock')
+#_LOGGER = logging.getLogger('ething.lock')
 
 if sys.version_info >= (3, 0):
     py3 = True
 else:
     py3 = False
 
-if py3:
+if py3 and False:
     _Lock = threading.Lock
     _RLock = threading.RLock
 else:
 
-    from Queue import Queue, Full, Empty
+    try:
+        from queue import Queue, Full, Empty
+    except ImportError:
+        from Queue import Queue, Full, Empty
+
 
     class _Lock(object):
         """
@@ -109,23 +113,23 @@ class SecureLockBase(object):
         self._timeout = timeout
         self._owner = None
         self._name = name
-        self._t1 = None
+        #self._t1 = None
 
     def acquire(self, blocking=True, timeout=-1):
         c = get_current()
-        t0 = time.time()
-        _LOGGER.debug('[lock] %s wait acquire by %s' % (self._name, c))
+        #t0 = time.time()
+        #_LOGGER.debug('[lock] %s wait acquire by %s' % (self._name, c))
         res = self._lock.acquire(blocking, timeout)
         if res:
-            self._t1 = time.time()
-            _LOGGER.debug('[lock] %s acquired after %f sec by %s' % (self._name, self._t1 - t0, c))
+            #self._t1 = time.time()
+            #_LOGGER.debug('[lock] %s acquired after %f sec by %s' % (self._name, self._t1 - t0, c))
             self._owner = c
-        else:
-            _LOGGER.debug('[lock] %s not acquired by %s' % (self._name, c))
+        #else:
+            #_LOGGER.debug('[lock] %s not acquired by %s' % (self._name, c))
         return res
 
     def release(self):
-        _LOGGER.debug('[lock] %s release after %f sec by %s' % (self._name, time.time() - self._t1, get_current()))
+        #_LOGGER.debug('[lock] %s release after %f sec by %s' % (self._name, time.time() - self._t1, get_current()))
         return self._lock.release()
 
     def __enter__(self):
@@ -162,7 +166,7 @@ if __name__ == '__main__':
 
     time.sleep(5)
 
-    l = lock.Semaphore() # SecureRLock(3)
+    l = SecureLock(30)
 
     def acquire_and_wait():
         print('<acquire_and_wait')
