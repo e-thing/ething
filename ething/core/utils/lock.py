@@ -1,6 +1,6 @@
 # coding: utf-8
 
-from ething.core.green import get_current, mode
+from ..green import get_current, mode
 import threading
 import sys
 #import logging
