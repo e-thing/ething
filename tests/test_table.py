@@ -65,44 +65,16 @@ def test_table_unicode(core):
     assert len(f.select(query=u'name == "rémi"')) == 1
 
 
-def test_benchmark(core):
-
-    f = core.create('resources/Table', {
-        'name': 'table.tb'
-    })
-
-    start = time.time()
-
-    for _ in range(100):
-        f.insert({
-            "a": 1,
-            "b": False,
-            "c": 4.5,
-            "d": "string"
-        })
-
-    end = time.time()
-
-    print("insertion time: %f s" % ((end - start)/100))
-
-    start = time.time()
-
-    for _ in range(10):
-        f.select()
-
-    end = time.time()
-
-    print("select time: %f s" % ((end - start) / 10))
-
-
 @pytest.mark.parametrize("type,database,module", [
     ("sqlite", ':memory:', 'sqlite3'),
     ("sqlite", 'dbfile', 'sqlite3'),
     ("unqlite", ':memory:', 'unqlite'),
     ("unqlite", 'dbfile', 'unqlite'),
     ("mongodb", 'db', 'pymongo'),
+    ("cached_sqlite", ':memory:', 'sqlite3'),
+    ("cached_sqlite", 'dbfile', 'sqlite3'),
 ])
-def test_benchmark_all(type, database, module):
+def test_benchmark(type, database, module):
 
     if module:
         try:
@@ -158,3 +130,9 @@ def test_benchmark_all(type, database, module):
     end = time.time()
 
     print("[%s] filter time: %f s" % (name, (end - start) / 10))
+
+    if hasattr(core.db, 'commit'):
+        start = time.time()
+        core.db.commit()
+        end = time.time()
+        print("commit time: %f s" % (end - start))

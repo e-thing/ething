@@ -8,7 +8,7 @@
       <componant :is="input.type" v-bind="extractOptions(input)" v-model="args[input.name]"/>
     </div>
 
-    <q-btn class="col" flat :icon="icon" :label="label" :loading="loading" @click="run" color="primary" />
+    <q-btn class="col" flat :icon="icon" :label="label" :loading="loading" @click="run" />
   </div>
 </template>
 

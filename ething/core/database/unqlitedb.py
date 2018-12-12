@@ -105,8 +105,8 @@ for method in [UnQLite.commit,
 
 class UnQLiteDB(BaseClass):
 
-    def __init__(self, **config):
-        super(UnQLiteDB, self).__init__(**config)
+    def __init__(self, core, **config):
+        super(UnQLiteDB, self).__init__(core, **config)
         if self.database == ':memory:':
             self.file = None
         else:
@@ -118,10 +118,10 @@ class UnQLiteDB(BaseClass):
 
         self.log.info('connected to database: %s' % (self.file or 'memory'))
 
-        self.resources = self.db.collection('resources')
+        #self.resources = self.db.collection('resources')
         self.fs = self.db.collection('fs')
 
-        self.resources.create()
+        #self.resources.create()
         self.fs.create()
 
     def disconnect(self):
@@ -145,26 +145,26 @@ class UnQLiteDB(BaseClass):
     # Resources
     #
 
-    def _get_db_id_from_resource_id(self, resource_id):
-        rs = self.resources.filter(lambda r: decode_db(r['id']) == resource_id)
-        if len(rs):
-            return rs[0]['__id']
-        raise Exception('unknown resource id "%s"' % resource_id)
-
-    def list_resources(self):
-        return map(decode, self.resources.all())
-
-    def update_resource(self, resource):
-        self.resources.update(self._get_db_id_from_resource_id(resource['id']), encode(resource))
-        self.db.commit()
-
-    def insert_resource(self, resource):
-        self.resources.store(encode(resource))
-        self.db.commit()
-
-    def remove_resource(self, resource_id):
-        self.resources.delete(self._get_db_id_from_resource_id(resource_id))
-        self.db.commit()
+    # def _get_db_id_from_resource_id(self, resource_id):
+    #     rs = self.resources.filter(lambda r: decode_db(r['id']) == resource_id)
+    #     if len(rs):
+    #         return rs[0]['__id']
+    #     raise Exception('unknown resource id "%s"' % resource_id)
+    #
+    # def list_resources(self):
+    #     return map(decode, self.resources.all())
+    #
+    # def update_resource(self, resource):
+    #     self.resources.update(self._get_db_id_from_resource_id(resource['id']), encode(resource))
+    #     self.db.commit()
+    #
+    # def insert_resource(self, resource):
+    #     self.resources.store(encode(resource))
+    #     self.db.commit()
+    #
+    # def remove_resource(self, resource_id):
+    #     self.resources.delete(self._get_db_id_from_resource_id(resource_id))
+    #     self.db.commit()
 
 
     #
@@ -177,9 +177,9 @@ class UnQLiteDB(BaseClass):
             return rs[0]['__id']
         raise Exception('unknown file id "%s"' % file_id)
 
-    def storeFile(self, filename, contents, metadata=None, id=None):
+    def storeFile(self, filename, contents, metadata=None):
         if contents:
-            id = ShortId.generate() if id is None else id
+            id = ShortId.generate()
 
             self.fs.store(encode({
                 'id': id,
@@ -297,7 +297,7 @@ class UnQLiteDB(BaseClass):
         table.store(encode(row_data))
         self.db.commit()
 
-    def update_table_row(self, table_name, row_id, row_data):
+    def update_table_row(self, table_name, row_id, row_data, return_old):
         """return the old row"""
         table = self.db.collection(table_name)
 
@@ -307,9 +307,10 @@ class UnQLiteDB(BaseClass):
         table.update(updated_row['__id'], encode(row_data))
         self.db.commit()
 
-        return decode(updated_row)
+        if return_old:
+            return decode(updated_row)
 
-    def remove_table_row(self, table_name, row_id):
+    def remove_table_row(self, table_name, row_id, return_old):
         """return the removed row"""
         table = self.db.collection(table_name)
 
@@ -319,7 +320,8 @@ class UnQLiteDB(BaseClass):
         table.delete(deleted_row['__id'])
         self.db.commit()
 
-        return decode(deleted_row)
+        if return_old:
+            return decode(deleted_row)
 
     def clear_table(self, table_name):
         table = self.db.collection(table_name)

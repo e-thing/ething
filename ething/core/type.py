@@ -625,7 +625,7 @@ class Class (Type):
   
   def set(self, value, context = None):
     if not isinstance(value, self.cls):
-      raise ValueError('not an instance of %s' % self.cls.__name__)
+      raise ValueError('%s not an instance of %s' % (value, self.cls.__name__))
     return value
   
   def unserialize(self, data, context = None):

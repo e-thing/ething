@@ -5,7 +5,7 @@ from functools import wraps
 mode = 'threading'
 
 try:
-    from gevent import monkey, events, config, getcurrent
+    from gevent import monkey, events, config, getcurrent, time
 
 except ImportError:
 
@@ -21,6 +21,9 @@ except ImportError:
         def get_current():
             return threading.current_thread()
 
+        def event_loop():
+            pass
+
     else:
         mode = 'eventlet'
 
@@ -35,6 +38,9 @@ except ImportError:
 
         def get_current():
             return eventlet.getcurrent()
+
+        def event_loop():
+            eventlet.sleep(0)
 
 else:
     mode = 'gevent'
@@ -61,11 +67,19 @@ else:
     def get_current():
         return getcurrent()
 
+    def event_loop():
+        time.sleep(0) # do the switching stuff
 
-def make_it_green(method):
-    @wraps(method, ['__name__', '__doc__'])
-    def apply(*args, **kwargs):
-        return _non_blocking_run(method, args, kwargs)
-    return apply
+
+if mode == 'threading':
+    def make_it_green(method):
+        return method
+else:
+    def make_it_green(method):
+        @wraps(method, ['__name__', '__doc__'])
+        def apply(*args, **kwargs):
+            return _non_blocking_run(method, args, kwargs)
+        return apply
+
 
 print('initialized for %s' % mode)

@@ -10,6 +10,7 @@ class Value(object):
     def __init__(self, parser, value=None, value_type = None):
         self.__parser = parser
         self.__value = value
+        self.__date = False
 
         if value_type is None:
           value_type = type(self.__value).__name__
@@ -35,9 +36,10 @@ class Value(object):
         return bool(self.getDate())
 
     def getDate(self):
-        if not hasattr(self, '__date'):
+        if self.__date is False:
             self.__date = None
             try:
+                # transform it in UTC
                 tz = self.__parser.tz
                 d = parse(
                     self.__value,
@@ -47,11 +49,11 @@ class Value(object):
                         'TO_TIMEZONE': 'UTC'
                     }
                 )
+                # make it offset-naive
                 if isinstance(d, datetime.datetime):
                     self.__date = d.replace(tzinfo=None)
             except:
                 pass
-
         return self.__date
 
     def __str__(self):

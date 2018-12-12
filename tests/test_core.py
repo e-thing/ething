@@ -58,7 +58,11 @@ def test_import_export(core):
 
     exported_data = export_data(core)
 
-    core2 = Core()
+    config2 = core.config.export()
+
+    core.destroy()
+
+    core2 = Core(config2)
     core2.init()
 
     import_data(core2, exported_data)

@@ -77,23 +77,29 @@ class Core(object):
         self.resourceQueryParser = ResourceQueryParser(tz=str(self.local_tz))
 
         try:
-            db_type = self.config.get('db.type', 'unqlite').lower()
+            db_type = self.config.get('db.type', 'cached_sqlite').lower()
             if db_type == 'mongodb':
                 from .database.mongodb import MongoDB
                 db_ctor = MongoDB
             elif db_type == 'unqlite':
                 from .database.unqlitedb import UnQLiteDB
                 db_ctor = UnQLiteDB
-            else:
+            elif db_type == 'sqlite':
                 from .database.sqlite import SQLite
                 db_ctor = SQLite
+            elif db_type == 'cached_sqlite':
+                from .database.cached_sqlite import CachedSQLite
+                db_ctor = CachedSQLite
+            else:
+                raise Exception('unknown db_type %s' % db_type)
 
             self.log.info('db type: %s' % db_type)
-            self.db = db_ctor(tz = str(self.local_tz), **(self.config.get('db', {})))
+            self.db = db_ctor(self, tz = str(self.local_tz), **(self.config.get('db', {})))
 
             self.db.connect()
 
             if clear_db:
+                self.log.info('clear db')
                 self.db.clear()
 
             self.db.init()
@@ -110,11 +116,17 @@ class Core(object):
             self.log.exception('init database error')
             raise e
 
-    def stop(self):
+    def stop(self, callback = None):
         self.log.info("stopping ...")
         self._plugins_call('stop')
         self.dispatchSignal('DaemonStopped')
         self.running = False
+
+        if callback is not None:
+            try:
+                callback(self)
+            except:
+                self.log.exception('stop callback exception')
 
     @property
     def version(self):
@@ -131,8 +143,8 @@ class Core(object):
         if hasattr(self, 'db'):
             self.db.disconnect()
 
-    def restart(self):
-        self.stop()
+    def restart(self, callback = None):
+        self.stop(callback)
         self.restart_flag = True
 
     def init(self, clear_db=False):
@@ -287,3 +299,4 @@ class Core(object):
                     self.log.info('plugin %s unloaded' % p.name)
             except:
                 self.log.exception("plugin %s: error while executing '%s'" % (p.name, method))
+

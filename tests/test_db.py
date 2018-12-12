@@ -81,13 +81,13 @@ def test_db_table(core):
     updated_row.update({
         'age': 2
     })
-    old_row = core.db.update_table_row(table_name, 'azerty1', updated_row)
+    old_row = core.db.update_table_row(table_name, 'azerty1', updated_row, True)
     assert old_row == table_rows[1]
 
     rows = core.db.get_table_rows(table_name, query="age > 10")
     assert len(rows) == 1
 
-    core.db.remove_table_row(table_name, 'azerty1')
+    core.db.remove_table_row(table_name, 'azerty1', True)
 
     rows = core.db.get_table_rows(table_name)
     assert len(rows) == len(table_rows) - 1

@@ -152,7 +152,7 @@ class Table(Resource):
             if expireAfter is not None:
                 expiratedDate = datetime.datetime.utcnow() - datetime.timedelta(0, expireAfter)
 
-                removed_rows = self.db.remove_table_rows_by_query(self.collectionName, 'date < "%s"' % expiratedDate.isoformat())
+                removed_rows = self.db.remove_table_rows_by_query(self.collectionName, 'date < "%s"' % expiratedDate.isoformat(), True)
 
                 self._update_meta(removed_rows = removed_rows)
 
@@ -213,7 +213,7 @@ class Table(Resource):
     def remove_rows(self, row_ids):
         with self:
 
-            removed_rows = self.db.remove_table_rows_by_id(self.collectionName, row_ids)
+            removed_rows = self.db.remove_table_rows_by_id(self.collectionName, row_ids, True)
             self._update_meta(removed_rows=removed_rows)
             return len(removed_rows)
 
@@ -255,7 +255,9 @@ class Table(Resource):
                 for k in data:
                     v = data[k]
 
-                    if not(isinstance(v, integer_types) or isinstance(v, float) or isinstance(v, string_types) or isinstance(v, bool) or v is None):
+                    is_number = isinstance(v, integer_types) or isinstance(v, float)
+
+                    if not(is_number or isinstance(v, string_types) or isinstance(v, bool) or v is None):
                         raise Exception(
                             'The value must either be a string or a number or a boolean or null.')
 
@@ -290,14 +292,20 @@ class Table(Resource):
                     if k == 'date':
                         # check the format
                         try:
-                            data[k] = parse(v)
+                            if is_number:
+                                data[k] = datetime.datetime.utcfromtimestamp(v) # naive UTC
+                            else:
+                                data[k] = parse(v)
+                                if data[k].tzinfo is not None:
+                                    # make it naive UTC
+                                    data[k] = data[k].astimezone(pytz.utc).replace(tzinfo=None)
                         except:
                             raise Exception('Invalid date "%s"' % v)
 
                 # add date if not already set
                 if setDate and 'date' not in data:
                     # add the insertion date for that document
-                    data['date'] = datetime.datetime.utcnow()
+                    data['date'] = datetime.datetime.utcnow() # naive UTC
 
                 data['id'] = ShortId.generate()
 
@@ -390,7 +398,7 @@ class Table(Resource):
                     new_row['id'] = row_id
 
                     # insert the data
-                    old_row = self.db.update_table_row(self.collectionName, new_row)
+                    old_row = self.db.update_table_row(self.collectionName, new_row, True)
 
                     if old_row:
                         self._update_meta(removed_rows=[old_row], added_rows=[new_row])

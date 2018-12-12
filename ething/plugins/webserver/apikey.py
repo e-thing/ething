@@ -120,13 +120,13 @@ class ApikeyManager(object):
             return Apikey.unserialize(rows[0], context={'manager': self})
 
     def remove(self, id):
-        self.db.remove_table_row(self.table_name, id)
+        self.db.remove_table_row(self.table_name, id, False)
 
     def insert(self, apikey):
         self.db.insert_table_row(self.table_name, apikey.serialize())
 
     def save(self, apikey):
-        self.db.update_table_row(self.table_name, apikey.id, apikey.serialize())
+        self.db.update_table_row(self.table_name, apikey.id, apikey.serialize(), False)
 
     def clear(self):
         self.db.clear_table(self.table_name)

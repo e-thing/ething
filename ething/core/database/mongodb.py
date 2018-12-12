@@ -12,12 +12,12 @@ import bson
 
 class MongoDB(BaseClass):
 
-    def __init__(self, **config):
+    def __init__(self, core, **config):
         self.host = 'localhost'
         self.port = 27017
         self.user = None
         self.password = None
-        super(MongoDB, self).__init__(**config)
+        super(MongoDB, self).__init__(core, **config)
 
     def connect(self):
         server = 'mongodb://' + self.host + ':' + str(self.port)
@@ -88,51 +88,45 @@ class MongoDB(BaseClass):
     # Resources
     #
 
-    def list_tables(self):
-        if hasattr(self.db, 'collection_names'):
-            return self.db.collection_names(include_system_collections=False)
-        else:
-            return self.db.list_collection_names()
-
-    def list_resources(self):
-        cursor = self.db["resources"].find({})
-        resources = []
-
-        for doc in cursor:
-            doc['id'] = doc['_id']
-            del doc['_id']
-            resources.append(doc)
-
-        return resources
-
-    def update_resource(self, resource):
-        resource['_id'] = resource['id']
-        del resource['id']
-        self.db["resources"].replace_one({'_id': resource['_id']}, resource)
-
-    def insert_resource(self, resource):
-        resource['_id'] = resource['id']
-        del resource['id']
-        try:
-            self.db["resources"].insert_one(resource)
-        except:
-            # code 11000 on duplicate error
-            raise Exception('internal error: doc insertion failed')
-
-    def remove_resource(self, resource_id):
-        self.db["resources"].delete_one({'_id': resource_id})
+    # def list_resources(self):
+    #     cursor = self.db["resources"].find({})
+    #     resources = []
+    #
+    #     for doc in cursor:
+    #         doc['id'] = doc['_id']
+    #         del doc['_id']
+    #         resources.append(doc)
+    #
+    #     return resources
+    #
+    # def update_resource(self, resource):
+    #     resource['_id'] = resource['id']
+    #     del resource['id']
+    #     self.db["resources"].replace_one({'_id': resource['_id']}, resource)
+    #
+    # def insert_resource(self, resource):
+    #     resource['_id'] = resource['id']
+    #     del resource['id']
+    #     try:
+    #         self.db["resources"].insert_one(resource)
+    #     except:
+    #         # code 11000 on duplicate error
+    #         raise Exception('internal error: doc insertion failed')
+    #
+    # def remove_resource(self, resource_id):
+    #     self.db["resources"].delete_one({'_id': resource_id})
 
 
     #
     # File System (used for storing images, text ...)
     #
 
-    def storeFile(self, filename, contents, metadata=None, id=None):
+    def storeFile(self, filename, contents, metadata=None):
         if contents:
 
             bucket = gridfs.GridFSBucket(self.db)
 
-            id = ShortId.generate() if id is None else id
+            id = ShortId.generate()
 
             grid_in = bucket.open_upload_stream_with_id(id, filename, metadata=metadata or {})
 
@@ -198,6 +192,12 @@ class MongoDB(BaseClass):
     #
     # Table (used for storing data time series)
     #
+
+    def list_tables(self):
+        if hasattr(self.db, 'collection_names'):
+            return self.db.collection_names(include_system_collections=False)
+        else:
+            return self.db.list_collection_names()
 
     def create_table(self, table_name):
         pass
@@ -275,22 +275,22 @@ class MongoDB(BaseClass):
             del row_data['id']
         self.db[table_name].insert_many(rows_data, ordered=False)
 
-    def update_table_row(self, table_name, row_id, row_data):
+    def update_table_row(self, table_name, row_id, row_data, return_old):
         """return the old row"""
         old_row = self.db[table_name].find_one_and_replace({'_id': row_id}, row_data)
-        if old_row:
+        if return_old and old_row:
             old_row['id'] = old_row['_id']
             del old_row['_id']
             return old_row
 
-    def remove_table_row(self, table_name, row_id):
+    def remove_table_row(self, table_name, row_id, return_old):
         """return the removed row"""
         try:
             old_row = self.db[table_name].find_one_and_delete({
                 '_id': row_id
             })
 
-            if old_row:
+            if return_old and old_row:
                 old_row['id'] = old_row['_id']
                 del old_row['_id']
                 return old_row

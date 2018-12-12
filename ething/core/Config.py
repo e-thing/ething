@@ -136,6 +136,9 @@ class ConfigBase(Mapping):
 
         raise ValueError('invalid arguments')
 
+    def export(self):
+        return copy.deepcopy(self._store)
+
 
 class Config(ConfigBase):
     def _notify_change(self, child):

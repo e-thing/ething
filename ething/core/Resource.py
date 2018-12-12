@@ -292,10 +292,9 @@ class Resource(DbEntity):
         filter = self.ething.resourceQueryParser.compile(expression)
         return filter(self)
 
-    def repair(self, readonly = False):
+    def repair(self):
         with self:
             extends = compute_extends(type(self))
             if extends != self.extends:
-                self.log.warning('extends attribute must be updated')
-                if not readonly:
-                    self.extends = extends
+                self.log.warning('extends attribute updated')
+                self.extends = extends

@@ -34,7 +34,11 @@ def install(core, app, auth, **kwargs):
     @app.route('/api/utils/reset')
     @auth.required()
     def reset():
-        core.reset()
+
+        def clear_db(core):
+            core.db.clear()
+
+        core.restart(clear_db)
         return '', 204
 
 

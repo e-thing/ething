@@ -46,10 +46,12 @@ class File(Resource):
     def remove(self, removeChildren=False):
 
         # remove the file from GridFS
-        self.ething.db.removeFile(self.content)
+        if self.content is not None:
+            self.ething.db.removeFile(self.content)
 
         # remove any thumbnail
-        self.ething.db.removeFile(self.thumb)
+        if self.thumb is not None:
+            self.ething.db.removeFile(self.thumb)
 
         # remove the resource
         super(File, self).remove(removeChildren)
@@ -75,7 +77,10 @@ class File(Resource):
         return False
 
     def read(self, encoding=None):
-        contents = self.ething.db.retrieveFile(self.content)
+        if self.content is not None:
+            contents = self.ething.db.retrieveFile(self.content)
+        else:
+            contents = None
 
         if contents is None:
             contents = b''
@@ -94,7 +99,8 @@ class File(Resource):
                 bytes = bytes.encode(encoding)
 
             # remove that file if it exists
-            self.ething.db.removeFile(self.content)
+            if self.content is not None:
+                self.ething.db.removeFile(self.content)
             self.content = None
             self.size = 0
 
@@ -191,7 +197,8 @@ class File(Resource):
                     except:
                         pass
 
-                self.ething.db.removeFile(self.thumb)
+                if self.thumb is not None:
+                    self.ething.db.removeFile(self.thumb)
                 self.thumb = None
 
                 if thumb:
@@ -214,7 +221,7 @@ class File(Resource):
         return True
 
     def readThumbnail(self):
-        return self.ething.db.retrieveFile(self.thumb)
+        return self.ething.db.retrieveFile(self.thumb) if self.thumb is not None else None
 
     @staticmethod
     def createThumb(imagedata, thumbWidth):

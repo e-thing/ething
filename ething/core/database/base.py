@@ -8,14 +8,21 @@ import logging
 
 number_types = integer_types + (float, )
 
+LOGGER = logging.getLogger('ething.db')
+
 
 class BaseClass (object):
 
-    def __init__(self, **config):
-        self.log = logging.getLogger('ething.db')
+    def __init__(self, core, **config):
+        self._core = core
+        self.log = LOGGER
 
         for k in config:
             setattr(self, k, config[k])
+
+    @property
+    def core(self):
+        return self._core
 
     def connect(self):
         raise NotImplementedError()
@@ -53,7 +60,7 @@ class BaseClass (object):
             self.insert_table_row(self._key_value_store_tablename, self._key_value_store_cache)
 
     def _update_key_value_store(self):
-        self.update_table_row(self._key_value_store_tablename, self._key_value_store_id, self._key_value_store_cache)
+        self.update_table_row(self._key_value_store_tablename, self._key_value_store_id, self._key_value_store_cache, False)
 
     def kv_set(self, key, value):
         if key == 'id':
@@ -77,23 +84,26 @@ class BaseClass (object):
     #
 
     def list_resources(self):
-        raise NotImplementedError()
+        if not self.table_exists('resources'):
+            self.create_table('resources')
+
+        return self.get_table_rows('resources')
 
     def update_resource(self, resource):
-        raise NotImplementedError()
+        self.update_table_row('resources', resource['id'], resource, return_old=False)
 
     def insert_resource(self, resource):
-        raise NotImplementedError()
+        self.insert_table_row('resources', resource)
 
-    def remove_resource(self, resource):
-        raise NotImplementedError()
+    def remove_resource(self, resource_id):
+        self.remove_table_row('resources', resource_id, return_old=False)
 
 
     #
     # File System (used for storing images, text ...)
     #
 
-    def storeFile(self, filename, contents, metadata=None, id=None):
+    def storeFile(self, filename, contents, metadata=None):
         """return the file id"""
         raise NotImplementedError()
 
@@ -168,25 +178,26 @@ class BaseClass (object):
         for row_data in rows_data:
             self.insert_table_row(table_name, row_data)
 
-    def update_table_row(self, table_name, row_id, row_data):
+    def update_table_row(self, table_name, row_id, row_data, return_old):
         """return the old row"""
         raise NotImplementedError()
 
-    def remove_table_row(self, table_name, row_id):
+    def remove_table_row(self, table_name, row_id, return_old):
         """return the removed row"""
         raise NotImplementedError()
 
-    def remove_table_rows_by_id(self, table_name, row_ids):
+    def remove_table_rows_by_id(self, table_name, row_ids, return_old):
         removed_rows = []
         for row_id in row_ids:
-            removed_row = self.remove_table_row(table_name, row_id)
+            removed_row = self.remove_table_row(table_name, row_id, return_old=return_old)
             if removed_row:
                 removed_rows.append(removed_row)
-        return removed_rows
+        if return_old:
+            return removed_rows
 
-    def remove_table_rows_by_query(self, table_name, query):
+    def remove_table_rows_by_query(self, table_name, query, return_old):
         rows_to_be_removed = self.get_table_rows(table_name, query = query)
-        return self.remove_table_rows_by_id(table_name, [row.get('id') for row in rows_to_be_removed])
+        return self.remove_table_rows_by_id(table_name, [row.get('id') for row in rows_to_be_removed], return_old=return_old)
 
     def clear_table(self, table_name):
         raise NotImplementedError()
