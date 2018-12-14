@@ -242,7 +242,9 @@ class FlaskApp(Flask):
         if hasattr(obj, 'toJson'):
             return obj.toJson()
         if isinstance(obj, datetime.datetime):
-            return obj.replace(tzinfo=pytz.utc).astimezone(self.core.local_tz).isoformat()
+            if obj.tzinfo is None:
+                obj = obj.replace(tzinfo=pytz.utc)
+            return obj.astimezone(self.core.local_tz).isoformat()
         if isinstance(obj, binary_type):
             return obj.decode('utf8')
         return obj.__dict__

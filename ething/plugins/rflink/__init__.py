@@ -5,7 +5,7 @@ from .RFLinkSwitch import RFLinkSwitch
 from .RFLinkGenericSensor import RFLinkGenericSensor
 from ething.core.plugin import Plugin
 from ething.core.TransportProcess import LineReader, TransportProcess, SerialTransport
-from ething.core.scheduler import Scheduler
+from ething.core.date import utcnow
 from .helpers import parse_incoming_data, is_protocol, Result
 import time
 import re
@@ -255,7 +255,7 @@ class RFLinkProtocol(LineReader):
     def check_disconnect(self):
         devices = self.core.find(lambda r: r.isTypeof('resources/RFLinkNode'))
         
-        now = datetime.datetime.utcnow()
+        now = utcnow()
         
         for device in devices:
             if device.lastSeenDate and now - device.lastSeenDate > datetime.timedelta(seconds=1800):

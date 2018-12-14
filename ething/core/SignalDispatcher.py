@@ -84,3 +84,13 @@ class SignalDispatcher(object):
                                 if handler == weakref_handler():
                                     del self.handlers[type][index]
                                     break
+
+    def clear(self):
+        with self.r_lock:
+            self.handlers.clear()
+
+        while True:
+            try:
+                signal = self._queue.get(False)
+            except queue.Empty:
+                break

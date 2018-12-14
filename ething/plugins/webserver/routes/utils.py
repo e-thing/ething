@@ -152,13 +152,13 @@ def install(core, app, auth, **kwargs):
     @app.route('/api/utils/export')
     @auth.required()
     def export_route():
-        return app.jsonify(export_data(core))
+        return Response(export_data(core), mimetype='application/json')
 
     @app.route('/api/utils/import', methods=['POST'])
     @auth.required()
     def import_route():
 
-        data = request.get_json()
+        data = request.data
 
         if data:
             import_data(core, data)

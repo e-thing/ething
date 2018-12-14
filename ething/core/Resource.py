@@ -5,8 +5,8 @@ from .dbentity import *
 from .reg import get_definition_pathname
 from .rule.event import ResourceEvent, ResourceSignal
 from .Interface import Interface
+from .date import TzDate, utcnow
 from collections import Mapping
-import datetime
 import inspect
 import logging
 
@@ -113,8 +113,8 @@ def compute_extends(cls):
 @attr('description', type=String(), default='', description="A description of this resource.")
 @attr('data', type=RDict(allow_extra=True), default={}, description="A collection of arbitrary key-value pairs.")
 @attr('createdBy', type=Nullable(Id()), default=None, description="The id of the resource responsible of the creation of this resource, or null.")
-@attr('modifiedDate', default=lambda _: datetime.datetime.utcnow(), mode=READ_ONLY, description="Last time this resource was modified")
-@attr('createdDate', default=lambda _: datetime.datetime.utcnow(), mode=READ_ONLY, description="Create time for this resource")
+@attr('modifiedDate', type=TzDate(), default=lambda _: utcnow(), mode=READ_ONLY, description="Last time this resource was modified")
+@attr('createdDate', type=TzDate(), default=lambda _: utcnow(), mode=READ_ONLY, description="Create time for this resource")
 @attr('extends', mode=READ_ONLY, default=compute_extends, description="An array of classes this resource is based on.")
 @attr('type', mode=READ_ONLY, default=lambda cls: get_definition_pathname(cls), description="The type of the resource")
 @attr('id', default=lambda _: ShortId.generate(), mode=READ_ONLY, description="The id of the resource")
@@ -228,7 +228,7 @@ class Resource(DbEntity):
         self.log.debug("Resource created : %s" % str(self))
 
     def _before_save(self):
-        self.modifiedDate = datetime.datetime.utcnow()  # update the modification time
+        self.modifiedDate = utcnow()  # update the modification time
 
     def _save(self, dirty_attrs):
 

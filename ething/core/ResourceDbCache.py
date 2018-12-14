@@ -80,6 +80,10 @@ class ResourceDbCache(object):
     def reload(self):
         self.load()
 
+    def unload(self):
+        with self.__lock:
+            self.__resources.clear()
+
     def remove(self, resource):
         with self.__lock:
             id = resource.id

@@ -1,12 +1,12 @@
 # coding: utf-8
 
 from ..Resource import Resource
+from ..date import TzDate, utcnow
 from ..entity import *
 
 from . import event
 from . import condition
 from . import action
-import datetime
 
 
 @attr('enabled', type=Boolean(), default=True, description="If True (default), the rule is enabled")
@@ -14,7 +14,7 @@ import datetime
 @attr('conditions', type=Array(condition.Condition, min_len = 0), default=[], description="A list of conditions. All conditions must match to execute this rule.")
 @attr('events', type=Array(event.Event, min_len = 1), description="A list of events describing when to execute this rule.")
 @attr('execution_count', default=0, mode=READ_ONLY, description="The number of times this rule has been executed")
-@attr('execution_date', default=None, mode=READ_ONLY, description="The last time this rule has been executed")
+@attr('execution_date', type=Nullable(TzDate()), default=None, mode=READ_ONLY, description="The last time this rule has been executed")
 @attr('execution_error', default=None, mode=READ_ONLY, description="The last error logged")
 class Rule(Resource):
     """
@@ -87,7 +87,7 @@ class Rule(Resource):
         with self:
             self.execution_count = self.execution_count + 1
 
-            self.execution_date = datetime.datetime.utcnow()
+            self.execution_date = utcnow()
 
             self.execution_error = None
 

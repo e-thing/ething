@@ -5,7 +5,7 @@ from functools import wraps
 mode = 'threading'
 
 try:
-    from gevent import monkey, events, config, getcurrent, time
+    from gevent import monkey, getcurrent, time
 
 except ImportError:
 
@@ -45,19 +45,6 @@ except ImportError:
 else:
     mode = 'gevent'
     monkey.patch_all()
-
-    config.max_blocking_time = 1.0
-    config.monitor_thread = True
-
-    def event_handler(event):
-        if isinstance(event, events.EventLoopBlocked):
-            print('DBG: %s' % event)
-            #print(event.greenlet)
-            #print('****')
-            #print(event.info)
-            #print(event.blocking_time)
-
-    events.subscribers.append(event_handler)
 
     from gevent.hub import get_hub
 

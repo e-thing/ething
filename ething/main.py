@@ -14,7 +14,7 @@ import os
 import errno
 import time
 import json
-from codecs import open
+from io import open
 import logging
 from logging.handlers import RotatingFileHandler
 import signal
@@ -211,9 +211,27 @@ def save_config(filename, conf):
         json.dump(conf, outfile, indent=1)
 
 
+def destroy():
+    if 'core' in globals():
+        try:
+            core.destroy()
+        except:
+            core.log.exception("exception in core.destroy()")
+
+    try:
+        remove_logger()
+    except Exception as e:
+        print("exception in remove_logger(): %s" % str(e))
+
+
+def exit(status=None):
+    destroy()
+    sys.exit(status)
+
+
 def main():
 
-    global CONFIG_FILE, PID_FILE
+    global CONFIG_FILE, PID_FILE, core
 
     parser = argparse.ArgumentParser(
         description='Launch EThing home automation server.')
@@ -225,14 +243,24 @@ def main():
                         help='set pid to the given file')
     parser.add_argument('-q', '--quiet', action='store_true',
                             help='Quiet mode, disable log messages written to the terminal')
+
     if os.name != 'nt':
         # not available on windows !
         parser.add_argument('-d', '--daemon', action='store_true',
                             help='launch this program as a daemon')
         parser.add_argument('--stop', action='store_true',
                             help='stop any running instance and exit')
+
     parser.add_argument('--repair', action='store_true',
                         help='try to repair the database and exit')
+    parser.add_argument('--export', type=str,
+                        help='dump the database content into the given file')
+    parser.add_argument('--import', type=str,
+                        help='load the database content into the given file')
+    parser.add_argument('--import-ignore-config', action='store_true',
+                        help='ignore the config during import')
+    parser.add_argument('--clear', action='store_true',
+                        help='clear all the database but keep the configuration')
 
     args = parser.parse_args()
 
@@ -308,10 +336,42 @@ def main():
     for module_name in find_plugins():
         core.use(module_name)
 
+    if args.clear:
+        core.log.info("clear database")
+        core.init(clear_db=True)
+        if getattr(args, 'import') is None:
+            exit()
+    else:
+        core.init()
+
     if args.repair:
         core.log.info("repairing...")
         core.repair()
-        sys.exit()
+        exit()
+
+    if args.export is not None:
+        from ething.core.utils.export import export_data
+        core.log.info("export to %s" % args.export)
+        data = export_data(core)
+
+        file = open(args.export, "w", encoding='utf8')
+        file.write(data)
+        file.close()
+
+        exit()
+
+    if getattr(args, 'import') is not None:
+        from ething.core.utils.export import import_data
+        filename = getattr(args, 'import')
+        core.log.info("import from %s" % filename)
+
+        file = open(filename, "r", encoding='utf8')
+        data = file.read()
+        file.close()
+
+        import_data(core, data, import_config=getattr(args, 'import_ignore_config'))
+
+        exit()
 
     exit_code = 0
 
@@ -357,15 +417,7 @@ def main():
         exit_code = 2
 
     finally:
-        try:
-            core.destroy()
-        except:
-            core.log.exception("exception in core.destroy()")
-
-        try:
-            remove_logger()
-        except Exception as e:
-            print("exception in remove_logger(): %s" % str(e))
+        destroy()
 
         if PID_FILE:
             try:

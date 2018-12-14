@@ -5,10 +5,9 @@ from .MihomeSensorHT import MihomeSensorHT
 from .MihomeMagnet import MihomeMagnet
 from ething.core.plugin import Plugin
 from ething.core.TransportProcess import Protocol, TransportProcess, UdpTransport, ThreadedTransport
-from ething.core.scheduler import Scheduler
+from ething.core.date import utcnow
 from .helpers import *
 import time
-import re
 import datetime
 
 
@@ -210,7 +209,7 @@ class MihomeProtocol(Protocol):
     def check_disconnect(self):
         devices = self.core.find(lambda r: r.isTypeof('resources/MihomeDevice'))
         
-        now = datetime.datetime.utcnow()
+        now = utcnow()
         
         for device in devices:
             if device.lastSeenDate and now - device.lastSeenDate > datetime.timedelta(seconds=self.ACTIVITY_TIMEOUT):

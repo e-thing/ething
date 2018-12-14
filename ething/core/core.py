@@ -10,6 +10,7 @@ from .version import __version__
 from .plugin import search_plugin_cls
 from .scheduler import Scheduler
 from .ResourceDbCache import ResourceDbCache
+from .green import mode
 
 import logging
 import pytz
@@ -30,6 +31,8 @@ class Core(object):
                     return instance
 
     def __init__(self, config=None, name=None):
+        self.__initialized = False
+
         self.running = False
         self.name = name
 
@@ -140,30 +143,59 @@ class Core(object):
 
         self._plugins_call('unload')
 
+        self.signalDispatcher.clear()
+        self.scheduler.clear()
+
         if hasattr(self, 'db'):
             self.db.disconnect()
+
+        if hasattr(self, 'resource_db_cache'):
+            self.resource_db_cache.unload()
+
+        self.__initialized = False
 
     def restart(self, callback = None):
         self.stop(callback)
         self.restart_flag = True
 
     def init(self, clear_db=False):
-        
-        self.scheduler.at(self._tick, hour='*', min='*', thread=False)
-        self.signalDispatcher.bind('ConfigUpdated', self._on_config_updated)
+        if not self.__initialized:
+            self.__initialized = True
 
-        # load db
-        self._init_database(clear_db=clear_db)
+            self.scheduler.at(self._tick, hour='*', min='*', thread=False)
+            self.signalDispatcher.bind('ConfigUpdated', self._on_config_updated)
 
-        # setup plugins
-        self._plugins_call('setup')
+            # load db
+            self._init_database(clear_db=clear_db)
 
-        #load the resources from the database
-        self.resource_db_cache.load()
-        self.is_db_loaded = True
+            # setup plugins
+            self._plugins_call('setup')
+
+            #load the resources from the database
+            self.resource_db_cache.load()
+            self.is_db_loaded = True
 
     def start(self):
         self.init()
+
+        if self.config.get('debug') and mode == 'gevent' and not getattr(self, '_gevent_dbg_installed', False):
+            from gevent import events, config
+
+            setattr(self, '_gevent_dbg_installed', True)
+
+            config.max_blocking_time = 1.0
+            config.monitor_thread = True
+
+            def event_handler(event):
+                if isinstance(event, events.EventLoopBlocked):
+                    print('DBG: %s' % event)
+                    # print(event.greenlet)
+                    # print('****')
+                    # print(event.info)
+                    # print(event.blocking_time)
+
+            events.subscribers.append(event_handler)
+
         self.running = True
         self._plugins_call('start')
         self.dispatchSignal('DaemonStarted')

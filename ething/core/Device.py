@@ -1,9 +1,9 @@
 # coding: utf-8
 from future.utils import string_types, integer_types, with_metaclass, listvalues
 from .Resource import Resource
+from .date import TzDate, utcnow
 from .reg import *
 from .rule.event import ResourceEvent, ResourceSignal
-import datetime
 
 
 class BatteryLevelChanged(ResourceSignal):
@@ -84,7 +84,7 @@ class DeviceDisconnectedEvent(ResourceEvent):
 @attr('battery', type=Nullable(Number(min=0, max=100)), default=None, watch=True, description="The battery level of this device (must be between 0 (empty) and 100 (full) , or null if the device has no battery information).")
 @attr('location', type=String(), default='', description="The location of this device.")
 @attr('connected', type=Boolean(), default=True, watch=True, description="Set to true when this device is connected.")
-@attr('lastSeenDate', mode=READ_ONLY, default=None, description="The last time this device was reached or made a request.")
+@attr('lastSeenDate', type=Nullable(TzDate()), mode=READ_ONLY, default=None, description="The last time this device was reached or made a request.")
 @attr('methods', default=lambda cls: [m.name for m in list_registered_methods(cls)], mode=READ_ONLY, description="The list of the methods available.")
 class Device(Resource):
 
@@ -100,7 +100,7 @@ class Device(Resource):
             connected = bool(connected)
 
             if connected:
-                self.lastSeenDate = datetime.datetime.utcnow()
+                self.lastSeenDate = utcnow()
 
             if self.connected != connected:
                 self.connected = connected

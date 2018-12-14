@@ -46,12 +46,13 @@ class Value(object):
                     languages=['en'],
                     settings={
                         'TIMEZONE': tz,
-                        'TO_TIMEZONE': 'UTC'
+                        'TO_TIMEZONE': 'UTC',
+                        'RETURN_AS_TIMEZONE_AWARE': True
                     }
                 )
-                # make it offset-naive
+                # make it offset-aware
                 if isinstance(d, datetime.datetime):
-                    self.__date = d.replace(tzinfo=None)
+                    self.__date = d
             except:
                 pass
         return self.__date

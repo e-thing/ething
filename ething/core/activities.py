@@ -1,6 +1,6 @@
 # coding: utf-8
+from .date import utcnow
 import threading
-import datetime
 
 
 class Activities(object):
@@ -12,7 +12,7 @@ class Activities(object):
         self.history_duration = history_duration
 
     def push(self, type, **attributes):
-        now  = datetime.datetime.utcnow()
+        now  = utcnow()
 
         activity = {
             'type': type,
@@ -31,7 +31,7 @@ class Activities(object):
 
         if self.history_duration:
             i=0
-            now = datetime.datetime.utcnow()
+            now = utcnow()
             for item in reversed(self._items):
                 diff = now - item['date']
                 if diff.total_seconds() < self.history_duration:

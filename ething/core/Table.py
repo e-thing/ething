@@ -1,6 +1,7 @@
 # coding: utf-8
 from future.utils import string_types, integer_types
 from .Resource import Resource
+from .date import TzDate, utcnow, utcfromtimestamp
 from .entity import *
 from .rule.event import ResourceEvent, ResourceSignal
 import datetime
@@ -83,7 +84,7 @@ class TableDataThresholdEvent(ResourceEvent):
 @attr('expireAfter', type=Nullable(Integer(min=1)), default=None, description="The amount of time (in seconds) after which a records will be automatically removed. Set it to null or 0 to disable this feature.")
 @attr('length', default=0, mode=READ_ONLY, description="The number of records in the table")
 @attr('keys', type=Dict(), default={}, mode=READ_ONLY, description="A key/value object where the keys correspond to the fields available in this table, and the corresponding value is the number of rows where the field is set. __The default keys ('id' and 'date' are not listed)__")
-@attr('contentModifiedDate', default=lambda _: datetime.datetime.utcnow(), mode=READ_ONLY, description="Last time the content of this table was modified.")
+@attr('contentModifiedDate', type=TzDate(), default=lambda _: utcnow(), mode=READ_ONLY, description="Last time the content of this table was modified.")
 class Table(Resource):
 
     FIELD_VALID_CHAR = 'a-zA-Z0-9_\-'
@@ -103,12 +104,15 @@ class Table(Resource):
     def docSerialize(self, doc, date_format=None):
 
         if 'date' in doc:
+            dt = doc['date']
             if date_format == Table.TIMESTAMP:
-                doc['date'] = int(time.mktime(doc['date'].timetuple()))
+                doc['date'] = int(time.mktime(dt.timetuple()))
             elif date_format == Table.TIMESTAMP_MS:
-                doc['date'] = int(time.mktime(doc['date'].timetuple())) * 1000
+                doc['date'] = int(time.mktime(dt.timetuple())) * 1000
             else:
-                doc['date'] = doc['date'].replace(tzinfo=pytz.utc).astimezone(self.ething.local_tz).isoformat()
+                if dt.tzinfo is None:
+                    dt = dt.replace(tzinfo=pytz.utc)
+                doc['date'] = dt.astimezone(self.ething.local_tz).isoformat()
 
         return doc
 
@@ -140,7 +144,7 @@ class Table(Resource):
 
             self.length = 0
             self.keys = {}
-            self.contentModifiedDate = datetime.datetime.utcnow()
+            self.contentModifiedDate = utcnow()
 
     # is called regularly
 
@@ -150,7 +154,7 @@ class Table(Resource):
             # remove the expired data in the current table
             expireAfter = self.expireAfter
             if expireAfter is not None:
-                expiratedDate = datetime.datetime.utcnow() - datetime.timedelta(0, expireAfter)
+                expiratedDate = utcnow() - datetime.timedelta(0, expireAfter)
 
                 removed_rows = self.db.remove_table_rows_by_query(self.collectionName, 'date < "%s"' % expiratedDate.isoformat(), True)
 
@@ -199,7 +203,7 @@ class Table(Resource):
             self.keys = meta.get('keys', {})
             self.data = {}
 
-        self.contentModifiedDate = datetime.datetime.utcnow()
+        self.contentModifiedDate = utcnow()
 
     def updateMeta(self):
         with self:
@@ -220,8 +224,7 @@ class Table(Resource):
     def remove_row(self, row_id):
         return self.remove_rows([row_id]) > 0
 
-    @staticmethod
-    def sanitizeData(dataArray, invalidFields=INVALID_FIELD_RENAME, skipError=True, setDate=True):
+    def sanitizeData(self, dataArray, invalidFields=INVALID_FIELD_RENAME, skipError=True):
 
         if isinstance(invalidFields, string_types):
             if invalidFields == "stop":
@@ -293,19 +296,23 @@ class Table(Resource):
                         # check the format
                         try:
                             if is_number:
-                                data[k] = datetime.datetime.utcfromtimestamp(v) # naive UTC
-                            else:
+                                data[k] = utcfromtimestamp(v) # UTC
+                            elif isinstance(v, string_types):
                                 data[k] = parse(v)
-                                if data[k].tzinfo is not None:
-                                    # make it naive UTC
-                                    data[k] = data[k].astimezone(pytz.utc).replace(tzinfo=None)
+
+                            if data[k].tzinfo is None:
+                                # naive datetime
+                                data[k] = self.ething.local_tz.localize(data[k]).astimezone(pytz.utc)
+                            else:
+                                # make it UTC
+                                data[k] = data[k].astimezone(pytz.utc)
                         except:
                             raise Exception('Invalid date "%s"' % v)
 
                 # add date if not already set
-                if setDate and 'date' not in data:
+                if 'date' not in data:
                     # add the insertion date for that document
-                    data['date'] = datetime.datetime.utcnow() # naive UTC
+                    data['date'] = utcnow() # UTC
 
                 data['id'] = ShortId.generate()
 
@@ -328,7 +335,7 @@ class Table(Resource):
 
                 # sanitize the incoming data
                 dataArray = [data]
-                l = Table.sanitizeData(dataArray, invalidFields, False)
+                l = self.sanitizeData(dataArray, invalidFields, False)
 
                 if l > 0:
 
@@ -370,7 +377,7 @@ class Table(Resource):
             self.clear()
 
             # sanitize the incoming data
-            length = Table.sanitizeData(dataArray, invalidFields, skipError)
+            length = self.sanitizeData(dataArray, invalidFields, skipError)
 
             if length > 0:
                 # insert the data
@@ -390,7 +397,7 @@ class Table(Resource):
 
                 # sanitize the incoming data
                 dataArray = [data]
-                l = Table.sanitizeData(dataArray, invalidFields, False)
+                l = self.sanitizeData(dataArray, invalidFields, False)
 
                 if l > 0:
                     new_row = dataArray[0]

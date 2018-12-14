@@ -5,6 +5,7 @@ import re
 import datetime
 from dateutil.parser import parse
 import inspect
+import pytz
 
 
 class Type (object):
@@ -346,10 +347,53 @@ class Email(String):
 
 
 class Date(Basetype):
-  
+
+  def __init__(self, ignore_tz=True, tz=pytz.utc, from_tz=None, to_tz=pytz.utc, **attributes):
+    super(Date, self).__init__(**attributes)
+    self._ignore_tz = ignore_tz
+    self._tz = tz
+    self._from_tz = from_tz if callable(from_tz) else lambda _x: from_tz
+    self._to_tz = to_tz if callable(to_tz) else lambda _x: to_tz
+
   def validate(self, value, context = None):
     if not isinstance(value, datetime.datetime):
-      raise ValueError('not a date')
+      raise ValueError('not a date %s (%s)' % (value, type(value)))
+    if not self._ignore_tz:
+      # be sure it as the correct tz
+      value_tzinfo = value.tzinfo
+      if self._tz is None:
+        if value_tzinfo is not None:
+          raise ValueError('not a offset-naive date %s' % value)
+      else:
+        if value_tzinfo is None:
+          raise ValueError('not a offset-aware date %s' % value)
+        if self._tz.utcoffset(value) != value_tzinfo.utcoffset(value):
+          raise ValueError('time offset differ(%s) for date %s' % (self._tz, value))
+
+  def _sanitize(self, value, context = None):
+    if isinstance(value, string_types):
+      # parse into datetime
+      try:
+        value = parse(value, languages=['en'])
+      except:
+        pass
+
+    if not self._ignore_tz and isinstance(value, datetime.datetime):
+
+      if value.tzinfo is None:
+        from_tz = self._from_tz(context)
+        if from_tz is not None:
+          value = from_tz.localize(value) # pytz
+
+      if value.tzinfo is not None:
+        if self._tz is not None:
+          value = value.astimezone(self._tz)
+
+    return value
+
+  def set(self, value, context = None):
+    value = self._sanitize(value, context)
+    return super(Date, self).set(value, context)
   
   def toSchema(self, context = None):
     schema = super(Date, self).toSchema(context)
@@ -358,12 +402,15 @@ class Date(Basetype):
     return schema
   
   def toJson(self, value, context = None):
-    return value
+    if not self._ignore_tz:
+      to_tz = self._to_tz(context)
+      if to_tz is not None:
+        value = value.astimezone(to_tz)
+    return value.isoformat()
   
   def fromJson(self, value, context = None):
-    value = parse(value, languages=['en'])
-    self.validate(value, context)
-    return value
+    value = self._sanitize(value, context)
+    return super(Date, self).fromJson(value, context)
   
 
 class Color(String):

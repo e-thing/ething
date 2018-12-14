@@ -2,6 +2,7 @@
 
 from future.utils import text_type, bord
 from .Resource import Resource
+from .date import TzDate, utcnow
 from .entity import *
 from .rule.event import ResourceEvent, ResourceSignal
 import datetime
@@ -35,7 +36,7 @@ class FileDataModifiedEvent(ResourceEvent):
 @attr('size', default=0, mode=READ_ONLY, description="The size of this resource in bytes")
 @attr('isText', default=True, mode=READ_ONLY, description="True if this file has text based content.")
 @attr('mime', default='text/plain', mode=READ_ONLY, description="The MIME type of the file (automatically detected from the content).")
-@attr('contentModifiedDate', default=lambda _: datetime.datetime.utcnow(), mode=READ_ONLY, description="Last time the content of this file was modified (formatted RFC 3339 timestamp).")
+@attr('contentModifiedDate', type=TzDate(), default=lambda _: utcnow(), mode=READ_ONLY, description="Last time the content of this file was modified (formatted RFC 3339 timestamp).")
 class File(Resource):
 
     def toJson(self, **kwargs):
@@ -73,7 +74,7 @@ class File(Resource):
         if expireAfter is not None:
             expiratedDate = self.modifiedDate + \
                 datetime.timedelta(0, expireAfter)
-            return expiratedDate < datetime.datetime.utcnow()
+            return expiratedDate < utcnow()
         return False
 
     def read(self, encoding=None):
@@ -110,7 +111,7 @@ class File(Resource):
                 })
                 self.size = self.ething.db.getFileSize(self.content)
 
-            self.contentModifiedDate = datetime.datetime.utcnow()
+            self.contentModifiedDate = utcnow()
 
             self.updateMeta(File.META_ALL, bytes)
 

@@ -1,18 +1,57 @@
-from future.utils import string_types
-from ..Helpers import toJson
+from ..date import utcnow
 import datetime
 from ..reg import get_registered_class
+from dateutil import parser
+import json
+import sys
+
+
+if sys.version_info >= (3, 0):
+    py3 = True
+else:
+    py3 = False
+
+
+class Encoder(json.JSONEncoder):
+    def default(self, obj):
+        if isinstance(obj, datetime.datetime):
+            return {
+                "_type": "datetime",
+                "value": obj.isoformat()
+            }
+        if py3 and isinstance(obj, bytes):
+            return {
+                "_type": "bytes",
+                "value": obj.decode('utf8')
+            }
+        # Let the base class default method raise the TypeError
+        return super(Encoder, self).default(obj)
+
+
+class Decoder(json.JSONDecoder):
+
+    def __init__(self, *args, **kwargs):
+        json.JSONDecoder.__init__(self, object_hook=self.object_hook, *args, **kwargs)
+
+    def object_hook(self, obj):
+        if '_type' in obj:
+            type = obj['_type']
+            if type == 'datetime':
+                return parser.parse(obj['value'])
+            if type == 'bytes':
+                return obj['value'].encode('utf8')
+        return obj
 
 
 def export_data(core):
 
     data = {
         'version': core.version,
-        'date': datetime.datetime.now()
+        'date': utcnow()
     }
 
     # config
-    data['config'] = core.config
+    data['config'] = core.config.toJson()
 
     # resources
     resources = []
@@ -33,10 +72,15 @@ def export_data(core):
             plugins_export[p.name] = d
     data['plugins'] = plugins_export
 
-    return data
+    return json.dumps(data, cls=Encoder, indent=2)
 
 
 def import_data(core, data, import_config=False):
+
+    try:
+        data = json.loads(data, cls=Decoder)
+    except Exception as e:
+        raise Exception('unable to decode data: %s' % str(e))
 
     if core.version != data.get('version'):
         raise Exception('unable to import: version numbers differ %s (current) != %s (import)' % (core.version, data.get('version')))

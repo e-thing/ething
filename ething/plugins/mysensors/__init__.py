@@ -21,6 +21,7 @@ from ething.core.utils import NullContextManager
 from ething.core.plugin import Plugin
 from ething.core.TransportProcess import LineReader, TransportProcess, SerialTransport, NetTransport, BaseResult
 from ething.core.scheduler import Scheduler
+from ething.core.date import utcnow
 import time
 import re
 import datetime
@@ -540,7 +541,7 @@ class MySensorsProtocol(LineReader):
     def check_disconnect(self):
         devices = self.core.find(lambda r: r.isTypeof('resources/MySensorsNode'))
         
-        now = datetime.datetime.utcnow()
+        now = utcnow()
         
         for device in devices:
             if device.lastSeenDate and now - device.lastSeenDate > datetime.timedelta(seconds=1800):

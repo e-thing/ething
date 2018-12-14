@@ -279,4 +279,6 @@ class Scheduler(object):
             if not task.is_valid():
                 self.unbind(task)
 
-
+    def clear(self):
+        with self.r_lock:
+            self.tasks.clear()
