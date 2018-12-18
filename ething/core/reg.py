@@ -4,6 +4,7 @@ from .utils import get_cls_methods
 from collections import MutableMapping, OrderedDict
 import copy
 import inspect
+from functools import wraps
 
 
 def _make_default(value, *arg, **kwargs):
@@ -29,7 +30,7 @@ NO_VALUE = _NO_VALUE
 
 class Attribute (MutableMapping):
     
-    def __init__(self, name, cls, props = None):
+    def __init__(self, name, cls=None, props=None):
         self.name = name
         self.cls = cls
         self._props = dict()
@@ -120,33 +121,62 @@ def abstract(cls):
 def is_abstract(cls):
   return getattr(cls, '__meta').get('abstract', False)
 
-def attr(name, **kwargs):
-  def d(cls):
 
-    attribute = None
-    
-    attributes = getattr(cls, '__meta').get('attributes')
+_attribute_meta_attr = '__meta_attr'
 
-    for i in range(len(attributes)):
-      a = attributes[i]
-      if a.name == name:
-        if a.cls == cls:
-          attribute = a
-        else:
-          # come from a base class, copy it before updating
-          attribute = Attribute(name, cls, a.properties.copy())
-          attributes[i] = attribute
-        attribute.update(kwargs)
-        break
+
+def attr(name=None, **kwargs):
+  def d(item):
+
+    if inspect.isclass(item):
+      cls = item
+
+      if name is None:
+        raise Exception('name argument is mandatory')
+
+      attribute = None
+
+      attributes = getattr(cls, '__meta').get('attributes')
+
+      for i in range(len(attributes)):
+        a = attributes[i]
+        if a.name == name:
+          if a.cls == cls:
+            attribute = a
+          else:
+            # come from a base class, copy it before updating
+            attribute = Attribute(name, cls, a.properties.copy())
+            attributes[i] = attribute
+          attribute.update(kwargs)
+          break
+      else:
+        attribute = Attribute(name, cls = cls, props = kwargs)
+        attributes.append(attribute)
+
+      if hasattr(cls, '_attr_modifier_'):
+        getattr(cls, '_attr_modifier_')(attribute)
+
+      return cls
+
     else:
-      attribute = Attribute(name, cls = cls, props = kwargs)
-      attributes.append(attribute)
-
-    if hasattr(cls, '_attr_modifier_'):
-      getattr(cls, '_attr_modifier_')(attribute)
-
-    return cls
+      # computed method
+      func = item
+      kwargs['compute'] = func
+      func_name = func.__name__
+      func = ComputedAttrDescriptor(func)
+      attr = Attribute(func_name, props=kwargs)
+      setattr(func, _attribute_meta_attr, attr)
+      return func
   return d
+
+
+class ComputedAttrDescriptor(object):
+
+  def __init__(self, func):
+    self.func = func
+
+  def __get__(self, instance, owner):
+    return self.func(instance)
 
 
 def list_registered_attr(class_or_instance):
@@ -155,12 +185,22 @@ def list_registered_attr(class_or_instance):
   """
   if not inspect.isclass(class_or_instance):
     class_or_instance = type(class_or_instance)
-  return getattr(class_or_instance, '__meta', {}).get('attributes', list())
+
+  attributes = getattr(class_or_instance, '__meta', {}).get('attributes', list())
+
+  # look for computed attributes
+  for name, func in get_cls_methods(class_or_instance):
+    if hasattr(func, _attribute_meta_attr):
+      attributes.append(getattr(func, _attribute_meta_attr))
+
+  return attributes
+
 
 def get_registered_attr(class_or_instance, name):
   for a in list_registered_attr(class_or_instance):
     if a.name == name:
       return a
+
 
 def has_registered_attr(class_or_instance, name):
   return get_registered_attr(class_or_instance, name) is not None
@@ -215,6 +255,9 @@ def list_registered_signals(class_or_instance):
 # Methods
 #
 
+_method_meta_attr = '__meta_method'
+
+
 class MethodDecorator(object):
 
     def __call__(self, func):
@@ -225,10 +268,10 @@ class MethodDecorator(object):
         """
         set the default metadata
         """
-        meta = getattr(func, '__meta', None)
+        meta = getattr(func, _method_meta_attr, None)
         if meta is None:
           meta = Method._parse(func)
-          setattr(func, '__meta', meta)
+          setattr(func, _method_meta_attr, meta)
         return meta
 
     # decorators
@@ -292,7 +335,7 @@ class Method(object):
 
     def __init__(self, func):
       object.__setattr__(self, '_Method__func', func)
-      object.__setattr__(self, '_Method__meta', getattr(func, '__meta', {}))
+      object.__setattr__(self, '_Method__meta', getattr(func, _method_meta_attr, {}))
 
     @property
     def meta(self):
@@ -417,7 +460,7 @@ class Method(object):
       makes func defaults from orig (no overwritting)
       """
       meta = method.init(func)
-      _setdefaults(meta, getattr(orig, '__meta', {}))
+      _setdefaults(meta, getattr(orig, _method_meta_attr, {}))
     
     @staticmethod
     def _parse(func):
@@ -493,7 +536,7 @@ def list_registered_methods(class_or_instance):
   
   # list all methods attached to this device
   for name, func in get_cls_methods(cls):
-      if hasattr(func, '__meta'):
+      if hasattr(func, _method_meta_attr):
         methods.append(Method(func) if instance is None else BoundMethod(func, instance))
   
   return methods

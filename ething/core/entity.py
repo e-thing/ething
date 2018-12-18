@@ -36,6 +36,7 @@ class Entity(with_metaclass(MetaReg, M_Class)):
         object.__setattr__(self, '_context', context)
 
         for attribute in attributes:
+          if attribute.get('compute') is None:
             name = attribute.name
             if name in value:
               self._set(attribute, value[name])
@@ -60,7 +61,11 @@ class Entity(with_metaclass(MetaReg, M_Class)):
 
     def _get(self, attribute):
         name = attribute.name
-        value = self.__d[name]
+        compute = attribute.get('compute')
+        if compute is not None:
+            value = compute(self)
+        else:
+            value = self.__d[name]
         data_type = attribute['type']
         return data_type.get(value, self._context)
 
@@ -78,6 +83,8 @@ class Entity(with_metaclass(MetaReg, M_Class)):
     
     def _set(self, attribute, value):
         name = attribute.name
+        if attribute.get('compute') is not None:
+            raise Exception('unable to set a computed attribute "%s"' % name)
         data_type = attribute['type']
         value = data_type.set(value, self._context)
         self.__d[name] = value
