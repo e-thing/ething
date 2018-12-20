@@ -124,7 +124,7 @@ class ResourceEvent(Event):
 
     signal = ResourceSignal
 
-    def _filter(self, signal, core, rule):
+    def _filter(self, signal, core):
         # the event accepts only signal emitted from a resource
 
         resourceFromSignal = signal.resource

@@ -13,7 +13,7 @@ class Condition(Entity):
     def log(self):
         return logging.getLogger('ething.%s' % self.type)
 
-    def test(self, signal, core, rule):
+    def test(self, signal, core):
         raise NotImplementedError()
 
     @classmethod

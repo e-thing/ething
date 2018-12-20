@@ -108,6 +108,45 @@ class Nullable (Type):
     return schema
 
 
+class OneOf (Type):
+  """
+  accept None value plus the given type
+  """
+  def __init__(self, types, discriminator, **attributes):
+    super(OneOf, self).__init__(**attributes)
+    self._types = list(map(convert_type, types))
+    self._discriminator = discriminator
+
+  def descriminate(self, value, context = None):
+    t = self._discriminator(value, self._types, context)
+    if t not in self._types:
+      raise Exception('invalid value')
+    return t
+
+  def set(self, value, context = None):
+    return self.descriminate(value, context).set(value, context)
+
+  def get(self, value, context = None):
+    return self.descriminate(value, context).get(value, context)
+
+  def toJson(self, value, context = None):
+    return self.descriminate(value, context).toJson(value, context)
+
+  def fromJson(self, value, context = None):
+    return self.descriminate(value, context).fromJson(value, context)
+
+  def serialize(self, value, context = None):
+    return self.descriminate(value, context).serialize(value, context)
+
+  def unserialize(self, value, context = None):
+    return self.descriminate(value, context).unserialize(value, context)
+
+  def toSchema(self, context = None):
+    schema = super(OneOf, self).toSchema(context)
+    schema['oneOf'] = [t.toSchema(context) for t in self._types]
+    return schema
+
+
 class Basetype(Type):
   
   def validate(self, data, context = None):

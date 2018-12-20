@@ -22,7 +22,7 @@ class Timer(Event):
 
     DELTA = 2
 
-    def _filter(self, signal, core, rule):
+    def _filter(self, signal, core):
 
         ts = signal.timestamp
         expr = self.cron_expression

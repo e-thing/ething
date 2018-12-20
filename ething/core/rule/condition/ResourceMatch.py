@@ -11,7 +11,7 @@ from ...query import Expression
 class ResourceMatch(Condition):
     """ is true if a resource match an expression """
 
-    def test(self, signal, core, rule):
+    def test(self, signal, core):
 
         r = None
 

@@ -9,5 +9,5 @@ import time
 class Wait(Action):
     """ Wait a certain amount of time """
 
-    def run(self, signal, core, rule):
+    def run(self, signal, core):
         time.sleep(self.duration / 1000.)

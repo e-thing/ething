@@ -22,7 +22,7 @@ def item_to_monthly_time(monthday, hour, minute):
 class Scheduler(Condition):
     """ Activate this rule only within certain periods of time """
 
-    def test(self, signal, core, rule):
+    def test(self, signal, core):
         now = datetime.datetime.now()
         weekday = now.isoweekday() # 1: monday, 7: sunday
         hour = now.hour

@@ -23,18 +23,18 @@ class Event(Entity):
     def log(self):
         return logging.getLogger('ething.%s' % self.type)
 
-    def filter(self, signal, core, rule):
+    def filter(self, signal, core):
 
         if not isinstance(signal, type(self).signal):
             return False
 
         try:
-            return self._filter(signal, core, rule)
+            return self._filter(signal, core)
         except:
             self.log.exception('error in event filter for : %s' % self)
             return False
 
-    def _filter(self, signal, core, rule):
+    def _filter(self, signal, core):
         return True
 
     @classmethod

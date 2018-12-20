@@ -13,7 +13,7 @@ class Action(Entity):
     def log(self):
         return logging.getLogger('ething.%s' % self.type)
 
-    def run(self, signal, core, rule):
+    def run(self, signal, core):
         raise NotImplementedError()
 
     @classmethod
