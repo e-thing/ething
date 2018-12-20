@@ -162,6 +162,7 @@ def attr(name=None, **kwargs):
       # computed method
       func = item
       kwargs['compute'] = func
+      kwargs.setdefault('mode', READ_ONLY)
       func_name = func.__name__
       func = ComputedAttrDescriptor(func)
       attr = Attribute(func_name, props=kwargs)
