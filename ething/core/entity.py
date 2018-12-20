@@ -36,14 +36,14 @@ class Entity(with_metaclass(MetaReg, M_Class)):
         object.__setattr__(self, '_context', context)
 
         for attribute in attributes:
-          if attribute.get('compute') is None:
-            name = attribute.name
-            if name in value:
-              self._set(attribute, value[name])
-            elif 'default' in attribute:
-              self._set(attribute, attribute.make_default(self.__class__))
-            else:
-              raise AttributeError('attribute "%s" is not set' % name)
+            if attribute.get('compute') is None:
+                name = attribute.name
+                if name in value:
+                  self._set(attribute, value[name])
+                elif 'default' in attribute:
+                  self._set(attribute, attribute.make_default(self.__class__))
+                else:
+                  raise AttributeError('attribute "%s" is not set' % name)
 
     def _getattr(self, name):
       for a in self.__attributes:
@@ -59,15 +59,18 @@ class Entity(with_metaclass(MetaReg, M_Class)):
 
         return self._get(attribute)
 
-    def _get(self, attribute):
-        name = attribute.name
+    def _get_raw(self, attribute):
         compute = attribute.get('compute')
         if compute is not None:
             value = compute(self)
         else:
+            name = attribute.name
             value = self.__d[name]
+        return value
+
+    def _get(self, attribute):
         data_type = attribute['type']
-        return data_type.get(value, self._context)
+        return data_type.get(self._get_raw(attribute), self._context)
 
     def __setattr__(self, name, value):
         with self._lock:
@@ -100,17 +103,18 @@ class Entity(with_metaclass(MetaReg, M_Class)):
           continue
 
         data_type = attribute['type']
-        j[name] = data_type.toJson(self.__d[name], merge_context(self._context, context))
+        j[name] = data_type.toJson(self._get_raw(attribute), merge_context(self._context, context))
       return j
     
     def serialize(self, context = None):
         with self._lock:
           j = {}
           for attribute in self.__attributes:
-            name = attribute.name
-            model_key = attribute.get('model_key', name)
-            data_type = attribute['type']
-            j[model_key] = data_type.serialize(self.__d[name], merge_context(self._context, context))
+            if attribute.get('compute') is None:
+                name = attribute.name
+                model_key = attribute.get('model_key', name)
+                data_type = attribute['type']
+                j[model_key] = data_type.serialize(self.__d[name], merge_context(self._context, context))
           return j
     
     def _children(self):
@@ -129,7 +133,7 @@ class Entity(with_metaclass(MetaReg, M_Class)):
 
         for a in self.__attributes:
             if a not in dirty_attrs:
-                item = self.__d[a.name]
+                item = self.__d.get(a.name)
                 if isinstance(item, Memory):
                     if item._is_dirty():
                         dirty_attrs.add(a)
@@ -157,11 +161,12 @@ class Entity(with_metaclass(MetaReg, M_Class)):
     def unserialize(cls, data, context = None, kwargs = None):
       j = {}
       for attribute in list_registered_attr(cls):
-        name = attribute.name
-        data_type = attribute['type']
-        model_key = attribute.get('model_key', name)
-        if model_key in data:
-            j[name] = data_type.unserialize(data.get(model_key), context)
+          if attribute.get('compute') is None:
+            name = attribute.name
+            data_type = attribute['type']
+            model_key = attribute.get('model_key', name)
+            if model_key in data:
+                j[name] = data_type.unserialize(data.get(model_key), context)
       if kwargs is None:
           kwargs = {}
       return cls(j, context=context, **kwargs)
@@ -170,14 +175,15 @@ class Entity(with_metaclass(MetaReg, M_Class)):
     def fromJson(cls, data, context = None, kwargs = None):
       j = {}
       for attribute in list_registered_attr(cls):
-        name = attribute.name
-        if name in data:
-          mode = attribute.get('mode')
-          if mode == PRIVATE:
-            raise AttributeError('attribute "%s" is not writable' % name)
-          data_type = attribute['type']
-          if name in data:
-            j[name] = data_type.fromJson(data.get(name), context)
+          if attribute.get('compute') is None:
+            name = attribute.name
+            if name in data:
+              mode = attribute.get('mode')
+              if mode == PRIVATE:
+                raise AttributeError('attribute "%s" is not writable' % name)
+              data_type = attribute['type']
+              if name in data:
+                j[name] = data_type.fromJson(data.get(name), context)
       if kwargs is None:
           kwargs = {}
       return cls(j, context=context, **kwargs)

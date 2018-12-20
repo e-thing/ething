@@ -1,8 +1,6 @@
 # coding: utf-8
 
 from .base import BaseClass
-from ..TableQueryParser import TableQueryParser
-from ..query import mongodb_compiler
 from ..ShortId import ShortId
 import pymongo
 import gridfs
@@ -82,39 +80,6 @@ class MongoDB(BaseClass):
         db_client = self.db.client
         db_client.drop_database(db_name)
         self.db = db_client[db_name]
-
-
-    #
-    # Resources
-    #
-
-    # def list_resources(self):
-    #     cursor = self.db["resources"].find({})
-    #     resources = []
-    #
-    #     for doc in cursor:
-    #         doc['id'] = doc['_id']
-    #         del doc['_id']
-    #         resources.append(doc)
-    #
-    #     return resources
-    #
-    # def update_resource(self, resource):
-    #     resource['_id'] = resource['id']
-    #     del resource['id']
-    #     self.db["resources"].replace_one({'_id': resource['_id']}, resource)
-    #
-    # def insert_resource(self, resource):
-    #     resource['_id'] = resource['id']
-    #     del resource['id']
-    #     try:
-    #         self.db["resources"].insert_one(resource)
-    #     except:
-    #         # code 11000 on duplicate error
-    #         raise Exception('internal error: doc insertion failed')
-    #
-    # def remove_resource(self, resource_id):
-    #     self.db["resources"].delete_one({'_id': resource_id})
 
 
     #
@@ -208,15 +173,10 @@ class MongoDB(BaseClass):
         except:
             pass
 
-    def get_table_rows(self, table_name, query=None, start=0, length=None, keys=None, sort=None):
+    def get_table_rows(self, table_name, start=0, length=None, keys=None, sort=None):
 
         c = self.db[table_name]
         q = {}
-
-        if query is not None:
-            # parse the query string
-            parser = TableQueryParser(compiler=mongodb_compiler, tz=getattr(self, 'tz', None))
-            q = parser.compile(query)
 
         opt = {
             'sort': None,

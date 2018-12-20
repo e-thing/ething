@@ -3,6 +3,7 @@ from future.utils import string_types
 from .MihomeGateway import MihomeGateway
 from .MihomeSensorHT import MihomeSensorHT
 from .MihomeMagnet import MihomeMagnet
+from .MihomeButton import MihomeButton
 from ething.core.plugin import Plugin
 from ething.core.TransportProcess import Protocol, TransportProcess, UdpTransport, ThreadedTransport
 from ething.core.date import utcnow
@@ -103,20 +104,17 @@ class MihomeProtocol(Protocol):
                             })
 
                             if model == 'sensor_ht' or model == 'weather.v1':
-                                attributes.update({
-                                    'createdBy': gateway.id,
-                                })
-
                                 device = self.core.create('resources/MihomeSensorHT', attributes)
-                            elif model == 'sensor_magnet.aq2':
-                                attributes.update({
-                                    'createdBy': gateway.id,
-                                })
-
+                            elif model in ['magnet', 'sensor_magnet', 'sensor_magnet.aq2']:
                                 device = self.core.create('resources/MihomeMagnet', attributes)
+                            elif model in ['switch', 'sensor_switch', 'sensor_switch.aq2', 'sensor_switch.aq3', 'remote.b1acn01']:
+                                device = self.core.create('resources/MihomeButton', attributes)
+                            else:
+                                self.log.warning("Mihome: unknown model %s" % (model,))
+
                         else:
                             self.log.warning(
-                                "Mihome: gateway not found with ip=%s" % (ip))
+                                "Mihome: gateway not found with ip=%s" % (ip,))
 
                     if not device:
                         self.log.error(

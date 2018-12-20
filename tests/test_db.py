@@ -74,7 +74,10 @@ def test_db_table(core):
     assert len(rows) == 3
     assert rows == table_rows
 
-    rows = core.db.get_table_rows(table_name, query = "age > 10")
+    rows = core.db.get_table_rows(table_name, length=2)
+    assert len(rows) == 2
+
+    rows = core.db.get_table_rows(table_name, start=1)
     assert len(rows) == 2
 
     updated_row = table_rows[1].copy()
@@ -84,8 +87,8 @@ def test_db_table(core):
     old_row = core.db.update_table_row(table_name, 'azerty1', updated_row, True)
     assert old_row == table_rows[1]
 
-    rows = core.db.get_table_rows(table_name, query="age > 10")
-    assert len(rows) == 1
+    rows = core.db.get_table_rows(table_name, sort=[("age", False)])
+    assert rows[0]['age'] == 32
 
     core.db.remove_table_row(table_name, 'azerty1', True)
 

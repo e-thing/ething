@@ -1,7 +1,7 @@
 # coding: utf-8
 
-from .switch import Switch
+from .relay import Relay
 
 
-class Light (Switch):
+class Light (Relay):
     pass

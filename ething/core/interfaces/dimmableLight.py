@@ -1,7 +1,7 @@
 # coding: utf-8
 
-from .dimmableSwitch import DimmableSwitch
+from .dimmableRelay import DimmableRelay
 
 
-class DimmableLight (DimmableSwitch):
+class DimmableLight (DimmableRelay):
     pass

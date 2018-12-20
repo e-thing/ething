@@ -1,13 +1,12 @@
 # coding: utf-8
 
 from .base import BaseClass
-from ..TableQueryParser import TableQueryParser
-from ..query import attribute_compiler
 from ..Helpers import filter_obj
 from ..env import USER_DIR
 from ..ShortId import ShortId
 from ..green import make_it_green
 from ..utils.lock import SecureLock
+from ..utils import object_sort
 import sqlite3
 import os
 import json
@@ -115,7 +114,6 @@ class SQLite(BaseClass):
             self.log.info('connected to database: %s' % (self.file or 'memory'))
 
             c = self.db.cursor()
-            #c.execute('CREATE TABLE IF NOT EXISTS resources (id char(7), data json)')
             c.execute('CREATE TABLE IF NOT EXISTS fs (id char(7), filename text, size int, metadata text, content blob)')
             self.db.commit()
             c.close()
@@ -158,42 +156,6 @@ class SQLite(BaseClass):
         if self.file:
             os.remove(self.file)
         self.connect()
-
-
-    #
-    # Resources
-    #
-
-    # def list_resources(self):
-    #     with self.lock:
-    #         resources = []
-    #         c = self.db.cursor()
-    #         for row in c.execute('SELECT data FROM resources'):
-    #             resources.append(json.loads(row[0], cls=Decoder))
-    #         c.close()
-    #         return resources
-    #
-    # def update_resource(self, resource):
-    #     with self.lock:
-    #         c = self.db.cursor()
-    #         c.execute(
-    #             "UPDATE resources SET data = ? WHERE id = ?", (json.dumps(resource, cls=Encoder), resource['id']))
-    #         self.db.commit()
-    #         c.close()
-    #
-    # def insert_resource(self, resource):
-    #     with self.lock:
-    #         c = self.db.cursor()
-    #         c.execute("INSERT INTO resources (id, data) VALUES (?, ?)", (resource['id'], json.dumps(resource, cls=Encoder)))
-    #         self.db.commit()
-    #         c.close()
-    #
-    # def remove_resource(self, resource_id):
-    #     with self.lock:
-    #         c = self.db.cursor()
-    #         c.execute("DELETE FROM resources WHERE id = ?", (resource_id, ))
-    #         self.db.commit()
-    #         c.close()
 
 
     #
@@ -307,18 +269,22 @@ class SQLite(BaseClass):
             self.db.commit()
             c.close()
 
-    def _select_table_rows_bulk(self, raw_rows, query = None, start=0, length=None, keys=None, sort=None):
-        rows = [json.loads(row[0], cls=Decoder) for row in raw_rows]
+    def get_table_row_by_id(self, table_name, row_id):
+        with self.lock:
+            c = self.db.cursor()
+            c.execute("SELECT data FROM '%s' WHERE id=?" % (table_name,), (row_id,))
+            _row = c.fetchone()
+            c.close()
 
-        if query:
-            parser = TableQueryParser(compiler=attribute_compiler, tz=getattr(self, 'tz', None))
-            filter_fn = parser.compile(query)
-            rows = [row for row in rows if filter_fn(row)]
+        return json.loads(_row[0], cls=Decoder)
+
+    def _select_table_rows_bulk(self, raw_rows, start=0, length=None, keys=None, sort=None):
+        rows = [json.loads(row[0], cls=Decoder) for row in raw_rows]
 
         if sort:
             sort_attr = sort[0][0]
             asc = sort[0][1]
-            rows = sorted(rows, key=lambda r: r.get(sort_attr, None), reverse=not asc)
+            rows = object_sort(rows, key=lambda doc: doc.get(sort_attr, None), reverse=not asc)
 
         if start or length:
             start = start or 0
@@ -337,43 +303,41 @@ class SQLite(BaseClass):
         else:
             return self._select_table_rows_bulk(raw_rows, *args, **kwargs)
 
-    def get_table_rows(self, table_name, query = None, start=0, length=None, keys=None, sort=None):
+    def get_table_rows(self, table_name, start=0, length=None, keys=None, sort=None):
         _rows = []
 
-        if query is None:
+        # do the sorting by SQL only if it is the date or id field
+        sql_cmd = "SELECT data FROM '%s'" % (table_name,)
+        fast = False
 
-            # do the sorting by SQL only if it is the date or id field
-            sql_cmd = "SELECT data FROM '%s'" % (table_name,)
-            fast = False
+        if sort is not None:
+            if len(sort) == 1:
+                sort_attr = sort[0][0]
+                if sort_attr == 'date' or sort_attr == 'id':
+                    sql_cmd = sql_cmd + ' ORDER BY %s %s' % (sort_attr, 'ASC' if sort[0][1] else 'DESC')
+                    fast = True
+        else:
+            fast = True
 
-            if sort is not None:
-                if len(sort) == 1:
-                    sort_attr = sort[0][0]
-                    if sort_attr == 'date' or sort_attr == 'id':
-                        sql_cmd = sql_cmd + ' ORDER BY %s %s' % (sort_attr, 'ASC' if sort[0][1] else 'DESC')
-                        fast = True
-            else:
-                fast = True
+        if fast:
+            has_limit = False
+            if length is not None:
+                sql_cmd = sql_cmd + ' LIMIT %d' % length
+                has_limit = True
 
-            if fast:
-                has_limit = False
-                if length is not None:
-                    sql_cmd = sql_cmd + ' LIMIT %d' % length
-                    has_limit = True
+            if start>0:
+                if has_limit:
+                    sql_cmd = sql_cmd + ' OFFSET %d' % start
+                else:
+                    sql_cmd = sql_cmd + ' LIMIT 18446744 OFFSET %d' % start
 
-                if start>0:
-                    if has_limit:
-                        sql_cmd = sql_cmd + ' OFFSET %d' % start
-                    else:
-                        sql_cmd = sql_cmd + ' LIMIT 18446744 OFFSET %d' % start
+            with self.lock:
+                c = self.db.cursor()
+                c.execute(sql_cmd)
+                _rows = c.fetchall()
+                c.close()
 
-                with self.lock:
-                    c = self.db.cursor()
-                    c.execute(sql_cmd)
-                    _rows = c.fetchall()
-                    c.close()
-
-                return self._select_table_rows(_rows, None, None, None, keys, None)
+            return self._select_table_rows(_rows, None, None, keys, None)
 
         with self.lock:
             c = self.db.cursor()
@@ -381,7 +345,7 @@ class SQLite(BaseClass):
             _rows = c.fetchall()
             c.close()
 
-        return self._select_table_rows(_rows, query, start, length, keys, sort)
+        return self._select_table_rows(_rows, start, length, keys, sort)
 
     def insert_table_row(self, table_name, row_data):
         with self.lock:

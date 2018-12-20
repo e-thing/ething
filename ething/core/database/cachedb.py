@@ -2,8 +2,6 @@
 
 from .base import BaseClass
 from .cache import Db
-from ..TableQueryParser import TableQueryParser
-from ..query import attribute_compiler
 from ..Helpers import filter_obj
 
 
@@ -92,20 +90,18 @@ class CacheDB(BaseClass):
     def remove_table(self, table_name):
         self._cachedb.drop(table_name)
 
-    def get_table_rows(self, table_name, query = None, start=0, length=None, keys=None, sort=None):
+    def get_table_row_by_id(self, table_name, row_id):
+        table = self._cachedb[table_name]
+        return table[row_id]
+
+    def get_table_rows(self, table_name, start=0, length=None, keys=None, sort=None):
 
         table = self._cachedb[table_name]
-
-        if query:
-            parser = TableQueryParser(compiler=attribute_compiler, tz=getattr(self, 'tz', None))
-            filter_fn = parser.compile(query)
-        else:
-            filter_fn = None
 
         if sort:
             sort = sort[0]
 
-        rows = table.select(sort=sort, start=start, length=length, filter_fn=filter_fn)
+        rows = table.select(sort=sort, start=start, length=length)
 
         if keys is not None:
             rows = [filter_obj(row, keys) for row in rows]

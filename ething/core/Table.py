@@ -4,6 +4,10 @@ from .Resource import Resource
 from .date import TzDate, utcnow, utcfromtimestamp
 from .entity import *
 from .rule.event import ResourceEvent, ResourceSignal
+from .TableQueryParser import TableQueryParser
+from .query import attribute_compiler
+from .Helpers import filter_obj
+from .utils import object_sort
 import datetime
 import time
 import re
@@ -12,12 +16,16 @@ from .ShortId import ShortId
 import csv
 import sys
 import pytz
+import math
 
 if (sys.version_info > (3, 0)):
     from io import StringIO
 else:
     # cf: https://stackoverflow.com/questions/13120127/how-can-i-use-io-stringio-with-the-csv-module
     from StringIO import StringIO
+
+
+number_types = integer_types + (float, )
 
 
 class TableDataAdded(ResourceSignal):
@@ -156,7 +164,8 @@ class Table(Resource):
             if expireAfter is not None:
                 expiratedDate = utcnow() - datetime.timedelta(0, expireAfter)
 
-                removed_rows = self.db.remove_table_rows_by_query(self.collectionName, 'date < "%s"' % expiratedDate.isoformat(), True)
+                rows_to_be_removed = self.select(query='date < "%s"' % expiratedDate.isoformat())
+                removed_rows = self.db.remove_table_rows_by_id(self.collectionName, [row.get('id') for row in rows_to_be_removed], return_old=True)
 
                 self._update_meta(removed_rows = removed_rows)
 
@@ -198,9 +207,28 @@ class Table(Resource):
                 self.length = self.length + nb
 
         if reset is True:
-            meta = self.db.get_table_metadata(self.collectionName)
-            self.length = meta.get('length', 0)
-            self.keys = meta.get('keys', {})
+            """
+            compute the length and list the keys (except the id and date keys)
+            {
+                length: int,
+                keys: { key: number }
+            }
+            """
+            keys = {}
+            length = 0
+
+            for row in self.db.get_table_rows(self.collectionName):
+                for k in row:
+                    if k not in keys:
+                        keys[k] = 0
+                    keys[k] += 1
+                length += 1
+
+            keys.pop('id', None)
+            keys.pop('date', None)
+
+            self.length = length
+            self.keys = keys
             self.data = {}
 
         self.contentModifiedDate = utcnow()
@@ -258,7 +286,7 @@ class Table(Resource):
                 for k in data:
                     v = data[k]
 
-                    is_number = isinstance(v, integer_types) or isinstance(v, float)
+                    is_number = isinstance(v, number_types)
 
                     if not(is_number or isinstance(v, string_types) or isinstance(v, bool) or v is None):
                         raise Exception(
@@ -418,7 +446,7 @@ class Table(Resource):
         if data:
             with self:
 
-                rows = self.db.get_table_rows(self.collectionName, query = query, length = 1)
+                rows = self.select(query = query, length = 1)
 
                 if len(rows) > 0:
                     row = rows[0]
@@ -462,8 +490,6 @@ class Table(Resource):
                     length += start
                 start = 0
 
-        rows = self.db.get_table_rows(self.collectionName, query = query, sort = sort, start = start, length = length, keys = fields)
-
         if isinstance(date_format, string_types):
             date_format = date_format.lower()
             if date_format == "timestamp":
@@ -473,15 +499,96 @@ class Table(Resource):
             else:
                 date_format = None
 
-        # iterate
-        items = []
-        for row in rows:
-            items.append(self.docSerialize(row, date_format))
+        if query is None:
+            # let the sorting/offset/limit by the DB driver
+            rows = self.db.get_table_rows(self.collectionName, sort = sort, start = start, length = length, keys = fields)
+        else:
+            # retrieve all the data
+            rows = self.db.get_table_rows(self.collectionName)
 
-        return items
+            # apply the filter according to the query string
+            parser = TableQueryParser(compiler=attribute_compiler, tz=getattr(self, 'tz', None))
+            filter_fn = parser.compile(query)
+            rows = [row for row in rows if filter_fn(row)]
+
+            if sort:
+                sort_attr = sort[0][0]
+                asc = sort[0][1]
+                rows = object_sort(rows, key=lambda doc: doc.get(sort_attr, None), reverse=not asc)
+
+            if start or length:
+                start = start or 0
+                rows = rows[start:(length + start if length is not None else None)]
+
+            if fields is not None:
+                rows = [filter_obj(row, fields) for row in rows]
+
+        return [self.docSerialize(row, date_format) for row in rows]
 
     def computeStatistics(self, key, query=None):
-        return self.db.get_table_statistics_by_key(self.collectionName, key, query)
+
+        sum = 0
+        sum2 = 0
+        min = None
+        min_date = None
+        min_id = None
+        max = None
+        max_date = None
+        max_id = None
+        count = 0
+        start_date = None
+        end_date = None
+        n = 0
+        avg = None
+        variance = None
+        stddev = None
+
+        for row in self.select(query=query):
+            count += 1
+            value = row[key]
+            date = row['date']
+            id = row['id']
+
+            if start_date is None or date < start_date:
+                start_date = date
+
+            if end_date is None or date > end_date:
+                end_date = date
+
+            if isinstance(value, number_types):
+                n += 1
+                sum += value
+                sum2 += value * value
+
+                if min is None or value < min:
+                    min = value
+                    min_date = date
+                    min_id = id
+
+                if max is None or value > max:
+                    max = value
+                    max_date = date
+                    max_id = id
+
+        if n > 0:
+            avg = sum / n
+            variance = (sum2 / n) - avg
+            stddev = math.sqrt(variance)
+
+        return {
+            'min': min,
+            'min_date': min_date,
+            'min_id': min_id,
+            'max': max,
+            'max_date': max_date,
+            'max_id': max_id,
+            'count': count,
+            'start_date': start_date,
+            'end_date': end_date,
+            'avg': avg,
+            'variance': variance,
+            'stddev': stddev,
+        }
 
     def writeCSV(self, show_header=True, **kwargs):
 

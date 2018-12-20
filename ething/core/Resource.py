@@ -103,10 +103,6 @@ class RDict(Dict):
         return j
 
 
-def compute_extends(cls):
-    return [get_definition_pathname(c) for c in cls.__mro__ if issubclass(c, DbEntity) and (c is not DbEntity and c is not Resource and c is not Interface)]
-
-
 @throw(ResourceCreated, ResourceDeleted, ResourceUpdated)
 @path('resources')
 @attr('public', type=Enum([False, 'readonly', 'readwrite']), default=False, description="False: this resource is not publicly accessible. 'readonly': this resource is accessible for reading by anyone. 'readwrite': this resource is accessible for reading and writing by anyone.")
@@ -115,7 +111,6 @@ def compute_extends(cls):
 @attr('createdBy', type=Nullable(Id()), default=None, description="The id of the resource responsible of the creation of this resource, or null.")
 @attr('modifiedDate', type=TzDate(), default=lambda _: utcnow(), mode=READ_ONLY, description="Last time this resource was modified")
 @attr('createdDate', type=TzDate(), default=lambda _: utcnow(), mode=READ_ONLY, description="Create time for this resource")
-@attr('extends', mode=READ_ONLY, default=compute_extends, description="An array of classes this resource is based on.")
 @attr('type', mode=READ_ONLY, default=lambda cls: get_definition_pathname(cls), description="The type of the resource")
 @attr('id', default=lambda _: ShortId.generate(), mode=READ_ONLY, description="The id of the resource")
 @attr('name', type=String(allow_empty=False, regex='^[a-zA-Z0-9 !#$%&\'()+,\-.;=@^_`{    ]+(\\/[a-zA-Z0-9 !#$%&\'()+,\-.;=@^_`{    ]+)*$'), description="The name of the resource")
@@ -153,6 +148,10 @@ class Resource(DbEntity):
 
     def __hash__(self):
         return hash(self.id)
+
+    @attr(description="An array of classes this resource is based on.")
+    def extends(self):
+        return [get_definition_pathname(c) for c in type(self).__mro__ if issubclass(c, DbEntity) and (c is not DbEntity and c is not Resource and c is not Interface)]
 
     @property
     def ething(self):
@@ -293,8 +292,4 @@ class Resource(DbEntity):
         return filter(self)
 
     def repair(self):
-        with self:
-            extends = compute_extends(type(self))
-            if extends != self.extends:
-                self.log.warning('extends attribute updated')
-                self.extends = extends
+        pass

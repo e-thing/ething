@@ -85,7 +85,6 @@ class DeviceDisconnectedEvent(ResourceEvent):
 @attr('location', type=String(), default='', description="The location of this device.")
 @attr('connected', type=Boolean(), default=True, watch=True, description="Set to true when this device is connected.")
 @attr('lastSeenDate', type=Nullable(TzDate()), mode=READ_ONLY, default=None, description="The last time this device was reached or made a request.")
-@attr('methods', default=lambda cls: [m.name for m in list_registered_methods(cls)], mode=READ_ONLY, description="The list of the methods available.")
 class Device(Resource):
 
     BATTERY_NONE = None
@@ -93,6 +92,10 @@ class Device(Resource):
     BATTERY_LOW = 10
     BATTERY_HALF = 50
     BATTERY_FULL = 100
+
+    @attr(description="The list of the methods available.")
+    def methods(self):
+        return [m.name for m in list_registered_methods(self)]
 
     def setConnectState(self, connected):
 

@@ -1,14 +1,14 @@
 from ething.core.Device import Device
 from ething.core.reg import *
 from ething.plugins.ping import pingable
-from ething.core.interfaces import Switch
+from ething.core.interfaces import Relay
 import requests
 import xmltodict
 
 
 @pingable()
 @attr('host', type=String(allow_empty=False), description="The ip address or hostname of the device to connect to.")
-class Denon(Device, Switch):
+class Denon(Device, Relay):
     """
     Denon Device resource representation
     """

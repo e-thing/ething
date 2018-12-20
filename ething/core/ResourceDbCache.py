@@ -2,6 +2,7 @@
 
 from .reg import get_registered_class
 from .utils.lock import SecureRLock
+from .utils import object_sort
 import logging
 import threading
 from future.utils import string_types
@@ -39,7 +40,7 @@ class ResourceDbCache(object):
             #
             # if need_upgrade:
             #     self.__log.info('upgrading database %s --> %s' % (db_version, current_version))
-            #     for doc in self.__db.list_resources():
+            #     for doc in self._list_resources():
             #         cl = get_registered_class(doc['type'])
             #         if cl is not None:
             #             try:
@@ -47,9 +48,9 @@ class ResourceDbCache(object):
             #             except:
             #                 self.__log.warning('error upgrading resource: name=%s type=%s id=%s , this resource is no more compatible with your current version' % (
             #                     doc.get('name'), doc.get('type'), doc.get('id')))
-            #                 self.__db.remove_resource(doc.get('id'))
+            #                 self._remove_resource(doc.get('id'))
             #             else:
-            #                 self.__db.update_resource(doc)
+            #                 self._update_resource(doc)
             #
             #     self.__db.kv_set('VERSION', current_version)
             # elif db_version is None and current_version != 'unknown':
@@ -58,7 +59,7 @@ class ResourceDbCache(object):
             cnt = 0
             loaded = 0
 
-            for doc in self.__db.list_resources():
+            for doc in self._list_resources():
                 cnt += 1
                 cl = get_registered_class(doc['type'])
                 if cl is not None:
@@ -90,7 +91,7 @@ class ResourceDbCache(object):
 
             if id in self.__resources:
                 # remove from the database
-                self.__db.remove_resource(id)
+                self._remove_resource(id)
 
                 # remove from the cache
                 del self.__resources[id]
@@ -103,7 +104,7 @@ class ResourceDbCache(object):
 
             if id not in self.__resources:
                 # insertion in the database
-                self.__db.insert_resource(resource.serialize())
+                self._insert_resource(resource.serialize())
 
                 # insertion in the cache
                 self.__resources[id] = resource
@@ -116,7 +117,7 @@ class ResourceDbCache(object):
 
             if id in self.__resources:
                 # replace in the database
-                self.__db.update_resource(resource.serialize())
+                self._update_resource(resource.serialize())
             else:
                 raise Exception('unable to save resource %s : not exist' % resource)
 
@@ -138,14 +139,26 @@ class ResourceDbCache(object):
                 asc = m.group(1) != '-'
                 sort_attr = m.group(2)
 
-                resources = sorted(resources, key=lambda r: getattr(r, sort_attr, None), reverse = not asc)
+                resources = object_sort(resources, key=lambda r: getattr(r, sort_attr, None), reverse = not asc)
 
         offset = skip or 0
 
         return resources[offset:(limit + offset if limit is not None else None)]
 
+    def _list_resources(self):
+        if not self.__db.table_exists('resources'):
+            self.__db.create_table('resources')
 
+        return self.__db.get_table_rows('resources')
 
+    def _update_resource(self, resource):
+        self.__db.update_table_row('resources', resource['id'], resource, return_old=False)
+
+    def _insert_resource(self, resource):
+        self.__db.insert_table_row('resources', resource)
+
+    def _remove_resource(self, resource_id):
+        self.__db.remove_table_row('resources', resource_id, return_old=False)
 
 
 

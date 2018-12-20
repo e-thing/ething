@@ -1,7 +1,7 @@
 # coding: utf-8
 import pytest
 from .. import RFLinkProtocol
-from  ething.core.interfaces import Switch
+from  ething.core.interfaces import Relay
 
 
 def test_rflink_controller(core, process):
@@ -31,7 +31,7 @@ def test_rflink_controller(core, process):
     switch = gateway.children(lambda r: r.nodeId == '008440e6')[0]
 
     assert switch
-    assert isinstance(switch, Switch)
+    assert isinstance(switch, Relay)
 
     table = switch.children(lambda r: r.isTypeof('resources/Table'))[0]
 

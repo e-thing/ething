@@ -52,3 +52,36 @@ if sys.version_info >= (3, 0):
 else:
     def get_cls_methods(cls):
       return [(n,m.__func__) for n,m in inspect.getmembers(cls, inspect.ismethod)]
+
+
+class _Comparable:
+    def __init__(self, obj, cls, *args):
+        self.obj = obj
+        self.cls = cls
+
+    def __lt__(self, other):
+
+        if isinstance(self.obj, self.cls):
+            if isinstance(other.obj, self.cls):
+                return self.obj < other.obj
+            else:
+                return False
+        else:
+            return True
+
+
+def object_sort(iterable, key=None, reverse=False, cls=None):
+    if key is None:
+        key = lambda v: v
+
+    if cls is None:
+        for obj in iterable:
+            val = key(obj)
+            if val is not None:
+                cls = type(val)
+                break
+        else:
+            # no item found !
+            return iterable
+
+    return sorted(iterable, key=lambda r: _Comparable(key(r), cls), reverse=reverse)

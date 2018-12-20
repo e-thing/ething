@@ -68,7 +68,7 @@ class Attribute (MutableMapping):
         return len(self._props)
 
     def __repr__(self):
-        return "<%s, cls=%s props=%s>" % (self.name, self.cls.__name__, self._props.__repr__())
+        return "<attr name=%s cls=%s props=%s>" % (self.name, self.cls.__name__ if self.cls else None, self._props.__repr__())
 
     def __hash__(self):
         return hash(self.name)
@@ -186,12 +186,14 @@ def list_registered_attr(class_or_instance):
   if not inspect.isclass(class_or_instance):
     class_or_instance = type(class_or_instance)
 
-  attributes = getattr(class_or_instance, '__meta', {}).get('attributes', list())
+  attributes = list(getattr(class_or_instance, '__meta', {}).get('attributes', list()))
 
   # look for computed attributes
-  for name, func in get_cls_methods(class_or_instance):
-    if hasattr(func, _attribute_meta_attr):
-      attributes.append(getattr(func, _attribute_meta_attr))
+  # cls_dict = class_or_instance.__dict__
+  # for name in cls_dict:
+  #   func = cls_dict.get(name)
+  #   if hasattr(func, _attribute_meta_attr):
+  #     attributes.append(getattr(func, _attribute_meta_attr))
 
   return attributes
 
@@ -618,6 +620,21 @@ class MetaReg(type):
             copy.update(attribute_b.properties)
             extended_attributes[i] = copy
 
+      # look for computed attributes
+      computed_attributes = []
+      for name in dct:
+          func = dct.get(name)
+          if hasattr(func, _attribute_meta_attr):
+              computed_attribute = getattr(func, _attribute_meta_attr)
+
+              if computed_attribute.cls is None:
+                  computed_attribute.cls = cls
+                  if hasattr(cls, '_attr_modifier_'):
+                      getattr(cls, '_attr_modifier_')(computed_attribute)
+
+              computed_attributes.append(computed_attribute)
+
+
       # signals:
       extended_signals = []
       for b in reversed(bases):
@@ -638,7 +655,7 @@ class MetaReg(type):
                 extended_signals[i] = signal_b_
 
       setattr(cls, '__meta', {
-        'attributes': extended_attributes,
+        'attributes': extended_attributes + computed_attributes,
         'signals': extended_signals,
         'abstract': False,
         'path': inherited_meta.get('path', '')

@@ -8,6 +8,7 @@ from collections import OrderedDict
 import copy
 from time import time
 from ..ShortId import ShortId
+from ..utils import object_sort
 
 
 class Driver_Base(object):
@@ -251,7 +252,7 @@ class Table(object):
         if sort is not None:
             sort_attr = sort[0]
             asc = sort[1]
-            data = sorted(data, key=lambda doc: doc.get(sort_attr, None), reverse=not asc)
+            data = object_sort(data, key=lambda doc: doc.get(sort_attr, None), reverse=not asc)
         else:
             data = list(data)
 

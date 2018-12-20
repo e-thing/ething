@@ -1,12 +1,11 @@
 # coding: utf-8
 from future.utils import binary_type
 from .base import BaseClass
-from ..TableQueryParser import TableQueryParser
-from ..query import attribute_compiler
 from ..Helpers import filter_obj
 from ..env import USER_DIR
 from ..ShortId import ShortId
 from ..green import make_it_green
+from ..utils import object_sort
 from unqlite import UnQLite
 import os
 import datetime
@@ -118,10 +117,8 @@ class UnQLiteDB(BaseClass):
 
         self.log.info('connected to database: %s' % (self.file or 'memory'))
 
-        #self.resources = self.db.collection('resources')
         self.fs = self.db.collection('fs')
 
-        #self.resources.create()
         self.fs.create()
 
     def disconnect(self):
@@ -139,32 +136,6 @@ class UnQLiteDB(BaseClass):
         if self.file:
             os.remove(self.file)
         self.connect()
-
-
-    #
-    # Resources
-    #
-
-    # def _get_db_id_from_resource_id(self, resource_id):
-    #     rs = self.resources.filter(lambda r: decode_db(r['id']) == resource_id)
-    #     if len(rs):
-    #         return rs[0]['__id']
-    #     raise Exception('unknown resource id "%s"' % resource_id)
-    #
-    # def list_resources(self):
-    #     return map(decode, self.resources.all())
-    #
-    # def update_resource(self, resource):
-    #     self.resources.update(self._get_db_id_from_resource_id(resource['id']), encode(resource))
-    #     self.db.commit()
-    #
-    # def insert_resource(self, resource):
-    #     self.resources.store(encode(resource))
-    #     self.db.commit()
-    #
-    # def remove_resource(self, resource_id):
-    #     self.resources.delete(self._get_db_id_from_resource_id(resource_id))
-    #     self.db.commit()
 
 
     #
@@ -268,23 +239,23 @@ class UnQLiteDB(BaseClass):
             self.db.store('collections', ' '.join(collections))
             self.db.commit()
 
+    def get_table_row_by_id(self, table_name, row_id):
+        table = self.db.collection(table_name)
+        rows = table.filter(lambda row: decode_db(row['id']) == row_id)
+        row = rows[0] if rows else None
+        return decode(row)
+
     @make_it_green
-    def get_table_rows(self, table_name, query = None, start=0, length=None, keys=None, sort=None):
+    def get_table_rows(self, table_name, start=0, length=None, keys=None, sort=None):
         table = self.db.collection(table_name)
         rows = list(map(decode, table.all()))
-
-        if query:
-            parser = TableQueryParser(compiler=attribute_compiler, tz=getattr(self, 'tz', None))
-            filter_fn = parser.compile(query)
-            rows = [row for row in rows if filter_fn(row)]
 
         if sort:
             sort_attr = sort[0][0]
             asc = sort[0][1]
-            rows = sorted(rows, key=lambda r: r.get(sort_attr, None), reverse=not asc)
+            rows = object_sort(rows, key=lambda doc: doc.get(sort_attr, None), reverse=not asc)
 
-            start = start or 0
-
+        start = start or 0
         rows = rows[start:(length + start if length is not None else None)]
         
         if keys:

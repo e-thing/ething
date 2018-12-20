@@ -1,11 +1,11 @@
 # coding: utf-8
 
 from .MySensorsSensor import MySensorsSensor
-from ething.core.interfaces import DimmableSwitch
+from ething.core.interfaces import DimmableRelay
 from .helpers import *
 
 
-class MySensorsDimmer (MySensorsSensor, DimmableSwitch):
+class MySensorsDimmer (MySensorsSensor, DimmableRelay):
 
     def _set_data(self, datatype, value):
         super(MySensorsDimmer, self)._set_data(datatype, value)

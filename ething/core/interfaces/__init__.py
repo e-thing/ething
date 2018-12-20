@@ -1,8 +1,13 @@
 # coding: utf-8
 
+from .button import Button
+
 from .switch import Switch
+from .relay import Relay
+from .dimmer import Dimmer
+
 from .dimmable import Dimmable
-from .dimmableSwitch import DimmableSwitch
+from .dimmableRelay import DimmableRelay
 from .light import Light
 from .dimmableLight import DimmableLight
 from .rgbLight import RGBLight

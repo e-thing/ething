@@ -34,6 +34,10 @@ def test_computed():
   assert a.foo == 'hello'
   assert a.bar == 12
 
+  attributes = list_registered_attr(B)
+
+  assert len(attributes) == 2
+
 
 def test_schema():
   @attr('foo', type=String(), default='hello')

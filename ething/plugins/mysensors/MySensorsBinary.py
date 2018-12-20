@@ -1,11 +1,11 @@
 # coding: utf-8
 
 from .MySensorsSensor import MySensorsSensor
-from ething.core.interfaces import Switch
+from ething.core.interfaces import Relay
 from .helpers import *
 
 
-class MySensorsBinary (MySensorsSensor, Switch):
+class MySensorsBinary (MySensorsSensor, Relay):
 
     def _set_data(self, datatype, value):
         super(MySensorsBinary, self)._set_data(datatype, value)

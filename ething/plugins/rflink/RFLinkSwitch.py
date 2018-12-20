@@ -2,12 +2,12 @@
 
 
 from .RFLinkNode import RFLinkNode
-from ething.core.interfaces import Switch
+from ething.core.interfaces import Relay
 from ething.core.reg import *
 
 
 @attr('switchId', type=Nullable(String(allow_empty=False)), mode = READ_ONLY, default=0, description="The switch id of the node. Only available for switch/door/motion subtypes.")
-class RFLinkSwitch(RFLinkNode, Switch):
+class RFLinkSwitch(RFLinkNode, Relay):
 
     def setState(self, state):
         self._send(CMD = 'ON' if state else 'OFF', SWITCH = self.switchId)

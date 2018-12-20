@@ -6,7 +6,6 @@ from ething.core.date import TzDate, utcnow
 from .Scope import ScopeType
 import logging
 import random
-import datetime
 
 
 def generate_apikey():
@@ -116,9 +115,10 @@ class ApikeyManager(object):
             return Apikey.unserialize(doc, context={'manager': self})
 
     def find(self, key):
-        rows = self.db.get_table_rows(self.table_name, query="value == '%s'" % key, length=1)
-        if len(rows)>0:
-            return Apikey.unserialize(rows[0], context={'manager': self})
+        apikeys = self.list()
+        for apikey in apikeys:
+            if apikey.value == key:
+                return apikey
 
     def remove(self, id):
         self.db.remove_table_row(self.table_name, id, False)

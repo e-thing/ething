@@ -2,7 +2,7 @@
 
 from ething.plugins.http import HTTP
 from ething.core.reg import *
-from ething.core.interfaces import Switch
+from ething.core.interfaces import Relay
 from ething.core import scheduler
 
 
@@ -10,7 +10,7 @@ STATE_POLLING_PERIOD = 5
 
 
 @attr('secure', default=False, mode=PRIVATE)
-class Sonoff_http(HTTP, Switch):
+class Sonoff_http(HTTP, Relay):
     """
     Sonoff_http Device resource representation.
     See https://github.com/arendst/Sonoff-Tasmota for more details.
