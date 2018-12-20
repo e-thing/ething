@@ -35,23 +35,45 @@ class Flow(object):
             if node.id == node_id:
                 return node
 
-    def get_output_endpoints(self, node, port='default'):
+    def get_input_endpoint(self, node, port):
+        for c in self._connections:
+            if c.dest.node is node and c.dest.port == port:
+                return c.dest
+
+    def get_output_endpoint(self, node, port):
+        for c in self._connections:
+            if c.src.node is node and c.src.port == port:
+                return c.src
+
+    def get_output_endpoints(self, node):
         if not isinstance(node, Node):
             node = self.get_node(node)
         output_ep = []
         for c in self._connections:
-            if c.src.node is node and (port is None or c.src.port == port):
-                output_ep.append(c.dest)
+            if c.src.node is node:
+                output_ep.append(c.src)
         return output_ep
 
-    def get_input_endpoints(self, node, port='default'):
+    def get_input_endpoints(self, node):
         if not isinstance(node, Node):
             node = self.get_node(node)
         inputs_ep = []
         for c in self._connections:
-            if c.dest.node is node and (port is None or c.dest.port == port):
-                inputs_ep.append(c.src)
+            if c.dest.node is node:
+                inputs_ep.append(c.dest)
         return inputs_ep
+
+    def get_connected_endpoints(self, endpoints):
+        eps = []
+        if endpoints is not None:
+            if isinstance(endpoints, Endpoint):
+                endpoints = [endpoints]
+            for c in self._connections:
+                if c.dest in endpoints:
+                    eps.append(c.src)
+                if c.src in endpoints:
+                    eps.append(c.dest)
+        return eps
 
     def run(self):
         # clear
@@ -64,7 +86,8 @@ class Flow(object):
                 'msg': {},
                 'start_ts': None,
                 'stop_ts': None,
-                'error': None
+                'error': None,
+                'count': 0
             }
 
         t0 = time.time()
@@ -72,7 +95,7 @@ class Flow(object):
         # find starting nodes:
         starting_nodes = []
         for node in self._nodes:
-            if len(self.get_input_endpoints(node, port=None)) == 0:
+            if len(self.get_connected_endpoints(self.get_input_endpoints(node))) == 0:
                 starting_nodes.append(node)
 
         self._logger.debug("starting_nodes=%s" % starting_nodes)
@@ -88,7 +111,7 @@ class Flow(object):
 
         while True:
             evt = self._event.get()
-            self._logger.debug("process event=%s" % evt)
+            #self._logger.debug("process event=%s" % evt)
 
             node = evt.node
             evt_name = evt.name
@@ -97,24 +120,41 @@ class Flow(object):
                 running_nodes_nb += 1
                 self._nodes_data[node.id]['state'] = evt_name
                 self._nodes_data[node.id]['start_ts'] = time.time()
+                self._nodes_data[node.id]['count'] += 1
+
             elif evt_name == 'emmited':
                 msg = evt['msg']
                 port = evt['port']
+                endpoint = self.get_output_endpoint(node, port)
                 self._nodes_data[node.id]['msg'][port] = msg
-                self._logger.debug('emit msg %s on port %s' % (msg, port))
-                # propagate the message
-                for ep in self.get_output_endpoints(node, port=port):
-                    # check that all inputs nodes are finished
-                    input_msg_dict = {}
-                    for ep1 in self.get_input_endpoints(ep.node, port=None):
-                        input_msg = self._nodes_data[ep1.node.id]['msg'].get(ep1.port)
-                        if input_msg is None:
-                            break
-                        if ep1.port not in input_msg_dict:
-                            input_msg_dict[ep1.port] = []
-                        input_msg_dict[ep1.port].append(input_msg.data)
-                    else:
-                        ep.node.run(**input_msg_dict)
+                self._logger.debug('emit msg %s on port %s from node %s' % (msg, port, node))
+
+                if endpoint is not None:
+                    # propagate the message
+
+                    connected_nodes = set()
+                    for ep in self.get_connected_endpoints(endpoint):
+                        connected_nodes.add(ep.node)
+
+                    for n in connected_nodes:
+                        kwargs = {}
+                        for ep in self.get_input_endpoints(n):
+                            msg_ = None
+                            for ep_src in self.get_connected_endpoints(ep):
+                                msg_src = self._nodes_data[ep_src.node.id]['msg'].get(ep_src.port)
+                                if msg_src is not None:
+                                    msg_ = msg_src
+                                    break
+                            else:
+                                break
+                            kwargs[ep.port] = msg_.data
+                        else:
+                            n.run(**kwargs)
+                else:
+                    # endpoint not connected
+                    # nothing to propagate
+                    pass
+
             elif evt_name == 'stopped':
                 running_nodes_nb -= 1
                 err = evt['error']
@@ -141,7 +181,7 @@ class Endpoint(object):
             node = node[0]
 
         self.node = node
-        self.port = 'default' if port is None else port
+        self.port = 'default' if port is None else str(port)
 
     def __repr__(self):
         return str(self)
@@ -187,7 +227,7 @@ class Node(object):
         return str(self)
 
     def __str__(self):
-        return '<node id=%s type=%s props=%s>' % (self._id, self._type, self._other_props)
+        return '<node id=%s type=%s>' % (self._id, self._type)
 
     def emit(self, msg=None, port='default'):
         if not isinstance(msg, Message):
@@ -305,8 +345,8 @@ class FunctionNode(Node):
         self._fn = other['fn']
         super(FunctionNode, self).__init__(flow, 'function', nid, **other)
 
-    def main(self, default, **input_msgs):
-        return self._fn(default)
+    def main(self, **input_msgs):
+        return self._fn(**input_msgs)
 
 
 class TimerNode(Node):
@@ -323,8 +363,8 @@ class DebugNode(Node):
         self._message = other.get('message', '%%msg')
         super(DebugNode, self).__init__(flow, 'debug', nid, **other)
 
-    def main(self, **input_msgs):
-        self._logger.info(self._message.replace('%%msg', str(input_msgs)))
+    def main(self, default):
+        self._logger.info(self._message.replace('%%msg', str(default)))
 
 
 
@@ -356,26 +396,31 @@ if __name__ == '__main__':
 
 
     def src():
-        for i in range(5):
-            time.sleep(1)
-            yield i
+         for i in range(5):
+             time.sleep(1)
+             yield i
 
 
     event1 = EventSource(flow, source=src)
 
-    add = FunctionNode(flow, fn=lambda data: sum(data))
-
-    test1 = Condition(flow, test=lambda data: data[0] > 3)
+    test1 = Condition(flow, test=lambda data: data > 3)
 
     flow.connect(event1, test1)
     flow.connect((test1, 'default'), dbg1)
 
-    c2 = Constant(flow, value=2)
-    c3 = Constant(flow, value=3)
-    dbg2 = DebugNode(flow, message='dbg sum=%%msg')
 
-    flow.connect(c2, add)
-    flow.connect(c3, add)
-    flow.connect(add, dbg2)
+    # def summ(**kwargs):
+    #     return sum(kwargs.values())
+    #
+    # add = FunctionNode(flow, fn=summ, nid='add')
+    #
+    #
+    # c2 = Constant(flow, value=2, nid='c2')
+    # c3 = Constant(flow, value=3, nid='c3')
+    # dbg2 = DebugNode(flow, message='dbg sum=%%msg', nid='dbg2')
+    #
+    # flow.connect(c2, (add, 0))
+    # flow.connect(c3, (add, 1))
+    # flow.connect(add, dbg2)
 
     flow.run()

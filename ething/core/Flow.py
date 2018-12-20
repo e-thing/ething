@@ -23,7 +23,7 @@ class EventNode(Node):
         self._event = other['event']
         super(EventNode, self).__init__(flow, **other)
 
-    def main(self, **input_msgs):
+    def main(self):
         q = queue.Queue()
 
         def push(signal):
@@ -45,8 +45,8 @@ class ConditionNode(Node):
         self._condition = other['condition']
         super(ConditionNode, self).__init__(flow, **other)
 
-    def main(self, default, **kwargs):
-        signal = default[0]
+    def main(self, default):
+        signal = default
         test_pass = False
         try:
             test_pass = self._condition.test(signal, self._ething)
@@ -64,8 +64,8 @@ class ActionNode(Node):
         self._action = other['action']
         super(ActionNode, self).__init__(flow, **other)
 
-    def main(self, default, **kwargs):
-        signal = default[0]
+    def main(self, default):
+        signal = default
 
         try:
             self._action.run(signal, self._ething)
