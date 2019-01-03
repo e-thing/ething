@@ -6,3 +6,4 @@ from .core import Core
 from .rule import Rule
 from .File import File
 from .Table import Table
+from .Flow import Flow

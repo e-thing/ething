@@ -1,26 +1,42 @@
 # coding: utf-8
-
 from .Resource import Resource
-from .date import TzDate, utcnow
 from .entity import *
-
 from .rule.event import Event
 from .rule.condition import Condition
 from .rule.action import Action
-
-from .utils.dataflow import Flow as _Flow, Node
-
+from .utils.dataflow import Flow as _Flow, Node, DebugNode, DelayNode
+from .Process import Process
 try:
     import queue
 except ImportError:
     import Queue as queue
 
 
+registered_nodes = set()
+
+
+def register_node(node_cls):
+    registered_nodes.add(node_cls)
+
+
+def get_registered_node(type):
+    for cls in registered_nodes:
+        if cls.__name__ == type:
+            return cls
+
+
 class EventNode(Node):
+    OUTPUTS = ['default']
+    PROPS = {
+        'event': Event.toSchema()
+    }
+    COLOR = '#873489'
 
     def __init__(self, flow, **other):
         self._ething = other['ething']
-        self._event = other['event']
+        self._event = Event.unserialize(other['event'], context={
+            'ething': self._ething
+        })
         super(EventNode, self).__init__(flow, **other)
 
     def main(self):
@@ -40,9 +56,18 @@ class EventNode(Node):
 
 
 class ConditionNode(Node):
+    INPUTS = ['default']
+    OUTPUTS = ['default', 'fail']
+    PROPS = {
+        'condition': Condition.toSchema()
+    }
+    COLOR = '#a91c1c'
+
     def __init__(self, flow, **other):
         self._ething = other['ething']
-        self._condition = other['condition']
+        self._condition = Condition.unserialize(other['condition'], context={
+            'ething': self._ething
+        })
         super(ConditionNode, self).__init__(flow, **other)
 
     def main(self, default):
@@ -59,9 +84,18 @@ class ConditionNode(Node):
 
 
 class ActionNode(Node):
+    INPUTS = ['default']
+    OUTPUTS = ['default']
+    PROPS = {
+        'action': Action.toSchema()
+    }
+    COLOR = '#346789'
+
     def __init__(self, flow, **other):
         self._ething = other['ething']
-        self._action = other['action']
+        self._action = Action.unserialize(other['action'], context={
+            'ething': self._ething
+        })
         super(ActionNode, self).__init__(flow, **other)
 
     def main(self, default):
@@ -75,7 +109,20 @@ class ActionNode(Node):
         self.emit(signal)
 
 
+register_node(EventNode)
+register_node(ConditionNode)
+register_node(ActionNode)
+register_node(DebugNode)
+register_node(DelayNode)
+
+
 def _model_discriminator(value, types, context):
+    if isinstance(value, Event):
+        return types[0]
+    if isinstance(value, Condition):
+        return types[1]
+    if isinstance(value, Action):
+        return types[2]
     t = value['type']
     if t.startswith('events/'):
         return types[0]
@@ -89,8 +136,8 @@ node_type = Dict(
     allow_extra=True,
     mapping={
         'id': String(allow_empty=False),
-        'type': Enum(['event', 'condition', 'action']),
-        'model': OneOf([Event, Condition, Action], _model_discriminator)
+        'type': String(allow_empty=False), # Enum(['event', 'condition', 'action']),
+        'model': Dict()#OneOf([Event, Condition, Action], _model_discriminator)
     }
 )
 
@@ -108,17 +155,62 @@ class FlowData(Dict):
         super(FlowData, self).__init__(
             allow_extra=False,
             mapping={
-                'nodes': Array(min_len=2, item_type=node_type),
-                'connections': Array(min_len=1, item_type=connection_type),
+                'nodes': Array(item_type=node_type),
+                'connections': Array(item_type=connection_type),
             },
+            optionals=['nodes', 'connections'],
             **attributes
         )
 
 
-@attr('flow', type=FlowData(), description="An object describing a flow.")
+empty_flow = {
+    'nodes': [],
+    'connections': []
+}
+
+class FlowProcess(Process):
+
+    def __init__(self, flow_resource):
+        super(FlowProcess, self).__init__(name='flow')
+        self._flow_resource = flow_resource
+        self._flow_instance = None
+
+    def setup(self):
+        self._flow_instance = self._flow_resource.parseFlow()
+
+    def main(self):
+        self._flow_instance.run()
+
+    def end(self):
+        self._flow_instance = None
+
+    def stop(self, timeout=None):
+        if self._flow_instance is not None:
+            self._flow_instance.stop()
+        super(FlowProcess, self).stop(timeout)
+
+
+#@attr('state', mode=READ_ONLY, default='stopped', description='the current state of the flow.')
+@attr('repeat', type=Boolean(), default=False, description='repeat the flow indefinitely.')
+@attr('flow', type=FlowData(), default=empty_flow, description="An object describing a flow.")
 class Flow(Resource):
 
-    def _parseFlow(self):
+    def deploy(self):
+        self.stop() # stop any previous flow
+        process = FlowProcess(self)
+        process.start()
+        self._m['process'] = process
+
+    def stop(self):
+        if 'process' in self._m:
+            self._m['process'].stop()
+            del self._m['process']
+
+    def remove(self, removeChildren=False):
+        self.stop()
+        super(Flow, self).remove(removeChildren)
+
+    def parseFlow(self):
         flow_data = self.flow
 
         nodes_data = flow_data.get('nodes', [])
@@ -130,21 +222,12 @@ class Flow(Resource):
             type = node_data['type']
             nid = node_data['id']
             model = node_data['model']
-            context = {
-                'ething': self._ething
-            }
+            node_cls = get_registered_node(type)
 
-            if type == 'event':
-                #event = Event.unserialize(model, context=context)
-                EventNode(flow, nid=nid, event=model, ething=self.ething)
-            elif type == 'condition':
-                #condition = Condition.unserialize(model, context=context)
-                ConditionNode(flow, nid=nid, condition=model, ething=self.ething)
-            elif type == 'action':
-                #action = Action.unserialize(model, context=context)
-                ActionNode(flow, nid=nid, action=model, ething=self.ething)
-            else:
-                raise Exception('invalid node type "%s"' % type)
+            if node_cls is None:
+                raise Exception('unknown node type "%s"' % type)
+
+            node_cls(flow, nid=nid, ething=self.ething, **model)
 
         for connection_data in connections_data:
             src_id = connection_data['src'][0]

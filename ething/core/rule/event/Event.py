@@ -58,4 +58,5 @@ class Event(Entity):
         schema = Entity.toSchema.__func__(cls, context)
         if cls.signal:
             schema['signal'] = cls.signal.__name__
+        schema['format'] = 'ething.event'
         return schema

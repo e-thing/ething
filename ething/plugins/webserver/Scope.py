@@ -57,13 +57,19 @@ class Scope(object):
             'description': 'modify the settings'
         },
         'rule:read': {
-            'description': 'read rules attributes'
+            'description': 'read rules attributes and execute them'
         },
         'rule:write': {
             'description': 'create rules'
         },
         'rule:trigger': {
             'description': 'trigger custom events'
+        },
+        'flow:read': {
+            'description': 'read flows attributes and start/stop them'
+        },
+        'flow:write': {
+            'description': 'create flows'
         }
 
     }

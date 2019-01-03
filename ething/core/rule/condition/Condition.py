@@ -32,3 +32,9 @@ class Condition(Entity):
             raise Exception('unknown type "%s"' % type)
         return Entity.fromJson.__func__(_cls, data, context)
 
+    @classmethod
+    def toSchema(cls, context=None):
+        schema = Entity.toSchema.__func__(cls, context)
+        schema['format'] = 'ething.condition'
+        return schema
+

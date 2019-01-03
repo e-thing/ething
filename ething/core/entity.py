@@ -34,6 +34,7 @@ class Entity(with_metaclass(MetaReg, M_Class)):
         object.__setattr__(self, '_Entity__dirty_attrs', set())
         object.__setattr__(self, '_lock', threading.RLock())
         object.__setattr__(self, '_context', context)
+        object.__setattr__(self, '_m', dict())
 
         for attribute in attributes:
             if attribute.get('compute') is None:

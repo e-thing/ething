@@ -5,6 +5,7 @@ from . import file
 from . import table
 from . import device
 from . import rule
+from . import flow
 from . import utils
 from . import event
 from . import auth
@@ -22,6 +23,7 @@ def install_routes(**kwargs):
     table.install(**kwargs)
     device.install(**kwargs)
     rule.install(**kwargs)
+    flow.install(**kwargs)
     utils.install(**kwargs)
     event.install(**kwargs)
     auth.install(**kwargs)

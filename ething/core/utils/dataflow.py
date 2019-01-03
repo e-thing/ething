@@ -3,16 +3,21 @@ from future.utils import integer_types, string_types
 import time
 import logging
 import uuid
+import gevent
 
 try:
     import queue
 except ImportError:
     import Queue as queue
 
-_LOGGER = logging.getLogger('flow')
+_LOGGER = logging.getLogger('ething.flow')
 
 
 id_types = string_types + integer_types
+
+
+STOPPED = 'stopped'
+RUNNING = 'running'
 
 
 class Flow(object):
@@ -22,6 +27,7 @@ class Flow(object):
         self._event = queue.Queue()
         self._logger = _LOGGER
         self._nodes_data = {}
+        self._state = STOPPED
 
     def connect(self, src, dest):
         self._connections.append(Connection(src, dest))
@@ -75,9 +81,25 @@ class Flow(object):
                     eps.append(c.dest)
         return eps
 
+    def stop(self):
+        self._event.put(Event('quit'))
+
     def run(self):
+
+        if self._state == RUNNING:
+            raise Exception('flow already running')
+
+        self._state = RUNNING
+
+        t0 = time.time()
+
         # clear
         self._nodes_data.clear()
+        while True:
+            try:
+                self._event.get(False)
+            except queue.Empty:
+                break
 
         # init
         for node in self._nodes:
@@ -90,12 +112,10 @@ class Flow(object):
                 'count': 0
             }
 
-        t0 = time.time()
-
         # find starting nodes:
         starting_nodes = []
         for node in self._nodes:
-            if len(self.get_connected_endpoints(self.get_input_endpoints(node))) == 0:
+            if len(self.get_input_endpoints(node)) == 0:
                 starting_nodes.append(node)
 
         self._logger.debug("starting_nodes=%s" % starting_nodes)
@@ -166,12 +186,22 @@ class Flow(object):
                     self._logger.debug("stop flow on error=%s node=%s" % (err, node))
                     break
 
+            elif evt_name == 'quit':
+                break
+
             if self._event.empty() and running_nodes_nb == 0:
                 self._logger.debug("end of the flow")
                 break
 
+        # stop/kill any remaining running nodes
+        for node in self._nodes:
+            node.stop()
+
         tf = time.time()
+
         self._logger.debug("flow duration: %f sec" % (tf - t0))
+
+        self._state = STOPPED
 
 
 class Endpoint(object):
@@ -207,12 +237,19 @@ class Connection(object):
 
 
 class Node(object):
+
+    INPUTS = None
+    OUTPUTS = None
+    COLOR = '#4286f4'
+    ICON = 'mdi-pin'
+    PROPS = None
+
     def __init__(self, flow, ntype=None, nid=None, stop_on_error=True, **other):
         self._flow = flow
         self._id = nid or uuid.uuid4()
         self._type = ntype or type(self).__name__
         self._other_props = other
-        self._logger = logging.getLogger('flow.%s' % self._id)
+        self._logger = logging.getLogger('ething.flow.%s' % self._id)
         self._t = None
         self._emitter = False
         self.stop_on_error = stop_on_error
@@ -243,7 +280,7 @@ class Node(object):
         self._flow._event.put(Event('started', self))
 
     def _main(self, input_msgs):
-        self._logger.debug('run started input_msgs=%s' % input_msgs)
+        self._logger.debug('node started input_msgs=%s' % input_msgs)
         err = None
         result = None
         try:
@@ -259,13 +296,22 @@ class Node(object):
             if result is not None:
                 self.emit(result)
 
-        self._logger.debug('run stopped')
+        self._logger.debug('node stopped')
 
         self._flow._event.put(Event('stopped', self, error=err))
+        self._t = None
+
+    def stop(self):
+        if self._t:
+            try:
+                gevent.kill(self._t)
+            except gevent.GreenletExit:
+                pass
+            self._t = None
 
 
 class Event(object):
-    def __init__(self, name, node, **other):
+    def __init__(self, name, node=None, **other):
         self._name = name
         self._node = node
         self._ts = time.time()
@@ -305,9 +351,13 @@ class Message(object):
 
 
 class Condition(Node):
-    def __init__(self, flow, nid=None, **other):
+
+    INPUTS = ['default']
+    OUTPUTS = ['default', 'fail']
+
+    def __init__(self, flow, **other):
         self._test = other['test']
-        super(Condition, self).__init__(flow, 'condition', nid, **other)
+        super(Condition, self).__init__(flow, **other)
 
     def main(self, default, **kwargs):
         test_pass = False
@@ -322,54 +372,108 @@ class Condition(Node):
 
 
 class EventSource(Node):
-    def __init__(self, flow, nid=None, **other):
-        self._source = other['source']
-        super(EventSource, self).__init__(flow, 'event', nid, **other)
+    OUTPUTS = ['default']
 
-    def main(self, **input_msgs):
+    def __init__(self, flow, **other):
+        self._source = other['source']
+        super(EventSource, self).__init__(flow, **other)
+
+    def main(self):
         for v in self._source():
             self.emit(v)
 
 
 class Constant(Node):
-    def __init__(self, flow, nid=None, **other):
+    OUTPUTS = ['default']
+    PROPS = {
+        'value': {}
+    }
+
+    def __init__(self, flow, **other):
         self._value = other['value']
-        super(Constant, self).__init__(flow, 'constant', nid, **other)
+        super(Constant, self).__init__(flow, **other)
 
     def main(self, **input_msgs):
         self.emit(self._value)
 
 
 class FunctionNode(Node):
-    def __init__(self, flow, nid=None, **other):
+    INPUTS = ['default']
+    OUTPUTS = ['default']
+
+    def __init__(self, flow, **other):
         self._fn = other['fn']
-        super(FunctionNode, self).__init__(flow, 'function', nid, **other)
+        super(FunctionNode, self).__init__(flow, **other)
 
     def main(self, **input_msgs):
         return self._fn(**input_msgs)
 
 
-class TimerNode(Node):
-    def __init__(self, flow, nid=None, **other):
+class DelayNode(Node):
+    INPUTS = ['default']
+    OUTPUTS = ['default']
+    PROPS = {
+        'duration': {
+            'type': 'integer',
+            'minimum': 0
+        }
+    }
+
+    def __init__(self, flow, **other):
         self._duration = other['duration']
-        super(TimerNode, self).__init__(flow, 'timer', nid, **other)
+        super(DelayNode, self).__init__(flow, **other)
 
     def main(self, **input_msgs):
         time.sleep(self._duration)
 
 
+class TimerNode(Node):
+    INPUTS = ['default']
+    OUTPUTS = ['default']
+    PROPS = {
+        'interval': {
+            'type': 'integer',
+            'minimum': 0
+        }
+    }
+
+    def __init__(self, flow, **other):
+        self._interval = other['interval']
+        super(TimerNode, self).__init__(flow, **other)
+
+    def main(self):
+        while True:
+            self.emit(time.time())
+            time.sleep(self._interval)
+
+
 class DebugNode(Node):
-    def __init__(self, flow, nid=None, **other):
+    INPUTS = ['default']
+    PROPS = {
+        'message': {
+            'type': 'string'
+        }
+    }
+
+    def __init__(self, flow, **other):
         self._message = other.get('message', '%%msg')
-        super(DebugNode, self).__init__(flow, 'debug', nid, **other)
+        super(DebugNode, self).__init__(flow, **other)
 
     def main(self, default):
         self._logger.info(self._message.replace('%%msg', str(default)))
 
 
+class ExitNode(Node):
+    INPUTS = ['default']
+
+    def __init__(self, flow, **other):
+        super(ExitNode, self).__init__(flow, **other)
+
+    def main(self, default):
+        self._flow._event.put(Event('quit'))
+
 
 if __name__ == '__main__':
-    import gevent
     from gevent import monkey
 
     monkey.patch_all()
