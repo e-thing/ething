@@ -1,4 +1,5 @@
 import EThingUI from 'ething-quasar-core'
+import EThing from 'ething-js'
 
 function guidGenerator() {
     var S4 = function() {

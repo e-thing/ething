@@ -7,7 +7,7 @@ from .ResourceQueryParser import ResourceQueryParser
 from .Config import CoreConfig
 from .SignalDispatcher import SignalDispatcher
 from .version import __version__
-from .plugin import search_plugin_cls
+from .plugin import search_plugin_cls, list_registered_plugins
 from .scheduler import Scheduler
 from .ResourceDbCache import ResourceDbCache
 from .green import mode
@@ -47,6 +47,9 @@ class Core(object):
 
         self.__instances.append(self)
 
+        for p_cls in list_registered_plugins():
+            self.use(p_cls)
+
     @property
     def local_tz (self):
         local_tz = self.config.get('timezone', 'UTC')
@@ -59,12 +62,18 @@ class Core(object):
 
     def use(self, something):
         plugin_cls = search_plugin_cls(something)
+        plugin_name = getattr(plugin_cls, 'PACKAGE', {}).get('name', type(plugin_cls).__name__)
+
+        for p in self.plugins:
+            if type(p) is plugin_cls:
+                self.log.debug('plugin %s: already loaded' % plugin_name)
+                return p
 
         # instanciate:
         try:
             plugin = plugin_cls(self)
         except:
-            self.log.exception('plugin %s: unable to load' % getattr(plugin_cls, 'PACKAGE', {}).get('name', type(plugin_cls).__name__))
+            self.log.exception('plugin %s: unable to load' % plugin_name)
         else:
             self.plugins.append(plugin)
             plugin.load()

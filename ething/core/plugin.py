@@ -91,6 +91,8 @@ class Plugin(BasePlugin):
         self._config = ConfigItem(core.config, self.name, schema=config_schema or getattr(self, 'CONFIG_SCHEMA'),
                                  defaults=copy.deepcopy(config_defaults or getattr(self, 'CONFIG_DEFAULTS')))
 
+        self.core.signalDispatcher.bind('ConfigUpdated', self._on_core_config_updated)
+
     @property
     def config(self):
         return self._config
@@ -99,14 +101,8 @@ class Plugin(BasePlugin):
     def log(self):
         return self._log
 
-    def start(self):
-        self.core.signalDispatcher.bind('ConfigUpdated', self._on_core_config_updated)
-
     def on_config_change(self):
         pass
-
-    def stop(self):
-        self.core.signalDispatcher.unbind('ConfigUpdated', self._on_core_config_updated)
 
     def _on_core_config_updated(self, signal):
         if self.name in signal.updated_keys:
@@ -223,7 +219,7 @@ def search_plugin_cls(something):
         mod = getattr(something, '__module__', None)
         plugin_cls = install_func_to_plugin(something)
     else:
-        raise ValueError('invalid argument in use()')
+        raise ValueError('invalid plugin %s' % something)
 
     # bind plugin meta information
     if not getattr(plugin_cls, 'PACKAGE', None) and mod:
@@ -252,3 +248,15 @@ def find_plugins():
                 _plugins_cache.append(module_name)
 
     return _plugins_cache
+
+
+_registered_plugins_cls = set()
+
+
+def register_plugin(something):
+    plugin_cls = search_plugin_cls(something)
+    _registered_plugins_cls.add(plugin_cls)
+
+
+def list_registered_plugins():
+    return list(_registered_plugins_cls)

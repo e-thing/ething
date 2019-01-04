@@ -91,6 +91,13 @@ class ResourceType(Id):
         self.check_existance(value, context)
         return value
 
+    def toSchema(self, context = None):
+        schema = super(ResourceType, self).toSchema(context)
+        schema['format'] = 'ething.resource'
+        if self.accepted_types:
+            schema['onlyTypes'] = self.accepted_types
+        return schema
+
 
 class RDict(Dict):
     def toJson(self, value, context=None):

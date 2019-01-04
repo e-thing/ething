@@ -4,8 +4,9 @@ from .entity import *
 from .rule.event import Event
 from .rule.condition import Condition
 from .rule.action import Action
-from .utils.dataflow import Flow as _Flow, Node, DebugNode, DelayNode
+from .utils.dataflow import Flow as _Flow, Node, DebugNode, Debugger
 from .Process import Process
+from .plugin import Plugin, register_plugin
 try:
     import queue
 except ImportError:
@@ -21,99 +22,99 @@ def register_node(node_cls):
 
 def get_registered_node(type):
     for cls in registered_nodes:
-        if cls.__name__ == type:
+        if getattr(cls, 'NAME', cls.__name__) == type:
             return cls
 
+#
+# class EventNode(Node):
+#     OUTPUTS = ['default']
+#     PROPS = {
+#         'event': Event.toSchema()
+#     }
+#     COLOR = '#873489'
+#
+#     def __init__(self, flow, **other):
+#         self._ething = other['ething']
+#         self._event = Event.unserialize(other['event'], context={
+#             'ething': self._ething
+#         })
+#         super(EventNode, self).__init__(flow, **other)
+#
+#     def main(self):
+#         q = queue.Queue()
+#
+#         def push(signal):
+#             q.put(signal)
+#
+#         self._ething.signalDispatcher.bind('*', push)
+#
+#         while True:
+#             signal = q.get()
+#             if self._event.filter(signal, self._ething):
+#                 self.emit(signal)
+#
+#         self._ething.signalDispatcher.unbind('*', push)
+#
+#
+# class ConditionNode(Node):
+#     INPUTS = ['default']
+#     OUTPUTS = ['default', 'fail']
+#     PROPS = {
+#         'condition': Condition.toSchema()
+#     }
+#     COLOR = '#a91c1c'
+#
+#     def __init__(self, flow, **other):
+#         self._ething = other['ething']
+#         self._condition = Condition.unserialize(other['condition'], context={
+#             'ething': self._ething
+#         })
+#         super(ConditionNode, self).__init__(flow, **other)
+#
+#     def main(self, default):
+#         signal = default
+#         test_pass = False
+#         try:
+#             test_pass = self._condition.test(signal, self._ething)
+#         except:
+#             self._logger.exception('test exception')
+#
+#         self._logger.debug('test result=%s' % test_pass)
+#
+#         self.emit(signal, port='default' if test_pass else 'fail')
+#
+#
+# class ActionNode(Node):
+#     INPUTS = ['default']
+#     OUTPUTS = ['default']
+#     PROPS = {
+#         'action': Action.toSchema()
+#     }
+#     COLOR = '#346789'
+#
+#     def __init__(self, flow, **other):
+#         self._ething = other['ething']
+#         self._action = Action.unserialize(other['action'], context={
+#             'ething': self._ething
+#         })
+#         super(ActionNode, self).__init__(flow, **other)
+#
+#     def main(self, default):
+#         signal = default
+#
+#         try:
+#             self._action.run(signal, self._ething)
+#         except:
+#             self._logger.exception('action exception')
+#
+#         self.emit(signal)
 
-class EventNode(Node):
-    OUTPUTS = ['default']
-    PROPS = {
-        'event': Event.toSchema()
-    }
-    COLOR = '#873489'
 
-    def __init__(self, flow, **other):
-        self._ething = other['ething']
-        self._event = Event.unserialize(other['event'], context={
-            'ething': self._ething
-        })
-        super(EventNode, self).__init__(flow, **other)
-
-    def main(self):
-        q = queue.Queue()
-
-        def push(signal):
-            q.put(signal)
-
-        self._ething.signalDispatcher.bind('*', push)
-
-        while True:
-            signal = q.get()
-            if self._event.filter(signal, self._ething):
-                self.emit(signal)
-
-        self._ething.signalDispatcher.unbind('*', push)
-
-
-class ConditionNode(Node):
-    INPUTS = ['default']
-    OUTPUTS = ['default', 'fail']
-    PROPS = {
-        'condition': Condition.toSchema()
-    }
-    COLOR = '#a91c1c'
-
-    def __init__(self, flow, **other):
-        self._ething = other['ething']
-        self._condition = Condition.unserialize(other['condition'], context={
-            'ething': self._ething
-        })
-        super(ConditionNode, self).__init__(flow, **other)
-
-    def main(self, default):
-        signal = default
-        test_pass = False
-        try:
-            test_pass = self._condition.test(signal, self._ething)
-        except:
-            self._logger.exception('test exception')
-
-        self._logger.debug('test result=%s' % test_pass)
-
-        self.emit(signal, port='default' if test_pass else 'fail')
-
-
-class ActionNode(Node):
-    INPUTS = ['default']
-    OUTPUTS = ['default']
-    PROPS = {
-        'action': Action.toSchema()
-    }
-    COLOR = '#346789'
-
-    def __init__(self, flow, **other):
-        self._ething = other['ething']
-        self._action = Action.unserialize(other['action'], context={
-            'ething': self._ething
-        })
-        super(ActionNode, self).__init__(flow, **other)
-
-    def main(self, default):
-        signal = default
-
-        try:
-            self._action.run(signal, self._ething)
-        except:
-            self._logger.exception('action exception')
-
-        self.emit(signal)
-
-
-register_node(EventNode)
-register_node(ConditionNode)
-register_node(ActionNode)
+#register_node(EventNode)
+#register_node(ConditionNode)
+#register_node(ActionNode)
 register_node(DebugNode)
-register_node(DelayNode)
+#register_node(DelayNode)
 
 
 def _model_discriminator(value, types, context):
@@ -175,6 +176,10 @@ class FlowProcess(Process):
         self._flow_resource = flow_resource
         self._flow_instance = None
 
+    @property
+    def flow(self):
+        return self._flow_instance
+
     def setup(self):
         self._flow_instance = self._flow_resource.parseFlow()
 
@@ -227,7 +232,7 @@ class Flow(Resource):
             if node_cls is None:
                 raise Exception('unknown node type "%s"' % type)
 
-            node_cls(flow, nid=nid, ething=self.ething, **model)
+            node_cls(flow, ething=self.ething, nid=nid, **model)
 
         for connection_data in connections_data:
             src_id = connection_data['src'][0]
@@ -237,6 +242,164 @@ class Flow(Resource):
 
             flow.connect((flow.get_node(src_id), src_port), (flow.get_node(dest_id), dest_port))
 
+        # attach registered debuggers
+        if 'debuggers' in self._m:
+            for d in self._m['debuggers']:
+                flow.attach_debugger(d)
+
         return flow
 
+    def attach_debugger(self, debugger):
+        self.log.debug('attach debugger %s', debugger)
 
+        if 'debuggers' not in self._m:
+            self._m['debuggers'] = set()
+
+        self._m['debuggers'].add(debugger)
+
+        if 'process' in self._m:
+            flow = self._m['process'].flow
+            if flow is not None:
+                flow.attach_debugger(debugger)
+
+    def dettach_debugger(self, debugger):
+        self.log.debug('dettach debugger %s', debugger)
+
+        if 'debuggers' in self._m:
+            self._m['debuggers'].remove(debugger)
+
+        if 'process' in self._m:
+            flow = self._m['process'].flow
+            if flow is not None:
+                flow.dettach_debugger(debugger)
+
+
+class EventBaseNode(Node):
+    OUTPUTS = ['default']
+    COLOR = '#873489'
+    ICON = 'mdi-rss'
+
+    def __init__(self, flow, ething, event, **other):
+        self._ething = ething
+        self._event = event
+        super(EventBaseNode, self).__init__(flow, **other)
+
+    def main(self):
+        q = queue.Queue()
+
+        def push(signal):
+            q.put(signal)
+
+        self._ething.signalDispatcher.bind('*', push)
+
+        while True:
+            signal = q.get()
+            if self._event.filter(signal, self._ething):
+                self.emit(signal)
+
+        self._ething.signalDispatcher.unbind('*', push)
+
+
+class ConditionBaseNode(Node):
+    INPUTS = ['default']
+    OUTPUTS = ['default', 'fail']
+    COLOR = '#a91c1c'
+    ICON = 'mdi-help'
+
+    def __init__(self, flow, ething, condition, **other):
+        self._ething = ething
+        self._condition = condition
+        super(ConditionBaseNode, self).__init__(flow, **other)
+
+    def main(self, default):
+        signal = default
+        test_pass = False
+        try:
+            test_pass = self._condition.test(signal, self._ething)
+        except:
+            self._logger.exception('test exception')
+
+        self._logger.debug('test result=%s' % test_pass)
+
+        self.emit(signal, port='default' if test_pass else 'fail')
+
+
+class ActionBaseNode(Node):
+    INPUTS = ['default']
+    OUTPUTS = ['default']
+    PROPS = {
+        'action': Action.toSchema()
+    }
+    COLOR = '#346789'
+    ICON = 'mdi-play'
+
+    def __init__(self, flow, ething, action, **other):
+        self._ething = ething
+        self._action = action
+        super(ActionBaseNode, self).__init__(flow, **other)
+
+    def main(self, default):
+        signal = default
+
+        try:
+            self._action.run(signal, self._ething)
+        except:
+            self._logger.exception('action exception')
+
+        self.emit(signal)
+
+
+def generate_node_cls(base_cls, cls):
+
+    def init(self, flow, ething, **other):
+        other['type'] = get_definition_pathname(cls)
+        event = cls.unserialize(other, context={
+            'ething': ething
+        })
+        base_cls.__init__(self, flow, ething, event, **other)
+
+    node_cls = type('%sFlowNode' % cls.__name__, (base_cls,), {
+        '__init__': init
+    })
+
+    setattr(node_cls, 'NAME', cls.__name__)
+    setattr(node_cls, 'SCHEMA', {
+        '$ref': '#/' + get_definition_pathname(cls)
+    })
+
+    parts = get_definition_pathname(cls).split('/')
+    parts.pop()
+    cat = '/'.join(parts)
+
+    setattr(node_cls, 'CATEGORY', cat)
+
+    register_node(node_cls)
+
+
+class FlowPlugin(Plugin):
+
+    def setup(self):
+
+        # register all nodes
+        for cls in filter(lambda cls: get_definition_pathname(cls).startswith('events/') and not is_abstract(cls), list_registered_classes()):
+            generate_node_cls(EventBaseNode, cls)
+
+        for cls in filter(lambda cls: get_definition_pathname(cls).startswith('conditions/') and not is_abstract(cls), list_registered_classes()):
+            generate_node_cls(ConditionBaseNode, cls)
+
+        for cls in filter(lambda cls: get_definition_pathname(cls).startswith('actions/') and not is_abstract(cls), list_registered_classes()):
+            generate_node_cls(ActionBaseNode, cls)
+
+        self.core.signalDispatcher.bind('ResourceCreated', self._on_resource_created)
+
+    def start(self):
+        for f in self.core.find(lambda r: r.isTypeof('resources/Flow')):
+            f.deploy()
+
+    def _on_resource_created(self, signal):
+        r = signal.resource
+        if isinstance(r, Flow):
+            r.deploy()
+
+
+register_plugin(FlowPlugin)

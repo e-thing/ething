@@ -50,7 +50,7 @@ class SSHPlugin(Plugin):
             return app.jsonify(shell)
 
         @socketio.on('connect', namespace='/ssh')
-        def client_disconnect():
+        def client_connect():
             self.log.debug('Client connected %s' % request.sid)
 
         @socketio.on('disconnect', namespace='/ssh')

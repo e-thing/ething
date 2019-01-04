@@ -23,10 +23,14 @@ class Signal(with_metaclass(MetaReg, object)):
         return type(self).__name__
 
     def toJson(self):
+        data = {}
+        for k in self.__dict__:
+            if not k.startswith('_'):
+                data[k] = self.__dict__[k]
         return {
             'name': type(self).__name__,
             'ts': self.timestamp,
-            'data': self.__dict__
+            'data': data
         }
 
     # deprecated: just for compatibility

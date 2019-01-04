@@ -28,6 +28,7 @@ class Flow(object):
         self._logger = _LOGGER
         self._nodes_data = {}
         self._state = STOPPED
+        self._debuggers = set()
 
     def connect(self, src, dest):
         self._connections.append(Connection(src, dest))
@@ -203,6 +204,24 @@ class Flow(object):
 
         self._state = STOPPED
 
+    def debug(self, obj, node=None):
+        for d in self._debuggers:
+            try:
+                d.debug(obj, node=node)
+            except:
+                self._logger.exception('debugger exception')
+
+    def attach_debugger(self, debugger):
+        self._debuggers.add(debugger)
+
+    def dettach_debugger(self, debugger):
+        if debugger in self._debuggers:
+            self._debuggers.remove(debugger)
+
+    @property
+    def debuggers(self):
+        return list(self._debuggers)
+
 
 class Endpoint(object):
     def __init__(self, node, port=None):
@@ -218,6 +237,13 @@ class Endpoint(object):
 
     def __str__(self):
         return '<endpoint node=%s port=%s>' % (self.node, self.port)
+
+    def __eq__(self, other):
+        """Overrides the default implementation"""
+        if isinstance(other, Endpoint):
+            return self.node is other.node and self.port == other.port
+        return False
+
 
 
 class Connection(object):
@@ -243,12 +269,12 @@ class Node(object):
     COLOR = '#4286f4'
     ICON = 'mdi-pin'
     PROPS = None
+    PROPS_REQUIRED = None
 
     def __init__(self, flow, ntype=None, nid=None, stop_on_error=True, **other):
         self._flow = flow
         self._id = nid or uuid.uuid4()
         self._type = ntype or type(self).__name__
-        self._other_props = other
         self._logger = logging.getLogger('ething.flow.%s' % self._id)
         self._t = None
         self._emitter = False
@@ -309,6 +335,10 @@ class Node(object):
                 pass
             self._t = None
 
+    def debug(self, obj):
+        self._logger.debug(str(obj))
+        self._flow.debug(obj, node=self)
+
 
 class Event(object):
     def __init__(self, name, node=None, **other):
@@ -348,6 +378,18 @@ class Message(object):
 
     def __str__(self):
         return '<message data=%s>' % (self.data,)
+
+
+class Debugger(object):
+
+    def debug(self, obj, node=None):
+        pass
+
+    def __repr__(self):
+        return str(self)
+
+    def __str__(self):
+        return '<%s>' % (type(self).__name__, )
 
 
 class Condition(Node):
@@ -454,13 +496,15 @@ class DebugNode(Node):
             'type': 'string'
         }
     }
+    PROPS_REQUIRED = []
+    ICON = 'mdi-android-debug-bridge'
 
     def __init__(self, flow, **other):
-        self._message = other.get('message', '%%msg')
+        self._message = other.get('message', None)
         super(DebugNode, self).__init__(flow, **other)
 
     def main(self, default):
-        self._logger.info(self._message.replace('%%msg', str(default)))
+        self.debug(self._message.replace('%%msg', str(default)) if self._message is not None else default)
 
 
 class ExitNode(Node):

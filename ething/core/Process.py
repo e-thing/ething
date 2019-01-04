@@ -106,11 +106,11 @@ class BaseProcess(object):
             self.setup()
         except Exception:
             self.log.exception('Exception in process "%s" in setup()' % self.name)
-
-        try:
-            self.main()
-        except Exception:
-            self.log.exception('Exception in process "%s" in main()' % self.name)
+        else:
+            try:
+                self.main()
+            except Exception:
+                self.log.exception('Exception in process "%s" in main()' % self.name)
 
         try:
             self.end()

@@ -3,10 +3,38 @@
 
 from flask import request, Response
 from ..server_utils import *
-from ething.core.Flow import registered_nodes
+from ething.core.Flow import registered_nodes, Debugger
+import time
+import json
+
+
+class SocketIoDebugger (Debugger):
+    def __init__(self, app, client_id, flowResource):
+        self.app = app
+        self.client_id = client_id
+        self.flowResource = flowResource
+        self.flowResourceId = flowResource.id
+
+        flowResource.attach_debugger(self)
+
+    def debug(self, obj, node=None):
+
+        data = {
+            'data': self.app.toJson(obj),
+            'node': node.id,
+            'flow_id': self.flowResourceId,
+            'ts': time.time()
+        }
+
+        self.app.socketio.emit('dbg_data', data, namespace='/flow', room=self.client_id)
+
+    def destroy(self):
+        self.flowResource.dettach_debugger(self)
 
 
 def install(core, app, auth, **kwargs):
+
+    _debuggers = []
 
     @app.route('/api/flows', methods=['POST'])
     @auth.required('flow:write resource:write')
@@ -41,18 +69,75 @@ def install(core, app, auth, **kwargs):
         nodes = []
 
         for cls in registered_nodes:
+
+            schema = getattr(cls, 'SCHEMA', None)
+
+            if schema is None:
+                props = cls.PROPS or {}
+                schema = {
+                    'type': 'object',
+                    'properties': props,
+                    'required': cls.PROPS_REQUIRED if cls.PROPS_REQUIRED is not None else list(props.keys())
+                }
+
             nodes.append({
-                'type': cls.__name__,
+                'type': getattr(cls, 'NAME', cls.__name__),
                 'color': getattr(cls, 'COLOR', None),
                 'icon': getattr(cls, 'ICON', None),
                 'inputs': cls.INPUTS,
                 'outputs': cls.OUTPUTS,
-                'schema': {
-                    'type': 'object',
-                    'properties': cls.PROPS or {}
-                }
+                'schema': schema,
+                'category': getattr(cls, 'CATEGORY', None)
             })
 
         return app.jsonify({
             'nodes': nodes
         })
+
+    @app.socketio.on('connect', namespace='/flow')
+    def client_connect():
+        app.log.debug('[flow] Client connected %s' % request.sid)
+
+    @app.socketio.on('disconnect', namespace='/flow')
+    def client_disconnect():
+        client_id = request.sid
+
+        # remove all debuggers for this client !
+        to_remove = set()
+        for d in _debuggers:
+            if d.client_id == client_id:
+                to_remove.add(d)
+        for d in to_remove:
+            d.destroy()
+            _debuggers.remove(d)
+
+        app.log.debug('[flow] Client disconnected %s' % request.sid)
+
+    @app.socketio.on('dbg_open', namespace='/flow')
+    def open_debugger(data):
+        flow_id = data.get('flow_id')
+        client_id = request.sid
+
+        flowResource = app.getResource(flow_id, ['Flow'])
+
+        debugger = SocketIoDebugger(app, client_id, flowResource)
+        _debuggers.append(debugger)
+
+    @app.socketio.on('dbg_close', namespace='/flow')
+    def close_debugger(data):
+        flow_id = data.get('flow_id')
+        client_id = request.sid
+
+        flowResource = app.getResource(flow_id, ['Flow'])
+
+        # find the according debugger
+        debugger = None
+        for d in _debuggers:
+            if d.client_id == client_id and d.flowResource == flowResource:
+                debugger = d
+                break
+
+        if debugger:
+            debugger.destroy()
+            _debuggers.remove(debugger)
+
