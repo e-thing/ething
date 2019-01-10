@@ -131,7 +131,6 @@ class Core(object):
     def stop(self, callback = None):
         self.log.info("stopping ...")
         self._plugins_call('stop')
-        self.dispatchSignal('DaemonStopped')
         self.running = False
 
         if callback is not None:
@@ -207,7 +206,6 @@ class Core(object):
 
         self.running = True
         self._plugins_call('start')
-        self.dispatchSignal('DaemonStarted')
 
     def loop(self, timeout=1):
         self.signalDispatcher.process(timeout)

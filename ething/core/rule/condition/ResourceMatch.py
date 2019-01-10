@@ -6,6 +6,7 @@ from ...Resource import ResourceType
 from ...query import Expression
 
 
+@meta(icon='mdi-filter')
 @attr('resource', type=Nullable(ResourceType()), default=None, description="The resource that must match the given expression. If none, the resource is the one that emits the signal.")
 @attr('expression', type=Expression(), description="The expression the resource must match")
 class ResourceMatch(Condition):

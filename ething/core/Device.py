@@ -3,63 +3,32 @@ from future.utils import string_types, integer_types, with_metaclass, listvalues
 from .Resource import Resource
 from .date import TzDate, utcnow
 from .reg import *
-from .rule.event import ResourceEvent, ResourceSignal
+from .rule.event import ResourceEvent, ResourceSignal, ResourceFilter
 
 
 class BatteryLevelChanged(ResourceSignal):
     def __init__(self, resource, new_value, old_value):
         super(BatteryLevelChanged, self).__init__(resource)
-        self.new_value = new_value
-        self.old_value = old_value
+        self.battery = new_value
 
 
-@attr('last_state', mode=PRIVATE, default=False)
-@attr('repeat', type=Boolean(), default=False)
-@attr('threshold', type=Number(), default=0)
-@attr('trigger_mode', type=Enum((None, 'above threshold', 'below threshold', 'equal to')), default=None)
+@path('devices', True)
+@meta(icon='mdi-battery-50')
+@attr('resource', type=ResourceFilter(must_throw=BatteryLevelChanged))
 class BatteryLevelChangedEvent(ResourceEvent):
     """
     is emitted each time the battery level changed
     """
     signal = BatteryLevelChanged
 
-    def _filter(self, signal, core, rule):
-        if super(BatteryLevelChangedEvent, self)._filter(signal, core, rule):
-
-            new_value = signal.new_value
-            old_value = signal.old_value
-            result = False
-
-            try:
-                trigger_mode = self.trigger_mode
-                threshold = self.threshold
-
-                if trigger_mode is None:
-                    result = True
-                elif trigger_mode == 'above threshold':
-                    result = new_value >= threshold and old_value < threshold
-                elif trigger_mode == 'below threshold':
-                    result = new_value <= threshold and old_value > threshold
-                elif trigger_mode == 'equal to':
-                    result = new_value == threshold
-            except Exception:
-                pass
-
-            last_state = self.last_state
-            self.last_state = result
-
-            if result:
-                if not self.repeat:
-                    if last_state:
-                        result = False
-
-            return result
-
 
 class DeviceConnected(ResourceSignal):
     pass
 
 
+@path('devices', True)
+@meta(icon='mdi-lan-connect')
+@attr('resource', type=ResourceFilter(must_throw=DeviceConnected))
 class DeviceConnectedEvent(ResourceEvent):
     """
     is emitted each time a device connect
@@ -71,6 +40,9 @@ class DeviceDisconnected(ResourceSignal):
     pass
 
 
+@path('devices', True)
+@meta(icon='mdi-lan-disconnect')
+@attr('resource', type=ResourceFilter(must_throw=DeviceDisconnected))
 class DeviceDisconnectedEvent(ResourceEvent):
     """
     is emitted each time a device disconnect

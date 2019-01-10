@@ -111,15 +111,19 @@ class ResourceFilter(Basetype):
     def toSchema(self, context = None):
         schema = super(ResourceFilter, self).toSchema(context)
         schema['type'] = "array"
+        schema['format'] = "ething.resource"
         schema['items'] = {
             "type": "string"
         }
-        schema['onlyTypes'] = self.onlyTypes
+        if self.onlyTypes:
+            schema['onlyTypes'] = self.onlyTypes
+        if self.must_throw:
+            schema['must_throw'] = self.must_throw if isinstance(self.must_throw, string_types) else get_definition_pathname(self.must_throw)
         return schema
 
 
 @abstract
-@attr('resource', type=ResourceFilter(), description="filter the resource emitting the signal")
+@attr('resource', type=ResourceFilter(must_throw=ResourceSignal), description="filter the resource emitting the signal")
 class ResourceEvent(Event):
 
     signal = ResourceSignal

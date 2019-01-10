@@ -2,7 +2,7 @@
 
 from ..Interface import Interface
 from ..reg import *
-from ..rule.event import ResourceSignal, ResourceEvent
+from ..rule.event import ResourceSignal, ResourceEvent, ResourceFilter
 
 
 class ButtonClicked(ResourceSignal):
@@ -11,6 +11,7 @@ class ButtonClicked(ResourceSignal):
         self.type = type
 
 
+@attr('resource', type=ResourceFilter(must_throw=ButtonClicked))
 class ButtonClickedEvent(ResourceEvent):
     signal = ButtonClicked
 

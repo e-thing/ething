@@ -2,7 +2,7 @@
 
 from ..Interface import Interface
 from ..reg import *
-from ..rule.event import ResourceSignal, ResourceEvent
+from ..rule.event import ResourceSignal, ResourceEvent, ResourceFilter
 
 
 class LevelChanged(ResourceSignal):
@@ -16,11 +16,12 @@ class LevelChanged(ResourceSignal):
 @attr('repeat', type=Boolean(), default=False)
 @attr('threshold', type=Number(), default=0)
 @attr('trigger_mode', type=Enum((None, 'above threshold', 'below threshold', 'equal to')), default=None)
+@attr('resource', type=ResourceFilter(must_throw=LevelChanged))
 class LevelChangedEvent(ResourceEvent):
     signal = LevelChanged
 
-    def _filter(self, signal, core, rule):
-        if super(LevelChangedEvent, self)._filter(signal, core, rule):
+    def _filter(self, signal, core):
+        if super(LevelChangedEvent, self)._filter(signal, core):
 
             new_value = signal.new_value
             old_value = signal.old_value

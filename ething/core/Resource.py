@@ -3,7 +3,7 @@
 from .ShortId import ShortId, Id
 from .dbentity import *
 from .reg import get_definition_pathname
-from .rule.event import ResourceEvent, ResourceSignal
+from .rule.event import ResourceEvent, ResourceSignal, ResourceFilter
 from .Interface import Interface
 from .date import TzDate, utcnow
 from collections import Mapping
@@ -15,6 +15,9 @@ class ResourceCreated(ResourceSignal):
     pass
 
 
+@path('resources', True)
+@meta(icon='mdi-plus')
+@attr('resource', type=ResourceFilter(must_throw=ResourceCreated))
 class ResourceCreatedEvent(ResourceEvent):
     """
     is emitted each time a resource is created
@@ -26,6 +29,9 @@ class ResourceDeleted(ResourceSignal):
     pass
 
 
+@path('resources', True)
+@meta(icon='mdi-delete')
+@attr('resource', type=ResourceFilter(must_throw=ResourceDeleted))
 class ResourceDeletedEvent(ResourceEvent):
     """
     is emitted each time a resource is deleted
@@ -40,7 +46,10 @@ class ResourceUpdated(ResourceSignal):
         self.attributes = attributes
 
 
+@path('resources', True)
+@meta(icon='mdi-update')
 @attr('attributes', type=Nullable(Array(min_len=1, item=String(allow_empty=False))), default=None)
+@attr('resource', type=ResourceFilter(must_throw=ResourceUpdated))
 class ResourceUpdatedEvent(ResourceEvent):
     """
     is emitted each time a resource attribute has been updated
@@ -48,9 +57,9 @@ class ResourceUpdatedEvent(ResourceEvent):
 
     signal = ResourceUpdated
 
-    def _filter(self, signal, core, rule):
+    def _filter(self, signal, core):
 
-        if super(ResourceUpdatedEvent, self)._filter(signal, core, rule):
+        if super(ResourceUpdatedEvent, self)._filter(signal, core):
             a = self.attributes
 
             if not a:

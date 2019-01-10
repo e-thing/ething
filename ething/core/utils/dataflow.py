@@ -85,6 +85,14 @@ class Flow(object):
     def stop(self):
         self._event.put(Event('quit'))
 
+    def get_info(self, node=None):
+        r = self._nodes_data
+        if node is not None:
+            if isinstance(node, Node):
+                node = node.id
+            r = self._nodes_data.get(node)
+        return r
+
     def run(self):
 
         if self._state == RUNNING:
@@ -190,6 +198,10 @@ class Flow(object):
             elif evt_name == 'quit':
                 break
 
+            if node is not None:
+                for d in self._debuggers:
+                    self._send_info(d, node)
+
             if self._event.empty() and running_nodes_nb == 0:
                 self._logger.debug("end of the flow")
                 break
@@ -211,8 +223,16 @@ class Flow(object):
             except:
                 self._logger.exception('debugger exception')
 
+    def _send_info(self, debugger, node):
+        try:
+            debugger.info(node, self._nodes_data[node.id])
+        except:
+            self._logger.exception('debugger exception')
+
     def attach_debugger(self, debugger):
         self._debuggers.add(debugger)
+        for node in self._nodes:
+            self._send_info(debugger, node)
 
     def dettach_debugger(self, debugger):
         if debugger in self._debuggers:
@@ -271,7 +291,7 @@ class Node(object):
     PROPS = None
     PROPS_REQUIRED = None
 
-    def __init__(self, flow, ntype=None, nid=None, stop_on_error=True, **other):
+    def __init__(self, flow, ntype=None, nid=None, stop_on_error=False, **other):
         self._flow = flow
         self._id = nid or uuid.uuid4()
         self._type = ntype or type(self).__name__
@@ -292,7 +312,12 @@ class Node(object):
     def __str__(self):
         return '<node id=%s type=%s>' % (self._id, self._type)
 
-    def emit(self, msg=None, port='default'):
+    def emit(self, msg=None, port=None):
+        if port is None:
+            if self.OUTPUTS:
+                port = self.OUTPUTS[0]
+            else:
+                raise Exception('no output port for node %s' % self)
         if not isinstance(msg, Message):
             msg = Message(msg)
         self._emitter = True
@@ -313,11 +338,13 @@ class Node(object):
             result = self.main(**input_msgs)
         except Exception as e:
             self._logger.exception('exception in main()')
+            self.debug(e)
             err = e
         else:
             if not isinstance(result, Message):
                 if not self._emitter or result is not None:
-                    result = Message(result)
+                    if self.OUTPUTS:
+                        result = Message(result)
 
             if result is not None:
                 self.emit(result)
@@ -383,6 +410,9 @@ class Message(object):
 class Debugger(object):
 
     def debug(self, obj, node=None):
+        pass
+
+    def info(self, node, info):
         pass
 
     def __repr__(self):
@@ -491,20 +521,13 @@ class TimerNode(Node):
 
 class DebugNode(Node):
     INPUTS = ['default']
-    PROPS = {
-        'message': {
-            'type': 'string'
-        }
-    }
-    PROPS_REQUIRED = []
     ICON = 'mdi-android-debug-bridge'
 
     def __init__(self, flow, **other):
-        self._message = other.get('message', None)
         super(DebugNode, self).__init__(flow, **other)
 
     def main(self, default):
-        self.debug(self._message.replace('%%msg', str(default)) if self._message is not None else default)
+        self.debug(default)
 
 
 class ExitNode(Node):

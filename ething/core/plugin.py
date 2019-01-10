@@ -116,16 +116,14 @@ class Plugin(BasePlugin):
 
 def get_package_info(mod):
     package = {}
+    name = None
+
+    if isinstance(mod, string_types):
+        name = mod
 
     if inspect.ismodule(mod):
 
         name = mod.__name__
-
-        if name.startswith('ething.plugins.'):
-            name = name[15:]
-            package['builtin'] = True
-
-        package['name'] = name
 
         if mod.__path__:
             package['location'] = mod.__path__[0]
@@ -136,6 +134,13 @@ def get_package_info(mod):
             package['version'] = mod.version
 
         mod = mod.__name__
+
+    if name is not None:
+
+        if name.startswith('ething.'):
+            package['builtin'] = True
+
+        package['name'] = name.split('.').pop()
 
     try:
         dist = pkg_resources.get_distribution(mod)

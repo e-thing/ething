@@ -2,7 +2,7 @@
 
 from . import Signal, Event
 from croniter import croniter
-from ...reg import attr, String
+from ...reg import attr, String, meta
 import pytz
 import datetime
 
@@ -13,7 +13,18 @@ class Tick(Signal):
     pass
 
 
-@attr('cron_expression', type=String(allow_empty=False))
+class CronExpr(String):
+    def __init__(self, **attributes):
+        super(CronExpr, self).__init__(allow_empty=False, **attributes)
+
+    def toSchema(self, context=None):
+        schema = super(CronExpr, self).toSchema(context)
+        schema['format'] = 'cron'
+        return schema
+
+
+@meta(icon='mdi-clock-outline')
+@attr('cron_expression', type=CronExpr())
 class Timer(Event):
     """
     is emitted periodically at fixed times, dates, or intervals

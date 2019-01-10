@@ -15,6 +15,57 @@ def _make_default(value, *arg, **kwargs):
 
 
 #
+# Meta
+#
+
+def meta(**metadata):
+    def d(cls):
+        meta = getattr(cls, '__meta')
+        meta.update(metadata)
+        return cls
+    return d
+
+
+def get_meta(class_or_instance, key):
+    if not inspect.isclass(class_or_instance):
+        class_or_instance = type(class_or_instance)
+
+    return getattr(class_or_instance, '__meta', {}).get(key)
+
+
+def path(name, relative=False):
+    def d(cls):
+
+        meta = getattr(cls, '__meta')
+
+        if relative:
+            path = meta.get('path')
+            if path:
+                path += '/'
+            path += name
+        else:
+            path = name
+
+        meta['path'] = path
+
+        update_registered_class(cls)
+
+        return cls
+
+    return d
+
+
+def abstract(cls):
+    getattr(cls, '__meta')['abstract'] = True
+    return cls
+
+
+def is_abstract(cls):
+    return getattr(cls, '__meta').get('abstract', False)
+
+
+
+#
 # Attributes
 #
 
@@ -92,34 +143,6 @@ class Attribute (MutableMapping):
           schema['readOnly'] = True
       
       return schema
-
-
-def path(name, relative = False):
-  def d(cls):
-
-    meta = getattr(cls, '__meta')
-
-    if relative:
-      path = meta.get('path')
-      if path:
-        path += '/'
-      path += name
-    else:
-      path = name
-    
-    meta['path'] = path
-
-    update_registered_class(cls)
-
-    return cls
-  return d
-
-def abstract(cls):
-  getattr(cls, '__meta')['abstract'] = True
-  return cls
-
-def is_abstract(cls):
-  return getattr(cls, '__meta').get('abstract', False)
 
 
 _attribute_meta_attr = '__meta_attr'
@@ -659,7 +682,9 @@ class MetaReg(type):
         'attributes': extended_attributes + computed_attributes,
         'signals': extended_signals,
         'abstract': False,
-        'path': inherited_meta.get('path', '')
+        'path': inherited_meta.get('path', ''),
+        'description': cls.__doc__,
+        'label': cls.__name__
       })
 
       # methods
@@ -721,17 +746,27 @@ def build_schema(cls, root=False, **kwargs):
       return {
           '$ref': '#/' + get_definition_pathname(cls)
       }
-  
+
+  attributes = list_registered_attr(cls)
+
   schema = {
       "type": "class",
       "properties": OrderedDict(),
-      "additionalProperties": False
+      "additionalProperties": False,
+      "label": get_meta(cls, 'label')
   }
-  attributes = list_registered_attr(cls)
+
+  icon = get_meta(cls, 'icon')
+  if icon:
+      schema['icon'] = icon
+
+  color = get_meta(cls, 'color')
+  if color:
+      schema['color'] = color
 
   required = []
 
-  description = cls.__doc__ or ''
+  description = get_meta(cls, 'description') or ''
   description = description.strip()
   if description:
     schema['description'] = description
@@ -741,7 +776,7 @@ def build_schema(cls, root=False, **kwargs):
       for signal_ in list_registered_signals(cls):
           if (not flatted) and cls is not signal_.cls:
               continue
-          signals.append(signal_.signal.__name__)
+          signals.append(get_definition_pathname(signal_.signal))
       if len(signals) > 0:
           schema['signals'] = signals
 

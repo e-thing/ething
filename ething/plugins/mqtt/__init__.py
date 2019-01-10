@@ -157,8 +157,8 @@ class Controller(Process):
 @attr('port', type=Integer(min=0, max=65535), default=1883, description="the port to connect to the broker on.")
 @attr('payload', type=String(), default='', description="the payload to be published. If an empty string is given, a zero length payload will be published.")
 @attr('qos', type=Enum([0,1,2]), default=0, description="the qos to use when publishing.")
-@attr('username', type=String(), description="username for the client. Leave empty to disable authentication.")
-@attr('password', type=String(), description="password for the client. Leave empty to disable authentication.")
+@attr('username', type=String(), default='', description="username for the client. Leave empty to disable authentication.")
+@attr('password', type=String(), default='', description="password for the client. Leave empty to disable authentication.")
 class MqttPublish(Action):
     """ Publish a single message to a broker """
     def run(self, signal, core, rule):

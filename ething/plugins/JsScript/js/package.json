@@ -26,6 +26,6 @@
     "webpack-cli": "^3.1.1"
   },
   "dependencies": {
-    "ething-quasar-dll": "e-thing/ething-quasar-dll#master"
+    "ething-quasar-dll": "github:e-thing/ething-quasar-dll#master"
   }
 }

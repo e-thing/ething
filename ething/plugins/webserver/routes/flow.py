@@ -20,13 +20,34 @@ class SocketIoDebugger (Debugger):
     def debug(self, obj, node=None):
 
         data = {
-            'data': self.app.toJson(obj),
+            'node': node.id if node is not None else None,
+            'flow_id': self.flowResourceId,
+            'ts': time.time()
+        }
+
+        if isinstance(obj, Exception):
+            obj = {
+                'type': type(obj).__name__,
+                'message': str(obj),
+                'traceback': traceback.format_exc()
+            }
+            data['exception'] = True
+
+        data['data'] = self.app.toJson(obj)
+
+        self.app.socketio.emit('dbg_data', data, namespace='/flow', room=self.client_id)
+
+    def info(self, node, info):
+
+        data = {
             'node': node.id,
             'flow_id': self.flowResourceId,
             'ts': time.time()
         }
 
-        self.app.socketio.emit('dbg_data', data, namespace='/flow', room=self.client_id)
+        data['data'] = self.app.toJson(info)
+
+        self.app.socketio.emit('dbg_info', data, namespace='/flow', room=self.client_id)
 
     def destroy(self):
         self.flowResource.dettach_debugger(self)
@@ -86,8 +107,7 @@ def install(core, app, auth, **kwargs):
                 'icon': getattr(cls, 'ICON', None),
                 'inputs': cls.INPUTS,
                 'outputs': cls.OUTPUTS,
-                'schema': schema,
-                'category': getattr(cls, 'CATEGORY', None)
+                'schema': schema
             })
 
         return app.jsonify({
