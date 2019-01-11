@@ -2,7 +2,7 @@
 
 from future.utils import string_types
 
-from .reg import get_registered_class
+from .reg import get_registered_class, meta
 from .ResourceQueryParser import ResourceQueryParser
 from .Config import CoreConfig
 from .SignalDispatcher import SignalDispatcher
@@ -11,10 +11,19 @@ from .plugin import search_plugin_cls, list_registered_plugins
 from .scheduler import Scheduler
 from .ResourceDbCache import ResourceDbCache
 from .green import mode
+from .Signal import Signal
 
 import logging
 import pytz
 import time
+
+
+@meta(icon='mdi-send')
+class Notified(Signal):
+    def __init__(self, message, subject = None):
+        super(Notified, self).__init__()
+        self.message = message
+        self.subject = subject
 
 
 class Core(object):

@@ -1,53 +1,51 @@
 # coding: utf-8
-from future.utils import string_types, integer_types, with_metaclass, listvalues
-from .Resource import Resource
+from .Resource import Resource, ResourceType
 from .date import TzDate, utcnow
 from .reg import *
-from .rule.event import ResourceEvent, ResourceSignal, ResourceFilter
+from .Signal import ResourceSignal
+from .Flow import ResourceActionNode
 
 
+@path('devices', True)
+@meta(icon='mdi-battery-50')
 class BatteryLevelChanged(ResourceSignal):
+    """
+    is emitted each time the battery level changed
+    """
     def __init__(self, resource, new_value, old_value):
         super(BatteryLevelChanged, self).__init__(resource)
         self.battery = new_value
 
 
 @path('devices', True)
-@meta(icon='mdi-battery-50')
-@attr('resource', type=ResourceFilter(must_throw=BatteryLevelChanged))
-class BatteryLevelChangedEvent(ResourceEvent):
-    """
-    is emitted each time the battery level changed
-    """
-    signal = BatteryLevelChanged
-
-
-class DeviceConnected(ResourceSignal):
-    pass
-
-
-@path('devices', True)
 @meta(icon='mdi-lan-connect')
-@attr('resource', type=ResourceFilter(must_throw=DeviceConnected))
-class DeviceConnectedEvent(ResourceEvent):
+class DeviceConnected(ResourceSignal):
     """
     is emitted each time a device connect
     """
-    signal = DeviceConnected
-
-
-class DeviceDisconnected(ResourceSignal):
     pass
 
 
 @path('devices', True)
 @meta(icon='mdi-lan-disconnect')
-@attr('resource', type=ResourceFilter(must_throw=DeviceDisconnected))
-class DeviceDisconnectedEvent(ResourceEvent):
+class DeviceDisconnected(ResourceSignal):
     """
     is emitted each time a device disconnect
     """
-    signal = DeviceDisconnected
+    pass
+
+
+@attr('args', type=Dict(allow_extra = True), default={}, description="The arguments passed to the method")
+@attr('method', type=String(), description="The method name")
+@attr('resource', type=ResourceType(accepted_types=('resources/Device',)), description="The device on which the action is executed")
+class ExecuteDevice(ResourceActionNode):
+    def run(self, signal, core):
+        device = core.get(self.resource)
+
+        if device is None:
+            raise Exception("the device has been removed")
+
+        device.interface.call(self.method, **self.args)
 
 
 @abstract

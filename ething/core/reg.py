@@ -26,9 +26,12 @@ def meta(**metadata):
     return d
 
 
-def get_meta(class_or_instance, key):
+def get_meta(class_or_instance, key=None):
     if not inspect.isclass(class_or_instance):
         class_or_instance = type(class_or_instance)
+
+    if key is None:
+        return getattr(class_or_instance, '__meta', {})
 
     return getattr(class_or_instance, '__meta', {}).get(key)
 
@@ -861,6 +864,11 @@ def build_schema_definitions(**kwargs):
   subclass = kwargs.get('subclass')
   skip = kwargs.get('skip') or ()
 
+  kwargs.update({
+    'flatted': False,
+    'root': True
+  })
+
   for cls in list_registered_classes():
 
     if subclass is not None and not issubclass(cls, subclass):
@@ -872,7 +880,10 @@ def build_schema_definitions(**kwargs):
     meta = getattr(cls, '__meta')
     path = meta.get('path')
 
-    schema = build_schema(cls, flatted = False, root = True, **kwargs)
+    if hasattr(cls, 'toSchema'):
+        schema = cls.toSchema(context=kwargs)
+    else:
+        schema = build_schema(cls, **kwargs)
 
     rel_def = definitions
     if path:

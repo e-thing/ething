@@ -1,6 +1,6 @@
 # coding: utf-8
 
-from ething.core.rule.action import Action
+from ething.core.Flow import ActionNode
 from ething.core.entity import *
 from requests import Request, Session
 
@@ -8,10 +8,10 @@ from requests import Request, Session
 @attr('method', type=Enum(['GET', 'POST', 'PUT', 'DELETE', 'PATCH']), default='GET', description="The HTTP method.")
 @attr('url', type=String(allow_empty=False), description="The HTTP URL.")
 @attr('body', type=String(), default='', description="The body part.")
-class HttpRequest(Action):
+class HttpRequest(ActionNode):
     """ Make a HTTP request """
 
-    def run(self, signal, core, rule):
+    def run(self, signal, core):
         s = Session()
 
         req = Request(self.method, self.url)

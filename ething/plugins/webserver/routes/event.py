@@ -1,6 +1,6 @@
 # coding: utf-8
 from flask import Response, request
-from ething.core.rule.event import ResourceSignal
+from ething.core.Signal import ResourceSignal
 try:
     import queue
 except ImportError:

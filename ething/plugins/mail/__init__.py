@@ -3,7 +3,7 @@
 from ething.core.plugin import Plugin
 from collections import OrderedDict
 from .smtp import SmtpMail
-from ething.core.rule.action import Action
+from ething.core.Flow import ActionNode
 from ething.core.reg import *
 
 
@@ -46,9 +46,9 @@ class Mail(Plugin):
 @attr('message', type=String(), description="The message of the notification")
 @attr('subject', type=String(), description="The subject of the notification")
 @attr('to', type=Email(), description="Recipient email address")
-class SendEmail(Action):
+class SendEmail(ActionNode):
     """ Send an email """
-    def run(self, signal, core, rule):
+    def run(self, signal, core):
         conf = core.get_plugin('Mail').config
         mailer = SmtpMail(host = conf.get('host'), port = conf.get('port'), user = conf.get('user'), password = conf.get('password'))
         mailer.send(subject = self.subject, message = self.message, to = self.to)

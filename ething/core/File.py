@@ -4,7 +4,7 @@ from future.utils import text_type, bord
 from .Resource import Resource
 from .date import TzDate, utcnow
 from .entity import *
-from .rule.event import ResourceEvent, ResourceSignal, ResourceFilter
+from .Signal import ResourceSignal
 import datetime
 import os
 from .utils.mime import content_to_mime, ext_to_mime
@@ -19,15 +19,10 @@ from io import BytesIO
 
 
 class FileDataModified(ResourceSignal):
-    pass
-
-
-@attr('resource', type=ResourceFilter(must_throw=FileDataModified))
-class FileDataModifiedEvent(ResourceEvent):
     """
     is emitted each time file's content is modified
     """
-    signal = FileDataModified
+    pass
 
 
 @throw(FileDataModified)

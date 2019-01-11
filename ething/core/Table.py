@@ -3,7 +3,7 @@ from future.utils import string_types, integer_types
 from .Resource import Resource
 from .date import TzDate, utcnow, utcfromtimestamp
 from .entity import *
-from .rule.event import ResourceEvent, ResourceSignal, ResourceFilter
+from .Signal import ResourceSignal
 from .TableQueryParser import TableQueryParser
 from .query import attribute_compiler
 from .Helpers import filter_obj
@@ -28,19 +28,14 @@ else:
 number_types = integer_types + (float, )
 
 
-class TableDataAdded(ResourceSignal):
-    def __init__(self, resource, data):
-        super(TableDataAdded, self).__init__(resource)
-        self.data = data
-
-
 @meta(icon='mdi-table-row-plus-after')
-@attr('resource', type=ResourceFilter(must_throw=TableDataAdded))
-class TableDataAddedEvent(ResourceEvent):
+class TableDataAdded(ResourceSignal):
     """
     is emitted each time a new value is appended to a table
     """
-    signal = TableDataAdded
+    def __init__(self, resource, data):
+        super(TableDataAdded, self).__init__(resource)
+        self.data = data
 
 
 @throw(TableDataAdded)

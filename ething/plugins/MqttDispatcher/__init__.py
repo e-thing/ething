@@ -4,7 +4,7 @@ from ething.core.plugin import Plugin
 from ething.core.Process import Process
 import threading
 import paho.mqtt.client as mqttClient
-from ething.core.rule.event import ResourceSignal
+from ething.core.Signal import ResourceSignal
 import random
 import string
 import time

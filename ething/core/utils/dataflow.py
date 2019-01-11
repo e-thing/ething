@@ -31,6 +31,37 @@ class Flow(object):
         self._debuggers = set()
 
     def connect(self, src, dest):
+        if not isinstance(src, Endpoint):
+            node = None
+            port = None
+
+            if isinstance(src, tuple):
+                node = src[0]
+                if len(src) > 1:
+                    port = src[1]
+            elif isinstance(src, Node):
+                node = src
+
+            if isinstance(node, string_types):
+                node = self.get_node(node)
+
+            src = Endpoint(node, OUTPUT, port)
+        if not isinstance(dest, Endpoint):
+            node = None
+            port = None
+
+            if isinstance(dest, tuple):
+                node = dest[0]
+                if len(dest)>1:
+                    port = dest[1]
+            elif isinstance(dest, Node):
+                node = dest
+
+            if isinstance(node, string_types):
+                node = self.get_node(node)
+
+            dest = Endpoint(node, INPUT, port)
+
         self._connections.append(Connection(src, dest))
 
     def _attach_node(self, node):
@@ -75,11 +106,15 @@ class Flow(object):
         if endpoints is not None:
             if isinstance(endpoints, Endpoint):
                 endpoints = [endpoints]
-            for c in self._connections:
-                if c.dest in endpoints:
-                    eps.append(c.src)
-                if c.src in endpoints:
-                    eps.append(c.dest)
+            for ep in endpoints:
+                if ep.type == OUTPUT:
+                    for c in self._connections:
+                        if c.src == ep:
+                            eps.append(c.dest)
+                elif ep.type == INPUT:
+                    for c in self._connections:
+                        if c.dest == ep:
+                            eps.append(c.src)
         return eps
 
     def stop(self):
@@ -243,35 +278,31 @@ class Flow(object):
         return list(self._debuggers)
 
 
-class Endpoint(object):
-    def __init__(self, node, port=None):
-        if not isinstance(node, Node) and port is None:
-            port = node[1]
-            node = node[0]
+INPUT = 'input'
+OUTPUT = 'output'
 
+class Endpoint(object):
+    def __init__(self, node, type, port=None):
         self.node = node
         self.port = 'default' if port is None else str(port)
+        self.type = type
 
     def __repr__(self):
         return str(self)
 
     def __str__(self):
-        return '<endpoint node=%s port=%s>' % (self.node, self.port)
+        return '<endpoint node=%s port=%s type=%s>' % (self.node, self.port, self.type)
 
     def __eq__(self, other):
         """Overrides the default implementation"""
         if isinstance(other, Endpoint):
-            return self.node is other.node and self.port == other.port
+            return self.node is other.node and self.port == other.port and self.type == other.type
         return False
 
 
 
 class Connection(object):
     def __init__(self, src, dest):
-        if not isinstance(src, Endpoint):
-            src = Endpoint(src)
-        if not isinstance(dest, Endpoint):
-            dest = Endpoint(dest)
         self.src = src
         self.dest = dest
 
@@ -297,7 +328,7 @@ class Node(object):
         self._type = ntype or type(self).__name__
         self._logger = logging.getLogger('ething.flow.%s' % self._id)
         self._t = None
-        self._emitter = False
+        self._emitted = False
         self.stop_on_error = stop_on_error
 
         self._flow._attach_node(self)
@@ -320,7 +351,7 @@ class Node(object):
                 raise Exception('no output port for node %s' % self)
         if not isinstance(msg, Message):
             msg = Message(msg)
-        self._emitter = True
+        self._emitted = True
         self._flow._event.put(Event('emmited', self, msg=msg, port=port))
 
     def main(self, **input_msgs):
@@ -332,6 +363,7 @@ class Node(object):
 
     def _main(self, input_msgs):
         self._logger.debug('node started input_msgs=%s' % input_msgs)
+        self._emitted = False
         err = None
         result = None
         try:
@@ -342,7 +374,7 @@ class Node(object):
             err = e
         else:
             if not isinstance(result, Message):
-                if not self._emitter or result is not None:
+                if not self._emitted or result is not None:
                     if self.OUTPUTS:
                         result = Message(result)
 

@@ -7,6 +7,17 @@ from jsonschema import validate
 import copy
 import threading
 from pytz import common_timezones
+from .Signal import Signal
+from .reg import meta
+
+
+@meta(label='Configuration updated', icon='mdi-settings')
+class ConfigUpdated(Signal):
+
+    def __init__(self, updated_keys, config):
+        super(ConfigUpdated, self).__init__()
+        self.updated_keys = updated_keys
+        self.config = config
 
 
 def merge(dct, merge_dct):

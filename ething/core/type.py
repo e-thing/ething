@@ -307,12 +307,12 @@ class String(Basetype):
     if self.regex is not None:
         if not self.regex_c.search(value):
             raise ValueError(
-                "does not match the regular expression '%s'" % self.regex)
+                "does not match the regular expression '%s'. Got %s" % (self.regex, value))
 
     if self.enum is not None:
         if value not in self.enum:
             raise ValueError(
-                "must be one of the following values: %s." % ','.join(self.enum))
+                "must be one of the following values: %s. Got %s" % (','.join(self.enum), value))
 
     if self.maxLength is not None:
       if len(value) > self.maxLength:

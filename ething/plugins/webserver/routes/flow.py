@@ -3,7 +3,7 @@
 
 from flask import request, Response
 from ..server_utils import *
-from ething.core.Flow import registered_nodes, Debugger
+from ething.core.Flow import Debugger
 import time
 import json
 
@@ -83,36 +83,6 @@ def install(core, app, auth, **kwargs):
         r = app.getResource(id, ['Flow'])
         r.deploy()
         return '', 204
-
-    @app.route('/api/flows/meta')
-    @auth.required()
-    def flow_meta():
-        nodes = []
-
-        for cls in registered_nodes:
-
-            schema = getattr(cls, 'SCHEMA', None)
-
-            if schema is None:
-                props = cls.PROPS or {}
-                schema = {
-                    'type': 'object',
-                    'properties': props,
-                    'required': cls.PROPS_REQUIRED if cls.PROPS_REQUIRED is not None else list(props.keys())
-                }
-
-            nodes.append({
-                'type': getattr(cls, 'NAME', cls.__name__),
-                'color': getattr(cls, 'COLOR', None),
-                'icon': getattr(cls, 'ICON', None),
-                'inputs': cls.INPUTS,
-                'outputs': cls.OUTPUTS,
-                'schema': schema
-            })
-
-        return app.jsonify({
-            'nodes': nodes
-        })
 
     @app.socketio.on('connect', namespace='/flow')
     def client_connect():

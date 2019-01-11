@@ -1,6 +1,6 @@
 # coding: utf-8
 
-from ething.core.rule.action import Action
+from ething.core.Flow import ActionNode
 from ething.core.Resource import ResourceType
 from ething.core.reg import *
 
@@ -8,9 +8,9 @@ from ething.core.reg import *
 @attr('script', type=ResourceType(accepted_types=('resources/File',)), description="The JavaScript code to be executed")
 @attr('args', type=String(), default='', description="The arguments passed to the script")
 @attr('return_code', default=0, mode=READ_ONLY, description="The last exit code returned by the script")
-class RunScript(Action):
+class RunScript(ActionNode):
 
-    def run(self, signal, core, rule):
+    def run(self, signal, core):
         script = core.get(self.script)
 
         if script is None:
@@ -18,8 +18,7 @@ class RunScript(Action):
 
         try:
             result = core.get_plugin('JsScript').runFromFile(script, arguments=self.args, globals={
-                'signal': signal,
-                'rule': rule
+                'signal': signal
             })
         except Exception as e:
             self.log.exception('error in script')
@@ -29,7 +28,7 @@ class RunScript(Action):
 
             stderr = result.get('stderr')
             if stderr:
-                self.log.error('rule %s error (return code = %d):' % (
+                self.log.error('%s error (return code = %d):' % (
                     self, result.get('return_code')))
                 self.log.error(stderr)
 

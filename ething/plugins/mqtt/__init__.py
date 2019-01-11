@@ -6,7 +6,7 @@ from ething.core.Process import Process
 import paho.mqtt.client as mqttClient
 import paho.mqtt.publish as publish
 from ething.core.entity import *
-from ething.core.rule.action import Action
+from ething.core.Flow import ActionNode
 import threading
 
 
@@ -159,9 +159,9 @@ class Controller(Process):
 @attr('qos', type=Enum([0,1,2]), default=0, description="the qos to use when publishing.")
 @attr('username', type=String(), default='', description="username for the client. Leave empty to disable authentication.")
 @attr('password', type=String(), default='', description="password for the client. Leave empty to disable authentication.")
-class MqttPublish(Action):
+class MqttPublish(ActionNode):
     """ Publish a single message to a broker """
-    def run(self, signal, core, rule):
+    def run(self, signal, core):
 
         auth = None
 

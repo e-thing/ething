@@ -3,7 +3,7 @@
 from .ShortId import ShortId, Id
 from .dbentity import *
 from .reg import get_definition_pathname
-from .rule.event import ResourceEvent, ResourceSignal, ResourceFilter
+from .Signal import ResourceSignal
 from .Interface import Interface
 from .date import TzDate, utcnow
 from collections import Mapping
@@ -11,78 +11,49 @@ import inspect
 import logging
 
 
-class ResourceCreated(ResourceSignal):
-    pass
-
-
 @path('resources', True)
 @meta(icon='mdi-plus')
-@attr('resource', type=ResourceFilter(must_throw=ResourceCreated))
-class ResourceCreatedEvent(ResourceEvent):
+class ResourceCreated(ResourceSignal):
     """
     is emitted each time a resource is created
     """
-    signal = ResourceCreated
-
-
-class ResourceDeleted(ResourceSignal):
     pass
 
 
 @path('resources', True)
 @meta(icon='mdi-delete')
-@attr('resource', type=ResourceFilter(must_throw=ResourceDeleted))
-class ResourceDeletedEvent(ResourceEvent):
+class ResourceDeleted(ResourceSignal):
     """
     is emitted each time a resource is deleted
     """
-    signal = ResourceDeleted
+    pass
 
 
+@path('resources', True)
+@meta(icon='mdi-update')
 class ResourceUpdated(ResourceSignal):
-
+    """
+    is emitted each time a resource attribute has been updated
+    """
     def __init__(self, resource, attributes):
         super(ResourceUpdated, self).__init__(resource)
         self.attributes = attributes
 
 
-@path('resources', True)
-@meta(icon='mdi-update')
-@attr('attributes', type=Nullable(Array(min_len=1, item=String(allow_empty=False))), default=None)
-@attr('resource', type=ResourceFilter(must_throw=ResourceUpdated))
-class ResourceUpdatedEvent(ResourceEvent):
-    """
-    is emitted each time a resource attribute has been updated
-    """
-
-    signal = ResourceUpdated
-
-    def _filter(self, signal, core):
-
-        if super(ResourceUpdatedEvent, self)._filter(signal, core):
-            a = self.attributes
-
-            if not a:
-                return True
-
-            b = signal.attributes
-            for val in a:
-                if val in b:
-                    return True
-
-        return False
-
-
 class ResourceType(Id):
 
-    def __init__(self, accepted_types=None, **attributes):
+    def __init__(self, accepted_types=None, must_throw=None, **attributes):
         super(ResourceType, self).__init__(**attributes)
         self.accepted_types = accepted_types
+        self.must_throw = must_throw
+        if isinstance(self.must_throw, string_types):
+            self.must_throw = get_registered_class(self.must_throw)
+
 
     def check_existance(self, value, context = {}):
         ething = context.get('ething')
         if ething and ething.is_db_loaded:
-            r = ething.get(value)  # raise an exception if the db is not already started
+            r = ething.get(value)
 
             if r is None:
                 raise ValueError('the resource id=%s does not exist' % value)
@@ -92,8 +63,15 @@ class ResourceType(Id):
                     if r.isTypeof(t):
                         break
                 else:
-                    raise ValueError('the Resource does not match the following types: %s' % ','.join(
-                        self.accepted_types))
+                    raise ValueError('the Resource %s does not match the following types: %s' % (r, ','.join(
+                        self.accepted_types)))
+
+            if self.must_throw:
+                signals_thrown_by_resource = [s.signal for s in list_registered_signals(r)]
+                signal = self.must_throw
+                if signal not in signals_thrown_by_resource:
+                    raise ValueError("the resource %s does not throw the signal : %s" % (
+                        r, get_definition_pathname(signal)))
 
     def fromJson(self, value, context=None):
         value = super(ResourceType, self).fromJson(value, context)
@@ -105,6 +83,8 @@ class ResourceType(Id):
         schema['format'] = 'ething.resource'
         if self.accepted_types:
             schema['onlyTypes'] = self.accepted_types
+        if self.must_throw:
+            schema['must_throw'] = get_definition_pathname(self.must_throw)
         return schema
 
 
@@ -309,3 +289,5 @@ class Resource(DbEntity):
 
     def repair(self):
         pass
+
+

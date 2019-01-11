@@ -17,10 +17,10 @@ class Signal(with_metaclass(MetaReg, object)):
         return self.__ts
 
     def __str__(self):
-        return type(self).__name__
+        return '<signal %s>' % type(self).__name__
 
     def __repr__(self):
-        return type(self).__name__
+        return str(self)
 
     def toJson(self):
         data = {}
@@ -36,3 +36,14 @@ class Signal(with_metaclass(MetaReg, object)):
     # deprecated: just for compatibility
     def __getitem__(self, name):
         return getattr(self, name, None)
+
+
+@abstract
+class ResourceSignal(Signal):
+    def __init__(self, resource):
+        super(ResourceSignal, self).__init__()
+        self.resource = resource
+
+    def __str__(self):
+        return "<signal %s resource=%s>" % (type(self).__name__, self.resource.id)
+
