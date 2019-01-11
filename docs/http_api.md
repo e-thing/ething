@@ -26,7 +26,6 @@
   * [DELETE /api/resources/{id}](#delete-apiresourcesid)
   * [GET /api/resources/{id}](#get-apiresourcesid)
   * [PATCH /api/resources/{id}](#patch-apiresourcesid)
-  * [POST /api/rules](#post-apirules)
   * [GET /api/settings](#get-apisettings)
   * [PATCH /api/settings](#patch-apisettings)
   * [POST /api/tables](#post-apitables)
@@ -493,8 +492,8 @@ curl -H 'X-API-KEY: <YOUR_API_KEY>' http://localhost:8000/api/resources
 #### Query Params:
 - **sort** [string]: The key on which to do the sorting, by default the sort is made by modifiedDate descending. To make the sort descending, prepend the field name by minus "-". For instance, "-createdDate" will sort by createdDate descending.
 - **q** [string]: Query string for searching resources.
-- **skip** [integer]: Skips a number of resources.
 - **limit** [integer]: Limits the number of resources returned.
+- **skip** [integer]: Skips a number of resources.
 
 #### Responses:
   - 200: A list of resources
@@ -559,36 +558,6 @@ Clear a description :
 #### Responses:
   - 200: resource successfully updated
     [Resource](#resource)
-
-### POST /api/rules
-
-Create a new rule.
-
-#### Request body:
-
-##### Description:
-
-  the metadata of the rule to be created
-
-  example:
-
-  ```json
-  {
-     "name" : 'myrule',
-     "script": "ho58-ju",
-     "event": {
-         "type": "CustomEvent",
-         "name": "foobar"
-     }
-  }
-  ```
-
-##### Data:
-[Rule](#rule)
-
-#### Responses:
-  - 200: The rule was successfully created
-    [Rule](#rule)
 
 ### GET /api/settings
 
@@ -719,11 +688,11 @@ curl -H 'X-API-KEY: <YOUR_API_KEY>' http://localhost:8000/api/tables/<TABLE_ID>?
 
 #### Query Params:
 - **sort** [string]: the key on which to do the sorting, by default the sort is made by date ascending. To make the sort descending, prepend the field name by minus "-". For instance, "-date" will sort by date descending.
-- **length** [integer]: Maximum number of rows to return. If not set, returns until the end.
-- **start** [integer]: Position of the first rows to return. If start is negative, the position will start from the end. (default to 0).
+- **fmt** [string]: the output format (default to JSON) : json,json_pretty,csv,csv_no_header.
 - **datefmt** [string]: the format of the date field (default to RFC3339) : timestamp,timestamp_ms,rfc3339.
 - **q** [string]: Query string for filtering results.
-- **fmt** [string]: the output format (default to JSON) : json,json_pretty,csv,csv_no_header.
+- **length** [integer]: Maximum number of rows to return. If not set, returns until the end.
+- **start** [integer]: Position of the first rows to return. If start is negative, the position will start from the end. (default to 0).
 
 #### Responses:
   - 200: The records of this table
@@ -782,8 +751,8 @@ Set the content of a table. The new data will erase the previous one.
 - **id** [string]: An id representing a Resource.
 
 #### Query Params:
-- **invalid_field** [string]: The behaviour to adopt when an invalid field name appears.
 - **skip_error** [boolean]: Whether to skip data on error or not.
+- **invalid_field** [string]: The behaviour to adopt when an invalid field name appears.
 
 #### Request body:
 
@@ -848,9 +817,9 @@ Update records in a table
 - **id** [string]: An id representing a Resource.
 
 #### Query Params:
-- **invalid_field** [string]: The behaviour to adopt when an invalid field name appears.
 - **upsert** [boolean]: If true and no records was found, the data will be added to the table as a new record.
 - **q** [string]: A query that select the rows to update.
+- **invalid_field** [string]: The behaviour to adopt when an invalid field name appears.
 
 #### Responses:
   - 200: The records was successfully updated
@@ -885,175 +854,9 @@ An object describing an error
 
 ### interfaces
 
-#### Anemometer
-
-##### INHERITED
-
-[#/interfaces/Sensor](##interfacessensor)
-
-##### PROPERTIES
-
-  - **wind_direction** *(readonly)*: The direction of wind (deg)
-  - **wind_speed** *(number)* *(readonly)*: The speed of wind (m/s)
-
-#### Camera
-
-##### INHERITED
-
-[#/interfaces/Interface](##interfacesinterface)
-
-#### Dimmable
-
-##### INHERITED
-
-[#/interfaces/Interface](##interfacesinterface)
-
-##### PROPERTIES
-
-  - **level** *(number)* *(readonly)*: the level of this dimmable switch
-
-#### DimmableLight
-
-##### INHERITED
-
-[#/interfaces/DimmableSwitch](##interfacesdimmableswitch)
-
-#### DimmableSwitch
-
-##### INHERITED
-
-[#/interfaces/Switch](##interfacesswitch)
-[#/interfaces/Dimmable](##interfacesdimmable)
-
-#### DoorSensor
-
-##### INHERITED
-
-[#/interfaces/Sensor](##interfacessensor)
-
-##### PROPERTIES
-
-  - **state** *(boolean)* *(readonly)*: the state of the door. True if open.
-
-#### HumiditySensor
-
-##### INHERITED
-
-[#/interfaces/Sensor](##interfacessensor)
-
-##### PROPERTIES
-
-  - **humidity** *(number)* *(readonly)*: the humidity measured by the sensor in percent.
-
 #### Interface
 
-#### Light
-
-##### INHERITED
-
-[#/interfaces/Switch](##interfacesswitch)
-
-#### LightSensor
-
-##### INHERITED
-
-[#/interfaces/Sensor](##interfacessensor)
-
-##### PROPERTIES
-
-  - **light_level** *(number)* *(readonly)*: the light level measured by the sensor.
-
-#### MoistureSensor
-
-##### INHERITED
-
-[#/interfaces/Sensor](##interfacessensor)
-
-##### PROPERTIES
-
-  - **moisture** *(number)* *(readonly)*: the moisture level measured by this sensor.
-
-#### PressureSensor
-
-##### INHERITED
-
-[#/interfaces/Sensor](##interfacessensor)
-
-##### PROPERTIES
-
-  - **pressure** *(number)* *(readonly)*: the pressure measured by the sensor in Pa.
-
-#### RGBLight
-
-##### INHERITED
-
-[#/interfaces/Light](##interfaceslight)
-
-##### PROPERTIES
-
-  - **color** *(string)* *(readonly)*: the color of the light (#ffffff format)
-
-#### RGBWLight
-
-##### INHERITED
-
-[#/interfaces/RGBLight](##interfacesrgblight)
-[#/interfaces/Dimmable](##interfacesdimmable)
-
-#### Sensor
-
-##### INHERITED
-
-[#/interfaces/Interface](##interfacesinterface)
-
-#### Switch
-
-##### INHERITED
-
-[#/interfaces/Interface](##interfacesinterface)
-
-##### PROPERTIES
-
-  - **state** *(boolean)* *(readonly)*: the state of the switch
-
-#### Thermometer
-
-##### INHERITED
-
-[#/interfaces/Sensor](##interfacessensor)
-
-##### PROPERTIES
-
-  - **temperature** *(number)* *(readonly)*: the temperature of the sensor
-
 ### resources
-
-#### Denon
-
-Denon Device resource representation
-
-##### INHERITED
-
-[#/resources/Device](##resourcesdevice)
-[#/interfaces/Switch](##interfacesswitch)
-
-##### PROPERTIES
-
-  - **host**\* *(string)*: The ip address or hostname of the device to connect to.
-
-#### Device
-
-##### INHERITED
-
-[#/resources/Resource](##resourcesresource)
-
-##### PROPERTIES
-
-  - **battery** *(default=null)*: The battery level of this device (must be between 0 (empty) and 100 (full) , or null if the device has no battery information).
-  - **connected** *(boolean)* *(default=true)*: Set to true when this device is connected.
-  - **lastSeenDate** *(readonly)*: The last time this device was reached or made a request.
-  - **location** *(default=null)*: The location of this device.
-  - **methods** *(readonly)*: The list of the methods available.
 
 #### File
 
@@ -1063,228 +866,36 @@ Denon Device resource representation
 
 ##### PROPERTIES
 
-  - **contentModifiedDate** *(readonly)*: Last time the content of this file was modified (formatted RFC 3339 timestamp).
+  - **contentModifiedDate** *(string)* *(readonly)*: Last time the content of this file was modified (formatted RFC 3339 timestamp).
   - **expireAfter** *(default=null)*: The amount of time (in seconds) after which this resource will be removed.
   - **isText** *(readonly)*: True if this file has text based content.
   - **mime** *(readonly)*: The MIME type of the file (automatically detected from the content).
   - **size** *(readonly)*: The size of this resource in bytes
 
-#### MihomeBase
+#### Flow
 
 ##### INHERITED
 
-[#/resources/Device](##resourcesdevice)
+[#/resources/Resource](##resourcesresource)
 
 ##### PROPERTIES
 
-  - **model** *(string)* *(readonly)*: The name of the model of the device
-  - **short_id** *(readonly)*
-  - **sid** *(string)* *(readonly)*: The uniq sid of the device
+  - **flow** *(object)* *(default={"connections": [], "nodes": []})*: An object describing a flow.
+    - **connections** *(array)*
+      - additionalProperties: False
 
-#### MihomeDevice
+      - properties: OrderedDict([('src', {'items': {'minLength': 1, 'type': 'string'}, 'maxItems': 2, 'type': 'array', 'minItems': 2}), ('dest', {'items': {'minLength': 1, 'type': 'string'}, 'maxItems': 2, 'type': 'array', 'minItems': 2})])
 
-Mihome Device base class
+      - required: ['src', 'dest']
 
-##### INHERITED
+      - type: object
 
-[#/resources/MihomeBase](##resourcesmihomebase)
+    - **nodes** *(array)*
+      - [#/nodes/Node](##nodesnode)
 
-##### PROPERTIES
+      - inputs: None
 
-  - **voltage** *(number)* *(readonly)*: the voltage of the battery if any
-
-#### MihomeGateway
-
-##### INHERITED
-
-[#/resources/MihomeBase](##resourcesmihomebase)
-[#/interfaces/RGBWLight](##interfacesrgbwlight)
-[#/interfaces/LightSensor](##interfaceslightsensor)
-
-##### PROPERTIES
-
-  - **ip**\* *(string)*: The IP address of the gateway
-  - **password** *(string)* *(default="")*: The password of the gateway
-
-#### MihomeMagnet
-
-Mihome door Sensor.
-
-##### INHERITED
-
-[#/resources/MihomeDevice](##resourcesmihomedevice)
-[#/interfaces/DoorSensor](##interfacesdoorsensor)
-
-#### MihomeSensorHT
-
-Mihome temperature/humidity/pressure Sensor Device class.
-
-##### INHERITED
-
-[#/resources/MihomeDevice](##resourcesmihomedevice)
-[#/interfaces/Thermometer](##interfacesthermometer)
-[#/interfaces/HumiditySensor](##interfaceshumiditysensor)
-[#/interfaces/PressureSensor](##interfacespressuresensor)
-
-#### MQTT
-
-MQTT Device resource representation
-
-##### INHERITED
-
-[#/resources/Device](##resourcesdevice)
-
-##### PROPERTIES
-
-  - **auth** *(default=null)*: An object describing the credentials to use.
-  - **host**\* *(string)*: The host of the MQTT broker to connect to.
-  - **port** *(integer)* *(default=1883)*: The port number of the MQTT broker to connect to.
-  - **subscription** *(array)*
-    - additionalProperties: False
-
-    - properties: OrderedDict([('name', {'type': 'string', 'minLength': 1}), ('topic', {'type': 'string', 'minLength': 1}), ('jsonPath', {'type': 'string', 'minLength': 1}), ('regexp', {'type': 'string', 'minLength': 1}), ('xpath', {'type': 'string', 'minLength': 1})])
-
-    - required: ['name', 'topic']
-
-    - type: object
-
-#### MySensorsBinary
-
-##### INHERITED
-
-[#/resources/MySensorsSensor](##resourcesmysensorssensor)
-[#/interfaces/Switch](##interfacesswitch)
-
-#### MySensorsDimmer
-
-##### INHERITED
-
-[#/resources/MySensorsSensor](##resourcesmysensorssensor)
-[#/interfaces/DimmableSwitch](##interfacesdimmableswitch)
-
-#### MySensorsEthernetGateway
-
-##### INHERITED
-
-[#/resources/MySensorsGateway](##resourcesmysensorsgateway)
-
-##### PROPERTIES
-
-  - **host**\* *(string)*: The ip address or hostname of the gateway.
-  - **port** *(integer)* *(default=5003)*: The port number of the gateway. The default port number is 5003.
-
-#### MySensorsGateway
-
-see https://www.mysensors.org
-
-##### INHERITED
-
-[#/resources/Device](##resourcesdevice)
-
-##### PROPERTIES
-
-  - **isMetric** *(boolean)* *(default=true)*: Set the unit to Metric(default) instead of Imperial.
-  - **libVersion** *(readonly)*: The version of the MySensors library used.
-
-#### MySensorsGenericSensor
-
-##### INHERITED
-
-[#/resources/MySensorsSensor](##resourcesmysensorssensor)
-
-#### MySensorsHumiditySensor
-
-##### INHERITED
-
-[#/resources/MySensorsSensor](##resourcesmysensorssensor)
-[#/interfaces/HumiditySensor](##interfaceshumiditysensor)
-
-#### MySensorsNode
-
-MySensorsNode Device resource representation. This device is normally automatically created by a MySensorsGateway instance.
-
-##### INHERITED
-
-[#/resources/Device](##resourcesdevice)
-
-##### PROPERTIES
-
-  - **ackEnabled** *(boolean)* *(default=false)*: If set, every message sent must be acknowledged.
-  - **createdBy** *(default=null)*: The id of the resource responsible of the creation of this resource, or null.
-  - **firmware** *(readonly)*
-  - **libVersion** *(readonly)*: The version of the MySensors library used.
-  - **nodeId**\* *(integer)*: The id of the node.
-  - **sketchName** *(readonly)*: The name of the sketch uploaded.
-  - **sketchVersion** *(readonly)*: The version of the sketch uploaded.
-  - **smartSleep** *(boolean)* *(default=false)*: SmartSleep feature enabled for this node.
-
-#### MySensorsPressureSensor
-
-##### INHERITED
-
-[#/resources/MySensorsSensor](##resourcesmysensorssensor)
-[#/interfaces/PressureSensor](##interfacespressuresensor)
-
-#### MySensorsRGB
-
-##### INHERITED
-
-[#/resources/MySensorsSensor](##resourcesmysensorssensor)
-[#/interfaces/RGBLight](##interfacesrgblight)
-
-#### MySensorsRGBW
-
-##### INHERITED
-
-[#/resources/MySensorsSensor](##resourcesmysensorssensor)
-[#/interfaces/RGBWLight](##interfacesrgbwlight)
-
-#### MySensorsSensor
-
-MySensorsSensor Device resource representation. This device is normally automatically created by a MySensorsNode instance.
-
-##### INHERITED
-
-[#/resources/Device](##resourcesdevice)
-
-##### PROPERTIES
-
-  - **createdBy** *(default=null)*: The id of the resource responsible of the creation of this resource, or null.
-  - **sensorId**\* *(integer)*: The id of the sensor.
-  - **sensorType** *(readonly)*: The type of the sensor.
-
-#### MySensorsSerialGateway
-
-##### INHERITED
-
-[#/resources/MySensorsGateway](##resourcesmysensorsgateway)
-
-##### PROPERTIES
-
-  - **baudrate** *(default=57600)*: The baudrate.
-  - **port**\* *(string)*: The serial port name.
-
-#### MySensorsThermometer
-
-##### INHERITED
-
-[#/resources/MySensorsSensor](##resourcesmysensorssensor)
-[#/interfaces/Thermometer](##interfacesthermometer)
-
-#### OpenWeatherMapDevice
-
-##### INHERITED
-
-[#/resources/Device](##resourcesdevice)
-[#/interfaces/Thermometer](##interfacesthermometer)
-[#/interfaces/PressureSensor](##interfacespressuresensor)
-[#/interfaces/HumiditySensor](##interfaceshumiditysensor)
-[#/interfaces/Anemometer](##interfacesanemometer)
-
-##### PROPERTIES
-
-  - **location**\* *(string)*: a city's name. See https://openweathermap.org/find
-  - **weather** *(string)* *(readonly)*: a string descibing the current weather
+      - outputs: None
 
 #### Resource
 
@@ -1293,129 +904,16 @@ The base representation of a resource object
 ##### PROPERTIES
 
   - **createdBy** *(default=null)*: The id of the resource responsible of the creation of this resource, or null.
-  - **createdDate** *(readonly)*: Create time for this resource
-  - **data** *(object)* *(default={})*: A collection of arbitrary key-value pairs. Entries with null values are cleared in update. The keys must not be empty or longer than 64 characters, and must contain only the following characters : letters, digits, underscore and dash. Values must be either a string or a boolean or a number
+  - **createdDate** *(string)* *(readonly)*: Create time for this resource
+  - **data** *(object)* *(default={})*: A collection of arbitrary key-value pairs.
 
   - **description** *(string)* *(default="")*: A description of this resource.
   - **extends** *(readonly)*: An array of classes this resource is based on.
   - **id** *(readonly)*: The id of the resource
-  - **modifiedDate** *(readonly)*: Last time this resource was modified
+  - **modifiedDate** *(string)* *(readonly)*: Last time this resource was modified
   - **name**\* *(string)*: The name of the resource
   - **public** *(default=false)*: False: this resource is not publicly accessible. 'readonly': this resource is accessible for reading by anyone. 'readwrite': this resource is accessible for reading and writing by anyone.
   - **type** *(readonly)*: The type of the resource
-
-#### RFLinkGateway
-
-##### INHERITED
-
-[#/resources/Device](##resourcesdevice)
-
-##### PROPERTIES
-
-  - **build** *(readonly)*: The build number of the RFLink library used.
-  - **inclusion** *(boolean)* *(default=false)*: If true, new devices will be automatically created.
-  - **revision** *(readonly)*: The revision number of the RFLink library used.
-  - **version** *(readonly)*: The version of the RFLink library used.
-
-#### RFLinkGenericSensor
-
-##### INHERITED
-
-[#/resources/RFLinkNode](##resourcesrflinknode)
-
-#### RFLinkNode
-
-##### INHERITED
-
-[#/resources/Device](##resourcesdevice)
-
-##### PROPERTIES
-
-  - **createdBy** *(default=null)*: The id of the resource responsible of the creation of this resource, or null.
-  - **nodeId** *(string)* *(readonly)*: The hardware id of the node.
-  - **protocol** *(string)* *(readonly)*: The protocol name of the node.
-
-#### RFLinkSerialGateway
-
-##### INHERITED
-
-[#/resources/RFLinkGateway](##resourcesrflinkgateway)
-
-##### PROPERTIES
-
-  - **baudrate** *(default=57600)*: The baudrate
-  - **port**\* *(string)*: The serial port name.
-
-#### RFLinkSwitch
-
-##### INHERITED
-
-[#/resources/RFLinkNode](##resourcesrflinknode)
-[#/interfaces/Switch](##interfacesswitch)
-
-##### PROPERTIES
-
-  - **switchId** *(readonly)*: The switch id of the node. Only available for switch/door/motion subtypes.
-
-#### RTSP
-
-RTSP Device resource representation, usually IP camera.
-    avconv must be installed (apt-get install libav-tools)
-
-##### INHERITED
-
-[#/resources/Device](##resourcesdevice)
-[#/interfaces/Camera](##interfacescamera)
-
-##### PROPERTIES
-
-  - **transport** *(string)* *(default="tcp")*: Lower transport protocol. Allowed values are the ones defined for the flags for rtsp_transport (see https://libav.org/avconv.html).
-  - **url**\* *(string)*: The URL of the device rtsp://... .
-
-#### Rule
-
-Rule dictate the action to perform when an event occurs.
-    Rules consist of three parts:
-     - The event part specifies the conditions that triggers the invocation of the rule
-     - The condition part is a logical test that, if satisfied or evaluates to true, causes the action to be carried out
-     - The action part specifies what to execute in response to the event
-
-##### INHERITED
-
-[#/resources/Resource](##resourcesresource)
-
-##### PROPERTIES
-
-  - **actions**\* *(array)*: A list of actions describing a flow. Actions will be executed one after another.
-    - [#/actions/Action](##actionsaction)
-
-  - **conditions** *(array)* *(default=[])*: A list of conditions. All conditions must match to execute this rule.
-    - [#/conditions/Condition](##conditionscondition)
-
-  - **enabled** *(boolean)* *(default=true)*: If True (default), the rule is enabled
-  - **events**\* *(array)*: A list of events describing when to execute this rule.
-    - [#/events/Event](##eventsevent)
-
-  - **execution_count** *(readonly)*: The number of times this rule has been executed
-  - **execution_date** *(readonly)*: The last time this rule has been executed
-  - **execution_error** *(readonly)*: The last error logged
-
-#### SSH
-
-SSH Device resource representation
-
-##### INHERITED
-
-[#/resources/Device](##resourcesdevice)
-
-##### PROPERTIES
-
-  - **auth**\* *(object)*: An object describing the credentials to use.
-    - **password** *(string)*
-    - **user** *(string)*
-
-  - **host**\* *(string)*: The ip address or hostname of the device to connect to.
-  - **port** *(integer)* *(default=22)*: The port number of the device to connect to. The default port number is 22.
 
 #### Table
 
@@ -1425,77 +923,10 @@ SSH Device resource representation
 
 ##### PROPERTIES
 
-  - **contentModifiedDate** *(readonly)*: Last time the content of this table was modified.
+  - **contentModifiedDate** *(string)* *(readonly)*: Last time the content of this table was modified.
   - **expireAfter** *(default=null)*: The amount of time (in seconds) after which a records will be automatically removed. Set it to null or 0 to disable this feature.
-  - **keys** *(object)* *(readonly)*: A key/value object where the keys correspond to the fields available in this table, and the corresponding value is the number of rows where the field is set. __The default keys ('_id' and 'date' are not listed)__
+  - **keys** *(object)* *(readonly)*: A key/value object where the keys correspond to the fields available in this table, and the corresponding value is the number of rows where the field is set. __The default keys ('id' and 'date' are not listed)__
 
   - **length** *(readonly)*: The number of records in the table
   - **maxLength** *(default=5000)*: The maximum of records allowed in this table. When this number is reached, the oldest records will be removed to insert the new ones (first in, first out). Set it to null or 0 to disable this feature.
-
-#### YeelightBulbRGBW
-
-##### INHERITED
-
-[#/resources/YeelightDevice](##resourcesyeelightdevice)
-[#/interfaces/RGBWLight](##interfacesrgbwlight)
-
-##### PROPERTIES
-
-  - **state** *(boolean)* *(readonly)*: the state of the switch
-
-#### YeelightDevice
-
-##### INHERITED
-
-[#/resources/Device](##resourcesdevice)
-[#/interfaces/Light](##interfaceslight)
-
-##### PROPERTIES
-
-  - **fw_ver** *(string)* *(readonly)*: The firmware version of the device.
-  - **host** *(string)* *(readonly)*: The ip address of the device.
-  - **model** *(string)* *(readonly)*: The model of the device.
-
-#### ZigateAqaraTHP
-
-Mihome temperatire/humidity/pressure Sensor Device class.
-
-##### INHERITED
-
-[#/resources/ZigateDevice](##resourceszigatedevice)
-
-#### ZigateDevice
-
-ZigateDevice Device base class representation
-
-##### INHERITED
-
-[#/resources/Device](##resourcesdevice)
-
-##### PROPERTIES
-
-  - **address**\* *(string)*: The short address of this device on the zigbee network
-  - **manufacturer**\*: The manufacturer of this device
-  - **model**\*: The model of this device
-
-#### ZigateGateway
-
-##### INHERITED
-
-[#/resources/Device](##resourcesdevice)
-
-##### PROPERTIES
-
-  - **appVersion** *(default=null)*: The version of the Zigate firmware.
-  - **sdkVersion** *(default=null)*: The version of the Zigate SDK.
-
-#### ZigateSerialGateway
-
-##### INHERITED
-
-[#/resources/ZigateGateway](##resourceszigategateway)
-
-##### PROPERTIES
-
-  - **port**\* *(string)*: The serial port name.
 
