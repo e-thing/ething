@@ -2,19 +2,29 @@
 
 from .reg import *
 from future.utils import with_metaclass
+from collections import Mapping
 import time
 
 
 @path('signals')
 @abstract
-class Signal(with_metaclass(MetaReg, object)):
-
+class Signal(with_metaclass(MetaReg, Mapping)):
     def __init__(self):
-        super(Signal, self).__setattr__('_Signal__ts', time.time())
+        object.__setattr__(self, '_Signal__ts', time.time())
+        object.__setattr__(self, '_Signal__data', None)
 
     @property
-    def timestamp(self):
+    def _timestamp(self):
         return self.__ts
+
+    @property
+    def _data(self):
+        if self.__data is None:
+            self.__data = {}
+            for k in self.__dict__:
+                if not k.startswith('_'):
+                    self.__data[k] = self.__dict__[k]
+        return self.__data
 
     def __str__(self):
         return '<signal %s>' % type(self).__name__
@@ -23,19 +33,20 @@ class Signal(with_metaclass(MetaReg, object)):
         return str(self)
 
     def toJson(self):
-        data = {}
-        for k in self.__dict__:
-            if not k.startswith('_'):
-                data[k] = self.__dict__[k]
         return {
             'name': type(self).__name__,
-            'ts': self.timestamp,
-            'data': data
+            'ts': self._timestamp,
+            'data': self._data
         }
 
-    # deprecated: just for compatibility
-    def __getitem__(self, name):
-        return getattr(self, name, None)
+    def __getitem__(self, key):
+        return self._data[key]
+
+    def __iter__(self):
+        return iter(self._data)
+
+    def __len__(self):
+        return len(self._data)
 
 
 @abstract

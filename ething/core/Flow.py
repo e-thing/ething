@@ -98,13 +98,13 @@ class ConditionNode(Node):
         raise NotImplementedError()
 
     def main(self, n, inputs):
-        signal = inputs['default']
+        msg = inputs['default']
         test_pass = False
         try:
-            test_pass = self.test(signal, self.ething)
+            test_pass = self.test(msg.data, self.ething)
         finally:
             self.log.debug('test result=%s' % test_pass)
-            n.emit(signal, port='default' if test_pass else 'fail')
+            n.emit(msg, port='default' if test_pass else 'fail')
 
 
 @abstract
@@ -122,12 +122,12 @@ class ActionNode(Node):
         raise NotImplementedError()
 
     def main(self, n, inputs):
-        signal = inputs['default']
+        msg = inputs['default']
 
         try:
-            self.run(signal, self.ething)
+            self.run(msg.data, self.ething)
         finally:
-            n.emit(signal)
+            n.emit(msg)
 
 
 @abstract
@@ -301,6 +301,9 @@ class _Wrapper_Node(_Node):
         self.INPUTS = node.INPUTS
         self.OUTPUTS = node.OUTPUTS
 
+    def __str__(self):
+        return '<node id=%s name=%s>' % (self._id, self._node.name)
+
     def main(self, **input_msgs):
         return self._node.main(self, input_msgs)
 
@@ -373,10 +376,6 @@ class CronExpr(String):
         return schema
 
 
-class Tick(Signal):
-    pass
-
-
 @attr('expression', type=CronExpr())
 class CronEventNode(EventNode):
     """
@@ -394,9 +393,10 @@ class CronEventNode(EventNode):
 
         while True:
             next_ts = iter.get_next()
-            print(next_ts - time.time())
             time.sleep(next_ts - time.time())
-            n.emit(Tick())
+            n.emit({
+                'timestamp': time.time()
+            })
 
 
 @meta(icon='mdi-android-debug-bridge')
@@ -443,17 +443,20 @@ class Function(Node):
     OUTPUTS = ['default']
 
     def main(self, n, inputs):
-        signal = inputs['default']
+        msg = inputs['default']
 
         try:
             eval(self.script, {
-                'signal': signal,
+                'input': msg.data,
+                'msg': msg,
                 'logger': self.log,
                 'ething': self.ething,
-                'debug': n.debug
+                'debug': n.debug,
+                'emit': n.emit
             })
         finally:
-            n.emit(signal)
+            if not n._emitted:
+                n.emit(msg)
 
 
 @meta(label='If-Else', icon='mdi-help')
@@ -465,21 +468,22 @@ class Test(Node):
     OUTPUTS = ['default', 'fail']
 
     def main(self, n, inputs):
-        _signal = inputs['default']
+        _msg = inputs['default']
 
-        def resolve(signal=None):
-            if signal is None:
-                signal = _signal
-            n.emit(signal, port='default')
+        def resolve(msg=None):
+            if msg is None:
+                msg = _msg
+            n.emit(msg, port='default')
 
-        def reject(signal=None):
-            if signal is None:
-                signal = _signal
-            n.emit(signal, port='fail')
+        def reject(msg=None):
+            if msg is None:
+                msg = _msg
+            n.emit(msg, port='fail')
 
         try:
             eval(self.script, {
-                'signal': _signal,
+                'input': _msg.data,
+                'msg': _msg,
                 'logger': self.log,
                 'ething': self.ething,
                 'debug': n.debug,
@@ -541,7 +545,7 @@ class DataFilter(ConditionNode):
         value = filter.get('value')
 
         try:
-            data = getattr(signal, name)
+            data = signal[name]
         except:
             return False
 

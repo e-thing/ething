@@ -1,6 +1,6 @@
 # coding: utf-8
 from future.utils import string_types, integer_types
-from .Resource import Resource
+from .Resource import Resource, ResourceType
 from .date import TzDate, utcnow, utcfromtimestamp
 from .entity import *
 from .Signal import ResourceSignal
@@ -8,6 +8,7 @@ from .TableQueryParser import TableQueryParser
 from .query import attribute_compiler
 from .Helpers import filter_obj
 from .utils import object_sort
+from .Flow import ResourceActionNode
 import datetime
 import time
 import re
@@ -36,6 +37,28 @@ class TableDataAdded(ResourceSignal):
     def __init__(self, resource, data):
         super(TableDataAdded, self).__init__(resource)
         self.data = data
+
+
+@meta(icon='mdi-table-row-plus-after')
+@attr('resource', type=ResourceType(accepted_types=('resources/Table',)))
+class AppendData(ResourceActionNode):
+    def run(self, signal, core):
+        table = core.get(self.resource)
+
+        if table is None:
+            raise Exception("the table has been removed")
+
+        if isinstance(signal, TableDataAdded):
+            data = signal.data.copy()
+        else:
+            data = {}
+            for k in signal:
+                v = signal[k]
+                if isinstance(v, number_types) or isinstance(v, string_types) or isinstance(v, bool) or v is None:
+                    data[k] = v
+
+        if data:
+            table.insert(data)
 
 
 @throw(TableDataAdded)

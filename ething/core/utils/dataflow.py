@@ -149,7 +149,8 @@ class Flow(object):
         for node in self._nodes:
             self._nodes_data[node.id] = {
                 'state': None,
-                'msg': {},
+                'inputs': {},
+                'outputs': {},
                 'start_ts': None,
                 'stop_ts': None,
                 'error': None,
@@ -190,30 +191,23 @@ class Flow(object):
                 msg = evt['msg']
                 port = evt['port']
                 endpoint = self.get_output_endpoint(node, port)
-                self._nodes_data[node.id]['msg'][port] = msg
+                self._nodes_data[node.id]['outputs'][port] = msg
                 self._logger.debug('emit msg %s on port %s from node %s' % (msg, port, node))
 
                 if endpoint is not None:
                     # propagate the message
 
+                    connected_endpoints = self.get_connected_endpoints(endpoint)
                     connected_nodes = set()
-                    for ep in self.get_connected_endpoints(endpoint):
+                    for ep in connected_endpoints:
+                        self._nodes_data[ep.node.id]['inputs'][ep.port] = msg
                         connected_nodes.add(ep.node)
 
                     for n in connected_nodes:
-                        kwargs = {}
-                        for ep in self.get_input_endpoints(n):
-                            msg_ = None
-                            for ep_src in self.get_connected_endpoints(ep):
-                                msg_src = self._nodes_data[ep_src.node.id]['msg'].get(ep_src.port)
-                                if msg_src is not None:
-                                    msg_ = msg_src
-                                    break
-                            else:
-                                break
-                            kwargs[ep.port] = msg_.data
-                        else:
-                            n.run(**kwargs)
+                        # self._logger.debug('receive %s' % n)
+                        eps = list(filter(lambda ep: ep.node == n, connected_endpoints))
+                        n.receive([ep.port for ep in eps])
+
                 else:
                     # endpoint not connected
                     # nothing to propagate
@@ -343,6 +337,10 @@ class Node(object):
     def __str__(self):
         return '<node id=%s type=%s>' % (self._id, self._type)
 
+    def get(self, port):
+        """return stored message from a given port. Return None if no message has been received."""
+        return self._flow._nodes_data[self.id]['inputs'].get(port)
+
     def emit(self, msg=None, port=None):
         if port is None:
             if self.OUTPUTS:
@@ -350,9 +348,15 @@ class Node(object):
             else:
                 raise Exception('no output port for node %s' % self)
         if not isinstance(msg, Message):
-            msg = Message(msg)
+            msg = Message(msg, node=self)
         self._emitted = True
         self._flow._event.put(Event('emmited', self, msg=msg, port=port))
+
+    def receive(self, ports):
+        input_msgs = {}
+        for port in self.INPUTS:
+            input_msgs[port] = self.get(port)
+        self.run(**input_msgs)
 
     def main(self, **input_msgs):
         raise NotImplementedError()
@@ -376,7 +380,7 @@ class Node(object):
             if not isinstance(result, Message):
                 if not self._emitted or result is not None:
                     if self.OUTPUTS:
-                        result = Message(result)
+                        result = Message(result, node=self)
 
             if result is not None:
                 self.emit(result)
@@ -429,14 +433,21 @@ class Event(object):
 
 
 class Message(object):
-    def __init__(self, data=None):
+    def __init__(self, data=None, node=None):
         self.data = data
+        self.src = node
 
     def __repr__(self):
         return str(self)
 
     def __str__(self):
         return '<message data=%s>' % (self.data,)
+
+    def toJson(self):
+        return {
+            'data': self.data,
+            'src': self.src.id if self.src is not None else None
+        }
 
 
 class Debugger(object):
@@ -463,10 +474,10 @@ class Condition(Node):
         self._test = other['test']
         super(Condition, self).__init__(flow, **other)
 
-    def main(self, default, **kwargs):
+    def main(self, default):
         test_pass = False
         try:
-            test_pass = self._test(default)
+            test_pass = self._test(default.data)
         except:
             self._logger.exception('test exception')
 
@@ -497,7 +508,7 @@ class Constant(Node):
         self._value = other['value']
         super(Constant, self).__init__(flow, **other)
 
-    def main(self, **input_msgs):
+    def main(self):
         self.emit(self._value)
 
 
@@ -509,8 +520,8 @@ class FunctionNode(Node):
         self._fn = other['fn']
         super(FunctionNode, self).__init__(flow, **other)
 
-    def main(self, **input_msgs):
-        return self._fn(**input_msgs)
+    def main(self, default):
+        return self._fn(default.data)
 
 
 class DelayNode(Node):
@@ -527,12 +538,11 @@ class DelayNode(Node):
         self._duration = other['duration']
         super(DelayNode, self).__init__(flow, **other)
 
-    def main(self, **input_msgs):
+    def main(self, default):
         time.sleep(self._duration)
 
 
 class TimerNode(Node):
-    INPUTS = ['default']
     OUTPUTS = ['default']
     PROPS = {
         'interval': {

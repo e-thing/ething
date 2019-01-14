@@ -5,6 +5,7 @@ from collections import MutableMapping, OrderedDict
 import copy
 import inspect
 from functools import wraps
+from abc import ABCMeta
 
 
 def _make_default(value, *arg, **kwargs):
@@ -617,12 +618,12 @@ def update_registered_class(cls):
                 registered_cls[cls_name] = cls
 
 
-class MetaReg(type):
+class MetaReg(ABCMeta):
 
     """MetaReg metaclass"""
 
     def __new__(meta, name, bases, dct):
-      cls = type.__new__(meta, name, bases, dct)
+      cls = ABCMeta.__new__(meta, name, bases, dct)
 
       inherited_meta = getattr(cls, '__meta', {})
 
