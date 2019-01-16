@@ -43,7 +43,7 @@ def path(name, relative=False):
         meta = getattr(cls, '__meta')
 
         if relative:
-            path = meta.get('path')
+            path = meta.get('path', '')
             if path:
                 path += '/'
             path += name

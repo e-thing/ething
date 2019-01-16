@@ -1,7 +1,7 @@
 # coding: utf-8
 from .Resource import Resource, ResourceType
 from .entity import *
-from .utils.dataflow import Flow as _Flow, Node as _Node, Debugger
+from .utils.dataflow import Flow as _FlowBase, Node as _Node, Debugger, queue
 from .Process import Process
 from .plugin import Plugin, register_plugin
 from .Signal import Signal, ResourceSignal
@@ -15,6 +15,22 @@ from croniter import croniter
 import pytz
 import logging
 import datetime
+import json
+
+
+class _Flow(_FlowBase):
+
+    def __init__(self, resource):
+        super(_Flow, self).__init__()
+        self.__resource = resource
+
+    @property
+    def resource(self):
+        return self.__resource
+
+    def run(self):
+        self.resource.data = {}
+        return super(_Flow, self).run()
 
 
 @path('nodes')
@@ -248,7 +264,7 @@ class Flow(Resource):
         nodes_data = flow_data.get('nodes', [])
         connections_data = flow_data.get('connections', [])
 
-        flow = _Flow()
+        flow = _Flow(self)
 
         for node_data in nodes_data:
             _Wrapper_Node(flow, node_data)
@@ -292,6 +308,20 @@ class Flow(Resource):
             if flow is not None:
                 flow.dettach_debugger(debugger)
 
+    def inject(self, node_id, data):
+        if 'process' in self._m:
+            flow = self._m['process'].flow
+            if flow is not None:
+                nodeflow = flow.get_node(node_id)
+                if nodeflow is not None:
+                    node = nodeflow.node
+                    if isinstance(node, Input):
+                        node.inject(data)
+                    else:
+                        raise Exception('node %s is not an input' % node)
+                else:
+                    raise Exception('unknown node id=%s' % node_id)
+
 
 class _Wrapper_Node(_Node):
 
@@ -301,8 +331,12 @@ class _Wrapper_Node(_Node):
         self.INPUTS = node.INPUTS
         self.OUTPUTS = node.OUTPUTS
 
+    @property
+    def node(self):
+        return self._node
+
     def __str__(self):
-        return '<node id=%s name=%s>' % (self._id, self._node.name)
+        return '<node id=%s name=%s type=%s>' % (self._id, self._node.name, self._node.type)
 
     def main(self, **input_msgs):
         return self._node.main(self, input_msgs)
@@ -445,6 +479,9 @@ class Function(Node):
     def main(self, n, inputs):
         msg = inputs['default']
 
+        if 'context' not in self._c:
+            self._c['context'] = dict()
+
         try:
             eval(self.script, {
                 'input': msg.data,
@@ -452,7 +489,8 @@ class Function(Node):
                 'logger': self.log,
                 'ething': self.ething,
                 'debug': n.debug,
-                'emit': n.emit
+                'emit': n.emit,
+                'context': self._c['context']
             })
         finally:
             if not n._emitted:
@@ -469,6 +507,9 @@ class Test(Node):
 
     def main(self, n, inputs):
         _msg = inputs['default']
+
+        if 'context' not in self._c:
+            self._c['context'] = dict()
 
         def resolve(msg=None):
             if msg is None:
@@ -488,7 +529,8 @@ class Test(Node):
                 'ething': self.ething,
                 'debug': n.debug,
                 'reject': reject,
-                'resolve': resolve
+                'resolve': resolve,
+                'context': self._c['context']
             })
         except:
             if not n._emitted:
@@ -719,3 +761,68 @@ class ResourceMatch(ResourceConditionNode):
 
         if r:
             return r.match(self.expression)
+
+
+@abstract
+@path('outputs', True)
+@meta(icon='mdi-logout')
+@attr('property', type=String(), default='', description="The property to expose. Leave empty to expose the whole message.")
+class Output(Node):
+    """Expose data"""
+
+    INPUTS = ['default']
+
+    def main(self, n, inputs):
+        _msg = inputs['default']
+        _prop = self.property
+        data = _msg.data
+
+        if _prop:
+            data = data[_prop]
+
+        _r = n.flow.resource
+
+        with _r:
+            _r.data[self.name] = json.dumps(data)
+
+
+@abstract
+@path('inputs', True)
+@meta(icon='mdi-login')
+@attr('property', type=String(), default='', description="The property to inject into the flow. Leave empty to inject the incoming data as a whole message.")
+class Input(Node):
+    """Expose data"""
+
+    OUTPUTS = ['default']
+
+    def main(self, n, inputs):
+
+        self._m['q'] = queue.Queue()
+        prop = self.property
+
+        while True:
+            data = self._m['q'].get()
+
+            if prop:
+                data = {
+                    prop: data
+                }
+
+            n.emit(data)
+
+        self._m['q'] = None
+
+
+    def inject(self, data):
+        _q = self._m.get('q')
+        if _q is not None:
+            _q.put(data)
+
+
+class Button(Input):
+    pass
+
+
+class Label(Output):
+    pass
+

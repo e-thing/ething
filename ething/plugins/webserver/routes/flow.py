@@ -84,6 +84,17 @@ def install(core, app, auth, **kwargs):
         r.deploy()
         return '', 204
 
+    @app.route('/api/flows/<id>/inject/<node_id>', methods=['POST'])
+    @auth.required('flow:write resource:write')
+    def flow_inject(id, node_id):
+
+        data = request.get_json()
+
+        r = app.getResource(id, ['Flow'])
+        r.inject(node_id, data)
+
+        return '', 204
+
     @app.socketio.on('connect', namespace='/flow')
     def client_connect():
         app.log.debug('[flow] Client connected %s' % request.sid)

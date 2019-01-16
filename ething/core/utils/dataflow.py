@@ -331,6 +331,10 @@ class Node(object):
     def id(self):
         return self._id
 
+    @property
+    def flow(self):
+        return self._flow
+
     def __repr__(self):
         return str(self)
 
