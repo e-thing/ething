@@ -152,13 +152,14 @@ class Controller(Process):
 
 
 
-@attr('topic', type=String(allow_empty=False), description="the topic string to which the payload will be published.")
-@attr('hostname', type=String(allow_empty=False), description="a string containing the address of the broker to connect to.")
-@attr('port', type=Integer(min=0, max=65535), default=1883, description="the port to connect to the broker on.")
-@attr('payload', type=String(), default='', description="the payload to be published. If an empty string is given, a zero length payload will be published.")
+@meta(icon='mdi-send')
 @attr('qos', type=Enum([0,1,2]), default=0, description="the qos to use when publishing.")
-@attr('username', type=String(), default='', description="username for the client. Leave empty to disable authentication.")
+@attr('payload', type=String(), default='', description="the payload to be published. If an empty string is given, a zero length payload will be published.")
 @attr('password', type=String(), default='', description="password for the client. Leave empty to disable authentication.")
+@attr('username', type=String(), default='', description="username for the client. Leave empty to disable authentication.")
+@attr('port', type=Integer(min=0, max=65535), default=1883, description="the port to connect to the broker on.")
+@attr('hostname', type=String(allow_empty=False), description="a string containing the address of the broker to connect to.")
+@attr('topic', type=String(allow_empty=False), description="the topic string to which the payload will be published.")
 class MqttPublish(ActionNode):
     """ Publish a single message to a broker """
     def run(self, signal, core):

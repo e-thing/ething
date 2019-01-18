@@ -6,6 +6,7 @@ import copy
 import inspect
 from functools import wraps
 from abc import ABCMeta
+import re
 
 
 def _make_default(value, *arg, **kwargs):
@@ -13,6 +14,18 @@ def _make_default(value, *arg, **kwargs):
       return value(*arg, **kwargs)
   return copy.deepcopy(value)
 
+
+def format_label(name):
+    """make user friendly labels"""
+
+    if re.search('^[a-zA-Z]+$', name):
+        matches = re.finditer('.+?(?:(?<=[a-z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])|$)', name)
+        return ' '.join([m.group(0) for m in matches])
+
+    if re.search('^[_a-zA-Z]+$', name):
+        return ' '.join(name.split('_'))
+
+    return name
 
 
 #
@@ -688,7 +701,7 @@ class MetaReg(ABCMeta):
         'abstract': False,
         'path': inherited_meta.get('path', ''),
         'description': cls.__doc__,
-        'label': cls.__name__
+        'label': format_label(cls.__name__)
       })
 
       # methods

@@ -5,9 +5,10 @@ from ething.core.entity import *
 from requests import Request, Session
 
 
+@meta(icon='mdi-earth', label="HTTP request")
+@attr('body', type=String(), default='', description="The body part.")
 @attr('method', type=Enum(['GET', 'POST', 'PUT', 'DELETE', 'PATCH']), default='GET', description="The HTTP method.")
 @attr('url', type=String(allow_empty=False), description="The HTTP URL.")
-@attr('body', type=String(), default='', description="The body part.")
 class HttpRequest(ActionNode):
     """ Make a HTTP request """
 
@@ -27,4 +28,11 @@ class HttpRequest(ActionNode):
 
         resp.raise_for_status()
 
+        return {
+            'content': resp.content,
+            'headers': resp.headers,
+            'status_code': resp.status_code,
+            'url': resp.url,
+            'encoding': resp.encoding
+        }
 

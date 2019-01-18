@@ -139,11 +139,12 @@ class ActionNode(Node):
 
     def main(self, n, inputs):
         msg = inputs['default']
+        res = None
 
         try:
-            self.run(msg.data, self.ething)
+            res = self.run(msg.data, self.ething)
         finally:
-            n.emit(msg)
+            n.emit(msg if res is None else res)
 
 
 @abstract

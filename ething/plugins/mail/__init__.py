@@ -43,6 +43,7 @@ class Mail(Plugin):
 
 
 
+@meta(icon='mdi-email')
 @attr('message', type=String(), description="The message of the notification")
 @attr('subject', type=String(), description="The subject of the notification")
 @attr('to', type=Email(), description="Recipient email address")

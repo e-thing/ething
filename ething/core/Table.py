@@ -473,7 +473,7 @@ class Table(Resource):
             else:
                 date_format = None
 
-        if query is None:
+        if not query:
             # let the sorting/offset/limit by the DB driver
             rows = self.db.get_table_rows(self.collectionName, sort = sort, start = start, length = length, keys = fields)
         else:
