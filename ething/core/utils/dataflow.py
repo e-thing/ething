@@ -2,7 +2,7 @@
 from future.utils import integer_types, string_types
 import time
 import logging
-import uuid
+from ..ShortId import ShortId
 import gevent
 from collections import MutableMapping, Mapping
 try:
@@ -258,6 +258,8 @@ class Flow(object):
                 self._logger.exception('debugger exception')
 
     def _send_info(self, debugger, node):
+        if node.id not in self._nodes_data:
+            return
         try:
             debugger.info(node, self._nodes_data[node.id])
         except:
@@ -323,7 +325,7 @@ class Node(object):
 
     def __init__(self, flow, ntype=None, nid=None, stop_on_error=False, **other):
         self._flow = flow
-        self._id = nid or uuid.uuid4()
+        self._id = nid or ShortId.generate()
         self._type = ntype or type(self).__name__
         self._logger = logging.getLogger('ething.flow.%s' % self._id)
         self._t = None
@@ -402,6 +404,9 @@ class Node(object):
         self._logger.debug(str(obj))
         self._flow.debug(obj, node=self)
 
+    def toJson(self):
+        return self.id
+
 
 class Event(object):
     def __init__(self, name, node=None, **other):
@@ -434,7 +439,7 @@ class Event(object):
 
 class Message(MutableMapping):
     def __init__(self, data=None, node=None):
-        self._id = uuid.uuid4()
+        self._id = ShortId.generate()
         self._src = node
         self._ts = time.time()
         self.payload = None
@@ -465,10 +470,7 @@ class Message(MutableMapping):
         return '<message data=%s>' % (self.__dict__,)
 
     def toJson(self):
-        return {
-            'data': self.__dict__,
-            'src': self._src.id if self._src is not None else None
-        }
+        return self.__dict__
 
 
 class Debugger(object):

@@ -111,9 +111,6 @@ class RDict(Dict):
 @attr('id', default=lambda _: ShortId.generate(), mode=READ_ONLY, description="The id of the resource")
 @attr('name', type=String(allow_empty=False, regex='^[a-zA-Z0-9 !#$%&\'()+,\-.;=@^_`{    ]+(\\/[a-zA-Z0-9 !#$%&\'()+,\-.;=@^_`{    ]+)*$'), description="The name of the resource")
 class Resource(DbEntity):
-    """
-    The base representation of a resource object
-    """
 
     def __init__(self, data, create=True, context=None):
 

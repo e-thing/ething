@@ -440,7 +440,7 @@ class Method(object):
                                      (self.name, arg_name))
                 else:
                     arg_type = arg_meta['type']
-                    default_value = arg_type.toJson(_make_default(arg_meta.get('default')))
+                    default_value = arg_type.toJson(arg_type.set(_make_default(arg_meta.get('default'))))
                     kwargs[arg_name] = default_value
 
         if self.bounded:
@@ -813,7 +813,7 @@ def build_schema(cls, root=False, **kwargs):
     if mode != READ_ONLY:
         if 'default' in attribute:
             try:
-              attr_schema['default'] = data_type.toJson(attribute.make_default(cls), context=kwargs)
+              attr_schema['default'] = data_type.toJson(data_type.set(attribute.make_default(cls), context=kwargs), context=kwargs)
             except:
               pass
         else:

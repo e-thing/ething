@@ -20,10 +20,21 @@ import os
 from jsonpath_rw import jsonpath, parse
 
 
+def _jsonpath_find(jp, obj):
+    jsonpath_expr = parse(jp)
+    res = [match.value for match in jsonpath_expr.find(obj)]
+    if len(res) == 1:
+        return res[0]
+    elif len(res) > 1:
+        return res
+    else:
+        return None
+
+
 class JsonPathType(String):
 
-    def __init__(self, **attributes):
-        super(JsonPathType, self).__init__(allow_empty=False)
+    def __init__(self, allow_root=False, **attributes):
+        super(JsonPathType, self).__init__(allow_empty=allow_root)
 
     def validate(self, value, context = None):
         super(JsonPathType, self).validate(value, context)
@@ -40,7 +51,8 @@ class DescriptorMode(object):
         raise NotImplementedError()
 
     def validate(self, value):
-        raise Exception('invalid value %s' % value)
+        if value is not None:
+            raise Exception('invalid value %s' % value)
 
     def schema(self):
         return None
@@ -68,8 +80,7 @@ class GlobalDescriptor(DescriptorMode):
     value_type = JsonPathType()
 
     def get(self, jsonpath, **context):
-        jsonpath_expr = parse(jsonpath)
-        return jsonpath_expr.find(globals())
+        return _jsonpath_find(jsonpath, globals())
 
     def set(self, jsonpath, value, **context):
         jsonpath_expr = parse(jsonpath)
@@ -87,8 +98,7 @@ class FlowDescriptor(DescriptorMode):
     value_type = JsonPathType()
 
     def get(self, jsonpath, **context):
-        jsonpath_expr = parse(jsonpath)
-        return jsonpath_expr.find(context['flow'].context)
+        return _jsonpath_find(jsonpath, context['flow'].context)
 
     def set(self, jsonpath, value, **context):
         jsonpath_expr = parse(jsonpath)
@@ -106,8 +116,7 @@ class MsgDescriptor(DescriptorMode):
     value_type = JsonPathType()
 
     def get(self, jsonpath, **context):
-        jsonpath_expr = parse(jsonpath)
-        return jsonpath_expr.find(context['msg'])
+        return _jsonpath_find(jsonpath, context['msg'])
 
     def set(self, jsonpath, value, **context):
         jsonpath_expr = parse(jsonpath)
@@ -118,6 +127,13 @@ class MsgDescriptor(DescriptorMode):
 
     def schema(self):
         return self.value_type.toSchema()
+
+
+class FullMsgDescriptor(DescriptorMode):
+    label = 'complete message object'
+
+    def get(self, _, **context):
+        return context['msg']
 
 
 class ValueDescriptor(DescriptorMode):
@@ -134,15 +150,15 @@ class ValueDescriptor(DescriptorMode):
 
 
 class StringDescriptor(ValueDescriptor):
-    value_type = String()
+    value_type = String(default='')
 
 
 class NumberDescriptor(ValueDescriptor):
-    value_type = Number()
+    value_type = Number(default=0)
 
 
 class BooleanDescriptor(ValueDescriptor):
-    value_type = Boolean()
+    value_type = Boolean(default=False)
 
 
 # TODO: JSON
@@ -178,7 +194,8 @@ class Descriptor(Type):
         'boolean': BooleanDescriptor,
         'glob': GlobalDescriptor,
         'timestamp': TimestampDescriptor,
-        'msg': MsgDescriptor
+        'msg': MsgDescriptor,
+        'fullmsg': FullMsgDescriptor
     }
 
     def __init__(self, **modes):
@@ -201,14 +218,18 @@ class Descriptor(Type):
                 self.modes[mode_name] = mode
 
     def set(self, data, context=None):
+        if (isinstance(data, DescriptorInstance)):
+            return data
         self.validate(data, context)
-        return DescriptorInstance(data.get('mode'), self.modes[data.get('mode')], data.get('value'))
+        return DescriptorInstance(data.get('type'), self.modes[data.get('type')], data.get('value'))
 
-    fromJson = set
+    def fromJson(self, data, context=None):
+        self.validate(data, context)
+        return DescriptorInstance(data.get('type'), self.modes[data.get('type')], data.get('value'))
 
     def validate(self, data, context = None):
         if not isinstance(data, Mapping) or 'type' not in data:
-            raise Exception('invalid data')
+            raise Exception('invalid data %s' % data)
         mode = data.get('type')
         if mode not in self.modes:
             raise Exception('invalid mode %s' % mode)
@@ -246,7 +267,7 @@ class Descriptor(Type):
                 s['required'].append('value')
             oneOf.append(s)
         schema['oneOf'] = oneOf
-        schema['format'] = 'flow.descriptor'
+        schema['format'] = 'ething.flow.descriptor'
         return schema
 
 
@@ -313,7 +334,6 @@ class Node(Entity):
         _cls = get_registered_class(type)
         if _cls is None:
             raise Exception('unknown type "%s"' % type)
-        print(type, _cls, context)
         return Entity.fromJson.__func__(_cls, data, context)
 
     @classmethod
@@ -667,6 +687,7 @@ class CronEventNode(EventNode):
 
 
 @meta(icon='mdi-android-debug-bridge')
+@attr('output', type=Descriptor(fullmsg=True, msg=True), default={'type':'msg','value':'payload'}, description='Select the message property to display.')
 class DebugNode(Node):
     """
     print some debug information
@@ -675,7 +696,9 @@ class DebugNode(Node):
     INPUTS = ['default']
 
     def main(self, n, inputs):
-        n.debug(inputs.get('default'))
+        _msg = inputs.get('default')
+        _data = self.output.get(msg=_msg, flow=n.flow)
+        n.debug(_data)
 
 
 @meta(icon='mdi-clock')
@@ -799,7 +822,8 @@ def _check_number(value):
 @meta(icon='mdi-filter')
 @attr('last', mode=PRIVATE, default=None) # holds the last value
 @attr('filter', type=Dict(allow_extra=True, mapping={
-    'type': Enum(('exists', '==', '>', '>=', '<', '<=', 'go above', 'go under', 'regex', 'rising edge', 'falling edge'))
+    'type': Enum(('exists', '==', '>', '>=', '<', '<=', 'go above', 'go under', 'regex', 'rising edge', 'falling edge')),
+    'value': String()
 }))
 @attr('data', type=Descriptor(flow=True, glob=True, msg=True), default={'type':'msg','value':'payload'}, description='The data to filter.')
 class DataFilter(ConditionNode):

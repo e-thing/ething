@@ -16,7 +16,7 @@ import re
 @attr('host', type=String(), description="The host of the MQTT broker to connect to.")
 @attr('port', type=Integer(min=0, max=65535), default=1883, description="The port number of the MQTT broker to connect to.")
 @attr('auth', type=Nullable(Dict(mapping = OrderedDict([('user', String(allow_empty=False)), ('password', String(allow_empty=False))]))), default=None, description="An object describing the credentials to use.")
-@attr('subscription', type=Array(Dict(optionals = ['jsonPath', 'regexp', 'xpath'], mapping = OrderedDict([('name', String(allow_empty=False)), ('topic', String(allow_empty=False)), ('jsonPath', String(allow_empty=False)), ('regexp', String(allow_empty=False)), ('xpath', String(allow_empty=False))])), min_len = 1), default=None)
+@attr('subscription', type=Array(Dict(optionals = ['jsonPath', 'regexp', 'xpath'], mapping = OrderedDict([('name', String(allow_empty=False)), ('topic', String(allow_empty=False)), ('jsonPath', String(allow_empty=False)), ('regexp', String(allow_empty=False)), ('xpath', String(allow_empty=False))]))), default=[])
 class MQTT(Device):
     """
     MQTT Device resource representation

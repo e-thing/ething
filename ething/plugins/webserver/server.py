@@ -247,7 +247,9 @@ class FlaskApp(Flask):
             return obj.astimezone(self.core.local_tz).isoformat()
         if isinstance(obj, binary_type):
             return obj.decode('utf8')
-        return obj.__dict__
+        if hasattr(obj, '__dict__'):
+            return obj.__dict__
+        return type(obj).__name__
 
     def getResource(self, id, restrictToTypes=None):
 
