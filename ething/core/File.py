@@ -1,10 +1,11 @@
 # coding: utf-8
 
-from future.utils import text_type, bord
-from .Resource import Resource
+from future.utils import text_type, bord, string_types, binary_type
+from .Resource import Resource, ResourceType
 from .date import TzDate, utcnow
 from .entity import *
 from .Signal import ResourceSignal
+from .Flow import ResourceActionNode
 import datetime
 import os
 from .utils.mime import content_to_mime, ext_to_mime
@@ -82,7 +83,7 @@ class File(Resource):
         if contents is None:
             contents = b''
 
-        if encoding is not None:
+        if encoding:
             contents = contents.decode(encoding)
 
         return contents
@@ -254,3 +255,32 @@ class File(Resource):
         instance = super(File, cls).import_instance(data.get('object'), context)
         instance.write(base64.b64decode(data.get('content')))
         return instance
+
+
+@meta(icon='mdi-file', label="File out")
+@attr('encoding', type=String(), default='utf8')
+@attr('append', type=Boolean(), default=False)
+@attr('resource', type=ResourceType(accepted_types=('resources/File',)))
+class FileWrite(ResourceActionNode):
+    """ Write content to a file """
+
+    def run(self, msg, core):
+        file = core.get(self.resource)
+        content = msg.payload
+        if not (isinstance(content, string_types) or isinstance(content, binary_type)):
+            content = str(content)
+        if self.append:
+            file.append(content, encoding=self.encoding)
+        else:
+            file.write(content, encoding=self.encoding)
+
+
+@meta(icon='mdi-file', label="File In")
+@attr('encoding', type=String(), default='utf8')
+@attr('resource', type=ResourceType(accepted_types=('resources/File',)))
+class FileRead(ResourceActionNode):
+    """ Read content of a file """
+
+    def run(self, msg, core):
+        file = core.get(self.resource)
+        return file.read(encoding=self.encoding or None)

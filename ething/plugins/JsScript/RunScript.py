@@ -10,7 +10,7 @@ from ething.core.reg import *
 @attr('return_code', default=0, mode=READ_ONLY, description="The last exit code returned by the script")
 class RunScript(ActionNode):
 
-    def run(self, signal, core):
+    def run(self, msg, core):
         script = core.get(self.script)
 
         if script is None:
@@ -18,7 +18,7 @@ class RunScript(ActionNode):
 
         try:
             result = core.get_plugin('JsScript').runFromFile(script, arguments=self.args, globals={
-                'signal': signal
+                'msg': msg
             })
         except Exception as e:
             self.log.exception('error in script')

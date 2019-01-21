@@ -162,7 +162,7 @@ class Controller(Process):
 @attr('topic', type=String(allow_empty=False), description="the topic string to which the payload will be published.")
 class MqttPublish(ActionNode):
     """ Publish a single message to a broker """
-    def run(self, signal, core):
+    def run(self, msg, core):
 
         auth = None
 

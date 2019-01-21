@@ -31,6 +31,7 @@ requires = [
     "multiping",
     "requests",
     "gevent", #eventlet
+    "jsonpath-rw", # flow
 
     # --db
     #"pymongo==3.5.1",
@@ -50,7 +51,6 @@ requires = [
 
     # --mqtt
     "paho-mqtt",
-    "jsonpath-rw",
 
     # --mihome
     "pyaes",

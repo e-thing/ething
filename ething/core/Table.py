@@ -42,20 +42,18 @@ class TableDataAdded(ResourceSignal):
 @meta(icon='mdi-table-row-plus-after')
 @attr('resource', type=ResourceType(accepted_types=('resources/Table',)))
 class AppendData(ResourceActionNode):
-    def run(self, signal, core):
+    def run(self, msg, core):
         table = core.get(self.resource)
 
         if table is None:
             raise Exception("the table has been removed")
 
-        if isinstance(signal, TableDataAdded):
-            data = signal.data.copy()
-        else:
-            data = {}
-            for k in signal:
-                v = signal[k]
-                if isinstance(v, number_types) or isinstance(v, string_types) or isinstance(v, bool) or v is None:
-                    data[k] = v
+        data = {}
+        payload = msg.payload
+        for k in payload:
+            v = payload[k]
+            if isinstance(v, number_types) or isinstance(v, string_types) or isinstance(v, bool) or v is None:
+                data[k] = v
 
         if data:
             table.insert(data)

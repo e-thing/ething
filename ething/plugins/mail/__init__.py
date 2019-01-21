@@ -49,7 +49,7 @@ class Mail(Plugin):
 @attr('to', type=Email(), description="Recipient email address")
 class SendEmail(ActionNode):
     """ Send an email """
-    def run(self, signal, core):
+    def run(self, msg, core):
         conf = core.get_plugin('Mail').config
         mailer = SmtpMail(host = conf.get('host'), port = conf.get('port'), user = conf.get('user'), password = conf.get('password'))
         mailer.send(subject = self.subject, message = self.message, to = self.to)

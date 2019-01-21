@@ -12,7 +12,7 @@ from requests import Request, Session
 class HttpRequest(ActionNode):
     """ Make a HTTP request """
 
-    def run(self, signal, core):
+    def run(self, msg, core):
         s = Session()
 
         req = Request(self.method, self.url)

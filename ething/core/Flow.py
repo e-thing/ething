@@ -16,6 +16,238 @@ import pytz
 import logging
 import datetime
 import json
+import os
+from jsonpath_rw import jsonpath, parse
+
+
+class JsonPathType(String):
+
+    def __init__(self, **attributes):
+        super(JsonPathType, self).__init__(allow_empty=False)
+
+    def validate(self, value, context = None):
+        super(JsonPathType, self).validate(value, context)
+        parse(value)
+
+
+class DescriptorMode(object):
+    label = None
+
+    def get(self, name, **context):
+        raise NotImplementedError()
+
+    def set(self, name, value, **context):
+        raise NotImplementedError()
+
+    def validate(self, value):
+        raise Exception('invalid value %s' % value)
+
+    def schema(self):
+        return None
+
+
+class EnvDescriptor(DescriptorMode):
+    label = 'env variable'
+    value_type = String(allow_empty=False)
+
+    def get(self, name, **context):
+        return os.environ.get(name)
+
+    def set(self, name, value, **context):
+        os.environ[name] = str(value)
+
+    def validate(self, value):
+        self.value_type.validate(value)
+
+    def schema(self):
+        return self.value_type.toSchema()
+
+
+class GlobalDescriptor(DescriptorMode):
+    label = 'global.'
+    value_type = JsonPathType()
+
+    def get(self, jsonpath, **context):
+        jsonpath_expr = parse(jsonpath)
+        return jsonpath_expr.find(globals())
+
+    def set(self, jsonpath, value, **context):
+        jsonpath_expr = parse(jsonpath)
+        jsonpath_expr.update(globals(), value)
+
+    def validate(self, value):
+        self.value_type.validate(value)
+
+    def schema(self):
+        return self.value_type.toSchema()
+
+
+class FlowDescriptor(DescriptorMode):
+    label = 'flow.'
+    value_type = JsonPathType()
+
+    def get(self, jsonpath, **context):
+        jsonpath_expr = parse(jsonpath)
+        return jsonpath_expr.find(context['flow'].context)
+
+    def set(self, jsonpath, value, **context):
+        jsonpath_expr = parse(jsonpath)
+        jsonpath_expr.update(context['flow'].context, value)
+
+    def validate(self, value):
+        self.value_type.validate(value)
+
+    def schema(self):
+        return self.value_type.toSchema()
+
+
+class MsgDescriptor(DescriptorMode):
+    label = 'msg.'
+    value_type = JsonPathType()
+
+    def get(self, jsonpath, **context):
+        jsonpath_expr = parse(jsonpath)
+        return jsonpath_expr.find(context['msg'])
+
+    def set(self, jsonpath, value, **context):
+        jsonpath_expr = parse(jsonpath)
+        jsonpath_expr.update(context['msg'], value)
+
+    def validate(self, value):
+        self.value_type.validate(value)
+
+    def schema(self):
+        return self.value_type.toSchema()
+
+
+class ValueDescriptor(DescriptorMode):
+    value_type = String()
+
+    def get(self, value, **context):
+        return value
+
+    def validate(self, value):
+        self.value_type.validate(value)
+
+    def schema(self):
+        return self.value_type.toSchema()
+
+
+class StringDescriptor(ValueDescriptor):
+    value_type = String()
+
+
+class NumberDescriptor(ValueDescriptor):
+    value_type = Number()
+
+
+class BooleanDescriptor(ValueDescriptor):
+    value_type = Boolean()
+
+
+# TODO: JSON
+# TODO: JSONata  cf: https://nodered.org/docs/user-guide/messages#split
+
+
+class TimestampDescriptor(DescriptorMode):
+    def get(self, value, **context):
+        return time.time()
+
+
+class DescriptorInstance(object):
+
+    def __init__(self, name, mode, value):
+        self.name = name
+        self.mode = mode
+        self.value = value
+
+    def get(self, **context):
+        return self.mode.get(self.value, **context)
+
+    def set(self, value, **context):
+        self.mode.set(self.value, value, **context)
+
+
+class Descriptor(Type):
+
+    MODES = {
+        'env': EnvDescriptor,
+        'flow': FlowDescriptor,
+        'string': StringDescriptor,
+        'number': NumberDescriptor,
+        'boolean': BooleanDescriptor,
+        'glob': GlobalDescriptor,
+        'timestamp': TimestampDescriptor,
+        'msg': MsgDescriptor
+    }
+
+    def __init__(self, **modes):
+        super(Descriptor, self).__init__()
+
+        self.modes = {}
+        for mode_name in modes:
+            mode = modes[mode_name]
+            if isinstance(mode, DescriptorMode):
+                pass
+            else:
+                mode_cls = self.MODES.get(mode_name)
+                if mode_cls is None:
+                    raise Exception('unknow mode %s' % mode_name)
+                if mode is True:
+                    mode = mode_cls()
+                else:
+                    mode = None
+            if mode is not None:
+                self.modes[mode_name] = mode
+
+    def set(self, data, context=None):
+        self.validate(data, context)
+        return DescriptorInstance(data.get('mode'), self.modes[data.get('mode')], data.get('value'))
+
+    fromJson = set
+
+    def validate(self, data, context = None):
+        if not isinstance(data, Mapping) or 'type' not in data:
+            raise Exception('invalid data')
+        mode = data.get('type')
+        if mode not in self.modes:
+            raise Exception('invalid mode %s' % mode)
+        mode_instance = self.modes[mode]
+        mode_instance.validate(data.get('value'))
+
+    def toJson(self, value, context=None):
+        return {
+            'type': value.name,
+            'value': value.value
+        }
+
+    serialize = toJson
+    unserialize = fromJson
+
+    def toSchema(self, context=None):
+        schema = super(Descriptor, self).toSchema(context)
+        oneOf = []
+        for mode_name in self.modes:
+            mode = self.modes[mode_name]
+            s = {
+                'type': 'object',
+                'properties': {
+                    'type': {
+                        'label': mode.label or mode_name,
+                        'const': mode_name
+                    },
+                },
+                'required': ['type'],
+                'additionalProperties': False
+            }
+            value_schema = mode.schema()
+            if value_schema is not None:
+                s['properties']['value'] = value_schema
+                s['required'].append('value')
+            oneOf.append(s)
+        schema['oneOf'] = oneOf
+        schema['format'] = 'flow.descriptor'
+        return schema
 
 
 class _Flow(_FlowBase):
@@ -110,14 +342,14 @@ class ConditionNode(Node):
     INPUTS = ['default']
     OUTPUTS = ['default', 'fail']
 
-    def test(self, signal, core):
+    def test(self, msg, flow, core):
         raise NotImplementedError()
 
     def main(self, n, inputs):
         msg = inputs['default']
         test_pass = False
         try:
-            test_pass = self.test(msg.data, self.ething)
+            test_pass = self.test(msg, n.flow, self.ething)
         finally:
             self.log.debug('test result=%s' % test_pass)
             n.emit(msg, port='default' if test_pass else 'fail')
@@ -134,7 +366,7 @@ class ActionNode(Node):
     INPUTS = ['default']
     OUTPUTS = ['default']
 
-    def run(self, signal, core):
+    def run(self, msg, core):
         raise NotImplementedError()
 
     def main(self, n, inputs):
@@ -142,9 +374,9 @@ class ActionNode(Node):
         res = None
 
         try:
-            res = self.run(msg.data, self.ething)
+            res = self.run(msg, self.ething)
         finally:
-            n.emit(msg if res is None else res)
+            n.emit(msg if res is None else {'payload':res})
 
 
 @abstract
@@ -317,7 +549,7 @@ class Flow(Resource):
                 if nodeflow is not None:
                     node = nodeflow.node
                     if isinstance(node, Input):
-                        node.inject(data)
+                        node.inject(flow, data)
                     else:
                         raise Exception('node %s is not an input' % node)
                 else:
@@ -430,7 +662,7 @@ class CronEventNode(EventNode):
             next_ts = iter.get_next()
             time.sleep(next_ts - time.time())
             n.emit({
-                'timestamp': time.time()
+                'payload': time.time()
             })
 
 
@@ -479,23 +711,19 @@ class Function(Node):
 
     def main(self, n, inputs):
         msg = inputs['default']
-
-        if 'context' not in self._c:
-            self._c['context'] = dict()
+        context = n.flow.context
 
         try:
             eval(self.script, {
-                'input': msg.data,
                 'msg': msg,
                 'logger': self.log,
                 'ething': self.ething,
                 'debug': n.debug,
                 'emit': n.emit,
-                'context': self._c['context']
+                'context': context
             })
-        finally:
-            if not n._emitted:
-                n.emit(msg)
+        except:
+            pass
 
 
 @meta(label='If-Else', icon='mdi-help')
@@ -508,9 +736,7 @@ class Test(Node):
 
     def main(self, n, inputs):
         _msg = inputs['default']
-
-        if 'context' not in self._c:
-            self._c['context'] = dict()
+        context = n.flow.context
 
         def resolve(msg=None):
             if msg is None:
@@ -524,14 +750,13 @@ class Test(Node):
 
         try:
             eval(self.script, {
-                'input': _msg.data,
                 'msg': _msg,
                 'logger': self.log,
                 'ething': self.ething,
                 'debug': n.debug,
                 'reject': reject,
                 'resolve': resolve,
-                'context': self._c['context']
+                'context': context
             })
         except:
             if not n._emitted:
@@ -576,20 +801,18 @@ def _check_number(value):
 @attr('filter', type=Dict(allow_extra=True, mapping={
     'type': Enum(('exists', '==', '>', '>=', '<', '<=', 'go above', 'go under', 'regex', 'rising edge', 'falling edge'))
 }))
-@attr('prop_name', type=String(allow_empty=False), description='The name of the property (ie: temperature, humidity ...) to filter only the signal corresponding to this property.')
+@attr('data', type=Descriptor(flow=True, glob=True, msg=True), default={'type':'msg','value':'payload'}, description='The data to filter.')
 class DataFilter(ConditionNode):
-    """ filter signal data """
+    """ filter message data """
 
-    def test(self, signal, core):
+    def test(self, msg, flow, core):
 
-        name = self.prop_name
+        data = self.data.get(msg=msg, flow=flow)
         filter = self.filter
         filter_type = filter.get('type')
         value = filter.get('value')
 
-        try:
-            data = signal[name]
-        except:
+        if data is None:
             return False
 
         if filter_type == 'exists':
@@ -696,7 +919,7 @@ class SchedulerData(Array):
 class Scheduler(ConditionNode):
     """ Return true only within certain periods of time """
 
-    def test(self, signal, core):
+    def test(self, msg, flow, core):
         now = datetime.datetime.now()
         weekday = now.isoweekday() # 1: monday, 7: sunday
         hour = now.hour
@@ -739,26 +962,24 @@ class Scheduler(ConditionNode):
 class ResourceFilter(ResourceConditionNode):
     """ filter signals that was emitted by a specific resource """
 
-    def test(self, signal, core):
-        if hasattr(signal, 'resource'):
-            return signal.resource == self.resource
+    def test(self, msg, flow, core):
+        return msg.get('resource') == core.get(self.resource)
 
 
 @meta(icon='mdi-filter')
 @attr('expression', type=Expression(), description="The expression the resource must match")
-@attr('resource', type=Nullable(ResourceType()), default=None, description="The resource that must match the given expression. If none, the resource is the one that emits the signal.")
+@attr('resource', type=Nullable(ResourceType()), default=None, description="The resource that must match the given expression. If none, the resource is the one that emits the message.")
 class ResourceMatch(ResourceConditionNode):
     """ is true if a resource match an expression """
 
-    def test(self, signal, core):
+    def test(self, msg, flow, core):
 
         r = None
 
         if self.resource is not None:
             r = core.get(self.resource)
         else:
-            if hasattr(signal, 'resource'):
-                r = signal.resource
+            r = msg.get('resource')
 
         if r:
             return r.match(self.expression)
@@ -767,7 +988,7 @@ class ResourceMatch(ResourceConditionNode):
 @abstract
 @path('outputs', True)
 @meta(icon='mdi-logout')
-@attr('property', type=String(), default='', description="The property to expose. Leave empty to expose the whole message.")
+@attr('data', type=Descriptor(flow=True, glob=True, msg=True, env=True), default={'type':'msg','value':'payload'}, description='The data to expose.')
 class Output(Node):
     """Expose data"""
 
@@ -775,22 +996,16 @@ class Output(Node):
 
     def main(self, n, inputs):
         _msg = inputs['default']
-        _prop = self.property
-        data = _msg.data
-
-        if _prop:
-            data = data[_prop]
+        _data = self.data.get(flow=n.flow, msg=_msg)
 
         _r = n.flow.resource
-
         with _r:
-            _r.data[self.name] = json.dumps(data)
+            _r.data[self.name] = json.dumps(_data)
 
 
 @abstract
 @path('inputs', True)
 @meta(icon='mdi-login')
-@attr('property', type=String(), default='', description="The property to inject into the flow. Leave empty to inject the incoming data as a whole message.")
 class Input(Node):
     """Expose data"""
 
@@ -799,31 +1014,52 @@ class Input(Node):
     def main(self, n, inputs):
 
         self._m['q'] = queue.Queue()
-        prop = self.property
 
         while True:
             data = self._m['q'].get()
-
-            if prop:
-                data = {
-                    prop: data
-                }
-
-            n.emit(data)
+            n.emit({'payload': data})
 
         self._m['q'] = None
 
 
-    def inject(self, data):
+    def inject(self, flow, data):
         _q = self._m.get('q')
         if _q is not None:
             _q.put(data)
 
 
+@attr('data', type=Descriptor(flow=True, glob=True, string=True, number=True, boolean=True, timestamp=True, env=True), default={'type':'timestamp'}, description='The data to inject into the flow on click')
 class Button(Input):
-    pass
+
+    def inject(self, flow, data):
+        data = self.data.get(flow=flow)
+        super(Button, self).inject(flow, data)
 
 
 class Label(Output):
     pass
+
+
+@path('functions', True)
+@meta(icon='mdi-json')
+class JSON(Node):
+    """convert to/from JSON"""
+
+    INPUTS = ['default']
+    OUTPUTS = ['default']
+
+    def main(self, n, inputs):
+        data = inputs['default'].get('payload')
+
+        if isinstance(data, string_types):
+            n.emit({'payload': json.loads(data)})
+        else:
+            n.emit({'payload': json.dumps(data)})
+
+
+@path('general', True)
+@meta(icon='mdi-comment-text-outline')
+class Comment(Node):
+    def main(self, n, inputs):
+        pass
 

@@ -4,7 +4,7 @@ import time
 import logging
 import uuid
 import gevent
-
+from collections import MutableMapping, Mapping
 try:
     import queue
 except ImportError:
@@ -29,6 +29,11 @@ class Flow(object):
         self._nodes_data = {}
         self._state = STOPPED
         self._debuggers = set()
+        self._context = {}
+
+    @property
+    def context(self):
+        return self._context
 
     def connect(self, src, dest):
         if not isinstance(src, Endpoint):
@@ -373,21 +378,12 @@ class Node(object):
         self._logger.debug('node started input_msgs=%s' % input_msgs)
         self._emitted = False
         err = None
-        result = None
         try:
-            result = self.main(**input_msgs)
+            self.main(**input_msgs)
         except Exception as e:
             self._logger.exception('exception in main()')
             self.debug(e)
             err = e
-        else:
-            if not isinstance(result, Message):
-                if not self._emitted or result is not None:
-                    if self.OUTPUTS:
-                        result = Message(result, node=self)
-
-            if result is not None:
-                self.emit(result)
 
         self._logger.debug('node stopped')
 
@@ -436,21 +432,42 @@ class Event(object):
         return self._other.get(key)
 
 
-class Message(object):
+class Message(MutableMapping):
     def __init__(self, data=None, node=None):
-        self.data = data
-        self.src = node
+        self._id = uuid.uuid4()
+        self._src = node
+        self._ts = time.time()
+        self.payload = None
+        if data is not None:
+            if not isinstance(data, Mapping):
+                data = {'payload': data}
+            self.__dict__.update(data)
+
+    def __setitem__(self, key, value):
+        self.__dict__[key] = value
+
+    def __getitem__(self, key):
+        return self.__dict__[key]
+
+    def __delitem__(self, key):
+        del self.__dict__[key]
+
+    def __iter__(self):
+        return iter(self.__dict__)
+
+    def __len__(self):
+        return len(self.__dict__)
 
     def __repr__(self):
         return str(self)
 
     def __str__(self):
-        return '<message data=%s>' % (self.data,)
+        return '<message data=%s>' % (self.__dict__,)
 
     def toJson(self):
         return {
-            'data': self.data,
-            'src': self.src.id if self.src is not None else None
+            'data': self.__dict__,
+            'src': self._src.id if self._src is not None else None
         }
 
 
@@ -468,176 +485,3 @@ class Debugger(object):
     def __str__(self):
         return '<%s>' % (type(self).__name__, )
 
-
-class Condition(Node):
-
-    INPUTS = ['default']
-    OUTPUTS = ['default', 'fail']
-
-    def __init__(self, flow, **other):
-        self._test = other['test']
-        super(Condition, self).__init__(flow, **other)
-
-    def main(self, default):
-        test_pass = False
-        try:
-            test_pass = self._test(default.data)
-        except:
-            self._logger.exception('test exception')
-
-        self._logger.debug('test result=%s' % test_pass)
-
-        self.emit(default, port='default' if test_pass else 'fail')
-
-
-class EventSource(Node):
-    OUTPUTS = ['default']
-
-    def __init__(self, flow, **other):
-        self._source = other['source']
-        super(EventSource, self).__init__(flow, **other)
-
-    def main(self):
-        for v in self._source():
-            self.emit(v)
-
-
-class Constant(Node):
-    OUTPUTS = ['default']
-    PROPS = {
-        'value': {}
-    }
-
-    def __init__(self, flow, **other):
-        self._value = other['value']
-        super(Constant, self).__init__(flow, **other)
-
-    def main(self):
-        self.emit(self._value)
-
-
-class FunctionNode(Node):
-    INPUTS = ['default']
-    OUTPUTS = ['default']
-
-    def __init__(self, flow, **other):
-        self._fn = other['fn']
-        super(FunctionNode, self).__init__(flow, **other)
-
-    def main(self, default):
-        return self._fn(default.data)
-
-
-class DelayNode(Node):
-    INPUTS = ['default']
-    OUTPUTS = ['default']
-    PROPS = {
-        'duration': {
-            'type': 'integer',
-            'minimum': 0
-        }
-    }
-
-    def __init__(self, flow, **other):
-        self._duration = other['duration']
-        super(DelayNode, self).__init__(flow, **other)
-
-    def main(self, default):
-        time.sleep(self._duration)
-
-
-class TimerNode(Node):
-    OUTPUTS = ['default']
-    PROPS = {
-        'interval': {
-            'type': 'integer',
-            'minimum': 0
-        }
-    }
-
-    def __init__(self, flow, **other):
-        self._interval = other['interval']
-        super(TimerNode, self).__init__(flow, **other)
-
-    def main(self):
-        while True:
-            self.emit(time.time())
-            time.sleep(self._interval)
-
-
-class DebugNode(Node):
-    INPUTS = ['default']
-    ICON = 'mdi-android-debug-bridge'
-
-    def __init__(self, flow, **other):
-        super(DebugNode, self).__init__(flow, **other)
-
-    def main(self, default):
-        self.debug(default)
-
-
-class ExitNode(Node):
-    INPUTS = ['default']
-
-    def __init__(self, flow, **other):
-        super(ExitNode, self).__init__(flow, **other)
-
-    def main(self, default):
-        self._flow._event.put(Event('quit'))
-
-
-if __name__ == '__main__':
-    from gevent import monkey
-
-    monkey.patch_all()
-
-    _LOGGER.setLevel(logging.DEBUG)
-    frm = logging.Formatter("%(asctime)s :: %(name)s :: %(levelname)s :: %(message)s")
-    stream_handler = logging.StreamHandler()
-    stream_handler.setFormatter(frm)
-    _LOGGER.addHandler(stream_handler)
-
-    flow = Flow()
-
-    # node3 = TimerNode(flow, duration=3)
-    # node2 = TimerNode(flow, duration=2)
-    # node1 = TimerNode(flow, outputs=[node2, node3], duration=1)
-
-    # node3 = DebugNode(flow, message='foobar')
-    # node2 = TimerNode(flow, outputs=[node3], duration=2)
-    # node1 = TimerNode(flow, outputs=[node3], duration=1)
-
-    # test1 = Condition(flow, outputs={'fail': [node1]}, test=lambda: False)
-
-    dbg1 = DebugNode(flow, message='dbg %%msg')
-
-
-    def src():
-         for i in range(5):
-             time.sleep(1)
-             yield i
-
-
-    event1 = EventSource(flow, source=src)
-
-    test1 = Condition(flow, test=lambda data: data > 3)
-
-    flow.connect(event1, test1)
-    flow.connect((test1, 'default'), dbg1)
-
-
-    # def summ(**kwargs):
-    #     return sum(kwargs.values())
-    #
-    # add = FunctionNode(flow, fn=summ, nid='add')
-    #
-    #
-    # c2 = Constant(flow, value=2, nid='c2')
-    # c3 = Constant(flow, value=3, nid='c3')
-    # dbg2 = DebugNode(flow, message='dbg sum=%%msg', nid='dbg2')
-    #
-    # flow.connect(c2, (add, 0))
-    # flow.connect(c3, (add, 1))
-    # flow.connect(add, dbg2)
-
-    flow.run()

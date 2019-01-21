@@ -39,7 +39,7 @@ class DeviceDisconnected(ResourceSignal):
 @attr('method', type=String(), description="The method name")
 @attr('resource', type=ResourceType(accepted_types=('resources/Device',)), description="The device on which the action is executed")
 class ExecuteDevice(ResourceActionNode):
-    def run(self, signal, core):
+    def run(self, msg, core):
         device = core.get(self.resource)
 
         if device is None:
