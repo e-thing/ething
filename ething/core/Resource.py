@@ -142,6 +142,14 @@ class Resource(DbEntity):
     def __hash__(self):
         return hash(self.id)
 
+    # avoid copying
+    def __copy__(self):
+        return self
+
+    # avoid copying
+    def __deepcopy__(self, memo):
+        return self
+
     @attr(description="An array of classes this resource is based on.")
     def extends(self):
         return [get_definition_pathname(c) for c in type(self).__mro__ if issubclass(c, DbEntity) and (c is not DbEntity and c is not Resource and c is not Interface)]

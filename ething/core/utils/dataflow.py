@@ -9,6 +9,7 @@ try:
     import queue
 except ImportError:
     import Queue as queue
+import copy
 
 _LOGGER = logging.getLogger('ething.flow')
 
@@ -205,7 +206,7 @@ class Flow(object):
                     connected_endpoints = self.get_connected_endpoints(endpoint)
                     connected_nodes = set()
                     for ep in connected_endpoints:
-                        self._nodes_data[ep.node.id]['inputs'][ep.port] = msg
+                        self._nodes_data[ep.node.id]['inputs'][ep.port] = msg.clone()
                         connected_nodes.add(ep.node)
 
                     for n in connected_nodes:
@@ -471,6 +472,9 @@ class Message(MutableMapping):
 
     def toJson(self):
         return self.__dict__
+
+    def clone(self):
+        return copy.deepcopy(self)
 
 
 class Debugger(object):

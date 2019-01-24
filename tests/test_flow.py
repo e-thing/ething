@@ -1,29 +1,154 @@
 # coding: utf-8
 import pytest
-from ething.core.utils.dataflow import Flow, Node, DebugNode
+from ething.core.utils.dataflow import Flow as _Flow, Message
+from ething.core.Flow import *
+import json
 
 
-class StartNode(Node):
+class _Test_Node_Wrapper(Wrapper_Node):
 
-    OUTPUTS = ['default']
+    def __init__(self, *args, **kwargs):
+        super(_Test_Node_Wrapper, self).__init__(*args, **kwargs)
+        self.emitted_msg = []
 
-    def main(self):
-        self.emit(2)
+    def emit(self, msg=None, port=None):
+        if port is None:
+            if self.OUTPUTS:
+                port = self.OUTPUTS[0]
+            else:
+                raise Exception('no output port for node %s' % self)
+        if not isinstance(msg, Message):
+            msg = Message(msg, node=self)
+
+        self.emitted_msg.append((port, msg))
 
 
-def test_flow():
+def _test_node(node_cls, attr=None, core=None, **inputs):
+    attributes = {
+        'type': get_definition_pathname(node_cls),
+        'name': 'foo',
+        'id': 'bar'
+    }
 
-    flow = Flow()
+    if attr is not None:
+        attributes.update(attr)
 
-    node0 = StartNode(flow)
-    node1 = DebugNode(flow)
+    node = _Test_Node_Wrapper(
+        _Flow(),
+        Node.fromJson(attributes, {
+            'ething': core
+        })
+    )
 
-    flow.connect(node0, node1)
+    node.main(**inputs)
 
-    flow.run()
+    return node.emitted_msg
 
-    assert flow.get_info(node0).get('count') == 1
-    assert flow.get_info(node1).get('count') == 1
 
+def test_node_Function(core):
+    msg = Message(time.time())
+
+    outputs = _test_node(Function, {
+        'script': """
+return msg
+"""
+    }, core, default=msg)
+
+    assert outputs[0][1] is msg
+
+
+def test_node_JSON(core):
+
+    data = {
+        'foo': 'bar'
+    }
+
+    json_data = json.dumps(data)
+
+
+    msg0 = Message({
+        'payload': data
+    })
+    msg1 = Message({
+        'payload': json_data
+    })
+
+    outputs = _test_node(JSON, core=core, default=msg0)
+    assert outputs[0][1]['payload'] == json_data
+
+    outputs = _test_node(JSON, core=core, default=msg1)
+    assert outputs[0][1]['payload'] == data
+
+
+def test_node_Change(core):
+
+    def generate_msg():
+        return  Message({
+            'payload': {
+                'foo': 'bar'
+            }
+        })
+
+    outputs = _test_node(Change, attr={
+        'rules': [{
+            'type': 'set',
+            'value': {
+                'value': {'type':'msg', 'value':'payload'},
+                'to': {'type':'string', 'value':'hello'}
+            }
+        }]
+    }, core=core, default=generate_msg())
+    assert outputs[0][1]['payload'] == 'hello'
+
+    outputs = _test_node(Change, attr={
+        'rules': [{
+            'type': 'delete',
+            'value': {
+                'value': {'type': 'msg', 'value': 'payload.foo'},
+            }
+        }]
+    }, core=core, default=generate_msg())
+    assert 'foo' not in outputs[0][1]['payload']
+
+    outputs = _test_node(Change, attr={
+        'rules': [{
+            'type': 'move',
+            'value': {
+                'value': {'type': 'msg', 'value': 'payload.foo'},
+                'to': {'type': 'msg', 'value': 'payload.cp'}
+            }
+        }]
+    }, core=core, default=generate_msg())
+    assert 'foo' not in outputs[0][1]['payload']
+    assert outputs[0][1]['payload']['cp'] == 'bar'
+
+
+def test_node_Switch(core):
+
+    msg = Message({
+        'payload': 'bar'
+    })
+
+    outputs = _test_node(Switch, attr={
+        'filter': {
+            'type': '==',
+            'value': {
+                'type': 'string',
+                'value': 'bar'
+            }
+        }
+    }, core=core, default=msg)
+    assert outputs[0][0] == 'default'
+
+    outputs = _test_node(Switch, attr={
+        'filter': {
+            'type': '==',
+            'value': {
+                'type': 'string',
+                'value': 'foo'
+            }
+        }
+    }, core=core, default=msg)
+    assert outputs[0][0] == 'fail'
 
 

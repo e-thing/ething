@@ -36,10 +36,8 @@ class Type (object):
   
   def toSchema(self, context = None):
     s = {}
-    if self.description:
-      s['description'] = self.description
-    if self.default is not None:
-      s['default'] = self.default
+    for prop in self._attributes:
+      s[prop] = self._attributes[prop]
     return s
 
 
@@ -108,41 +106,41 @@ class Nullable (Type):
     return schema
 
 
-class OneOf (Type):
-  """
-  accept None value plus the given type
-  """
-  def __init__(self, types, discriminator, **attributes):
-    super(OneOf, self).__init__(**attributes)
-    self._types = list(map(convert_type, types))
-    self._discriminator = discriminator
+class OneOfBase (Type):
 
-  def descriminate(self, value, context = None):
-    t = self._discriminator(value, self._types, context)
+  def __init__(self, types, **attributes):
+    super(OneOfBase, self).__init__(**attributes)
+    self._types = list(map(convert_type, types))
+
+  def discriminate(self, value, types, context=None):
+    raise NotImplementedError()
+
+  def _discriminate(self, value, context = None):
+    t = self.discriminate(value, self._types, context)
     if t not in self._types:
       raise Exception('invalid value')
     return t
 
   def set(self, value, context = None):
-    return self.descriminate(value, context).set(value, context)
+    return self._discriminate(value, context).set(value, context)
 
   def get(self, value, context = None):
-    return self.descriminate(value, context).get(value, context)
+    return self._discriminate(value, context).get(value, context)
 
   def toJson(self, value, context = None):
-    return self.descriminate(value, context).toJson(value, context)
+    return self._discriminate(value, context).toJson(value, context)
 
   def fromJson(self, value, context = None):
-    return self.descriminate(value, context).fromJson(value, context)
+    return self._discriminate(value, context).fromJson(value, context)
 
   def serialize(self, value, context = None):
-    return self.descriminate(value, context).serialize(value, context)
+    return self._discriminate(value, context).serialize(value, context)
 
   def unserialize(self, value, context = None):
-    return self.descriminate(value, context).unserialize(value, context)
+    return self._discriminate(value, context).unserialize(value, context)
 
   def toSchema(self, context = None):
-    schema = super(OneOf, self).toSchema(context)
+    schema = super(OneOfBase, self).toSchema(context)
     schema['oneOf'] = [t.toSchema(context) for t in self._types]
     return schema
 
@@ -258,9 +256,16 @@ class Boolean(Basetype):
 
 class Enum(Basetype):
   
-  def __init__(self, enum, **attributes):
+  def __init__(self, enum, labels=None, **attributes):
+    """
+
+    :param enum: list of values
+    :param labels: list of value's label
+    :param attributes:
+    """
     super(Enum, self).__init__(**attributes)
     self.enum = enum
+    self.labels = labels
     
   def validate(self, value, context = None):
     if value not in self.enum:
@@ -270,6 +275,8 @@ class Enum(Basetype):
   def toSchema(self, context = None):
     schema = super(Enum, self).toSchema(context)
     schema['enum'] = self.enum
+    if self.labels:
+      schema['enumLabels'] = [self.labels[i] if i<len(self.labels) else str(self.enum[i]) for i in range(len(self.enum))]
     return schema
 
 class String(Basetype):
@@ -461,6 +468,167 @@ class Color(String):
     schema['type'] = 'string'
     schema['format'] = 'color'
     return schema
+
+
+class AllOfItemData(object):
+  def __init__(self, key, t, value, context=None):
+    self._key = key
+    self._type = t
+    self._context = context
+    self._value = value
+
+  @property
+  def type(self):
+    return self._key
+
+  @property
+  def value(self):
+    if self._type is None:
+      raise AttributeError()
+    return self._type.get(self._value, self._context)
+
+  @value.setter
+  def value(self, val):
+    if self._type is None:
+      raise AttributeError()
+    self._value = self._type.set(val, self._context)
+
+
+class AllOfItem(Type):
+
+  def __init__(self, name, t, label=None, data_cls=AllOfItemData, **attributes):
+    super(AllOfItem, self).__init__(**attributes)
+    self._name = name
+    self._label = label
+    self._type = t
+    self._data_cls = data_cls
+
+  @property
+  def name(self):
+    return self._name
+
+  def set(self, value, context = None):
+    if isinstance(value, AllOfItemData):
+      if value.type != self._name:
+        raise ValueError('invalid type')
+      return value
+
+    if value.get('type') != self._name:
+      raise ValueError('invalid type')
+
+    if self._type is not None:
+      v = self._type.fromJson(value.get('value'), context)
+    else:
+      if 'value' in value:
+        raise ValueError('invalid value')
+      v = None
+
+    return self._data_cls(self._name, self._type, v, context)
+
+  def get(self, value, context = None):
+    return value
+
+  def toJson(self, value, context = None):
+    j = {
+      'type': self._name
+    }
+    if self._type is not None:
+      j['value'] = self._type.toJson(value.value, context)
+    return j
+
+  def fromJson(self, value, context = None):
+    if value.get('type') != self._name:
+      raise ValueError('invalid type')
+
+    if self._type is not None:
+      v = self._type.fromJson(value.get('value'), context)
+    else:
+      if 'value' in value:
+        raise ValueError('invalid value')
+      v = None
+
+    return self._data_cls(self._name, self._type, v, context)
+
+  def serialize(self, value, context = None):
+    s = {
+      'type': self._name
+    }
+    if self._type is not None:
+      s['value'] = self._type.serialize(value.value, context)
+    return s
+
+  def unserialize(self, value, context = None):
+    if self._type is not None:
+      v = self._type.unserialize(value.get('value'), context)
+    else:
+      v = None
+    return self._data_cls(self._name, self._type, v, context)
+
+  def toSchema(self, context = None):
+    schema = super(AllOfItem, self).toSchema(context)
+    schema.update({
+      'type': 'object',
+      'properties': {
+        'type': {
+          'label': self._label or self._name,
+          'const': self._name
+        }
+      },
+      'required': ['type'],
+      'additionalProperties': False
+    })
+    if self._type is not None:
+      schema['properties']['value'] = self._type.toSchema(context)
+      schema['required'].append('value')
+    return schema
+
+
+class OneOf(OneOfBase):
+
+  def __init__(self, items, data_cls=AllOfItemData, **attributes):
+    """
+    :param discriminator:
+    :param discriminator_label:
+    :param items: must be an array of tupple (name, type [,label])
+    :param attributes:
+    """
+    self.items = []
+    for item in items:
+      if isinstance(item, AllOfItem):
+        self.items.append({
+          'name': item.name,
+          'type': item,
+        })
+        continue
+      label = None
+      t = None
+      if isinstance(item, tuple):
+        name = item[0]
+        if len(item) > 1:
+          t = item[1]
+        if len(item) > 2:
+          label = item[2]
+      else:
+        name = item['name']
+        t = item.get('type')
+        label = item.get('label')
+      if t is not None:
+        t = convert_type(t)
+      self.items.append({
+        'name': name,
+        'type': AllOfItem(name, t, label=label, data_cls=data_cls),
+      })
+
+    super(OneOf, self).__init__([i['type'] for i in self.items], **attributes)
+
+  def discriminate(self, value, types, context=None):
+    if isinstance(value, AllOfItemData):
+      name = value.type
+    else:
+      name = value['type']
+    for item in self.items:
+      if item['name'] == name:
+        return item['type']
 
 
 class Array(Type):

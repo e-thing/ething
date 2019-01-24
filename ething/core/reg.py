@@ -153,11 +153,14 @@ class Attribute (MutableMapping):
       else:
         schema = {}
 
-      if 'description' in self:
+      if 'description' in self and self['description']:
         schema['description'] = self.get('description').strip()
 
       if self.get('mode') == READ_ONLY:
           schema['readOnly'] = True
+
+      if 'label' in self and self['label']:
+        schema['label'] = self.get('label')
       
       return schema
 
@@ -814,7 +817,7 @@ def build_schema(cls, root=False, **kwargs):
         if 'default' in attribute:
             try:
               attr_schema['default'] = data_type.toJson(data_type.set(attribute.make_default(cls), context=kwargs), context=kwargs)
-            except:
+            except Exception as e:
               pass
         else:
           required.append(name)

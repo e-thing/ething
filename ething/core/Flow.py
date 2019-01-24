@@ -2,6 +2,7 @@
 from .Resource import Resource, ResourceType
 from .entity import *
 from .utils.dataflow import Flow as _FlowBase, Node as _Node, Debugger, queue
+from .utils.jsonpath import jsonpath
 from .Process import Process
 from .plugin import Plugin, register_plugin
 from .Signal import Signal, ResourceSignal
@@ -17,12 +18,14 @@ import logging
 import datetime
 import json
 import os
-from jsonpath_rw import jsonpath, parse
+import collections
+
+
+number_types = integer_types + (float, )
 
 
 def _jsonpath_find(jp, obj):
-    jsonpath_expr = parse(jp)
-    res = [match.value for match in jsonpath_expr.find(obj)]
+    res = jsonpath(jp, obj)
     if len(res) == 1:
         return res[0]
     elif len(res) > 1:
@@ -34,119 +37,96 @@ def _jsonpath_find(jp, obj):
 class JsonPathType(String):
 
     def __init__(self, allow_root=False, **attributes):
-        super(JsonPathType, self).__init__(allow_empty=allow_root)
-
-    def validate(self, value, context = None):
-        super(JsonPathType, self).validate(value, context)
-        parse(value)
+        super(JsonPathType, self).__init__(allow_empty=allow_root, **attributes)
 
 
-class DescriptorMode(object):
+class DescriptorData(AllOfItemData):
+    value_type = None
     label = None
 
-    def get(self, name, **context):
+    def get(self, **context):
         raise NotImplementedError()
 
-    def set(self, name, value, **context):
+    def set(self, value, **context):
         raise NotImplementedError()
 
-    def validate(self, value):
-        if value is not None:
-            raise Exception('invalid value %s' % value)
-
-    def schema(self):
-        return None
+    def delete(self, **context):
+        raise NotImplementedError()
 
 
-class EnvDescriptor(DescriptorMode):
+class EnvDescriptor(DescriptorData):
     label = 'env variable'
     value_type = String(allow_empty=False)
 
-    def get(self, name, **context):
-        return os.environ.get(name)
+    def get(self, **context):
+        return os.environ.get(self.value)
 
-    def set(self, name, value, **context):
-        os.environ[name] = str(value)
+    def set(self, value, **context):
+        os.environ[self.value] = str(value)
 
-    def validate(self, value):
-        self.value_type.validate(value)
-
-    def schema(self):
-        return self.value_type.toSchema()
+    def delete(self, **context):
+        del os.environ[self.value]
 
 
-class GlobalDescriptor(DescriptorMode):
+class GlobalDescriptor(DescriptorData):
     label = 'global.'
     value_type = JsonPathType()
 
-    def get(self, jsonpath, **context):
-        return _jsonpath_find(jsonpath, globals())
+    def get(self, **context):
+        return _jsonpath_find(self.value, globals())
 
-    def set(self, jsonpath, value, **context):
-        jsonpath_expr = parse(jsonpath)
-        jsonpath_expr.update(globals(), value)
+    def set(self, value, **context):
+        jsonpath(self.value, globals(), action='set', args=(value,))
 
-    def validate(self, value):
-        self.value_type.validate(value)
-
-    def schema(self):
-        return self.value_type.toSchema()
+    def delete(self, **context):
+        jsonpath(self.value, globals(), action='delete')
 
 
-class FlowDescriptor(DescriptorMode):
+class FlowDescriptor(DescriptorData):
     label = 'flow.'
     value_type = JsonPathType()
 
-    def get(self, jsonpath, **context):
-        return _jsonpath_find(jsonpath, context['flow'].context)
+    def get(self, **context):
+        return _jsonpath_find(self.value, context['flow'].context)
 
-    def set(self, jsonpath, value, **context):
-        jsonpath_expr = parse(jsonpath)
-        jsonpath_expr.update(context['flow'].context, value)
+    def set(self, value, **context):
+        jsonpath(self.value, context['flow'].context, action='set', args=(value,))
 
-    def validate(self, value):
-        self.value_type.validate(value)
-
-    def schema(self):
-        return self.value_type.toSchema()
+    def delete(self, **context):
+        jsonpath(self.value, context['flow'].context, action='delete')
 
 
-class MsgDescriptor(DescriptorMode):
+class MsgDescriptor(DescriptorData):
     label = 'msg.'
     value_type = JsonPathType()
 
-    def get(self, jsonpath, **context):
-        return _jsonpath_find(jsonpath, context['msg'])
+    def get(self, **context):
+        return _jsonpath_find(self.value, context['msg'])
 
-    def set(self, jsonpath, value, **context):
-        jsonpath_expr = parse(jsonpath)
-        jsonpath_expr.update(context['msg'], value)
+    def set(self, value, **context):
+        jsonpath(self.value, context['msg'], action='set', args=(value,))
 
-    def validate(self, value):
-        self.value_type.validate(value)
-
-    def schema(self):
-        return self.value_type.toSchema()
+    def delete(self, **context):
+        jsonpath(self.value, context['msg'], action='delete')
 
 
-class FullMsgDescriptor(DescriptorMode):
+class FullMsgDescriptor(DescriptorData):
     label = 'complete message object'
 
-    def get(self, _, **context):
+    def get(self, **context):
         return context['msg']
 
 
-class ValueDescriptor(DescriptorMode):
-    value_type = String()
+class PrevValueDescriptor(DescriptorData):
+    label = 'previous value'
 
-    def get(self, value, **context):
-        return value
+    def get(self, **context):
+        return context['prev_val']
 
-    def validate(self, value):
-        self.value_type.validate(value)
 
-    def schema(self):
-        return self.value_type.toSchema()
+class ValueDescriptor(DescriptorData):
+    def get(self, **context):
+        return self.value
 
 
 class StringDescriptor(ValueDescriptor):
@@ -165,26 +145,12 @@ class BooleanDescriptor(ValueDescriptor):
 # TODO: JSONata  cf: https://nodered.org/docs/user-guide/messages#split
 
 
-class TimestampDescriptor(DescriptorMode):
-    def get(self, value, **context):
+class TimestampDescriptor(DescriptorData):
+    def get(self, **context):
         return time.time()
 
 
-class DescriptorInstance(object):
-
-    def __init__(self, name, mode, value):
-        self.name = name
-        self.mode = mode
-        self.value = value
-
-    def get(self, **context):
-        return self.mode.get(self.value, **context)
-
-    def set(self, value, **context):
-        self.mode.set(self.value, value, **context)
-
-
-class Descriptor(Type):
+class Descriptor(OneOf):
 
     MODES = {
         'env': EnvDescriptor,
@@ -195,80 +161,21 @@ class Descriptor(Type):
         'glob': GlobalDescriptor,
         'timestamp': TimestampDescriptor,
         'msg': MsgDescriptor,
-        'fullmsg': FullMsgDescriptor
+        'fullmsg': FullMsgDescriptor,
+        'prev': PrevValueDescriptor
     }
 
-    def __init__(self, **modes):
-        super(Descriptor, self).__init__()
+    def __init__(self, modes, **attributes):
 
-        self.modes = {}
+        items = []
         for mode_name in modes:
-            mode = modes[mode_name]
-            if isinstance(mode, DescriptorMode):
-                pass
-            else:
-                mode_cls = self.MODES.get(mode_name)
-                if mode_cls is None:
-                    raise Exception('unknow mode %s' % mode_name)
-                if mode is True:
-                    mode = mode_cls()
-                else:
-                    mode = None
-            if mode is not None:
-                self.modes[mode_name] = mode
+            mode_cls = self.MODES.get(mode_name)
+            if mode_cls is None:
+                raise Exception('unknow mode %s' % mode_name)
+            items.append(AllOfItem(mode_name, mode_cls.value_type, label=mode_cls.label, data_cls=mode_cls))
 
-    def set(self, data, context=None):
-        if (isinstance(data, DescriptorInstance)):
-            return data
-        self.validate(data, context)
-        return DescriptorInstance(data.get('type'), self.modes[data.get('type')], data.get('value'))
-
-    def fromJson(self, data, context=None):
-        self.validate(data, context)
-        return DescriptorInstance(data.get('type'), self.modes[data.get('type')], data.get('value'))
-
-    def validate(self, data, context = None):
-        if not isinstance(data, Mapping) or 'type' not in data:
-            raise Exception('invalid data %s' % data)
-        mode = data.get('type')
-        if mode not in self.modes:
-            raise Exception('invalid mode %s' % mode)
-        mode_instance = self.modes[mode]
-        mode_instance.validate(data.get('value'))
-
-    def toJson(self, value, context=None):
-        return {
-            'type': value.name,
-            'value': value.value
-        }
-
-    serialize = toJson
-    unserialize = fromJson
-
-    def toSchema(self, context=None):
-        schema = super(Descriptor, self).toSchema(context)
-        oneOf = []
-        for mode_name in self.modes:
-            mode = self.modes[mode_name]
-            s = {
-                'type': 'object',
-                'properties': {
-                    'type': {
-                        'label': mode.label or mode_name,
-                        'const': mode_name
-                    },
-                },
-                'required': ['type'],
-                'additionalProperties': False
-            }
-            value_schema = mode.schema()
-            if value_schema is not None:
-                s['properties']['value'] = value_schema
-                s['required'].append('value')
-            oneOf.append(s)
-        schema['oneOf'] = oneOf
-        schema['format'] = 'ething.flow.descriptor'
-        return schema
+        attributes['$inline'] = True
+        super(Descriptor, self).__init__(items, **attributes)
 
 
 class _Flow(_FlowBase):
@@ -291,7 +198,7 @@ class _Flow(_FlowBase):
 @attr('y', type=Number(), default=0)
 @attr('x', type=Number(), default=0)
 @attr('name', type=String(allow_empty=False))
-@attr('color', type=Color())
+@attr('color', type=Color(), default='#eeeeee')
 @attr('type', mode=READ_ONLY, type=String(allow_empty=False))
 @attr('id', mode=READ_ONLY, type=String(allow_empty=False))
 class Node(Entity):
@@ -520,7 +427,7 @@ class Flow(Resource):
         flow = _Flow(self)
 
         for node_data in nodes_data:
-            _Wrapper_Node(flow, node_data)
+            Wrapper_Node(flow, node_data)
 
         for connection_data in connections_data:
             src_id = connection_data['src'][0]
@@ -576,11 +483,11 @@ class Flow(Resource):
                     raise Exception('unknown node id=%s' % node_id)
 
 
-class _Wrapper_Node(_Node):
+class Wrapper_Node(_Node):
 
     def __init__(self, flow, node):
         self._node = node
-        super(_Wrapper_Node, self).__init__(flow, nid=node.id)
+        super(Wrapper_Node, self).__init__(flow, nid=node.id)
         self.INPUTS = node.INPUTS
         self.OUTPUTS = node.OUTPUTS
 
@@ -687,7 +594,9 @@ class CronEventNode(EventNode):
 
 
 @meta(icon='mdi-android-debug-bridge')
-@attr('output', type=Descriptor(fullmsg=True, msg=True), default={'type':'msg','value':'payload'}, description='Select the message property to display.')
+@attr('print_log', label='print to log', type=Boolean(), default=False, description='print the debug information in the log')
+@attr('print_debug_window', label='print to debug window', type=Boolean(), default=True, description='print the debug information in the debug window')
+@attr('output', type=Descriptor(('fullmsg', 'msg')), default={'type':'msg','value':'payload'}, description='Select the message property to display.')
 class DebugNode(Node):
     """
     print some debug information
@@ -698,7 +607,10 @@ class DebugNode(Node):
     def main(self, n, inputs):
         _msg = inputs.get('default')
         _data = self.output.get(msg=_msg, flow=n.flow)
-        n.debug(_data)
+        if self.print_debug_window:
+            n.debug(_data)
+        if self.print_log:
+            self.log.info(str(_data))
 
 
 @meta(icon='mdi-clock')
@@ -737,7 +649,28 @@ class Function(Node):
         context = n.flow.context
 
         try:
-            eval(self.script, {
+            formatted = []
+            for l in self.script.splitlines():
+                formatted.append('  ' + l)
+
+            formatted = '\n'.join(formatted)
+
+            formatted = """
+import collections
+
+def __main():
+""" + formatted + """
+
+res = __main()
+if res is not None:
+  if isinstance(res, collections.Sequence):
+    for r in res:
+      emit(r)
+  else:
+    emit(res)
+
+"""
+            exec(formatted, {
                 'msg': msg,
                 'logger': self.log,
                 'ething': self.ething,
@@ -745,154 +678,9 @@ class Function(Node):
                 'emit': n.emit,
                 'context': context
             })
+
         except:
             pass
-
-
-@meta(label='If-Else', icon='mdi-help')
-@attr('script', type=PythonScript(), description="The Python script. call resolve() or reject() to resolve or reject the test, respectively.")
-class Test(Node):
-    """Execute a python script"""
-
-    INPUTS = ['default']
-    OUTPUTS = ['default', 'fail']
-
-    def main(self, n, inputs):
-        _msg = inputs['default']
-        context = n.flow.context
-
-        def resolve(msg=None):
-            if msg is None:
-                msg = _msg
-            n.emit(msg, port='default')
-
-        def reject(msg=None):
-            if msg is None:
-                msg = _msg
-            n.emit(msg, port='fail')
-
-        try:
-            eval(self.script, {
-                'msg': _msg,
-                'logger': self.log,
-                'ething': self.ething,
-                'debug': n.debug,
-                'reject': reject,
-                'resolve': resolve,
-                'context': context
-            })
-        except:
-            if not n._emitted:
-                reject()
-        else:
-            if not n._emitted:
-                resolve()
-
-
-number_types = integer_types + (float, )
-
-
-def _cast_to_number(value):
-    return float(value)
-
-
-def _cast_to_string(value):
-    return str(value)
-
-
-def _cast_to_bool(value):
-    if isinstance(value, string_types):
-        if value.lower() == 'true':
-            return True
-        elif value.lower() == 'false':
-            return False
-        else:
-            try:
-                return bool(float(value))
-            except:
-                return False
-    return bool(value)
-
-
-def _check_number(value):
-    if not isinstance(value, number_types):
-        raise ValueError('not a number : %s' % value)
-
-
-@meta(icon='mdi-filter')
-@attr('last', mode=PRIVATE, default=None) # holds the last value
-@attr('filter', type=Dict(allow_extra=True, mapping={
-    'type': Enum(('exists', '==', '>', '>=', '<', '<=', 'go above', 'go under', 'regex', 'rising edge', 'falling edge')),
-    'value': String()
-}))
-@attr('data', type=Descriptor(flow=True, glob=True, msg=True), default={'type':'msg','value':'payload'}, description='The data to filter.')
-class DataFilter(ConditionNode):
-    """ filter message data """
-
-    def test(self, msg, flow, core):
-
-        data = self.data.get(msg=msg, flow=flow)
-        filter = self.filter
-        filter_type = filter.get('type')
-        value = filter.get('value')
-
-        if data is None:
-            return False
-
-        if filter_type == 'exists':
-            return True
-        elif filter_type == '==':
-
-            # make value the same type of data
-            if isinstance(data, number_types):
-                norm_value = _cast_to_number(value)
-            elif isinstance(data, bool):
-                norm_value = _cast_to_bool(value)
-            else:
-                norm_value = value
-
-            return norm_value == data
-
-        elif filter_type == '>':
-            return _check_number(data) > _cast_to_number(value)
-        elif filter_type == '>=':
-            return _check_number(data) >= _cast_to_number(value)
-        elif filter_type == '<':
-            return _check_number(data) < _cast_to_number(value)
-        elif filter_type == '<=':
-            return _check_number(data) <= _cast_to_number(value)
-        elif filter_type == 'regex':
-            return re.search(self._cast_to_string(value), self._cast_to_string(data))
-        elif filter_type == 'go above':
-            _check_number(data)
-            threshold = _cast_to_number(value)
-            result = self.last is not None and self.last < threshold and data >= threshold
-            # save the last value
-            self.last = data
-            return result
-        elif filter_type == 'go under':
-            _check_number(data)
-            threshold = _cast_to_number(value)
-            result = self.last is not None and self.last > threshold and data <= threshold
-            # save the last value
-            self.last = data
-            return result
-        elif filter_type == 'rising edge':
-            data = _cast_to_bool(data)
-            threshold = _cast_to_bool(value)
-            result = self.last is not None and self.last is False and data is True
-            # save the last value
-            self.last = data
-            return result
-        elif filter_type == 'falling edge':
-            data = _cast_to_bool(data)
-            threshold = _cast_to_bool(value)
-            result = self.last is not None and self.last is True and data is False
-            # save the last value
-            self.last = data
-            return result
-        else:
-            raise Exception('invalid filter : %s' % filter_type)
 
 
 def item_to_daily_time(hour, minute):
@@ -940,15 +728,21 @@ class SchedulerData(Array):
 
 @meta(icon='mdi-clock-outline')
 @attr('items', type=SchedulerData())
-class Scheduler(ConditionNode):
+class Scheduler(Node):
     """ Return true only within certain periods of time """
 
-    def test(self, msg, flow, core):
+    INPUTS = ['default']
+    OUTPUTS = ['default', 'fail']
+
+    def main(self, n, inputs):
+        msg = inputs.get('default')
+
         now = datetime.datetime.now()
         weekday = now.isoweekday() # 1: monday, 7: sunday
         hour = now.hour
         minute = now.minute
         monthday = now.day
+        res = False
 
         for item in self.items:
 
@@ -975,10 +769,14 @@ class Scheduler(ConditionNode):
 
             if start_time <= end_time:
                 if time >= start_time and time <= end_time:
-                    return True
+                    res = True
+                    break
             else:
                 if time >= start_time or time <= end_time:
-                    return True
+                    res = True
+                    break
+
+        n.emit(msg, port='default' if res else 'fail')
 
 
 
@@ -1012,7 +810,7 @@ class ResourceMatch(ResourceConditionNode):
 @abstract
 @path('outputs', True)
 @meta(icon='mdi-logout')
-@attr('data', type=Descriptor(flow=True, glob=True, msg=True, env=True), default={'type':'msg','value':'payload'}, description='The data to expose.')
+@attr('data', type=Descriptor(('flow', 'glob', 'msg', 'env')), default={'type':'msg','value':'payload'}, description='The data to expose.')
 class Output(Node):
     """Expose data"""
 
@@ -1052,7 +850,7 @@ class Input(Node):
             _q.put(data)
 
 
-@attr('data', type=Descriptor(flow=True, glob=True, string=True, number=True, boolean=True, timestamp=True, env=True), default={'type':'timestamp'}, description='The data to inject into the flow on click')
+@attr('data', type=Descriptor(('flow', 'glob', 'string', 'number', 'boolean', 'timestamp', 'env')), default={'type':'timestamp'}, description='The data to inject into the flow on click')
 class Button(Input):
 
     def inject(self, flow, data):
@@ -1086,4 +884,198 @@ class JSON(Node):
 class Comment(Node):
     def main(self, n, inputs):
         pass
+
+
+rule_item = OneOf([
+    ('set', Dict(mapping=OrderedDict([
+        ('value', Descriptor(('msg', 'flow', 'glob'))),
+        ('to', Descriptor(('msg', 'flow', 'glob', 'string', 'number', 'boolean', 'timestamp', 'env')))
+    ]))),
+    ('change', Dict(mapping=OrderedDict([
+        ('value', Descriptor(('msg', 'flow', 'glob'))),
+        ('search', Descriptor(('msg', 'flow', 'glob', 'string', 'number', 'boolean', 'env'))),
+        ('replace', Descriptor(('msg', 'flow', 'glob', 'string', 'number', 'boolean', 'timestamp', 'env')))
+    ]))),
+    ('delete', Dict(mapping=OrderedDict([
+        ('value', Descriptor(('msg', 'flow', 'glob')))
+    ]))),
+    ('move', Dict(mapping=OrderedDict([
+        ('value', Descriptor(('msg', 'flow', 'glob'))),
+        ('to', Descriptor(('msg', 'flow', 'glob')))
+    ])))
+])
+
+@meta(icon='mdi-pencil')
+@attr('rules', type=Array(rule_item), default=[{
+    'type': 'set',
+    'value': {
+        'value': {'type':'msg', 'value':'payload'},
+        'to': {'type':'string', 'value':''}
+    }
+}])
+class Change(Node):
+    """
+    Set, change, delete or move properties of a message, flow context or global context.
+
+    The node can specify multiple rules that will be applied in the order they are defined.
+    """
+
+    INPUTS = ['default']
+    OUTPUTS = ['default']
+
+    def main(self, n, inputs):
+        _msg = inputs['default']
+        _context = {
+            'msg': _msg,
+            'flow': n.flow
+        }
+
+        for rule in self.rules:
+            rule_type = rule.type
+            rule_data = rule.value
+
+            if rule_type == 'set':
+                val = rule_data['to'].get(**_context)
+                rule_data['value'].set(val, **_context)
+            elif rule_type == 'change':
+                val = rule_data['to'].get(**_context)
+                pattern = rule_data['search'].get(**_context)
+                repl = rule_data['replace'].get(**_context)
+                new_val = re.search(pattern, repl, val)
+                rule_data['value'].set(new_val, **_context)
+            elif rule_type == 'delete':
+                rule_data['value'].delete(**_context)
+            elif rule_type == 'move':
+                val = rule_data['value'].get(**_context)
+                rule_data['to'].set(val, **_context)
+                rule_data['value'].delete(**_context)
+
+        n.emit(_msg)
+
+
+value_descriptor = Descriptor(('msg', 'flow', 'glob', 'string', 'number', 'env', 'prev'))
+value_str_descriptor = Descriptor(('msg', 'flow', 'glob', 'string', 'env', 'prev'))
+
+filter_type = OneOf([
+    ('==', value_descriptor),
+    ('!=', value_descriptor),
+    ('<' , value_descriptor),
+    ('<=', value_descriptor),
+    ('>' , value_descriptor),
+    ('>=', value_descriptor),
+    ('between', Dict(mapping=OrderedDict([
+        ('min', value_descriptor),
+        ('max', value_descriptor)
+    ])), 'is between'),
+    ('contains', value_str_descriptor),
+    ('regex', value_str_descriptor, 'matches regex'),
+    ('true', None, 'is true'),
+    ('false', None, 'is false'),
+    ('none', None, 'is none'),
+    ('not_none', None, 'is not none'),
+    ('type', Enum(['string','number','boolean','array','object','none']), 'is of type'),
+    ('empty', None, 'is empty'),
+    ('not_empty', None, 'is not empty'),
+    ('go_above', Descriptor(('msg', 'flow', 'glob', 'number', 'env')), 'go above'),
+    ('go_under', Descriptor(('msg', 'flow', 'glob', 'number', 'env')), 'go under'),
+    ('rising_edge', None, 'rising edge'),
+    ('falling_edge', None, 'falling edge')
+])
+
+@meta(icon='mdi-filter')
+@attr('last', mode=PRIVATE, default=None) # holds the last value
+@attr('filter', type=filter_type, default={'type':'==', 'value':{'type':'string', 'value':''}})
+@attr('data', type=Descriptor(('flow', 'glob', 'msg')), default={'type':'msg','value':'payload'}, description='The data to filter.')
+class Switch(Node):
+    """
+    Route messages based on their property values or sequence position
+    """
+
+    def main(self, n, inputs):
+        old_val = self.last
+        _msg = inputs['default']
+        _context = {
+            'msg': _msg,
+            'flow': n.flow,
+            'prev_val': old_val
+        }
+
+        filter_type = self.filter.type
+        val = self.data.get(**_context)
+        res = None
+
+        try:
+            if filter_type == '==':
+                filter_value = self.filter.value.get(**_context)
+                res = val == filter_value
+            elif filter_type == '!=':
+                filter_value = self.filter.value.get(**_context)
+                res = val != filter_value
+            elif filter_type == '<':
+                filter_value = self.filter.value.get(**_context)
+                res = val < filter_value
+            elif filter_type == '<=':
+                filter_value = self.filter.value.get(**_context)
+                res = val <= filter_value
+            elif filter_type == '>':
+                filter_value = self.filter.value.get(**_context)
+                res = val > filter_value
+            elif filter_type == '>=':
+                filter_value = self.filter.value.get(**_context)
+                res = val >= filter_value
+            elif filter_type == 'between':
+                min_val = self.filter.value['min'].get(**_context)
+                max_val = self.filter.value['max'].get(**_context)
+                res = val >= min_val and val <= max_val
+            elif filter_type == 'contains':
+                filter_value = self.filter.value.get(**_context)
+                res = filter_value in val
+            elif filter_type == 'regex':
+                filter_value = self.filter.value.get(**_context)
+                res = bool(re.search(filter_value, val))
+            elif filter_type == 'true':
+                res = val is True
+            elif filter_type == 'false':
+                res = val is False
+            elif filter_type == 'none':
+                res = val is None
+            elif filter_type == 'not_none':
+                res = val is not None
+            elif filter_type == 'type':
+                t = self.filter.value.get(**_context)
+                if t=='string':
+                    res = isinstance(val, string_types)
+                elif t=='number':
+                    res = isinstance(val, number_types)
+                elif t=='boolean':
+                    res = isinstance(val, bool)
+                elif t=='array':
+                    res = isinstance(val, collections.Sequence)
+                elif t=='object':
+                    res = isinstance(val, collections.Mapping)
+                elif t=='none':
+                    res = val is None
+            elif filter_type == 'empty':
+                res = len(val) == 0
+            elif filter_type == 'not_empty':
+                res = len(val) != 0
+            elif filter_type == 'go_above':
+                filter_value = self.filter.value.get(**_context)
+                res = old_val is not None and old_val < filter_value and val >= filter_value
+            elif filter_type == 'go_under':
+                filter_value = self.filter.value.get(**_context)
+                res = old_val is not None and old_val > filter_value and val <= filter_value
+            elif filter_type == 'rising_edge':
+                res = old_val is not None and old_val == False and val == True
+            elif filter_type == 'falling_edge':
+                res = old_val is not None and old_val == True and val == False
+        except:
+            res = None
+
+        # save the last value
+        self.last = val
+
+        n.emit(_msg, port='default' if res else 'fail')
+
+
 
