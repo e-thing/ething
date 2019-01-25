@@ -82,9 +82,9 @@ class ResourceType(Id):
         schema = super(ResourceType, self).toSchema(context)
         schema['format'] = 'ething.resource'
         if self.accepted_types:
-            schema['onlyTypes'] = self.accepted_types
+            schema['$onlyTypes'] = self.accepted_types
         if self.must_throw:
-            schema['must_throw'] = get_definition_pathname(self.must_throw)
+            schema['$must_throw'] = get_definition_pathname(self.must_throw)
         return schema
 
 

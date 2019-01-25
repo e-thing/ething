@@ -215,7 +215,7 @@ def generate(app, core, specification='stdout', documentation=None):
     def resource_attr_helper(schema, name, attribute):
 
         if attribute.get('mode') == READ_ONLY:
-            schema['readOnly'] = True
+            schema['$readOnly'] = True
 
         remove_kinfOf_attribute(schema)
 
@@ -234,12 +234,12 @@ def generate(app, core, specification='stdout', documentation=None):
         "message": {
             "type": "string",
             "description": "A description of the error",
-            "readOnly": True
+            "$readOnly": True
         },
         "code": {
             "type": "integer",
             "description": "The HTTP response status code",
-            "readOnly": True
+            "$readOnly": True
         }
     }, extra_fields = {
         'type': 'object'

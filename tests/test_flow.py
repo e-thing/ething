@@ -93,12 +93,12 @@ def test_node_Change(core):
         'rules': [{
             'type': 'set',
             'value': {
-                'value': {'type':'msg', 'value':'payload'},
+                'value': {'type':'msg', 'value':'payload.foo'},
                 'to': {'type':'string', 'value':'hello'}
             }
         }]
     }, core=core, default=generate_msg())
-    assert outputs[0][1]['payload'] == 'hello'
+    assert outputs[0][1]['payload']['foo'] == 'hello'
 
     outputs = _test_node(Change, attr={
         'rules': [{
@@ -121,6 +121,23 @@ def test_node_Change(core):
     }, core=core, default=generate_msg())
     assert 'foo' not in outputs[0][1]['payload']
     assert outputs[0][1]['payload']['cp'] == 'bar'
+
+    outputs = _test_node(Change, attr={
+        'rules': [{
+            'type': 'set',
+            'value': {
+                'value': {'type': 'msg', 'value': 'payload'},
+                'to': {'type': 'string', 'value': 'hello'}
+            }
+        },{
+            'type': 'set',
+            'value': {
+                'value': {'type': 'msg', 'value': 'payload'},
+                'to': {'type': 'string', 'value': 'world'}
+            }
+        }]
+    }, core=core, default=generate_msg())
+    assert outputs[0][1]['payload'] == 'world'
 
 
 def test_node_Switch(core):

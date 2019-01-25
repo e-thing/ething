@@ -276,7 +276,7 @@ class Enum(Basetype):
     schema = super(Enum, self).toSchema(context)
     schema['enum'] = self.enum
     if self.labels:
-      schema['enumLabels'] = [self.labels[i] if i<len(self.labels) else str(self.enum[i]) for i in range(len(self.enum))]
+      schema['$labels'] = [self.labels[i] if i<len(self.labels) else str(self.enum[i]) for i in range(len(self.enum))]
     return schema
 
 class String(Basetype):

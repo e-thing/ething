@@ -48,11 +48,10 @@ class Field(Accessor):
         if m:
             def build(obj):
                 field = m.group(0)[1:]
-                if hasattr(obj, field):
-                    return cls(obj, field, 'attr')
-                if not isinstance(obj, cls.attr_lookup_black_list) and field in obj:
+                if isinstance(obj, collections.MutableMapping):
                     return cls(obj, field, 'index')
-
+                elif not isinstance(obj, Field.attr_lookup_black_list):
+                    return cls(obj, field, 'attr')
             return m.group(0), build
 
     def __init__(self, obj, field, mode='index'):
@@ -135,7 +134,7 @@ def jsonpath(path, obj, action='get', args=None, kwargs=None):
                 for ptr in context['ptrs']:
                     try:
                         accessors_ = accessor_builder(ptr)
-                    except:
+                    except Exception as e:
                         continue
                     if not accessors_:
                         continue
@@ -153,13 +152,24 @@ def jsonpath(path, obj, action='get', args=None, kwargs=None):
 
         if next_path == '':
             # end
-            context['res'] = [getattr(accessor, context['action'])(*context['action_args'], **context['action_kwargs'])
-                              for accessor in accessors]
+            res = []
+            for accessor in accessors:
+                try:
+                    res.append(getattr(accessor, context['action'])(*context['action_args'], **context['action_kwargs']))
+                except:
+                    pass
+            context['res'] = res
             break
         else:
             # continue parsing the path
             context['path'] = next_path
-            context['ptrs'] = [accessor.get() for accessor in accessors]
+            ptrs = []
+            for accessor in accessors:
+                try:
+                    ptrs.append(accessor.get())
+                except:
+                    pass
+            context['ptrs'] = ptrs
 
     return context['res']
 

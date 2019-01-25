@@ -441,7 +441,7 @@ class Event(object):
 class Message(MutableMapping):
     def __init__(self, data=None, node=None):
         self._id = ShortId.generate()
-        self._src = node
+        #self._src = node
         self._ts = time.time()
         self.payload = None
         if data is not None:

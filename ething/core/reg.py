@@ -157,7 +157,7 @@ class Attribute (MutableMapping):
         schema['description'] = self.get('description').strip()
 
       if self.get('mode') == READ_ONLY:
-          schema['readOnly'] = True
+          schema['$readOnly'] = True
 
       if 'label' in self and self['label']:
         schema['label'] = self.get('label')
