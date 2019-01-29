@@ -392,6 +392,19 @@ class Email(String):
     return schema
 
 
+class Text(String):
+
+  def __init__(self, lang=None, **attributes):
+    super(Text, self).__init__(**attributes)
+    self.lang = lang or 'text'
+
+  def toSchema(self, context = None):
+    schema = super(Text, self).toSchema(context)
+    schema['$lang'] = self.lang
+    schema['$component'] = 'editor'
+    return schema
+
+
 class Date(Basetype):
 
   def __init__(self, ignore_tz=True, tz=pytz.utc, from_tz=None, to_tz=pytz.utc, **attributes):
@@ -570,7 +583,7 @@ class AllOfItem(Type):
       'type': 'object',
       'properties': {
         'type': {
-          'label': self._label or self._name,
+          'title': self._label or self._name,
           'const': self._name
         }
       },

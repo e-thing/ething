@@ -566,7 +566,7 @@ class CronExpr(String):
 
     def toSchema(self, context=None):
         schema = super(CronExpr, self).toSchema(context)
-        schema['format'] = 'cron'
+        schema['$component'] = 'cron'
         return schema
 
 
@@ -626,18 +626,8 @@ class Sleep(Node):
         n.emit(inputs.get('default'))
 
 
-class PythonScript(String):
-    def __init__(self, **attributes):
-        super(PythonScript, self).__init__(**attributes)
-
-    def toSchema(self, context = None):
-        schema = super(PythonScript, self).toSchema(context)
-        schema['format'] = 'text/x-python'
-        return schema
-
-
 @meta(icon='mdi-function')
-@attr('script', type=PythonScript(), description="The Python script.")
+@attr('script', type=Text(lang='python'), description="The Python script.")
 class Function(Node):
     """Execute a python script"""
 
@@ -722,7 +712,7 @@ class SchedulerData(Array):
 
     def toSchema(self, context = None):
         schema = super(SchedulerData, self).toSchema(context)
-        schema['format'] = 'scheduler'
+        schema['$component'] = 'scheduler'
         return schema
 
 

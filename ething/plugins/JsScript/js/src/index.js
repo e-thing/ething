@@ -41,8 +41,8 @@ EThingUI.extend('actions/RunScript', {
 
     properties: {
         script: {
-          format: 'ething.resource',
-          filter: (r) => {
+          '$component': 'ething.resource',
+          '$filter': (r) => {
             return (r instanceof EThing.File) && r.mime() == 'application/javascript'
           }
         },

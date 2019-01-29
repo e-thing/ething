@@ -9,7 +9,7 @@
         properties: {
             iface: {
               title: 'interface',
-              format: 'bluetooth-interface'
+              '$component': 'bluetooth-interface'
             }
         }
 

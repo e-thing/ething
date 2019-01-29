@@ -10,7 +10,7 @@ EThingUI.extend('resources/SSH', {
 
     properties: {
         host: {
-          format: 'host'
+          '$component': 'host'
         }
     }
 

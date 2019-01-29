@@ -69,7 +69,7 @@
 
         properties: {
             port: {
-              format: 'serial'
+              '$component': 'serial'
             }
         }
 
