@@ -37,7 +37,13 @@ class ResourceUpdated(ResourceSignal):
     """
     def __init__(self, resource, attributes):
         super(ResourceUpdated, self).__init__(resource)
-        self.attributes = attributes
+        self.payload = {
+            'attributes': attributes
+        }
+
+    @property
+    def attributes(self):
+        return self.payload['attributes']
 
 
 class ResourceType(Id):
@@ -130,6 +136,8 @@ class Resource(DbEntity):
     def __eq__(self, other):
         if isinstance(other, Resource):
             return self.id == other.id
+        elif isinstance(other, string_types):
+            return self.id == other
         else:
             return False
 

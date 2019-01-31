@@ -160,7 +160,7 @@ class Attribute (MutableMapping):
           schema['$readOnly'] = True
 
       if 'label' in self and self['label']:
-        schema['label'] = self.get('label')
+        schema['title'] = self.get('label')
       
       return schema
 
@@ -773,7 +773,7 @@ def build_schema(cls, root=False, **kwargs):
       "type": "class",
       "properties": OrderedDict(),
       "additionalProperties": False,
-      "label": get_meta(cls, 'label')
+      "title": get_meta(cls, 'label')
   }
 
   icon = get_meta(cls, 'icon')
@@ -783,6 +783,10 @@ def build_schema(cls, root=False, **kwargs):
   color = get_meta(cls, 'color')
   if color:
       schema['color'] = color
+
+  category = get_meta(cls, 'category')
+  if category:
+      schema['category'] = category
 
   required = []
 

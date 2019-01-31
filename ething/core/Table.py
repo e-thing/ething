@@ -8,7 +8,7 @@ from .TableQueryParser import TableQueryParser
 from .query import attribute_compiler
 from .Helpers import filter_obj
 from .utils import object_sort
-from .Flow import ResourceActionNode
+from .flow import ResourceNode
 import datetime
 import time
 import re
@@ -29,21 +29,24 @@ else:
 number_types = integer_types + (float, )
 
 
-@meta(icon='mdi-table-row-plus-after')
+@meta(icon='mdi-table-row-plus-after', category="storage")
 class TableDataAdded(ResourceSignal):
     """
     is emitted each time a new value is appended to a table
     """
     def __init__(self, resource, data):
         super(TableDataAdded, self).__init__(resource)
-        self.data = data
+        self.payload = data
 
 
-@meta(icon='mdi-table-row-plus-after')
+@meta(icon='mdi-table-row-plus-after', category="storage")
 @attr('resource', type=ResourceType(accepted_types=('resources/Table',)))
-class AppendData(ResourceActionNode):
-    def run(self, msg, core):
-        table = core.get(self.resource)
+class AppendData(ResourceNode):
+    INPUTS = ['default']
+
+    def main(self, **inputs):
+        msg = inputs.get('default')
+        table = self.ething.get(self.resource)
 
         if table is None:
             raise Exception("the table has been removed")

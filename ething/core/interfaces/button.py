@@ -8,7 +8,7 @@ from ..Signal import ResourceSignal
 class ButtonClicked(ResourceSignal):
     def __init__(self, resource, type='single'):
         super(ButtonClicked, self).__init__(resource)
-        self.type = type
+        self.payload['type'] = type
 
 
 @throw(ButtonClicked)

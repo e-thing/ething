@@ -2,7 +2,7 @@
 
     EThingUI.extend('resources/Denon', {
 
-        label: 'Denon/Marantz amplifier',
+        title: 'Denon/Marantz amplifier',
 
         icon: 'speaker',
 

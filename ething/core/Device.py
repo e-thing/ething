@@ -3,7 +3,7 @@ from .Resource import Resource, ResourceType
 from .date import TzDate, utcnow
 from .reg import *
 from .Signal import ResourceSignal
-from .Flow import ResourceActionNode
+from .flow import ResourceNode
 
 
 @path('devices', True)
@@ -14,7 +14,10 @@ class BatteryLevelChanged(ResourceSignal):
     """
     def __init__(self, resource, new_value, old_value):
         super(BatteryLevelChanged, self).__init__(resource)
-        self.battery = new_value
+        self.payload = {
+            'battery': new_value,
+            'battery_old': old_value
+        }
 
 
 @path('devices', True)
@@ -35,17 +38,25 @@ class DeviceDisconnected(ResourceSignal):
     pass
 
 
+@meta(icon='mdi-play', category='function')
 @attr('args', type=Dict(allow_extra = True), default={}, description="The arguments passed to the method")
 @attr('method', type=String(), description="The method name")
 @attr('resource', type=ResourceType(accepted_types=('resources/Device',)), description="The device on which the action is executed")
-class ExecuteDevice(ResourceActionNode):
-    def run(self, msg, core):
-        device = core.get(self.resource)
+class ExecuteDevice(ResourceNode):
+    INPUTS = ['default']
+    OUTPUTS = ['default']
+
+    def main(self, **inputs):
+        device = self.ething.get(self.resource)
 
         if device is None:
             raise Exception("the device has been removed")
 
-        device.interface.call(self.method, **self.args)
+        res = device.interface.call(self.method, **self.args)
+
+        self.emit({
+            'payload': res
+        })
 
 
 @abstract

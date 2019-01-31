@@ -2,15 +2,9 @@
 
     EThingUI.extend('resources/ZigateSerialGateway', {
 
-        path: ['Zigate', 'Gateway'],
+        category: 'Zigate.Gateway',
 
-        label: 'Zigate Gateway (serial)',
-
-        properties: {
-            port: {
-              '$component': 'serial'
-            }
-        }
+        title: 'Zigate Gateway (serial)',
 
     })
 

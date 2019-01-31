@@ -478,8 +478,48 @@ class Color(String):
 
   def toSchema(self, context = None):
     schema = super(Color, self).toSchema(context)
-    schema['type'] = 'string'
     schema['format'] = 'color'
+    return schema
+
+
+class Range(Integer):
+  def __init__(self, mine, max, **attributes):
+    super(Range, self).__init__(min=0, max=9, **attributes)
+
+  def toSchema(self, context = None):
+    schema = super(Range, self).toSchema(context)
+    schema['$component'] = 'range'
+    return schema
+
+
+class Host(String):
+  def __init__(self, **attributes):
+    super(Host, self).__init__(allow_empty=False, **attributes)
+
+  def toSchema(self, context = None):
+    schema = super(Host, self).toSchema(context)
+    schema['format'] = 'host'
+    schema['$component'] = 'host'
+    return schema
+
+
+class SerialPort(String):
+  def __init__(self, **attributes):
+    super(SerialPort, self).__init__(allow_empty=False, **attributes)
+
+  def toSchema(self, context = None):
+    schema = super(SerialPort, self).toSchema(context)
+    schema['$component'] = 'serial-port'
+    return schema
+
+
+class BluetoothInterface(Integer):
+  def __init__(self, **attributes):
+    super(BluetoothInterface, self).__init__(min=0, max=9, **attributes)
+
+  def toSchema(self, context = None):
+    schema = super(BluetoothInterface, self).toSchema(context)
+    schema['$component'] = 'bluetooth-interface'
     return schema
 
 

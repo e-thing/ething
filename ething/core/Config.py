@@ -16,8 +16,18 @@ class ConfigUpdated(Signal):
 
     def __init__(self, updated_keys, config):
         super(ConfigUpdated, self).__init__()
-        self.updated_keys = updated_keys
-        self.config = config
+        self.payload = {
+            'updated_keys': updated_keys,
+            'config': config
+        }
+
+    @property
+    def updated_keys(self):
+        return self.payload['updated_keys']
+
+    @property
+    def config(self):
+        return self.payload['config']
 
 
 def merge(dct, merge_dct):

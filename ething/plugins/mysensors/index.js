@@ -49,29 +49,17 @@
 
     EThingUI.extend('resources/MySensorsEthernetGateway', {
 
-        path: ['MySensors', 'Gateway'],
+        category: 'MySensors.Gateway',
 
-        label: 'MySensors Gateway (ethernet)',
-
-        properties: {
-            host: {
-              format: 'host'
-            }
-        }
+        title: 'MySensors Gateway (ethernet)'
 
     })
 
     EThingUI.extend('resources/MySensorsSerialGateway', {
 
-        path: ['MySensors', 'Gateway'],
+        category: 'MySensors.Gateway',
 
-        label: 'MySensors Gateway (serial)',
-
-        properties: {
-            port: {
-              '$component': 'serial'
-            }
-        }
+        title: 'MySensors Gateway (serial)'
 
     })
 

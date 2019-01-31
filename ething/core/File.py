@@ -5,7 +5,7 @@ from .Resource import Resource, ResourceType
 from .date import TzDate, utcnow
 from .entity import *
 from .Signal import ResourceSignal
-from .Flow import ResourceActionNode
+from .flow import ResourceNode
 import datetime
 import os
 from .utils.mime import content_to_mime, ext_to_mime
@@ -257,15 +257,18 @@ class File(Resource):
         return instance
 
 
-@meta(icon='mdi-file', label="File out")
+@meta(icon='mdi-file', label="File out", category="storage")
 @attr('encoding', type=String(), default='utf8')
 @attr('append', type=Boolean(), default=False)
 @attr('resource', type=ResourceType(accepted_types=('resources/File',)))
-class FileWrite(ResourceActionNode):
+class FileWrite(ResourceNode):
     """ Write content to a file """
 
-    def run(self, msg, core):
-        file = core.get(self.resource)
+    INPUTS = ['default']
+
+    def main(self, **inputs):
+        msg = inputs.get('default')
+        file = self.ething.get(self.resource)
         content = msg.payload
         if not (isinstance(content, string_types) or isinstance(content, binary_type)):
             content = str(content)
@@ -275,12 +278,17 @@ class FileWrite(ResourceActionNode):
             file.write(content, encoding=self.encoding)
 
 
-@meta(icon='mdi-file', label="File In")
+@meta(icon='mdi-file', label="File In", category="storage")
 @attr('encoding', type=String(), default='utf8')
 @attr('resource', type=ResourceType(accepted_types=('resources/File',)))
-class FileRead(ResourceActionNode):
+class FileRead(ResourceNode):
     """ Read content of a file """
 
-    def run(self, msg, core):
-        file = core.get(self.resource)
-        return file.read(encoding=self.encoding or None)
+    INPUTS = ['default']
+    OUTPUTS = ['default']
+
+    def main(self, **inputs):
+        msg = inputs.get('default')
+        file = self.ething.get(self.resource)
+        content = file.read(encoding=self.encoding or None)
+        self.emit(content)

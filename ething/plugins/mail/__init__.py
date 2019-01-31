@@ -3,7 +3,7 @@
 from ething.core.plugin import Plugin
 from collections import OrderedDict
 from .smtp import SmtpMail
-from ething.core.Flow import ActionNode
+from ething.core.flow import Node
 from ething.core.reg import *
 
 
@@ -27,7 +27,6 @@ class Mail(Plugin):
             ("port", {
                 "type": "integer",
                 "title": "The Port Schema ",
-                'type': 'integer',
                 'minimum': 1,
                 'maximum': 65535
             }),
@@ -43,14 +42,18 @@ class Mail(Plugin):
 
 
 
-@meta(icon='mdi-email')
-@attr('message', type=String(), description="The message of the notification")
+@meta(icon='mdi-email', category="notification")
+@attr('message', type=Text(), description="The message of the notification")
 @attr('subject', type=String(), description="The subject of the notification")
 @attr('to', type=Email(), description="Recipient email address")
-class SendEmail(ActionNode):
+class SendEmail(Node):
     """ Send an email """
-    def run(self, msg, core):
-        conf = core.get_plugin('Mail').config
+
+    INPUTS = ['default']
+
+    def main(self, **inputs):
+        msg = inputs.get('default')
+        conf = self.ething.get_plugin('Mail').config
         mailer = SmtpMail(host = conf.get('host'), port = conf.get('port'), user = conf.get('user'), password = conf.get('password'))
         mailer.send(subject = self.subject, message = self.message, to = self.to)
         self.log.debug('email "%s" send to %s' % (self.subject, self.to))

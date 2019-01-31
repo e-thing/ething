@@ -1,16 +1,19 @@
 # coding: utf-8
 
-from ething.plugins.http import HTTP
+from ething.core import Device
 from ething.core.reg import *
 from ething.core.interfaces import Relay
 from ething.core import scheduler
+import requests
 
 
 STATE_POLLING_PERIOD = 5
+REQUESTS_TIMEOUT = None
 
 
-@attr('secure', default=False, mode=PRIVATE)
-class Sonoff_http(HTTP, Relay):
+@attr('port', type=Integer(min=0, max=65535), default=80, description="The port number of the device to connect to. The default port number is 80.")
+@attr('host', type=String(allow_empty=False), description="The ip address or hostname of the device to connect to.")
+class Sonoff_http(Device, Relay):
     """
     Sonoff_http Device resource representation.
     See https://github.com/arendst/Sonoff-Tasmota for more details.
@@ -33,4 +36,32 @@ class Sonoff_http(HTTP, Relay):
         except:
             self.setConnectState(False)
 
+    def _make_request(self, method, path='', params = None, body = None, headers = None, **options):
 
+        args = dict(params=params)
+        args["timeout"] = REQUESTS_TIMEOUT
+
+        url = 'http'
+
+        #if self.secure:
+        #    url += 's'
+
+        url += '://' + self.host
+
+        if self.port != 80:
+            url += ':' + str(self.port)
+
+        if not path.startswith('/'):
+            url += '/'
+
+        url += path
+
+        self.log.debug('request: %s %s' % (method, url))
+
+        r = requests.request(method.upper(), url, headers=headers, params=params, data=body, **options)
+
+        self.log.debug('request status: %s' % (r.status_code))
+
+        r.raise_for_status()
+
+        return r

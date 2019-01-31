@@ -8,11 +8,15 @@ from ..Signal import ResourceSignal
 class LevelChanged(ResourceSignal):
     def __init__(self, resource, new_value, old_value = None):
         super(LevelChanged, self).__init__(resource)
-        self.level = new_value
+        self.payload = {
+            'level': new_value
+        }
+        if old_value is not None:
+            self.payload['level_old'] = old_value
 
 
 @throw(LevelChanged)
-@attr('level', type = Number(min=0, max=100), default = 0, mode = READ_ONLY, history = True, watch = True, description = "the level of this dimmer")
+@attr('level', type = Range(0, 100), default = 0, mode = READ_ONLY, history = True, watch = True, description = "the level of this dimmer")
 class Dimmer(Interface):
 
     def _watch(self, attr, new_value, old_value):

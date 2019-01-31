@@ -1,6 +1,5 @@
 # coding: utf-8
-import pytest
-from ething.core.utils.dataflow import Flow, Node
+from ething.core.flow.dataflow import Flow, Node
 
 
 class StartNode(Node):

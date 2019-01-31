@@ -3,11 +3,12 @@
 from flask import Flask, Response, request, g
 from flask_cors import CORS
 from flask_compress import Compress
-from flask_socketio import SocketIO
+from .socketio import SocketIO
 from werkzeug.exceptions import HTTPException
 from werkzeug.http import unquote_etag
 from .auth import install_auth
 from .routes import install_routes
+from .client import install as install_clients_manager
 import json
 import traceback
 import logging
@@ -73,15 +74,16 @@ class WebServer(Plugin):
     }
 
     def load(self):
-        super(WebServer, self).load()
         self.app = FlaskApp(self.core, config=self.config, logger=self.log, root_path=root_path)
 
+    def setup(self):
+        # clients
+        install_clients_manager(self.app)
+
     def start(self):
-        super(WebServer, self).start()
         self.start_process()
 
     def stop(self):
-        super(WebServer, self).stop()
         self.stop_process()
 
     def start_process(self):
@@ -147,6 +149,11 @@ class FlaskApp(Flask):
         @socketio.on('connect')
         def connect_handler():
             self.auth.check()
+            self.log.info('[SocketIO] client connected %s (%s)', request.sid, request.remote_addr)
+
+        @socketio.on('disconnect')
+        def disconnect_handler():
+            self.log.info('[SocketIO] client disconnected %s', request.sid)
 
         #logging
         logging.getLogger('werkzeug').setLevel(logging.ERROR)

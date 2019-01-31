@@ -2,7 +2,7 @@
 
     EThingUI.extend('resources/Sonoff_http', {
 
-        label: 'Sonoff (http)',
+        title: 'Sonoff (http)',
 
         properties: {
             secure: {

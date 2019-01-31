@@ -5,6 +5,6 @@ from .ZigateGateway import ZigateGateway
 from ething.core.reg import *
 
 
-@attr('port', type=String(), description="The serial port name.")
+@attr('port', type=SerialPort(), description="The serial port name.")
 class ZigateSerialGateway (ZigateGateway):
     pass

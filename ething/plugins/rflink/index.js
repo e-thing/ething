@@ -2,15 +2,9 @@
 
     EThingUI.extend('resources/RFLinkSerialGateway', {
 
-        path: ['RFLink', 'Gateway'],
+        category: 'RFLink.Gateway',
 
-        label: 'RFLink Gateway (serial)',
-
-        properties: {
-            port: {
-              '$component': 'serial'
-            }
-        }
+        title: 'RFLink Gateway (serial)'
 
     })
 

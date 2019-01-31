@@ -2,16 +2,9 @@
 
     EThingUI.extend('resources/BleaGateway', {
 
-        label: 'Bluetooth Gateway',
+        title: 'Bluetooth Gateway',
 
         icon: 'bluetooth',
-
-        properties: {
-            iface: {
-              title: 'interface',
-              '$component': 'bluetooth-interface'
-            }
-        }
 
     })
 

@@ -18,14 +18,6 @@ import pytz
 import time
 
 
-@meta(icon='mdi-send')
-class Notified(Signal):
-    def __init__(self, message, subject = None):
-        super(Notified, self).__init__()
-        self.message = message
-        self.subject = subject
-
-
 class Core(object):
     __instances = []
 
@@ -309,9 +301,6 @@ class Core(object):
 
         # if hasattr(self, "signalManager"):
         #     self.signalManager.dispatch(signal)
-
-    def notify(self, message, subject = None):
-        self.dispatchSignal('Notified', message = message, subject = subject)
 
     def repair(self):
         """

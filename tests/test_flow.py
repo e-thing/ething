@@ -1,7 +1,6 @@
 # coding: utf-8
-import pytest
-from ething.core.utils.dataflow import Flow as _Flow, Message
-from ething.core.Flow import *
+from ething.core.flow.dataflow import Flow as _Flow
+from ething.core.flow import *
 import json
 
 
@@ -18,7 +17,7 @@ class _Test_Node_Wrapper(Wrapper_Node):
             else:
                 raise Exception('no output port for node %s' % self)
         if not isinstance(msg, Message):
-            msg = Message(msg, node=self)
+            msg = Message(msg)
 
         self.emitted_msg.append((port, msg))
 
