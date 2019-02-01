@@ -31,6 +31,7 @@ class Flow(object):
         self._state = STOPPED
         self._debuggers = set()
         self._context = {}
+        self._error_handlers = []
 
     @property
     def context(self):
@@ -206,7 +207,7 @@ class Flow(object):
                     connected_endpoints = self.get_connected_endpoints(endpoint)
                     connected_nodes = set()
                     for ep in connected_endpoints:
-                        self._nodes_data[ep.node.id]['inputs'][ep.port] = msg.clone()
+                        self._nodes_data[ep.node.id]['inputs'][ep.port] = self._nodes_data[ep.node.id]['inputs']['__last'] = msg.clone()
                         connected_nodes.add(ep.node)
 
                     for n in connected_nodes:
@@ -278,6 +279,17 @@ class Flow(object):
     @property
     def debuggers(self):
         return list(self._debuggers)
+
+    def handle_error(self, err, node=None):
+        self._logger.error('error in node %s: %s', str(node), str(err))
+        for handler in self._error_handlers:
+            try:
+                handler(err, node)
+            except:
+                self._logger.exception('error handler exception')
+
+    def on_error(self, handler):
+        self._error_handlers.append(handler)
 
 
 INPUT = 'input'
@@ -386,6 +398,7 @@ class Node(object):
         except Exception as e:
             self._logger.exception('exception in main()')
             self.debug(e)
+            self.handle_error(e)
             err = e
 
         self._logger.debug('node stopped')
@@ -407,6 +420,9 @@ class Node(object):
 
     def toJson(self):
         return self.id
+
+    def handle_error(self, err):
+        self._flow.handle_error(err, node=self)
 
 
 class Event(object):

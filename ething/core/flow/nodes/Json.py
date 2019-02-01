@@ -3,7 +3,7 @@ from .. import *
 import json
 
 
-@meta(icon='mdi-json')
+@meta(icon='mdi-json', category="function")
 class JSON(Node):
     """convert to/from JSON"""
 

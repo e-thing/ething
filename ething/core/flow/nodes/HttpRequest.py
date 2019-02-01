@@ -4,7 +4,7 @@ from .. import *
 from requests import Request, Session
 
 
-@meta(icon='mdi-earth', label="HTTP request")
+@meta(icon='mdi-earth', label="HTTP request", category="function")
 @attr('body', type=Text(), default='', description="The body part.")
 @attr('method', type=Enum(['GET', 'POST', 'PUT', 'DELETE', 'PATCH']), default='GET', description="The HTTP method.")
 @attr('url', type=String(allow_empty=False), description="The HTTP URL.")

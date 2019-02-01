@@ -3,7 +3,7 @@
 from ething.core.plugin import Plugin
 from collections import OrderedDict
 from .smtp import SmtpMail
-from ething.core.flow import Node
+from ething.core.flow import Node, Descriptor
 from ething.core.reg import *
 
 
@@ -43,9 +43,9 @@ class Mail(Plugin):
 
 
 @meta(icon='mdi-email', category="notification")
-@attr('message', type=Text(), description="The message of the notification")
-@attr('subject', type=String(), description="The subject of the notification")
-@attr('to', type=Email(), description="Recipient email address")
+@attr('message', type=Descriptor(('text', 'msg', 'flow', 'glob', 'env')), description="The message of the notification")
+@attr('subject', type=Descriptor(('string', 'msg', 'flow', 'glob', 'env')), description="The subject of the notification")
+@attr('to', type=Descriptor(('string', 'msg', 'flow', 'glob', 'env')), description="Recipient email address")
 class SendEmail(Node):
     """ Send an email """
 

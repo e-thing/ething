@@ -45,7 +45,7 @@ class SchedulerData(Array):
         return schema
 
 
-@meta(icon='mdi-clock-outline')
+@meta(icon='mdi-clock-outline', category="condition")
 @attr('items', type=SchedulerData())
 class Scheduler(Node):
     """ Return true only within certain periods of time """

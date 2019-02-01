@@ -32,7 +32,7 @@ filter_type = OneOf([
     ('falling_edge', None, 'falling edge')
 ])
 
-@meta(icon='mdi-filter')
+@meta(icon='mdi-filter', category="condition")
 @attr('last', mode=PRIVATE, default=None) # holds the last value
 @attr('filter', type=filter_type, default={'type':'==', 'value':{'type':'string', 'value':''}})
 @attr('data', type=Descriptor(('flow', 'glob', 'msg')), default={'type':'msg','value':'payload'}, description='The data to filter.')
@@ -40,6 +40,8 @@ class Switch(Node):
     """
     Route messages based on their property values or sequence position
     """
+    INPUTS = ['default']
+    OUTPUTS = ['default', 'fail']
 
     def main(self, **inputs):
         old_val = self.last

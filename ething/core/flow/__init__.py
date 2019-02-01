@@ -136,6 +136,11 @@ class BooleanDescriptor(ValueDescriptor):
     value_type = Boolean(default=False)
 
 
+class TextDescriptor(ValueDescriptor):
+    value_type = Text(default='')
+
+
+
 # TODO: JSON
 # TODO: JSONata  cf: https://nodered.org/docs/user-guide/messages#split
 
@@ -153,6 +158,7 @@ class Descriptor(OneOf):
         'string': StringDescriptor,
         'number': NumberDescriptor,
         'boolean': BooleanDescriptor,
+        'text': TextDescriptor,
         'glob': GlobalDescriptor,
         'timestamp': TimestampDescriptor,
         'msg': MsgDescriptor,
@@ -447,10 +453,17 @@ class Wrapper_Node(_Node):
         super(Wrapper_Node, self).__init__(flow, nid=node.id)
         self.INPUTS = node.INPUTS
         self.OUTPUTS = node.OUTPUTS
+        self._override_receive = hasattr(self._node, 'receive')
 
     @property
     def node(self):
         return self._node
+
+    def receive(self, ports):
+        if self._override_receive:
+            return self._node.receive(ports)
+        else:
+            return super(Wrapper_Node, self).receive(ports)
 
     def __str__(self):
         return '<node id=%s name=%s type=%s>' % (self._id, self._node.name, self._node.type)
@@ -483,7 +496,7 @@ def _generate_event_node_cls(signal_cls):
     if signal_cls_path.startswith(prefix):
         path(signal_cls_path[len(prefix):], True)(node_cls)
 
-    meta(label=get_meta(signal_cls, 'label'), description=get_meta(signal_cls, 'description'), icon=get_meta(signal_cls, 'icon'), category=get_meta(signal_cls, 'category'))(node_cls)
+    meta(label=get_meta(signal_cls, 'label'), description=get_meta(signal_cls, 'description'), icon=get_meta(signal_cls, 'icon', 'mdi-signal-variant'), category=get_meta(signal_cls, 'category', 'events'))(node_cls)
 
     if issubclass(signal_cls, ResourceSignal):
         attr('resource', type=ResourceType(must_throw=signal_cls))(node_cls)
@@ -518,7 +531,7 @@ register_plugin(FlowPlugin)
 # special nodes
 
 @abstract
-@meta(icon='mdi-logout')
+@meta(icon='mdi-logout', category="output")
 @attr('data', type=Descriptor(('flow', 'glob', 'msg', 'env')), default={'type':'msg','value':'payload'}, description='The data to expose.')
 class Output(Node):
     """Expose data"""
@@ -535,7 +548,7 @@ class Output(Node):
 
 
 @abstract
-@meta(icon='mdi-login')
+@meta(icon='mdi-login', category="input")
 class Input(Node):
     """Expose data"""
 
@@ -556,6 +569,7 @@ class Input(Node):
         _q = self._m.get('q')
         if _q is not None:
             _q.put(data)
+
 
 # import all nodes
 from . import nodes

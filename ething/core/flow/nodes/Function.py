@@ -3,7 +3,7 @@ from .. import *
 
 
 
-@meta(icon='mdi-function')
+@meta(icon='mdi-function', category="function")
 @attr('script', type=Text(lang='python'), description="The Python script.")
 class Function(Node):
     """Execute a python script"""

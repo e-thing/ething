@@ -5,7 +5,7 @@ import paho.mqtt.publish as publish
 from ething.core.flow import *
 
 
-
+@meta(icon='mdi-signal-variant', category="input")
 @attr('qos', type=Enum([0,1,2]), default=0, description="the quality of service.")
 @attr('password', type=String(), default='', description="password for the client. Leave empty to disable authentication.")
 @attr('username', type=String(), default='', description="username for the client. Leave empty to disable authentication.")
@@ -38,7 +38,7 @@ class MqttSubscribe(Node):
         _mqttClient.loop_forever()
 
 
-@meta(icon='mdi-send')
+@meta(icon='mdi-send', category="output")
 @attr('qos', type=Enum([0,1,2]), default=0, description="the qos to use when publishing.")
 @attr('payload', type=String(), default='', description="the payload to be published. If an empty string is given, a zero length payload will be published.")
 @attr('password', type=String(), default='', description="password for the client. Leave empty to disable authentication.")

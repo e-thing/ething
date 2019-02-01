@@ -21,7 +21,7 @@ rule_item = OneOf([
     ])))
 ])
 
-@meta(icon='mdi-pencil')
+@meta(icon='mdi-pencil', category="function")
 @attr('rules', type=Array(rule_item), default=[{
     'type': 'set',
     'value': {

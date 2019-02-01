@@ -156,8 +156,8 @@ def notify_client(app, message, cid=None):
 
 
 @meta(icon='mdi-bell', category='notification')
-@attr('message', type=Text(), description='The message of the notification')
-class NotifyClient(Input):
+@attr('message', type=Descriptor(('text', 'msg', 'flow', 'glob', 'env')), description='The message of the notification')
+class NotifyClient(Node):
     INPUTS = ['default']
 
     def main(self, **inputs):

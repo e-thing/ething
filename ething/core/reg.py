@@ -40,14 +40,14 @@ def meta(**metadata):
     return d
 
 
-def get_meta(class_or_instance, key=None):
+def get_meta(class_or_instance, key=None, default=None):
     if not inspect.isclass(class_or_instance):
         class_or_instance = type(class_or_instance)
 
     if key is None:
         return getattr(class_or_instance, '__meta', {})
 
-    return getattr(class_or_instance, '__meta', {}).get(key)
+    return getattr(class_or_instance, '__meta', {}).get(key, default)
 
 
 def path(name, relative=False):

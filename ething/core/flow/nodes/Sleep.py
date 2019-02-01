@@ -2,7 +2,7 @@
 from .. import *
 
 
-@meta(icon='mdi-clock')
+@meta(icon='mdi-clock', category="function")
 @attr('duration', type=Integer(min=1), default=1000, description="The waiting duration in milliseconds.")
 class Sleep(Node):
     """ Wait a certain amount of time """
