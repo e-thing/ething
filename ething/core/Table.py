@@ -1,11 +1,9 @@
 # coding: utf-8
 from future.utils import string_types, integer_types
 from .Resource import Resource, ResourceType
-from .date import TzDate, utcnow, utcfromtimestamp
+from .date import TzDate, utcnow, utcfromtimestamp, datetime_to_array
 from .entity import *
 from .Signal import ResourceSignal
-from .TableQueryParser import TableQueryParser
-from .query import attribute_compiler
 from .Helpers import filter_obj
 from .utils import object_sort
 from .flow import ResourceNode
@@ -18,6 +16,7 @@ import csv
 import sys
 import pytz
 import math
+import objectpath
 
 if (sys.version_info > (3, 0)):
     from io import StringIO
@@ -139,7 +138,7 @@ class Table(Resource):
             if expireAfter is not None:
                 expiratedDate = utcnow() - datetime.timedelta(0, expireAfter)
 
-                rows_to_be_removed = self.select(query='date < "%s"' % expiratedDate.isoformat())
+                rows_to_be_removed = self.select(query='$.date < dateTime(%s)' % datetime_to_array(expiratedDate))
                 removed_rows = self.db.remove_table_rows_by_id(self.collectionName, [row.get('id') for row in rows_to_be_removed], return_old=True)
 
                 self._update_meta(removed_rows = removed_rows)
@@ -482,9 +481,16 @@ class Table(Resource):
             rows = self.db.get_table_rows(self.collectionName)
 
             # apply the filter according to the query string
-            parser = TableQueryParser(compiler=attribute_compiler, tz=getattr(self, 'tz', None))
-            filter_fn = parser.compile(query)
-            rows = [row for row in rows if filter_fn(row)]
+            # TODO: what about the date firld ? docSerialize() here ?
+
+            def _filter(r):
+                try:
+                    tree = objectpath.Tree(r)
+                    return bool(tree.execute(query))
+                except:
+                    return False
+
+            rows = [row for row in rows if _filter(row)]
 
             if sort:
                 sort_attr = sort[0][0]

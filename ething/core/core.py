@@ -3,7 +3,6 @@
 from future.utils import string_types
 
 from .reg import get_registered_class, meta
-from .ResourceQueryParser import ResourceQueryParser
 from .Config import CoreConfig
 from .SignalDispatcher import SignalDispatcher
 from .version import __version__
@@ -12,6 +11,7 @@ from .scheduler import Scheduler
 from .ResourceDbCache import ResourceDbCache
 from .green import mode
 from .Signal import Signal
+from .utils.objectpath import generate_ressource_filter
 
 import logging
 import pytz
@@ -87,8 +87,6 @@ class Core(object):
             return plugin
 
     def _init_database(self, clear_db=False):
-        self.resourceQueryParser = ResourceQueryParser(tz=str(self.local_tz))
-
         try:
             db_type = self.config.get('db.type', 'cached_sqlite').lower()
             if db_type == 'mongodb':
@@ -245,7 +243,7 @@ class Core(object):
             for q in query:
                 if isinstance(q, string_types):
                     # expression
-                    filters.append(self.resourceQueryParser.compile(q))
+                    filters.append(generate_ressource_filter(q))
                 else:
                     filters.append(q)
 

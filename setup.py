@@ -32,6 +32,7 @@ requires = [
     "requests",
     "gevent", #eventlet
     "jsonpath-rw", # flow
+    "objectpath",
 
     # --db
     #"pymongo==3.5.1",

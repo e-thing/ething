@@ -1,6 +1,5 @@
 # coding: utf-8
 from .. import *
-from ...query import Expression
 
 
 @meta(icon='mdi-filter', category="condition")
@@ -21,7 +20,7 @@ class ResourceFilter(ResourceNode):
 
 
 @meta(icon='mdi-filter', category="condition")
-@attr('expression', type=Expression(), description="The expression the resource must match")
+@attr('expression', type=String(allow_empty=False), description="The expression the resource must match")
 @attr('resource', type=Nullable(ResourceType()), default=None, description="The resource that must match the given expression. If none, the resource is the one that emits the message.")
 class ResourceMatch(ResourceNode):
     """ is true if a resource match an expression """

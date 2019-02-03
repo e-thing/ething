@@ -17,3 +17,6 @@ def utcnow():
 
 def utcfromtimestamp(timestamp):
     return datetime.utcfromtimestamp(timestamp).replace(tzinfo=pytz.utc)
+
+def datetime_to_array(dt):
+    return [dt.year, dt.month, dt.day, dt.hour, dt.minute, dt.second]

@@ -34,7 +34,7 @@ def test_table_create(core):
 
     assert len(f.select()) == len(data)
 
-    assert len(f.select(query='a>1')) == 2
+    assert len(f.select(query='$.a>1')) == 2
 
 
 def test_table_unicode(core):
@@ -62,7 +62,7 @@ def test_table_unicode(core):
 
     assert f.select(start=-1)[0].get("name") == data[-1].get("name")
 
-    assert len(f.select(query=u'name == "rémi"')) == 1
+    assert len(f.select(query=u'$.name is "rémi"')) == 1
 
 
 @pytest.mark.parametrize("type,database,module", [
@@ -100,7 +100,7 @@ def test_benchmark(type, database, module):
 
     start = time.time()
 
-    for i in range(100):
+    for i in range(1000):
         f.insert({
             "a": 1,
             "b": False,
@@ -125,7 +125,7 @@ def test_benchmark(type, database, module):
     start = time.time()
 
     for _ in range(10):
-        f.select(query="e>=50")
+        f.select(query="$.e>=50")
 
     end = time.time()
 

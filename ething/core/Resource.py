@@ -6,6 +6,7 @@ from .reg import get_definition_pathname
 from .Signal import ResourceSignal
 from .Interface import Interface
 from .date import TzDate, utcnow
+from .utils.objectpath import generate_ressource_filter
 from collections import Mapping
 import inspect
 import logging
@@ -297,7 +298,7 @@ class Resource(DbEntity):
             self.log.exception('history error for %s' % table_name)
 
     def match(self, expression):
-        filter = self.ething.resourceQueryParser.compile(expression)
+        filter = generate_ressource_filter(expression)
         return filter(self)
 
     def repair(self):
