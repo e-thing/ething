@@ -1,12 +1,11 @@
 # coding: utf-8
-from future.utils import string_types
 from .MihomeGateway import MihomeGateway
 from .MihomeSensorHT import MihomeSensorHT
 from .MihomeMagnet import MihomeMagnet
 from .MihomeButton import MihomeButton
 from ething.core.plugin import Plugin
 from ething.core.TransportProcess import Protocol, TransportProcess, UdpTransport, ThreadedTransport
-from ething.core.date import utcnow
+from ething.core.utils.date import utcnow
 from .helpers import *
 import time
 import datetime

@@ -3,6 +3,7 @@ from .dataflow import Flow as _FlowBase, Node as _Node, Debugger, Message
 from ..Resource import Resource, ResourceType
 from ..entity import *
 from ..utils.jsonpath import jsonpath
+from ..utils.objectpath import ObjectPathExp, evaluate
 from ..Process import Process
 from ..plugin import Plugin, register_plugin
 from ..Signal import ResourceSignal
@@ -112,6 +113,13 @@ class FullMsgDescriptor(DescriptorData):
         return context['msg']
 
 
+class ObjectPathDescriptor(DescriptorData):
+    value_type = ObjectPathExp()
+
+    def get(self, **context):
+        return evaluate(self.value, context['msg'])
+
+
 class PrevValueDescriptor(DescriptorData):
     label = 'previous value'
 
@@ -163,7 +171,8 @@ class Descriptor(OneOf):
         'timestamp': TimestampDescriptor,
         'msg': MsgDescriptor,
         'fullmsg': FullMsgDescriptor,
-        'prev': PrevValueDescriptor
+        'prev': PrevValueDescriptor,
+        'expression': ObjectPathDescriptor
     }
 
     def __init__(self, modes, **attributes):
@@ -192,6 +201,32 @@ class _Flow(_FlowBase):
     def run(self):
         self.resource.data = {}
         return super(_Flow, self).run()
+
+
+class Wrapper_Node(_Node):
+
+    def __init__(self, flow, node):
+        self._node = node
+        super(Wrapper_Node, self).__init__(flow, nid=node.id)
+        self.INPUTS = node.INPUTS
+        self.OUTPUTS = node.OUTPUTS
+        self._override_receive = hasattr(self._node, 'receive')
+
+    @property
+    def node(self):
+        return self._node
+
+    def receive(self, ports):
+        if self._override_receive:
+            return self._node.receive(ports)
+        else:
+            return super(Wrapper_Node, self).receive(ports)
+
+    def __str__(self):
+        return '<node id=%s name=%s type=%s>' % (self._id, self._node.name, self._node.type)
+
+    def main(self, **input_msgs):
+        return self._node.main(**input_msgs)
 
 
 @path('nodes')
@@ -228,9 +263,10 @@ class Node(Entity):
     def main(self, **inputs):
         raise NotImplementedError()
 
-    def _attach(self, flow):
+    def _attach(self, flow, cls=Wrapper_Node):
         self._m['flow'] = flow
-        self._m['node'] = Wrapper_Node(flow, self)
+        self._m['node'] = cls(flow, self)
+        return self._m['node']
 
     def emit(self, *args, **kwargs):
         return self._m['node'].emit(*args, **kwargs)
@@ -444,32 +480,6 @@ class Flow(Resource):
                         raise Exception('node %s is not an input' % node)
                 else:
                     raise Exception('unknown node id=%s' % node_id)
-
-
-class Wrapper_Node(_Node):
-
-    def __init__(self, flow, node):
-        self._node = node
-        super(Wrapper_Node, self).__init__(flow, nid=node.id)
-        self.INPUTS = node.INPUTS
-        self.OUTPUTS = node.OUTPUTS
-        self._override_receive = hasattr(self._node, 'receive')
-
-    @property
-    def node(self):
-        return self._node
-
-    def receive(self, ports):
-        if self._override_receive:
-            return self._node.receive(ports)
-        else:
-            return super(Wrapper_Node, self).receive(ports)
-
-    def __str__(self):
-        return '<node id=%s name=%s type=%s>' % (self._id, self._node.name, self._node.type)
-
-    def main(self, **input_msgs):
-        return self._node.main(**input_msgs)
 
 
 def _generate_event_node_cls(signal_cls):

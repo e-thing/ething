@@ -11,7 +11,7 @@ from .scheduler import Scheduler
 from .ResourceDbCache import ResourceDbCache
 from .green import mode
 from .Signal import Signal
-from .utils.objectpath import generate_ressource_filter
+from .utils.objectpath import generate_filter, patch_all
 
 import logging
 import pytz
@@ -33,6 +33,8 @@ class Core(object):
 
     def __init__(self, config=None, name=None):
         self.__initialized = False
+
+        patch_all(self)
 
         self.running = False
         self.name = name
@@ -243,7 +245,7 @@ class Core(object):
             for q in query:
                 if isinstance(q, string_types):
                     # expression
-                    filters.append(generate_ressource_filter(q))
+                    filters.append(generate_filter(q, converter=lambda r:r.toJson()))
                 else:
                     filters.append(q)
 

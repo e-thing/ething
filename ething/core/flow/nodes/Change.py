@@ -5,7 +5,7 @@ from .. import *
 rule_item = OneOf([
     ('set', Dict(mapping=OrderedDict([
         ('value', Descriptor(('msg', 'flow', 'glob'))),
-        ('to', Descriptor(('msg', 'flow', 'glob', 'string', 'number', 'boolean', 'timestamp', 'env')))
+        ('to', Descriptor(('msg', 'flow', 'glob', 'string', 'number', 'boolean', 'timestamp', 'env', 'expression')))
     ]))),
     ('change', Dict(mapping=OrderedDict([
         ('value', Descriptor(('msg', 'flow', 'glob'))),

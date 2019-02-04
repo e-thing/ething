@@ -1,8 +1,8 @@
 # coding: utf-8
 
-from future.utils import text_type, bord, string_types, binary_type
+from future.utils import text_type, bord, binary_type
 from .Resource import Resource, ResourceType
-from .date import TzDate, utcnow
+from .utils.date import TzDate, utcnow
 from .entity import *
 from .Signal import ResourceSignal
 from .flow import ResourceNode

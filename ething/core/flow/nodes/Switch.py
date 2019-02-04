@@ -29,13 +29,14 @@ filter_type = OneOf([
     ('go_above', Descriptor(('msg', 'flow', 'glob', 'number', 'env')), 'go above'),
     ('go_under', Descriptor(('msg', 'flow', 'glob', 'number', 'env')), 'go under'),
     ('rising_edge', None, 'rising edge'),
-    ('falling_edge', None, 'falling edge')
+    ('falling_edge', None, 'falling edge'),
+    ('expression', ObjectPathExp()),
 ])
 
 @meta(icon='mdi-filter', category="condition")
 @attr('last', mode=PRIVATE, default=None) # holds the last value
 @attr('filter', type=filter_type, default={'type':'==', 'value':{'type':'string', 'value':''}})
-@attr('data', type=Descriptor(('flow', 'glob', 'msg')), default={'type':'msg','value':'payload'}, description='The data to filter.')
+@attr('data', type=Descriptor(('flow', 'glob', 'msg', 'expression')), default={'type':'msg','value':'payload'}, description='The data to filter.')
 class Switch(Node):
     """
     Route messages based on their property values or sequence position
@@ -94,7 +95,7 @@ class Switch(Node):
             elif filter_type == 'not_none':
                 res = val is not None
             elif filter_type == 'type':
-                t = self.filter.value.get(**_context)
+                t = self.filter.value
                 if t=='string':
                     res = isinstance(val, string_types)
                 elif t=='number':
@@ -121,6 +122,9 @@ class Switch(Node):
                 res = old_val is not None and old_val == False and val == True
             elif filter_type == 'falling_edge':
                 res = old_val is not None and old_val == True and val == False
+            elif filter_type == 'expression':
+                filter_value = self.filter.value
+                res = bool(evaluate(filter_value, val))
         except:
             res = None
 

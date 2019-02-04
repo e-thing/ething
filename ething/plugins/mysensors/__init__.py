@@ -1,5 +1,4 @@
 # coding: utf-8
-from future.utils import iteritems
 from .MySensorsGateway import MySensorsGateway
 from .MySensorsSerialGateway import MySensorsSerialGateway
 from .MySensorsEthernetGateway import MySensorsEthernetGateway
@@ -21,7 +20,7 @@ from ething.core.utils import NullContextManager
 from ething.core.plugin import Plugin
 from ething.core.TransportProcess import LineReader, TransportProcess, SerialTransport, NetTransport, BaseResult
 from ething.core.scheduler import Scheduler
-from ething.core.date import utcnow
+from ething.core.utils.date import utcnow
 import time
 import re
 import datetime

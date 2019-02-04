@@ -327,6 +327,15 @@ class Connection(object):
         return '<connection %s to %s>' % (self.src, self.dest)
 
 
+_pid = 0
+
+
+def _get_pid():
+    global _pid
+    _pid += 1
+    return str(_pid)
+
+
 class Node(object):
 
     INPUTS = None
@@ -341,7 +350,7 @@ class Node(object):
         self._id = nid or ShortId.generate()
         self._type = ntype or type(self).__name__
         self._logger = logging.getLogger('ething.flow.%s' % self._id)
-        self._t = None
+        self._t = {}
         self._emitted = False
         self.stop_on_error = stop_on_error
 
@@ -386,11 +395,12 @@ class Node(object):
         raise NotImplementedError()
 
     def run(self, **input_msgs):
-        self._t = gevent.spawn(self._main, input_msgs)
+        pid = _get_pid()
+        self._t[pid] = gevent.spawn(self._main, input_msgs, pid)
         self._flow._event.put(Event('started', self))
 
-    def _main(self, input_msgs):
-        self._logger.debug('node started input_msgs=%s' % input_msgs)
+    def _main(self, input_msgs, pid):
+        self._logger.debug('node started pid=%s input_msgs=%s' % (pid, input_msgs))
         self._emitted = False
         err = None
         try:
@@ -404,15 +414,16 @@ class Node(object):
         self._logger.debug('node stopped')
 
         self._flow._event.put(Event('stopped', self, error=err))
-        self._t = None
+        del self._t[pid]
 
     def stop(self):
-        if self._t:
+        for pid in self._t:
+            p = self._t[pid]
             try:
-                gevent.kill(self._t)
+                gevent.kill(p)
             except gevent.GreenletExit:
                 pass
-            self._t = None
+            del self._t[pid]
 
     def debug(self, obj):
         self._logger.debug(str(obj))

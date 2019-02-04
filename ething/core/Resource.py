@@ -5,8 +5,8 @@ from .dbentity import *
 from .reg import get_definition_pathname
 from .Signal import ResourceSignal
 from .Interface import Interface
-from .date import TzDate, utcnow
-from .utils.objectpath import generate_ressource_filter
+from .utils.date import TzDate, utcnow
+from .utils.objectpath import evaluate
 from collections import Mapping
 import inspect
 import logging
@@ -298,8 +298,7 @@ class Resource(DbEntity):
             self.log.exception('history error for %s' % table_name)
 
     def match(self, expression):
-        filter = generate_ressource_filter(expression)
-        return filter(self)
+        return bool(evaluate(expression, self.toJson()))
 
     def repair(self):
         pass

@@ -5,9 +5,9 @@ from requests import Request, Session
 
 
 @meta(icon='mdi-earth', label="HTTP request", category="function")
-@attr('body', type=Text(), default='', description="The body part.")
+@attr('body', type=Descriptor(('text', 'msg', 'flow', 'glob', 'env')), default={'type':'text', 'value':''}, description="The body part.")
 @attr('method', type=Enum(['GET', 'POST', 'PUT', 'DELETE', 'PATCH']), default='GET', description="The HTTP method.")
-@attr('url', type=String(allow_empty=False), description="The HTTP URL.")
+@attr('url', type=Descriptor(('string', 'msg', 'flow', 'glob', 'env')), description="The HTTP URL.")
 class HttpRequest(Node):
     """ Make a HTTP request """
 
@@ -15,19 +15,28 @@ class HttpRequest(Node):
     OUTPUTS = ['default']
 
     def main(self, **inputs):
+        _msg = inputs['default']
+        _context = {
+            'msg': _msg,
+            'flow': self.flow,
+        }
+
+        url = self.url.get(**_context)
+        method = self.method
+        body = self.body.get(**_context)
 
         s = Session()
 
-        req = Request(self.method, self.url)
+        req = Request(method, url)
 
-        if self.method in ['POST', 'PUT', 'PATCH']:
-            req.data = self.body
+        if body:
+            req.data = body
 
         prepped = req.prepare()
 
         resp = s.send(prepped)
 
-        self.log.debug("method=%s, url=%s, resp.status_code=%s" % (self.method, self.url, resp.status_code))
+        self.log.debug("method=%s, url=%s, resp.status_code=%s" % (method, url, resp.status_code))
 
         resp.raise_for_status()
 

@@ -3,7 +3,8 @@ from .. import *
 
 
 attrs = {
-    '$component': 'ething.flow.node'
+    '$component': 'ething.flow.node',
+    '$flow': '$context'
 }
 
 source_type = OneOf([

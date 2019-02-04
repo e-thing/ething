@@ -52,9 +52,18 @@ class SendEmail(Node):
     INPUTS = ['default']
 
     def main(self, **inputs):
-        msg = inputs.get('default')
+        _msg = inputs['default']
+        _context = {
+            'msg': _msg,
+            'flow': self.flow,
+        }
+
+        to = self.to.get(**_context)
+        subject = self.subject.get(**_context)
+        message = self.message.get(**_context)
+
         conf = self.ething.get_plugin('Mail').config
-        mailer = SmtpMail(host = conf.get('host'), port = conf.get('port'), user = conf.get('user'), password = conf.get('password'))
-        mailer.send(subject = self.subject, message = self.message, to = self.to)
-        self.log.debug('email "%s" send to %s' % (self.subject, self.to))
+        mailer = SmtpMail(host=conf.get('host'), port=conf.get('port'), user=conf.get('user'), password=conf.get('password'))
+        mailer.send(subject=subject, message=message, to=to)
+        self.log.debug('email "%s" send to %s' % (subject, to))
 

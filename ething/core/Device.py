@@ -1,6 +1,6 @@
 # coding: utf-8
 from .Resource import Resource, ResourceType
-from .date import TzDate, utcnow
+from .utils.date import TzDate, utcnow
 from .reg import *
 from .Signal import ResourceSignal
 from .flow import ResourceNode

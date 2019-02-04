@@ -5,7 +5,7 @@ from .RFLinkSwitch import RFLinkSwitch
 from .RFLinkGenericSensor import RFLinkGenericSensor
 from ething.core.plugin import Plugin
 from ething.core.TransportProcess import LineReader, TransportProcess, SerialTransport
-from ething.core.date import utcnow
+from ething.core.utils.date import utcnow
 from .helpers import parse_incoming_data, is_protocol, Result
 import time
 import re

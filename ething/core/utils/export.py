@@ -1,4 +1,4 @@
-from ..date import utcnow
+from .date import utcnow
 import datetime
 from ..reg import get_registered_class
 from dateutil import parser

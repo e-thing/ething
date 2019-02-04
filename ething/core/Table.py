@@ -1,7 +1,6 @@
 # coding: utf-8
-from future.utils import string_types, integer_types
 from .Resource import Resource, ResourceType
-from .date import TzDate, utcnow, utcfromtimestamp, datetime_to_array
+from .utils.date import TzDate, utcnow, utcfromtimestamp, datetime_to_array
 from .entity import *
 from .Signal import ResourceSignal
 from .Helpers import filter_obj
