@@ -2,7 +2,7 @@
 from future.utils import integer_types, string_types
 import time
 import logging
-from ..ShortId import ShortId
+from ..utils import ShortId
 import gevent
 from collections import MutableMapping, Mapping
 try:

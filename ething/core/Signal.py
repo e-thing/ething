@@ -6,7 +6,7 @@ from collections import Mapping
 import time
 
 
-@path('signals')
+@namespace('signals')
 @abstract
 class Signal(with_metaclass(MetaReg, Mapping)):
     def __init__(self):

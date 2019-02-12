@@ -3,7 +3,7 @@
 from ething.core.plugin import Plugin
 from ething.core.Device import Device
 from ething.core.reg import *
-from ething.core.ShortId import ShortId
+from ething.core.utils import ShortId
 from flask import redirect, request, url_for
 import re
 import base64

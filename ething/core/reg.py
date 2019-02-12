@@ -1,18 +1,13 @@
 # coding: utf-8
-from .type import *
-from .utils import get_cls_methods
-from collections import MutableMapping, OrderedDict
+from future.utils import with_metaclass, string_types, integer_types, text_type, binary_type
+from collections import MutableMapping, OrderedDict, Mapping
 import copy
 import inspect
-from functools import wraps
 from abc import ABCMeta
 import re
-
-
-def _make_default(value, *arg, **kwargs):
-  if callable(value):
-      return value(*arg, **kwargs)
-  return copy.deepcopy(value)
+import types
+import random
+import string
 
 
 def format_label(name):
@@ -28,42 +23,95 @@ def format_label(name):
     return name
 
 
+# from inspect
+def getmembers(obj, predicate=None):
+    """Return all members of an object as (name, value) pairs sorted by name.
+    Optionally, only return members that satisfy a given predicate."""
+    if inspect.isclass(obj):
+        mro = (obj,) + obj.__mro__
+    else:
+        mro = ()
+    results = []
+    processed = set()
+    names = dir(obj)
+    # :dd any DynamicClassAttributes to the list of names if object is a class;
+    # this may result in duplicate entries if, for example, a virtual
+    # attribute with the same name as a DynamicClassAttribute exists
+    try:
+        for base in obj.__bases__:
+            for k, v in base.__dict__.items():
+                if isinstance(v, types.DynamicClassAttribute):
+                    names.append(k)
+    except AttributeError:
+        pass
+    for key in names:
+        # First try to get the value via getattr.  Some descriptors don't
+        # like calling their __get__ (see bug #1785), so fall back to
+        # looking in the __dict__.
+        for base in mro:
+            if key in base.__dict__:
+                value = base.__dict__[key]
+                break
+        else:
+            # could be a (currently) missing slot member, or a buggy
+            # __dir__; discard and move on
+            continue
+        if not predicate or predicate(value):
+            results.append((key, value))
+        processed.add(key)
+    results.sort(key=lambda pair: pair[0])
+    return results
+
+
+
 #
 # Meta
 #
 
 def meta(**metadata):
     def d(cls):
-        meta = getattr(cls, '__meta')
-        meta.update(metadata)
+        set_meta(cls, metadata)
         return cls
     return d
 
 
-def get_meta(class_or_instance, key=None, default=None):
+def set_meta(class_or_instance, key, value=None):
     if not inspect.isclass(class_or_instance):
         class_or_instance = type(class_or_instance)
+    
+    if not hasattr(class_or_instance, '__meta'):
+      setattr(class_or_instance, '__meta', dict())
+    
+    meta = getattr(class_or_instance, '__meta')
 
-    if key is None:
-        return getattr(class_or_instance, '__meta', {})
+    if isinstance(key, Mapping) and value is None:
+      meta.update(key)
+    else:
+      meta[key] = value
 
-    return getattr(class_or_instance, '__meta', {}).get(key, default)
+
+def get_meta(class_or_instance, key=None, default=None):
+  if not inspect.isclass(class_or_instance):
+      class_or_instance = type(class_or_instance)
+  
+  if key is None:
+      return getattr(class_or_instance, '__meta', {})
+
+  return getattr(class_or_instance, '__meta', {}).get(key, default)
 
 
-def path(name, relative=False):
+def namespace(name, relative=False):
     def d(cls):
 
-        meta = getattr(cls, '__meta')
-
         if relative:
-            path = meta.get('path', '')
-            if path:
-                path += '/'
-            path += name
+            ns = get_meta(cls, 'namespace', '')
+            if ns:
+                ns += '/'
+            ns += name
         else:
-            path = name
+            ns = name
 
-        meta['path'] = path
+        set_meta(cls, 'namespace', ns)
 
         update_registered_class(cls)
 
@@ -72,14 +120,45 @@ def path(name, relative=False):
     return d
 
 
+#
+# class
+#
+
+
+def discriminate(key='type', codec=None, **extra):
+    if codec is None:
+        codec = (get_definition_name, get_registered_class)
+
+    def d(cls):
+        set_meta(cls, 'discriminate_key', key)
+        set_meta(cls, 'discriminate_codec', codec)
+
+        attr(key, type=String(allow_empty=False), mode=READ_ONLY, default=codec[0], **extra)(cls)
+
+        return cls
+
+    return d
+
+
+def _discriminate_cls(cls, data):
+    key = get_meta(cls, 'discriminate_key')
+    if key is None:
+        return cls
+    codec = get_meta(cls, 'discriminate_codec')
+    s = data[key]
+    _cls = codec[1](s)
+    if _cls is None:
+        raise Exception('Unable to associate a class to %s' % s)
+    return _cls
+
+
 def abstract(cls):
-    getattr(cls, '__meta')['abstract'] = True
+    set_meta(cls, 'abstract', True)
     return cls
 
 
 def is_abstract(cls):
-    return getattr(cls, '__meta').get('abstract', False)
-
+    return inspect.isabstract(cls) or get_meta(cls, 'abstract', False)
 
 
 #
@@ -90,17 +169,208 @@ READ_ONLY = 2
 PRIVATE = 4
 
 
+# context
+
+
+class BoundedContext(dict):
+  pass
+
+
+def get_context(obj, context=None):
+  if isinstance(context, BoundedContext):
+    return context
+  else:
+    reg = install(obj, True)
+    if reg is not None:
+      ctx = reg.context
+      if context is not None:
+        ctx = ctx.copy()
+        ctx.update(context)
+    else:
+      ctx = context
+    
+    return BoundedContext(ctx) if ctx is not None else BoundedContext()
+
+def set_context(obj, *args, **kwargs):
+  install(obj).update_context(*args, **kwargs)
+
+
+class RegObject(object):
+  def __init__(self, obj):
+    self.obj = obj
+    self._parents = set()
+    self._children = set()
+    self._dirty = False
+    self.data = dict()
+    self._context = dict()
+    try:
+      self.update_context(object.__getattribute__(obj, '__get_context__')())
+    except AttributeError:
+      pass
+
+  @property
+  def context(self):
+    return self._context
+  
+  def update_context(self, key, value=None):
+    if isinstance(key, string_types):
+      self._context[key] = value
+    else:
+      self._context.update(key)
+  
+  @property
+  def parents(self):
+    return self._parents
+  
+  @property
+  def children(self):
+    return self._children
+  
+  def attach(self, child):
+    if child is None or isinstance(child, scalar_types): return
+    install(child)._parents.add(self.obj)
+    self._children.add(child)
+  
+  def detach(self, child):
+    reg = install(child, True)
+    if reg is None: return
+    reg._parents.discard(self.obj)
+    self._children.discard(child)
+
+  @property
+  def dirty(self):
+    return self._dirty
+  
+  def set_dirty(self, child=None):
+    self._dirty = True
+    # notify the parent
+    for p in self._parents:
+      set_dirty(p, child=self.obj)
+  
+  def clean(self):
+    if self._dirty:
+      self._dirty = False
+      # clean the children
+      for c in self.children:
+        clean(c)
+
+
+class RegObjectWithAttr(RegObject):
+
+  def __init__(self, obj):
+    super(RegObjectWithAttr, self).__init__(obj)
+    self._children = dict()
+    self._dirty_attr = set()
+  
+  @property
+  def children(self):
+    return self._children.values()
+  
+  def attach(self, child, attr):
+    if child is None or isinstance(child, scalar_types): return
+    install(child)._parents.add(self.obj)
+    self._children[attr] = child
+  
+  def detach(self, child, attr):
+    reg = install(child, True)
+    if reg is None: return
+    reg._parents.discard(self.obj)
+    self._children.pop(attr, None)
+
+  def set_dirty(self, child=None, attr=None):
+    self._dirty = True
+    if child is not None:
+      # find the corresponding attributes
+      children_map = self._children
+      watched = False
+      for attr in children_map:
+        if children_map[attr] is child:
+          self._dirty_attr.add(attr)
+          if not watched:
+            watched = True # trigger only one time
+            attr.__watch__(self.obj, child, child)
+    elif attr is not None:
+      self._dirty_attr.add(attr)
+    
+    super(RegObjectWithAttr, self).set_dirty(child=child)
+  
+  def clean(self):
+    self._dirty_attr.clear()
+    super(RegObjectWithAttr, self).clean()
+  
+  def list_dirty_attr(self):
+    return self._dirty_attr
+
+
+scalar_types = string_types + integer_types + (bool, float, text_type, binary_type)
+
+
+def attach(obj, child):
+  install(obj).attach(child)
+
+def detach(obj, child):
+  install(obj).detach(child)
+
+def set_dirty(obj, child=None):
+  install(obj).set_dirty(child=child)
+
+def is_dirty(obj):
+  reg = install(obj, True)
+  if reg is None:
+    return False
+  return reg.dirty
+
+def clean(obj):
+  install(obj).clean()
+
+
+def install(obj, ro=False, cls=None):
+  try:
+    reg = object.__getattribute__(obj, '__reg__')
+  except AttributeError:
+    if not ro:
+      if cls is None:
+        if list_registered_attr(obj):
+          cls = RegObjectWithAttr
+        else:
+          cls = RegObject
+      reg = cls(obj)
+      object.__setattr__(obj, '__reg__', reg)
+    else:
+      reg = None
+  return reg
+
+
+def list_dirty_attr(obj):
+  res = []
+  reg = install(obj, True)
+  if reg is not None and isinstance(reg, RegObjectWithAttr):
+    res += reg.list_dirty_attr()
+  return res
+
+
+def print_tree(obj, prefix=''):
+  reg = install(obj, True)
+  if reg is None:
+    print(prefix + str(obj))
+    return
+  
+  print('%s%s: dirty:%s' % (prefix, str(obj), reg.dirty))
+
+  for child in reg.children:
+    print_tree(child, prefix+'  ')
+
+
 class _NO_VALUE(object):
     pass
 
-NO_VALUE = _NO_VALUE
+NO_VALUE = _NO_VALUE()
 
 
-class Attribute (MutableMapping):
+class RegItemBase (MutableMapping):
     
-    def __init__(self, name, cls=None, props=None):
-        self.name = name
-        self.cls = cls
+    def __init__(self, name, props=None):
+        self._name = name
         self._props = dict()
         if props is not None:
             self.update(props)
@@ -109,11 +379,21 @@ class Attribute (MutableMapping):
     def properties (self):
       return self._props
     
+    @property
+    def name (self):
+      return self._name
+    
+    @property
+    def required (self):
+      return 'default' not in self
+
     def update(self, *args, **kwargs):
       props = dict(*args, **kwargs)
 
       for k in props:
           v = props[k]
+          if k == 'type':
+            v = convert_type(v)
           if v is NO_VALUE:
             # remove the key
             self._props.pop(k, None)
@@ -135,16 +415,34 @@ class Attribute (MutableMapping):
     def __len__(self):
         return len(self._props)
 
-    def __repr__(self):
-        return "<attr name=%s cls=%s props=%s>" % (self.name, self.cls.__name__ if self.cls else None, self._props.__repr__())
-
+    #used for using this object as dict key
     def __hash__(self):
         return hash(self.name)
+
+    #used for using this object as dict key
+    def __eq__(self, other):
+      if isinstance(other, RegItemBase):
+        return self.name == other.name
+      return self.name == other
     
-    def make_default(self, *arg, **kwargs):
-      return _make_default(self.get('default'), *arg, **kwargs)
+    def make_default(self, *args):
+      if 'default' not in self:
+        raise AttributeError('%s: no default set' % self._name)
+      default_val = self['default']
+      if callable(default_val):
+        default_val = default_val(*args)
+      else:
+        default_val = copy.deepcopy(default_val)
+      return default_val
     
-    def toSchema(self, **kwargs):
+    def _make_default(self, *args, context=None):
+      d = self.make_default(*args)
+      data_type = self.get('type')
+      if data_type:
+        d = data_type.set(d, context=context)
+      return d
+    
+    def toSchema(self, cls, **kwargs):
 
       data_type = self.get('type')
 
@@ -152,6 +450,15 @@ class Attribute (MutableMapping):
         schema = data_type.toSchema(context=kwargs)
       else:
         schema = {}
+      
+      if 'default' in self:
+        try:
+          d = self._make_default(cls, context=kwargs)
+          if data_type:
+            d = data_type.toJson(d, context=kwargs)
+          schema['default'] = d
+        except:
+          pass
 
       if 'description' in self and self['description']:
         schema['description'] = self.get('description').strip()
@@ -165,7 +472,166 @@ class Attribute (MutableMapping):
       return schema
 
 
-_attribute_meta_attr = '__meta_attr'
+class Attribute (RegItemBase):
+    
+    def __init__(self, name, cls=None, props=None):
+      super(Attribute, self).__init__(name, props)
+      self._cls = cls
+
+    @property
+    def cls (self):
+      return self._cls
+    
+    def __get_raw__(self, obj, objtype, context=None):
+      if obj is None:
+        # return default
+        val = self._make_default(objtype, context=get_context(obj, context))
+      else:
+        reg = install(obj, cls=RegObjectWithAttr)
+        d = reg.data
+        if self._name not in d:
+          v = self._make_default(objtype, context=get_context(obj, context))
+          reg.attach(v, self)
+          d[self._name] = v
+        val = d[self._name]
+      return val
+    
+    def __get__(self, obj, objtype=None):
+      if objtype is None:
+        objtype = type(obj)
+      
+      context = get_context(obj)
+      
+      val = self.__get_raw__(obj, objtype, context=context)
+      return self.__get_post__(val, context)
+    
+    def __get_post__(self, val, context=None):
+      data_type = self.get('type')
+      if data_type:
+        val = data_type.get(val, context)
+      return val
+    
+    def __get_json__(self, obj, context=None):
+      context = get_context(obj, context)
+      val = self.__get_raw__(obj, type(obj), context)
+      
+      data_type = self.get('type')
+      if data_type:
+        val = data_type.toJson(val, context)
+      
+      return val
+    
+    def __set_raw__(self, obj, val, context=None):
+      reg = install(obj, cls=RegObjectWithAttr)
+      context = get_context(obj, context)
+      init = context.get('__init') if context else False
+
+      old_val = reg.data.get(self._name, NO_VALUE)
+      reg.detach(old_val, self)
+      reg.attach(val, self)
+      reg.data[self._name] = val
+
+      if not init:
+        # detect change !
+        if val is not old_val:
+          reg.set_dirty(attr=self)
+          self.__watch__(obj, val, old_val, context)
+    
+    def __watch__(self, obj, val, old_val, context=None):
+      try:
+        watcher = object.__getattribute__(obj, '__watch__')
+      except AttributeError:
+        pass
+      else:
+        data_type = self.get('type')
+        if data_type:
+          # convert the values
+          context = get_context(obj, context)
+          new_val = data_type.get(val, context)
+          if old_val is NO_VALUE:
+            old_val = None
+          else:
+            old_val = data_type.get(old_val, context)
+        watcher(self, new_val, old_val)
+
+    def __set__(self, obj, val):
+      context = get_context(obj)
+      val = self.__set_pre__(val, context)
+      self.__set_raw__(obj, val, context)
+    
+    def __set_pre__(self, val, context=None):
+      data_type = self.get('type')
+      if data_type:
+        try:
+          val = data_type.set(val, context)
+        except ValueError as e:
+          raise ValueError('%s: %s' % (self._name, str(e)))
+      return val
+
+    def __serialize__(self, obj, context=None):
+      context = get_context(obj, context)
+      val = self.__get_raw__(obj, type(obj), context)
+
+      data_type = self.get('type')
+      if data_type:
+        val = data_type.serialize(val, context)
+      
+      return val
+    
+    def __unserialize__(self, val, context=None):
+      data_type = self.get('type')
+      if data_type:
+        val = data_type.unserialize(val, context)
+      return val
+    
+    def __from_json__(self, val, context=None):
+      data_type = self.get('type')
+      if data_type:
+        val = data_type.fromJson(val, context)
+      return val
+
+    def __str__(self):
+      return "<attr name=%s cls=%s>" % (self.name, self.cls.__name__ if self.cls else None)
+    
+    def __repr__(self):
+      return str(self)
+    
+    def clone(self, new_cls, new_props=None):
+      copy = type(self)(self.name, new_cls, self._props.copy())
+      if new_props is not None:
+        copy.update(new_props)
+      return copy
+      
+
+
+class ComputedAttr(Attribute):
+  
+  def __init__(self, func, name=None, props=None):
+    if name is None:
+      if isinstance(func, (staticmethod, classmethod)):
+        name = func.__func__.__name__
+      else:
+        name = func.__name__
+    if props is None:
+      props = {}
+    props.setdefault('mode', READ_ONLY)
+    super(ComputedAttr, self).__init__(name, None, props)
+    self._func = func
+  
+  def __get_raw__(self, obj, objtype, context=None):
+      if isinstance(self._func, staticmethod):
+        val = self._func.__func__()
+      elif isinstance(self._func, classmethod):
+        val = self._func.__func__(objtype)
+      else:
+        if obj is None:
+          raise ValueError('no instance')
+        else:
+          val = self._func(obj)
+      return val
+  
+  def __set_raw__(self, obj, val, context=None):
+      raise ValueError('[%s] computed attributes are read only' % self._name)
 
 
 def attr(name=None, **kwargs):
@@ -179,66 +645,64 @@ def attr(name=None, **kwargs):
 
       attribute = None
 
-      attributes = getattr(cls, '__meta').get('attributes')
+      attributes = list_registered_attr(cls)
 
       for i in range(len(attributes)):
         a = attributes[i]
         if a.name == name:
           if a.cls == cls:
+            a.update(kwargs)
             attribute = a
           else:
             # come from a base class, copy it before updating
-            attribute = Attribute(name, cls, a.properties.copy())
-            attributes[i] = attribute
-          attribute.update(kwargs)
+            attribute = a.clone(cls, kwargs)
+            setattr(cls, name, attribute)
           break
       else:
-        attribute = Attribute(name, cls = cls, props = kwargs)
-        attributes.append(attribute)
-
-      if hasattr(cls, '_attr_modifier_'):
-        getattr(cls, '_attr_modifier_')(attribute)
+        attribute = Attribute(name, cls, props=kwargs)
+        setattr(cls, name, attribute)
 
       return cls
 
     else:
-      # computed method
+      # computed attribute
       func = item
-      kwargs['compute'] = func
-      kwargs.setdefault('mode', READ_ONLY)
-      func_name = func.__name__
-      func = ComputedAttrDescriptor(func)
-      attr = Attribute(func_name, props=kwargs)
-      setattr(func, _attribute_meta_attr, attr)
-      return func
+      return ComputedAttr(func, name=name, props=kwargs)
   return d
 
 
-class ComputedAttrDescriptor(object):
+default_alphabet = string.ascii_letters + string.digits
 
-  def __init__(self, func):
-    self.func = func
+def randomString(length=7, alphabet=default_alphabet):
+    """Generate a random string """
+    return ''.join(random.choice(alphabet) for i in range(length))
 
-  def __get__(self, instance, owner):
-    return self.func(instance)
+
+def uid(key='id', generator=None, **extra):
+  if generator is None:
+    generator = randomString
+  
+  def d(cls):
+    attr(key, type=String(allow_empty=False), mode=READ_ONLY, default=lambda _: generator(), **extra)(cls)
+    return cls
+  return d
 
 
 def list_registered_attr(class_or_instance):
   """
   list the attributes of the given class or instance.
   """
-  if not inspect.isclass(class_or_instance):
-    class_or_instance = type(class_or_instance)
-
-  attributes = list(getattr(class_or_instance, '__meta', {}).get('attributes', list()))
-
-  # look for computed attributes
-  # cls_dict = class_or_instance.__dict__
-  # for name in cls_dict:
-  #   func = cls_dict.get(name)
-  #   if hasattr(func, _attribute_meta_attr):
-  #     attributes.append(getattr(func, _attribute_meta_attr))
-
+  if inspect.isclass(class_or_instance):
+    cls_dict = class_or_instance.__dict__
+  else:
+    cls_dict = type(class_or_instance).__dict__.copy()
+    cls_dict.update(getattr(class_or_instance, '__dict__', {}))
+  
+  attributes = []
+  for name in cls_dict:
+    attr = cls_dict[name]
+    if isinstance(attr, Attribute):
+      attributes.append(attr)
   return attributes
 
 
@@ -250,6 +714,7 @@ def get_registered_attr(class_or_instance, name):
 
 def has_registered_attr(class_or_instance, name):
   return get_registered_attr(class_or_instance, name) is not None
+
 
 
 
@@ -267,7 +732,7 @@ class Signal_(object):
 def throw(*args):
   def d(cls):
 
-    signals = getattr(cls, '__meta').get('signals')
+    signals = get_meta(cls, 'signals', [])
 
     for s in args:
         signal_ = Signal_(s, cls)
@@ -284,6 +749,8 @@ def throw(*args):
             signals[i] = signal_ # replace
         else:
             signals.append(signal_)
+    
+    set_meta(cls, 'signals', signals)
 
     return cls
   return d
@@ -292,74 +759,66 @@ def list_registered_signals(class_or_instance):
   """
   list the signals the given class or instance may throw.
   """
-  if not inspect.isclass(class_or_instance):
-    class_or_instance = type(class_or_instance)
-  return getattr(class_or_instance, '__meta', {}).get('signals', [])
+  return get_meta(class_or_instance, 'signals', [])
 
 
 #
 # Methods
 #
 
-_method_meta_attr = '__meta_method'
-
 
 class MethodDecorator(object):
 
     def __call__(self, func):
-        self.init(func)
-        return func
+      return self._init(func)
 
-    def init(self, func):
+    def _init(self, func):
         """
         set the default metadata
         """
-        meta = getattr(func, _method_meta_attr, None)
-        if meta is None:
-          meta = Method._parse(func)
-          setattr(func, _method_meta_attr, meta)
-        return meta
+        if not isinstance(func, Method):
+          func = Method(func)
+        return func
 
     # decorators
 
     def name(self, name):
         def d(func):
-            meta = self.init(func)
-            meta['name'] = name
+            func = self._init(func)
+            func.properties['name'] = name
             return func
         return d
 
     def description(self, description):
         def d(func):
-            meta = self.init(func)
-            meta['description'] = description
+            func = self._init(func)
+            func.properties['description'] = description
             return func
         return d
 
     def return_type(self, return_type):
         def d(func):
-            meta = self.init(func)
+            func = self._init(func)
             if isinstance(return_type, string_types) and re.search('^[^/]+/[^/]+$', return_type):
                 # mime type
-                meta['return_type'] = return_type
+                func.properties['return_type'] = return_type
             else:
-                meta['return_type'] = convert_type(return_type)
+                func.properties['return_type'] = convert_type(return_type)
             return func
         return d
 
     def arg(self, name, **kwargs):
         def d(func):
-            meta = self.init(func)
-
+            func = self._init(func)
+            args = func.properties['args']
+            
             if not kwargs.get('enable', True):
-                meta['args'].pop(name, None)
+                args.pop(name, None)
             else:
-                meta['args'].setdefault(name, {})
-
-                if 'type' in kwargs:
-                  kwargs['type'] = convert_type(kwargs['type'])
-
-                meta['args'][name].update(kwargs)
+                if name not in args:
+                  args[name] = Argument(name, kwargs)
+                else:
+                  args[name].update(kwargs)
 
             return func
         return d
@@ -377,108 +836,114 @@ def _setdefaults(a, b):
           a.setdefault(k, v)
 
 
-class Method(object):
+class Argument(RegItemBase):
+  pass
 
-    def __init__(self, func):
-      object.__setattr__(self, '_Method__func', func)
-      object.__setattr__(self, '_Method__meta', getattr(func, _method_meta_attr, {}))
 
-    @property
-    def meta(self):
-        return self.__meta
-    
-    @property
-    def func(self):
-        return self.__func
+class Method(RegItemBase):
 
-    def __getattr__(self, key):
-        return self.__meta.get(key, None)
-    
-    def __setattr__(self, key, value):
-        self.__meta[key] = value
-    
-    def __call__(self, *args, **kwargs):
-      return self.call(*args, **kwargs)
-
-    def call(self, instance, *args, **kwargs):
-
-        if args:
-            arg_names = list(self.args)
-
-            for i in range(0, len(args)):
-
-                if i >= len(arg_names):
-                    raise ValueError("%s() takes exactly %d arguments" % (
-                        self.name, len(arg_names)))
-
-                arg_name = arg_names[i]
-
-                if arg_name in kwargs:
-                    raise ValueError(
-                        "%s(): got multiple values for keyword argument '%s'" % (self.name, arg_name))
-
-                kwargs[arg_name] = args[i]
-
-        # check the arguments
-        for arg_name in kwargs:
-            if arg_name not in self.args:
-                raise ValueError("%s(): invalid argument '%s'" %
-                                 (self.name, arg_name))
-            arg_meta = self.args[arg_name]
-
-            if 'type' in arg_meta:
-                arg_type = arg_meta['type']
-
-                try:
-                  kwargs[arg_name] = arg_type.fromJson(kwargs[arg_name])
-                except Exception as e:
-                  raise ValueError("%s(): argument '%s' is invalid: %s" % (self.name, arg_name, str(e)))
-
-        # check missing argument !
-        for arg_name in self.args:
-            arg_meta = self.args[arg_name]
-            if arg_name not in kwargs:
-                if ('default' not in arg_meta) or arg_meta.get('required', False):
-                    raise ValueError("%s(): missing argument '%s'" %
-                                     (self.name, arg_name))
-                else:
-                    arg_type = arg_meta['type']
-                    default_value = arg_type.toJson(arg_type.set(_make_default(arg_meta.get('default'))))
-                    kwargs[arg_name] = default_value
-
-        if self.bounded:
-            if hasattr(instance, self.func_name):
-                res = getattr(instance, self.func_name)(**kwargs)
-            else:
-                res = self.__func(instance, **kwargs)
+    def __init__(self, func, name=None):
+      if name is None:
+        if hasattr(func, '__name__'):
+          name = getattr(func, '__name__')
         else:
-            res = self.__func(**kwargs)
+          name = getattr(func, '__func__').__name__
+      
+      super(Method, self).__init__(name, props=self._parse(func))
+      self._func = func
+      self._cls = None
+    
+    @property
+    def cls (self):
+      return self._cls
+    
+    @property
+    def func (self):
+      return self._func
+    
+    def __str__(self):
+      return "<method name=%s cls=%s>" % (self.name, self.cls.__name__ if self.cls else None)
+    
+    def __repr__(self):
+      return str(self)
+    
+    def __get__(self, obj, objtype=None):
+      def handler(*args, **kwargs):
+        _kwargs = self._parse_args(args, kwargs, context=get_context(obj))
+        return self._func.__get__(obj, objtype)(**_kwargs)
+      return handler
+    
+    def _parse_args(self, args, kwargs, context=None):
+      _args = self.get('args')
+      arg_dict = OrderedDict()
+      _args_list = list(_args)
 
-        return res
+      for argi in range(len(args)):
+        if argi >= len(_args_list):
+          raise ValueError("%s() takes at most %d arguments" % (self.name, len(_args_list)))
+        arg_name = _args_list[argi]
+        arg_dict[arg_name] = args[argi]
+      
+      for arg_name in kwargs:
+        if arg_name not in _args_list:
+            raise ValueError("%s(): invalid argument '%s'" % (self.name, arg_name))
+        if arg_name in arg_dict:
+          raise ValueError("%s(): got multiple values for keyword argument '%s'" % (self.name, arg_name))
+        arg_dict[arg_name] = kwargs[arg_name]
+
+      # check the arguments
+      for arg_name in arg_dict:
+        arg = _args[arg_name]
+        arg_type = arg.get('type')
+        if arg_type:
+          try:
+            arg_dict[arg_name] = arg_type.set(arg_dict[arg_name], context)
+          except Exception as e:
+            raise ValueError("%s(): argument '%s' is invalid: %s" % (self.name, arg_name, str(e)))
+
+      # check missing argument !
+      for arg_name in _args:
+        arg = _args[arg_name]
+        if arg_name not in arg_dict:
+          if 'default' in arg:
+            arg_dict[arg_name] = arg.make_default()
+          else:
+            if arg.get('required', False):
+              raise ValueError("%s(): missing argument '%s'" % (self.name, arg_name))
+      
+      return arg_dict
 
     def toSchema(self, **kwargs):
         schema = {
             'type': 'function'
         }
 
+        args_dict = self.get('args')
+
         required = []
         arguments = OrderedDict()
-        for arg_name in self.args:
-            arg_meta = self.args[arg_name]
+        for arg_name in args_dict:
+            arg = args_dict[arg_name]
 
-            if ('default' not in self.args[arg_name]) or self.args[arg_name].get('required', False):
+            if ('default' not in arg) or arg.get('required', False):
                 required.append(arg_name)
 
-            arg_type = arg_meta.get('type', String())
+            arg_type = arg.get('type')
 
-            arg_schema = arg_type.toSchema(context=kwargs)
+            if arg_type:
+              arg_schema = arg_type.toSchema(context=kwargs)
+            else:
+              arg_schema = {}
 
-            if 'description' in arg_meta:
-              arg_schema['description'] = arg_meta.get('description').strip()
+            if 'description' in arg:
+              arg_schema['description'] = arg.get('description').strip()
 
-            if 'default' in arg_meta:
+            if 'default' in arg:
               try:
-                arg_schema['default'] = arg_type.toJson(arg_type.set(_make_default(arg_meta.get('default')), context=kwargs), context=kwargs)
+                default_value = arg._make_default(context=kwargs)
+                if arg_type:
+                  default_value = arg_type.toJson(default_value, context=kwargs)
+                arg_schema['default'] = default_value
               except Exception:
                 pass
 
@@ -487,32 +952,34 @@ class Method(object):
         schema['required'] = required
         schema['arguments'] = arguments
 
-        if self.description:
-          schema['description'] = self.description
+        if 'description' in self:
+          schema['description'] = self.get('description')
 
-        if isinstance(self.return_type, Type):
-            schema['return'] = self.return_type.toSchema(context=kwargs)
+        return_type = self.get('return_type')
+        if isinstance(return_type, Type):
+            schema['return'] = return_type.toSchema(context=kwargs)
         else:
-            schema['return'] = self.return_type
+            schema['return'] = return_type
 
         return schema
-    
-    def bound_to(self, instance):
-      return BoundMethod(self.__func, instance)
   
     @staticmethod
     def inherit(func, orig):
       """
       makes func defaults from orig (no overwritting)
       """
-      meta = method.init(func)
-      _setdefaults(meta, getattr(orig, _method_meta_attr, {}))
+      func = method._init(func)
+      _setdefaults(func.properties, orig.properties)
+      return func
     
     @staticmethod
     def _parse(func):
         """
         extract some metadata from a method
         """
+        if hasattr(func, '__func__'):
+          func = getattr(func, '__func__')
+
         name = func.__name__
         description = func.__doc__ or ''
 
@@ -532,20 +999,21 @@ class Method(object):
             arg_name = var_names[i]
 
             if arg_name == 'self':
-                meta['bounded'] = True
                 continue
 
             if arg_name == "args" or arg_name == "kwargs":
-                continue
+                raise Exception('not compatible with args or kwargs arguments !') # todo
 
             has_default = (i >= default_offset)
 
-            meta['args'].setdefault(arg_name, {})
+            arg_meta = {}
 
             if has_default:
               default = var_defaults[i - default_offset] if has_default else None
-              meta['args'][arg_name]['default'] = default
-              meta['args'][arg_name]['type'] = get_type_from_value(default)
+              arg_meta['default'] = default
+              arg_meta['type'] = get_type_from_value(default)
+            
+            meta['args'][arg_name] = Argument(arg_name, arg_meta)
 
         if description:
             meta['description'] = description
@@ -556,35 +1024,16 @@ class Method(object):
         return meta
 
 
-class BoundMethod (Method):
-
-  def __init__(self, func, instance):
-    super(BoundMethod, self).__init__(func)
-    self._instance = instance
-  
-  def call(self, *args, **kwargs):
-    return super(BoundMethod, self).call(self._instance, *args, **kwargs)
-
-
 def list_registered_methods(class_or_instance):
   """
   list the methods of the given class or instance.
   """
-
-  cls = class_or_instance
-  instance = None
-
   if not inspect.isclass(class_or_instance):
-    cls = type(class_or_instance)
-    instance = class_or_instance
+    class_or_instance = type(class_or_instance)
 
-  methods = list()
-  
-  # list all methods attached to this device
-  for name, func in get_cls_methods(cls):
-      if hasattr(func, _method_meta_attr):
-        methods.append(Method(func) if instance is None else BoundMethod(func, instance))
-  
+  methods = []
+  for name, value in getmembers(class_or_instance, lambda x: isinstance(x, Method)):
+    methods.append(value)
   return methods
 
 def get_registered_methods(class_or_instance, name):
@@ -610,7 +1059,7 @@ def list_registered_classes():
     return registered_cls.values()
 
 def is_registered_class(cls):
-    return is_meta_class(cls) and registered_cls.get(get_definition_pathname(cls)) is cls
+    return is_meta_class(cls) and registered_cls.get(get_definition_name(cls)) is cls
 
 def get_registered_class(name):
     return registered_cls.get(name)
@@ -618,14 +1067,14 @@ def get_registered_class(name):
 def register_class(cls):
     if getattr(cls, '_REGISTER_', True):
 
-        cls_name = get_definition_pathname(cls)
+        cls_name = get_definition_name(cls)
         if cls_name in registered_cls:
             raise Exception('A class with the name "%s" already exists: %s' % (cls_name, registered_cls.get(cls_name)))
 
         registered_cls[cls_name] = cls
 
 def update_registered_class(cls):
-    cls_name = get_definition_pathname(cls)
+    cls_name = get_definition_name(cls)
     if cls_name not in registered_cls:
         for n in list(registered_cls):
             c = registered_cls.get(n)
@@ -641,7 +1090,7 @@ class MetaReg(ABCMeta):
     def __new__(meta, name, bases, dct):
       cls = ABCMeta.__new__(meta, name, bases, dct)
 
-      inherited_meta = getattr(cls, '__meta', {})
+      inherited_meta = get_meta(cls).copy()
 
       # attributes
       extended_attributes = []
@@ -660,24 +1109,17 @@ class MetaReg(ABCMeta):
               extended_attributes.insert(0, attribute_b)
           else:
             # copy it before updating
-            copy = Attribute(attribute.name, cls, attribute.properties.copy())
-            copy.update(attribute_b.properties)
-            extended_attributes[i] = copy
+            extended_attributes[i] = attribute.clone(cls, attribute_b.properties)
+      
+      for a in extended_attributes:
+        setattr(cls, a.name, a)
 
       # look for computed attributes
-      computed_attributes = []
       for name in dct:
-          func = dct.get(name)
-          if hasattr(func, _attribute_meta_attr):
-              computed_attribute = getattr(func, _attribute_meta_attr)
-
-              if computed_attribute.cls is None:
-                  computed_attribute.cls = cls
-                  if hasattr(cls, '_attr_modifier_'):
-                      getattr(cls, '_attr_modifier_')(computed_attribute)
-
-              computed_attributes.append(computed_attribute)
-
+          member = dct.get(name)
+          if isinstance(member, ComputedAttr):
+            if member.cls is None:
+              member._cls = cls
 
       # signals:
       extended_signals = []
@@ -698,38 +1140,32 @@ class MetaReg(ABCMeta):
                 # replace
                 extended_signals[i] = signal_b_
 
-      setattr(cls, '__meta', {
-        'attributes': extended_attributes + computed_attributes,
-        'signals': extended_signals,
-        'abstract': False,
-        'path': inherited_meta.get('path', ''),
-        'description': cls.__doc__,
-        'label': format_label(cls.__name__)
+      inherited_meta.update({
+          'signals': extended_signals,
+          'abstract': False,
+          'description': cls.__doc__,
+          'label': format_label(cls.__name__)
       })
+      setattr(cls, '__meta', inherited_meta)
 
       # methods
 
       for m in list_registered_methods(cls):
         if m.cls is None:
-          m.cls = cls
+          m._cls = cls
 
       for base in bases:
-        
-        base_m = [m.func for m in list_registered_methods(base)]
-        cls_m = [i[1] for i in get_cls_methods(cls)]
-        for b_m in base_m:
-            if b_m not in cls_m:
-                #print('overloading %s' % b_m.__name__)
-                # find the overloaded method in cls (same name)
-                f_ovl = None
-                for c_m in cls_m:
-                    if c_m.__name__ == b_m.__name__:
-                        f_ovl = c_m
-                        break
-                if f_ovl is not None:
-                    # this method has been overloaded by the class cls
-                    Method.inherit(f_ovl, b_m)
-                    f_ovl.cls = cls
+        for b_m in list_registered_methods(base):
+
+          if b_m.name in cls.__dict__:
+            member = cls.__dict__[b_m.name]
+
+            if member is b_m:
+              continue # inherited from parent, no modification done
+            
+            # overloading
+            member = Method.inherit(member, b_m)
+            setattr(cls, b_m.name, member)
 
       # globals
       register_class(cls)
@@ -737,15 +1173,14 @@ class MetaReg(ABCMeta):
       return cls
 
 
-def get_definition_pathname(cls):
+def get_definition_name(cls):
   """
-  returns the definition pathname for the given class or instance (e.g. "#/resources/Resource")
+  returns the definition name for the given class or instance (e.g. "#/resources/Resource")
   """
   name = cls.__name__
-  meta = getattr(cls, '__meta')
-  path = meta.get('path')
-  if path:
-      return '%s/%s' % (path, name)
+  ns = get_meta(cls, 'namespace')
+  if ns:
+      return '%s/%s' % (ns, name)
   else:
       return name
 
@@ -764,7 +1199,7 @@ def build_schema(cls, root=False, **kwargs):
 
   if not flatted and not root:
       return {
-          '$ref': '#/' + get_definition_pathname(cls)
+          '$ref': '#/' + get_definition_name(cls)
       }
 
   attributes = list_registered_attr(cls)
@@ -800,14 +1235,13 @@ def build_schema(cls, root=False, **kwargs):
       for signal_ in list_registered_signals(cls):
           if (not flatted) and cls is not signal_.cls:
               continue
-          signals.append(get_definition_pathname(signal_.signal))
+          signals.append(get_definition_name(signal_.signal))
       if len(signals) > 0:
           schema['signals'] = signals
 
   for attribute in attributes:
     mode = attribute.get('mode')
     name = attribute.name
-    data_type = attribute.get('type')
 
     if (not flatted) and cls is not attribute.cls:
       continue
@@ -815,15 +1249,10 @@ def build_schema(cls, root=False, **kwargs):
     if mode == PRIVATE:
       continue
 
-    attr_schema = attribute.toSchema(**kwargs)
+    attr_schema = attribute.toSchema(cls, **kwargs)
 
     if mode != READ_ONLY:
-        if 'default' in attribute:
-            try:
-              attr_schema['default'] = data_type.toJson(data_type.set(attribute.make_default(cls), context=kwargs), context=kwargs)
-            except Exception as e:
-              pass
-        else:
+        if 'default' not in attr_schema:
           required.append(name)
     
     if callable(helper):
@@ -848,6 +1277,9 @@ def build_schema(cls, root=False, **kwargs):
 
           schema['methods'][method.name] = method.toSchema(**kwargs)
 
+  if hasattr(cls, '__schema__'):
+      schema = cls.__schema__(cls, schema, context=kwargs)
+
   if not flatted:
     all_of = []
 
@@ -858,7 +1290,7 @@ def build_schema(cls, root=False, **kwargs):
           continue
       if is_registered_class(b):
         all_of.append({
-          '$ref': '#/' + get_definition_pathname(b)
+          '$ref': '#/' + get_definition_name(b)
         })
     
     if len(all_of) > 0:
@@ -898,24 +1330,346 @@ def build_schema_definitions(**kwargs):
     if cls in skip:
         continue
 
-    meta = getattr(cls, '__meta')
-    path = meta.get('path')
+    ns = get_meta(cls, 'namespace')
 
-    if hasattr(cls, 'toSchema'):
-        schema = cls.toSchema(context=kwargs)
-    else:
-        schema = build_schema(cls, **kwargs)
+    schema = build_schema(cls, **kwargs)
 
     rel_def = definitions
-    if path:
-      for path_item in path.split('/'):
-        if path_item not in rel_def:
-          rel_def[path_item] = OrderedDict()
-        rel_def = rel_def[path_item]
+    if ns:
+      for ns_item in ns.split('/'):
+        if ns_item not in rel_def:
+          rel_def[ns_item] = OrderedDict()
+        rel_def = rel_def[ns_item]
     
     rel_def[cls.__name__] = schema
   
   return definitions
 
 
+class InternalData(Mapping):
 
+  def __init__(self, d, context=None):
+    self.__d = d
+    self.__context = context
+    self.__applied = False
+  
+  def set_to(self, obj):
+    if not self.__applied:
+      for attr in self.__d:
+        data = self.__d[attr]
+        attr.__set_raw__(obj, data)
+      self.__applied = True
+
+  def __iter__(self):
+    return iter([attr.name for attr in self.__d])
+
+  def __len__(self):
+    return len(self.__d)
+
+  def __getitem__(self, key):
+    for attr in self.__d:
+      if attr.name == key:
+        data = self.__d[attr]
+        return attr.__get_post__(data, self.__context)
+    raise KeyError('invalid key: %s' % key)
+
+
+def _set(cls, data=None, context=None, raise_when_missing=False):
+  if isinstance(data, InternalData): return data
+  d = {}
+  for attribute in list_registered_attr(cls):
+    if not isinstance(attribute, ComputedAttr):
+      name = attribute.name
+      if name in data:
+        d[attribute] = attribute.__set_pre__(data[name], context)
+      elif attribute.required and raise_when_missing:
+        raise AttributeError('[%s] attribute "%s" is not set' % (cls.__name__, name))
+
+  return InternalData(d, context)
+
+
+def create(cls, data=None, context=None):
+  cls = _discriminate_cls(cls, data)
+
+  if data is None:
+    data = {}
+  
+  d = _set(cls, data, context, True)
+
+  if hasattr(cls, '__instanciate__'):
+    instance = cls.__instanciate__(cls, d, context)
+  else:
+    instance = cls()
+  
+  if context is not None:
+    set_context(instance, context)
+
+  d.set_to(instance)
+
+  return instance
+
+
+def update(obj, data):
+  cls = type(obj)
+  context = get_context(obj)
+
+  d = _set(cls, data, context, False)
+  d.set_to(obj)
+
+  return obj
+
+
+def init(obj, data):
+  cls = type(obj)
+  context = get_context(obj)
+
+  d = _set(cls, data, context, True)
+
+  set_context(obj, '__init', True)
+  try:
+    d.set_to(obj)
+  finally:
+    set_context(obj, '__init', False)
+
+  return obj
+
+
+def serialize(obj, context=None):
+  j = {}
+  for attribute in list_registered_attr(obj):
+    if not isinstance(attribute, ComputedAttr):
+        name = attribute.name
+        model_key = attribute.get('model_key', name)
+        j[model_key] = attribute.__serialize__(obj, context)
+  return j
+
+
+def unserialize(cls, data, context=None):
+  is_cls = inspect.isclass(cls)
+
+  if not is_cls:
+    # get the context from the instance
+    context = get_context(cls, context)
+  
+  d = {}
+  for attribute in list_registered_attr(cls):
+    if not isinstance(attribute, ComputedAttr):
+      name = attribute.name
+      model_key = attribute.get('model_key', name)
+      if model_key in data:
+        d[attribute] = attribute.__unserialize__(data[model_key], context)
+
+  d = InternalData(d, context)
+
+  if is_cls:
+    cls = _discriminate_cls(cls, d)
+    if hasattr(cls, '__instanciate__'):
+      instance = cls.__instanciate__(cls, d, context)
+    else:
+      instance = cls()
+    if context is not None:
+      set_context(instance, context)
+  else:
+    instance = cls
+
+  d.set_to(instance)
+
+  return instance
+
+
+def toJson(obj, context=None):
+  j = {}
+  for attribute in list_registered_attr(obj):
+    if not isinstance(attribute, ComputedAttr):
+        if attribute.get('mode') == PRIVATE:
+          continue
+        name = attribute.name
+        j[name] = attribute.__get_json__(obj, context)
+  return j
+
+
+def fromJson(cls, data, context=None):
+  is_cls = inspect.isclass(cls)
+
+  if not is_cls:
+    # get the context from the instance
+    context = get_context(cls, context)
+  
+  d = {}
+  for attribute in list_registered_attr(cls):
+    if not isinstance(attribute, ComputedAttr):
+      name = attribute.name
+      if name in data:
+        mode = attribute.get('mode')
+        if mode == PRIVATE or mode == READ_ONLY:
+          raise AttributeError('attribute "%s" is not writable' % name)
+        d[attribute] = attribute.__from_json__(data[name], context)
+  
+  d = InternalData(d, context)
+
+  if inspect.isclass(cls):
+    cls = _discriminate_cls(cls, d)
+    if hasattr(cls, '__instanciate__'):
+      instance = cls.__instanciate__(cls, d, context)
+    else:
+      instance = cls()
+    if context is not None:
+      set_context(instance, context)
+  else:
+    instance = cls
+
+  d.set_to(instance)
+
+  return instance
+
+
+registered_types = []
+
+
+class TypeMetaclass(type):
+    def __new__(meta, name, bases, class_dict):
+        cls = type.__new__(meta, name, bases, class_dict)
+        registered_types.append(cls)
+        return cls
+
+
+class Type (with_metaclass(TypeMetaclass, object)):
+  
+  def __init__(self, **attributes):
+    self._attributes = attributes
+  
+  def __getattr__(self, name):
+    return self._attributes.get(name)
+  
+  def set(self, value, context = None):
+    return value
+
+  def get(self, value, context = None):
+    return value
+  
+  def toJson(self, value, context = None):
+    return value
+  
+  def fromJson(self, value, context = None):
+    return value
+  
+  def serialize(self, value, context = None):
+    return value
+  
+  def unserialize(self, value, context = None):
+    return value
+  
+  def toSchema(self, context = None):
+    s = {}
+    for prop in self._attributes:
+      s[prop] = self._attributes[prop]
+    return s
+
+
+class Class(Type):
+
+  def __init__(self, cls, **attributes):
+    super(Class, self).__init__(**attributes)
+    self.cls = cls
+  
+  def set(self, value, context = None):
+    if not isinstance(value, self.cls):
+      raise ValueError('%s not an instance of %s' % (value, self.cls.__name__))
+    return value
+  
+  def unserialize(self, data, context = None):
+    return unserialize(self.cls, data, context)
+  
+  def serialize(self, value, context = None):
+    return serialize(value, context)
+
+  def fromJson(self, data, context = None):
+    return fromJson(self.cls, data, context)
+
+  def toJson(self, value, context = None):
+    return toJson(value, context)
+  
+  def toSchema(self, context = None):
+    if context is None:
+      context = {}
+    return build_schema(self.cls, **context)
+
+
+_none_type_class = type(None)
+
+
+def convert_type(t):
+  """
+  converts the givent argument to the right type
+  """
+
+  if isinstance(t, Type):
+    return t
+  
+  for regtype in registered_types:
+    if hasattr(regtype, '__synonyms__'):
+      if t in regtype.__synonyms__:
+        return regtype()
+  
+  if inspect.isclass(t):
+    return Class(t)
+
+  for regtype in registered_types:
+    if hasattr(regtype, '__convert__'):
+      try:
+        res = regtype.__convert__(t)
+        if res is not None:
+          return res
+      except:
+        pass
+  
+  raise Exception('unknown type "%s"' % str(t))
+
+
+def get_type_from_value(value):
+
+  for regtype in registered_types:
+    if hasattr(regtype, '__convert_value__'):
+      try:
+        res = regtype.__convert_value__(value)
+        if res is not None:
+          return res
+      except:
+        pass
+
+  v_type = type(value)
+
+  return convert_type(v_type)
+
+
+class Entity(with_metaclass(MetaReg, object)):
+
+    def __init__(self, value=None, context=None):
+        if value is None:
+            value = {}
+        
+        install(self)
+
+        if context is not None:
+          self.__reg__.update_context(context)
+        
+        init(self, value)
+        
+        # call parent constructor
+        super(Entity, self).__init__()
+    
+    def __watch__(self, attribute, val, old_val):
+      print('%s.%s changed %s -> %s' % (type(self).__name__, attribute.name, old_val, val))
+    
+    def __instanciate__(cls, data, context):
+      return cls(data)
+    
+    def __getattr__( self, name):
+      context = self.__reg__.context
+      if name in context:
+        return context[name]
+      raise AttributeError()
+
+
+# import types
+from .type import *

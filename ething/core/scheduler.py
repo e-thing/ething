@@ -1,6 +1,6 @@
 # coding: utf-8
 
-from .ShortId import ShortId
+from .utils import ShortId
 from .Process import Process, BaseProcess
 import inspect
 import time

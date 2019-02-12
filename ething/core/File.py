@@ -3,7 +3,7 @@
 from future.utils import text_type, bord, binary_type
 from .Resource import Resource, ResourceType
 from .utils.date import TzDate, utcnow
-from .entity import *
+from .reg import *
 from .Signal import ResourceSignal
 from .flow import ResourceNode
 import datetime
@@ -36,28 +36,25 @@ class FileDataModified(ResourceSignal):
 @attr('contentModifiedDate', type=TzDate(), default=lambda _: utcnow(), mode=READ_ONLY, description="Last time the content of this file was modified (formatted RFC 3339 timestamp).")
 class File(Resource):
 
-    def toJson(self, **kwargs):
-        o = super(File, self).toJson(**kwargs)
-        o['hasThumbnail'] = bool(self.thumb)
-        return o
+    @attr('hasThumbnail')
+    def hasThumbnail(self):
+        return bool(self.thumb)
 
     def remove(self, removeChildren=False):
 
         # remove the file from GridFS
         if self.content is not None:
-            self.ething.db.removeFile(self.content)
+            self.ething.db.fs.remove(self.content)
 
         # remove any thumbnail
         if self.thumb is not None:
-            self.ething.db.removeFile(self.thumb)
+            self.ething.db.fs.remove(self.thumb)
 
         # remove the resource
         super(File, self).remove(removeChildren)
 
-    def __setattr__(self,    name, value):
-        super(File, self).__setattr__(name, value)
-
-        if name == 'name':
+    def __watch__(self, attr, value, old_value):
+        if attr.name == 'name':
             self.updateMeta(File.META_MIME | File.META_TEXT)
 
     # must be called regularly by the core
@@ -76,7 +73,7 @@ class File(Resource):
 
     def read(self, encoding=None):
         if self.content is not None:
-            contents = self.ething.db.retrieveFile(self.content)
+            contents = self.ething.db.fs[self.content].read()
         else:
             contents = None
 
@@ -98,15 +95,14 @@ class File(Resource):
 
             # remove that file if it exists
             if self.content is not None:
-                self.ething.db.removeFile(self.content)
+                self.ething.db.fs.remove(self.content)
             self.content = None
             self.size = 0
 
             if bytes:
-                self.content = self.ething.db.storeFile('File/%s/content' % self.id, bytes, {
-                    'parent': self.id
-                })
-                self.size = self.ething.db.getFileSize(self.content)
+                f = self.ething.db.fs.create('File/%s/content' % self.id, bytes, parent=self.id)
+                self.content = f.id
+                self.size = f.size
 
             self.contentModifiedDate = utcnow()
 
@@ -196,13 +192,12 @@ class File(Resource):
                         pass
 
                 if self.thumb is not None:
-                    self.ething.db.removeFile(self.thumb)
+                    self.ething.db.fs.remove(self.thumb)
                 self.thumb = None
 
                 if thumb:
-                    self.thumb = self.ething.db.storeFile('App/%s/thumb' % self.id, thumb, {
-                        'parent': self.id
-                    })
+                    f = self.ething.db.fs.create('File/%s/thumb' % self.id, thumb, parent=self.id)
+                    self.thumb = f.id
 
 
     @staticmethod
@@ -219,7 +214,7 @@ class File(Resource):
         return True
 
     def readThumbnail(self):
-        return self.ething.db.retrieveFile(self.thumb) if self.thumb is not None else None
+        return self.ething.db.fs[self.thumb].read() if self.thumb is not None else None
 
     @staticmethod
     def createThumb(imagedata, thumbWidth):
@@ -236,9 +231,10 @@ class File(Resource):
         inBuffer.close()
         return thumbdata
 
-    def _before_insert(self):
-        super(File, self)._before_insert()
-        self.updateMeta(File.META_ALL)
+    def __db_save__(self, insert):
+        super(File, self).__db_save__(insert)
+        if insert:
+            self.updateMeta(File.META_ALL)
 
     def export_instance(self):
         s = super(File, self).export_instance()

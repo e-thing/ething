@@ -1,9 +1,9 @@
 # coding: utf-8
 
-from .dbentity import DbEntity, path, abstract
+from .reg import *
 
 
-@path('interfaces')
+@namespace('interfaces')
 @abstract
-class Interface (DbEntity):
+class Interface (Entity):
     pass

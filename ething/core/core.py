@@ -1,17 +1,17 @@
 # coding: utf-8
 
 from future.utils import string_types
-
+from .db import Db
 from .reg import get_registered_class, meta
 from .Config import CoreConfig
 from .SignalDispatcher import SignalDispatcher
 from .version import __version__
 from .plugin import search_plugin_cls, list_registered_plugins
 from .scheduler import Scheduler
-from .ResourceDbCache import ResourceDbCache
 from .green import mode
 from .Signal import Signal
 from .utils.objectpath import generate_filter, patch_all
+from .Resource import Resource
 
 import logging
 import pytz
@@ -90,40 +90,29 @@ class Core(object):
 
     def _init_database(self, clear_db=False):
         try:
-            db_type = self.config.get('db.type', 'cached_sqlite').lower()
-            if db_type == 'mongodb':
-                from .database.mongodb import MongoDB
-                db_ctor = MongoDB
-            elif db_type == 'unqlite':
-                from .database.unqlitedb import UnQLiteDB
-                db_ctor = UnQLiteDB
-            elif db_type == 'sqlite':
-                from .database.sqlite import SQLite
-                db_ctor = SQLite
-            elif db_type == 'cached_sqlite':
-                from .database.cached_sqlite import CachedSQLite
-                db_ctor = CachedSQLite
+            db_conf = self.config.get('db', {})
+            db_type = db_conf.get('db.type', 'sqlite').lower()
+
+            self.log.info('db type: %s' % (db_type))
+
+            if db_type == 'sqlite':
+                from .database.sqlite import SQLiteDriver
+                driver = SQLiteDriver(database=db_conf.get('database', 'database'))
             else:
                 raise Exception('unknown db_type %s' % db_type)
 
-            self.log.info('db type: %s' % db_type)
-            self.db = db_ctor(self, tz = str(self.local_tz), **(self.config.get('db', {})))
+            self.db = Db(driver, auto_commit=False, cache_delay=3600, auto_connect=True)
 
-            self.db.connect()
+            self.db.os.context.update({'ething': self})
 
             if clear_db:
                 self.log.info('clear db')
                 self.db.clear()
 
-            self.db.init()
-
-            db_version = self.db.kv_get('VERSION')
+            db_version = self.db.store.get('VERSION')
             self.log.info('db version: %s' % (db_version))
             if db_version is None and self.version != 'unknown':
-                self.db.kv_set('VERSION', self.version)
-
-            self.is_db_loaded = False
-            self.resource_db_cache = ResourceDbCache(self)
+                self.db.store['VERSION'] = self.version
 
         except Exception as e:
             self.log.exception('init database error')
@@ -158,9 +147,6 @@ class Core(object):
         if hasattr(self, 'db'):
             self.db.disconnect()
 
-        if hasattr(self, 'resource_db_cache'):
-            self.resource_db_cache.unload()
-
         self.__initialized = False
 
     def restart(self, callback = None):
@@ -179,10 +165,6 @@ class Core(object):
 
             # setup plugins
             self._plugins_call('setup')
-
-            #load the resources from the database
-            self.resource_db_cache.load()
-            self.is_db_loaded = True
 
     def start(self):
         self.init()
@@ -262,7 +244,7 @@ class Core(object):
 
             query = fn
 
-        return self.resource_db_cache.find(query = query, limit = limit, skip = skip, sort = sort)
+        return self.db.os.find(Resource, query = query, limit = limit, skip = skip, sort = sort)
 
     def findOne(self, query=None):
         r = self.find(query, 1)
@@ -271,15 +253,15 @@ class Core(object):
     def get(self, id):
         if not isinstance(id, string_types):
             raise ValueError('id must be a string')
-        return self.resource_db_cache.get(id)
+        return self.db.os.get(Resource, id)
 
     def create(self, cls, attributes):
         if isinstance(cls, string_types):
-            cls = get_registered_class(cls)
-        if cls is not None:
-            return cls.create(attributes, context={'ething': self})
-        else:
-            raise Exception('the type "%s" is unknown' % type)
+            cls_name = cls
+            cls = get_registered_class(cls_name)
+            if cls is None:
+                raise Exception('the type "%s" is unknown' % cls_name)
+        return self.db.os.create(cls, attributes)
 
     def usage(self):
         return {
@@ -301,27 +283,6 @@ class Core(object):
 
         # if hasattr(self, "signalManager"):
         #     self.signalManager.dispatch(signal)
-
-    def repair(self):
-        """
-        repair the database
-        """
-        results = {}
-
-        resources = self.find()
-
-        results['count'] = len(resources)
-
-        i = 0
-        n = len(resources)
-
-        for r in resources:
-            i += 1
-            self.log.info("repairing %d/%d %s %s %s ..." %
-                          (i, n, r.type, r.id, r.name))
-            r.repair()
-
-        return results
 
     def get_plugin(self, name):
         for p in self.plugins:

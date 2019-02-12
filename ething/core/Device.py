@@ -6,7 +6,7 @@ from .Signal import ResourceSignal
 from .flow import ResourceNode
 
 
-@path('devices', True)
+@namespace('devices', True)
 @meta(icon='mdi-battery-50')
 class BatteryLevelChanged(ResourceSignal):
     """
@@ -20,7 +20,7 @@ class BatteryLevelChanged(ResourceSignal):
         }
 
 
-@path('devices', True)
+@namespace('devices', True)
 @meta(icon='mdi-lan-connect')
 class DeviceConnected(ResourceSignal):
     """
@@ -29,7 +29,7 @@ class DeviceConnected(ResourceSignal):
     pass
 
 
-@path('devices', True)
+@namespace('devices', True)
 @meta(icon='mdi-lan-disconnect')
 class DeviceDisconnected(ResourceSignal):
     """

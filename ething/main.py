@@ -251,8 +251,6 @@ def main():
         parser.add_argument('--stop', action='store_true',
                             help='stop any running instance and exit')
 
-    parser.add_argument('--repair', action='store_true',
-                        help='try to repair the database and exit')
     parser.add_argument('--export', type=str,
                         help='dump the database content into the given file')
     parser.add_argument('--import', type=str,
@@ -343,11 +341,6 @@ def main():
             exit()
     else:
         core.init()
-
-    if args.repair:
-        core.log.info("repairing...")
-        core.repair()
-        exit()
 
     if args.export is not None:
         from ething.core.utils.export import export_data

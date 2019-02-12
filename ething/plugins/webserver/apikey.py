@@ -1,7 +1,7 @@
 # coding: utf-8
 
-from ething.core.dbentity import *
-from ething.core.ShortId import ShortId
+from ething.core.db import *
+from ething.core.utils import ShortId
 from ething.core.utils.date import TzDate, utcnow
 from .Scope import ScopeType
 import logging

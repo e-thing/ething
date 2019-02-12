@@ -1,16 +1,15 @@
 # coding: utf-8
 from .Resource import Resource, ResourceType
 from .utils.date import TzDate, utcnow, utcfromtimestamp, datetime_to_array
-from .entity import *
+from .reg import *
 from .Signal import ResourceSignal
 from .Helpers import filter_obj
-from .utils import object_sort
+from .utils import object_sort, ShortId
 from .flow import ResourceNode
 import datetime
 import time
 import re
 from dateutil.parser import parse
-from .ShortId import ShortId
 import csv
 import sys
 import pytz
@@ -102,17 +101,16 @@ class Table(Resource):
         return 'tb.%s' % self.id
 
     @property
-    def db(self):
-        return self.ething.db
-
-    def _insert(self):
-        super(Table, self)._insert()
-        self.db.create_table(self.collectionName)
+    def table(self):
+        _t = getattr(self, '_table', None)
+        if _t is None:
+            _t = self.ething.db[self.collectionName]
+        return _t
 
     def remove(self, removeChildren=False):
 
         # remove all the data from this table
-        self.db.remove_table(self.collectionName)
+        self.ething.db.table_drop(self.collectionName, silent=True)
 
         # remove the resource
         super(Table, self).remove(removeChildren)
@@ -120,8 +118,7 @@ class Table(Resource):
     def clear(self):
         with self:
             # remove all the data from this table
-            self.db.remove_table(self.collectionName)
-            self.db.create_table(self.collectionName)
+            self.table.clear()
 
             self.length = 0
             self.keys = {}
@@ -138,9 +135,8 @@ class Table(Resource):
                 expiratedDate = utcnow() - datetime.timedelta(0, expireAfter)
 
                 rows_to_be_removed = self.select(query='$.date < dateTime(%s)' % datetime_to_array(expiratedDate))
-                removed_rows = self.db.remove_table_rows_by_id(self.collectionName, [row.get('id') for row in rows_to_be_removed], return_old=True)
 
-                self._update_meta(removed_rows = removed_rows)
+                self.remove_rows([row.get('id') for row in rows_to_be_removed])
 
     def _update_meta(self, removed_rows = None, added_rows = None, reset = False):
 
@@ -190,7 +186,8 @@ class Table(Resource):
             keys = {}
             length = 0
 
-            for row in self.db.get_table_rows(self.collectionName):
+
+            for row in self.table.select():
                 for k in row:
                     if k not in keys:
                         keys[k] = 0
@@ -210,15 +207,15 @@ class Table(Resource):
         with self:
             self._update_meta(reset = True)
 
-    def repair(self):
-        self.updateMeta()
-
 
     # return the number of document removed
     def remove_rows(self, row_ids):
         with self:
+            removed_rows = []
+            for row_id in row_ids:
+                removed_rows.append(self.table[row_id])
+                del self.table[row_id]
 
-            removed_rows = self.db.remove_table_rows_by_id(self.collectionName, row_ids, True)
             self._update_meta(removed_rows=removed_rows)
             return len(removed_rows)
 
@@ -341,7 +338,7 @@ class Table(Resource):
                 if l > 0:
 
                     # insert the data
-                    self.db.insert_table_row(self.collectionName, dataArray[0])
+                    self.table.insert(dataArray[0])
 
                     self._update_meta(added_rows = dataArray)
 
@@ -354,7 +351,7 @@ class Table(Resource):
                         remove_length = length - maxLength
 
                         # remove extra rows
-                        rows_to_be_removed = self.db.get_table_rows(self.collectionName, sort = [('date', True)], length = remove_length)
+                        rows_to_be_removed = self.table.select(sort=('date', True), length=remove_length)
                         self.remove_rows([r['id'] for r in rows_to_be_removed])
 
                     doc = self.docSerialize(dataArray[0])
@@ -382,15 +379,15 @@ class Table(Resource):
 
             if length > 0:
                 # insert the data
-                self.db.insert_table_rows(self.collectionName, dataArray)
+                for doc in dataArray:
+                    self.table.insert(doc)
                 self._update_meta(added_rows=dataArray)
                 self.data = dataArray[-1]
 
         return True
 
     def getRow(self, id):
-        r = self.db.get_table_row_by_id(self.collectionName, id)
-        return self.docSerialize(r) if r is not None else None
+        return self.docSerialize(self.table[id])
 
     def replaceRowById(self, row_id, data, invalidFields=INVALID_FIELD_RENAME):
         if data:
@@ -405,10 +402,9 @@ class Table(Resource):
                     # copy id
                     new_row['id'] = row_id
 
-                    # insert the data
-                    old_row = self.db.update_table_row(self.collectionName, new_row, True)
-
-                    if old_row:
+                    if row_id in self.table:
+                        old_row = self.table[row_id]
+                        self.table[row_id] = new_row
                         self._update_meta(removed_rows=[old_row], added_rows=[new_row])
                         return self.docSerialize(new_row)
 
@@ -472,36 +468,32 @@ class Table(Resource):
             else:
                 date_format = None
 
-        if not query:
-            # let the sorting/offset/limit by the DB driver
-            rows = self.db.get_table_rows(self.collectionName, sort = sort, start = start, length = length, keys = fields)
-        else:
-            # retrieve all the data
-            rows = self.db.get_table_rows(self.collectionName)
+        # retrieve all the data
+        rows = self.table.select()
 
-            # apply the filter according to the query string
-            # TODO: what about the date firld ? docSerialize() here ?
+        # apply the filter according to the query string
+        # TODO: what about the date firld ? docSerialize() here ?
 
-            def _filter(r):
-                try:
-                    tree = objectpath.Tree(r)
-                    return bool(tree.execute(query))
-                except:
-                    return False
+        def _filter(r):
+            try:
+                tree = objectpath.Tree(r)
+                return bool(tree.execute(query))
+            except:
+                return False
 
-            rows = [row for row in rows if _filter(row)]
+        rows = [row for row in rows if _filter(row)]
 
-            if sort:
-                sort_attr = sort[0][0]
-                asc = sort[0][1]
-                rows = object_sort(rows, key=lambda doc: doc.get(sort_attr, None), reverse=not asc)
+        if sort:
+            sort_attr = sort[0][0]
+            asc = sort[0][1]
+            rows = object_sort(rows, key=lambda doc: doc.get(sort_attr, None), reverse=not asc)
 
-            if start or length:
-                start = start or 0
-                rows = rows[start:(length + start if length is not None else None)]
+        if start or length:
+            start = start or 0
+            rows = rows[start:(length + start if length is not None else None)]
 
-            if fields is not None:
-                rows = [filter_obj(row, fields) for row in rows]
+        if fields is not None:
+            rows = [filter_obj(row, fields) for row in rows]
 
         return [self.docSerialize(row, date_format) for row in rows]
 

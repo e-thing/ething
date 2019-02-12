@@ -1,5 +1,6 @@
 # coding: utf-8
 from future.utils import string_types, integer_types
+from .reg import Type, convert_type, get_type_from_value, set_dirty, attach, detach
 from collections import MutableSequence, Sequence, MutableMapping, Mapping, OrderedDict
 import re
 import datetime
@@ -8,64 +9,6 @@ import inspect
 import pytz
 
 
-class Type (object):
-  
-  def __init__(self, **attributes):
-    self._attributes = attributes
-  
-  def __getattr__(self, name):
-    return self._attributes.get(name)
-  
-  def set(self, value, context = None):
-    return value
-
-  def get(self, value, context = None):
-    return value
-  
-  def toJson(self, value, context = None):
-    return value
-  
-  def fromJson(self, value, context = None):
-    return value
-  
-  def serialize(self, value, context = None):
-    return value
-  
-  def unserialize(self, value, context = None):
-    return value
-  
-  def toSchema(self, context = None):
-    s = {}
-    for prop in self._attributes:
-      s[prop] = self._attributes[prop]
-    return s
-
-
-class Memory (object):
-
-  def __init__(self):
-    object.__setattr__(self, '_Memory__dirty', False)
-  
-  def _set_dirty(self):
-    object.__setattr__(self, '_Memory__dirty', True)
-    
-  def _is_dirty(self):
-    dirty = self.__dirty
-    if not dirty:
-      for child in self._children():
-        if child._is_dirty():
-          dirty = True
-          break
-    return dirty
-  
-  def _children(self):
-    return []
-  
-  def _clean(self):
-    object.__setattr__(self, '_Memory__dirty', False)
-    for child in self._children():
-      child._clean()
-  
 
 class Nullable (Type):
   """
@@ -188,6 +131,8 @@ class Scalar(Basetype):
 
 
 class Null(Basetype):
+    __synonyms__ = [type(None), 'NoneType', 'null', 'None']
+
     def __init__(self, **attributes):
         super(Null, self).__init__(**attributes)
 
@@ -203,6 +148,8 @@ class Null(Basetype):
 
 class Number(Basetype):
   
+  __synonyms__ = [float, 'float', 'double', 'number']
+
   def __init__(self, min=None, max=None, **attributes):
     super(Number, self).__init__(**attributes)
     self.min = min
@@ -229,7 +176,9 @@ class Number(Basetype):
 
 
 class Integer(Number):
-    
+  
+  __synonyms__ = integer_types + ('int', 'integer', 'long')
+
   def validate(self, value, context = None):
     if not isinstance(value, integer_types):
       raise ValueError('not an integer')
@@ -242,6 +191,8 @@ class Integer(Number):
 
 class Boolean(Basetype):
   
+  __synonyms__ = (bool, 'bool', 'boolean')
+
   def __init__(self, **attributes):
     super(Boolean, self).__init__(**attributes)
     
@@ -281,6 +232,8 @@ class Enum(Basetype):
 
 class String(Basetype):
   
+  __synonyms__ = string_types + ('str', 'string', 'unicode', 'basestring')
+
   def __init__(self, allow_empty=True, regex=None, enum=None, maxLength = None, **attributes):
     super(String, self).__init__(**attributes)
     self.allow_empty = allow_empty
@@ -407,6 +360,8 @@ class Text(String):
 
 class Date(Basetype):
 
+  __synonyms__ = (datetime.datetime, 'datetime', 'date')
+
   def __init__(self, ignore_tz=True, tz=pytz.utc, from_tz=None, to_tz=pytz.utc, **attributes):
     super(Date, self).__init__(**attributes)
     self._ignore_tz = ignore_tz
@@ -483,8 +438,8 @@ class Color(String):
 
 
 class Range(Integer):
-  def __init__(self, mine, max, **attributes):
-    super(Range, self).__init__(min=0, max=9, **attributes)
+  def __init__(self, min, max, **attributes):
+    super(Range, self).__init__(min=min, max=max, **attributes)
 
   def toSchema(self, context = None):
     schema = super(Range, self).toSchema(context)
@@ -684,7 +639,27 @@ class OneOf(OneOfBase):
         return item['type']
 
 
+is_array = lambda x: isinstance(x, Sequence) and not isinstance(x, string_types)
+
 class Array(Type):
+
+  __synonyms__ = (Sequence, 'tuple', 'list', 'set', 'array', 'frozenset')
+
+  @staticmethod
+  def __convert__(t):
+    if is_array(t):
+      l = len(t)
+      if l == 0:
+        return Array()
+      return Array( convert_type(t[0]) )
+  
+  @staticmethod
+  def __convert_value__(v):
+    if is_array(v):
+      l = len(v)
+      if l == 0:
+        return Array()
+      return Array( get_type_from_value(v[0]) )
 
   def __init__(self, item_type = Basetype(), min_len=None, max_len=None, **attributes):
     super(Array, self).__init__(**attributes)
@@ -741,13 +716,12 @@ class Array(Type):
     return schema
 
   
-class M_Array(Memory, MutableSequence):
+class M_Array(MutableSequence):
 
     def __init__(self, dtype, value = None, context = None):
       if value is None:
         value = []
 
-      Memory.__init__(self)
       self._list = list()
       self._type = dtype
       self._context = context
@@ -755,7 +729,9 @@ class M_Array(Memory, MutableSequence):
       self._type.validate(value, context)
 
       for el in value:
-        self._list.append(self._type.item_type.set(el, context))
+        v = self._type.item_type.set(el, context)
+        attach(self, v)
+        self._list.append(v)
 
     def __len__(self): return len(self._list)
 
@@ -768,12 +744,17 @@ class M_Array(Memory, MutableSequence):
             raise ValueError(
                 'the array must contain at least %d items' % (self._type.min_len))
       
+      detach(self, self._list[i])
       del self._list[i]
-      self._set_dirty()
+      set_dirty(self)
 
     def __setitem__(self, i, val):
-      self._list[i] = self._type.item_type.set(val, self._context)
-      self._set_dirty()
+      if i in self._list:
+        detach(self, self._list[i])
+      v = self._type.item_type.set(val, self._context)
+      attach(self, v)
+      self._list[i] = v
+      set_dirty(self)
 
     def insert(self, i, val):
       if self._type.max_len is not None:
@@ -782,17 +763,34 @@ class M_Array(Memory, MutableSequence):
             raise ValueError(
                 'the array must contain at most %d items' % (self._type.max_len))
       
-      self._list.insert(i, self._type.item_type.set(val, self._context))
-      self._set_dirty()
+      v = self._type.item_type.set(val, self._context)
+      attach(self, v)
+      self._list.insert(i, v)
+      set_dirty(self)
 
     def __str__(self):
-        return str(self._list)
-    
-    def _children(self):
-      return [ item for item in self._list if isinstance(item, Memory) ]
+      return str(self._list)
 
 
 class Dict(Type):
+
+  __synonyms__ = (Mapping, 'dict', 'OrderedDict', 'object')
+
+  @staticmethod
+  def __convert__(t):
+    if isinstance(t, Mapping):
+      mapping = {}
+      for key in t:
+        mapping[key] = convert_type(t[key])
+      return Dict(mapping = mapping)
+  
+  @staticmethod
+  def __convert_value__(v):
+    if isinstance(v, Mapping):
+      mapping = {}
+      for key in v:
+        mapping[key] = get_type_from_value(v[key])
+      return Dict(mapping = mapping)
 
   def __init__(self, allow_extra=None, optionals=None, mapping = None, **attributes):
     super(Dict, self).__init__(**attributes)
@@ -881,35 +879,43 @@ class Dict(Type):
     return schema
 
 
-class M_Dict(Memory, MutableMapping):
+class M_Dict(MutableMapping):
 
   def __init__(self, dtype, value = None, context = None):
     if value is None:
       value = []
-    Memory.__init__(self)
+    
     self._store = dict()
     self._type = dtype
     self._context = context
 
     self._type.validate(value, context)
 
-    for i in value:
-      self.__setitem__(i, value[i])
+    for key in value:
+      item_type = self._type.get_type_from_key(key)
+      v = item_type.set(value[key], self._context)
+      self._store[key] = v
+      attach(self, v)
 
   def __getitem__(self, key):
     item_type = self._type.get_type_from_key(key)
     return item_type.get(self._store[key], self._context)
 
   def __setitem__(self, key, value):
+    if key in self._store:
+      detach(self, self._store[key])
     item_type = self._type.get_type_from_key(key)
-    self._store[key] = item_type.set(value, self._context)
-    self._set_dirty()
+    value = item_type.set(value, self._context)
+    self._store[key] = value
+    attach(self, value)
+    set_dirty(self)
 
   def __delitem__(self, key):
     if key not in self._type.optionals:
       raise ValueError("the key '%s' is mandatory" % key)
+    detach(self, self._store[key])
     del self._store[key]
-    self._set_dirty()
+    set_dirty(self)
 
   def __iter__(self):
     return iter(self._store)
@@ -919,168 +925,4 @@ class M_Dict(Memory, MutableMapping):
   
   def __str__(self):
     return str(self._store)
-  
-  def _children(self):
-      return [ item for item in self._store.values() if isinstance(item, Memory) ]
 
-
-class Class (Type):
-
-  def __init__(self, cls, **attributes):
-    super(Class, self).__init__(**attributes)
-    self.cls = cls
-  
-  def set(self, value, context = None):
-    if not isinstance(value, self.cls):
-      raise ValueError('%s not an instance of %s' % (value, self.cls.__name__))
-    return value
-  
-  def unserialize(self, data, context = None):
-    return self.cls.unserialize(data, context)
-  
-  def serialize(self, value, context = None):
-    return value.serialize(context)
-
-  def fromJson(self, data, context = None):
-    return self.cls.fromJson(data, context)
-
-  def toJson(self, value, context = None):
-    return value.toJson(context)
-  
-  def toSchema(self, context = None):
-    return self.cls.toSchema(context)
-
-
-class M_Class(Memory):
-
-  def toJson(self, context = None):
-    raise NotImplementedError()
-  
-  def serialize(self, context = None):
-    raise NotImplementedError()
-  
-  @classmethod
-  def unserialize(cls, data, context = None):
-    raise NotImplementedError()
-  
-  @classmethod
-  def fromJson(cls, data, context = None):
-    raise NotImplementedError()
-  
-  @classmethod
-  def toSchema(cls, context = None):
-    raise NotImplementedError()
-
-_none_type_class = type(None)
-
-def convert_type(t):
-  """
-  converts the givent argument to the right type
-  """
-
-  if isinstance(t, Type):
-    return t
-  
-  if isinstance(t, string_types):
-    if t in _type_map_:
-      return _type_map_[t]
-    else:
-      raise Exception('unknown type "%s"' % t)
-  
-  if inspect.isclass(t):
-
-    if issubclass(t, _none_type_class):
-      return Null()
-    if issubclass(t, bool):
-      return Boolean()
-    if issubclass(t, integer_types):
-      return Integer()
-    if issubclass(t, float):
-      return Number()
-    if issubclass(t, string_types):
-      return String()
-    if issubclass(t, Mapping):
-      return Dict(allow_extra=True)
-    if issubclass(t, datetime.datetime):
-      return Date()
-    if issubclass(t, M_Class):
-      return Class(t)
-    if issubclass(t, Sequence):
-      return Array()
-
-    raise Exception('unknown type "%s"' % t.__name__)
-
-  if isinstance(t, Mapping):
-    mapping = {}
-    for key in t:
-      mapping[key] = convert_type(t[key])
-    return Dict(mapping = mapping)
-
-  if isinstance(t, Sequence):
-    l = len(t)
-    if l == 0:
-      return Array()
-    return Array( convert_type(t[0]) )
-  
-  raise Exception('unknown type "%s"' % str(t))
-
-
-def get_type_from_value(value):
-
-  if isinstance(value, Mapping):
-    mapping = {}
-    for key in value:
-      mapping[key] = get_type_from_value(value[key])
-    return Dict(mapping = mapping)
-  
-  if not isinstance(value, string_types) and isinstance(value, Sequence):
-    l = len(value)
-    if l == 0:
-      return Array()
-    return Array( get_type_from_value(value[0]) )
-
-  v_type = type(value)
-
-  for it in integer_types:
-    if v_type is it:
-      v_type = 'number'
-
-  return convert_type(v_type)
-
-
-_type_map_ = {
-    'int': Integer(),
-    'integer': Integer(),
-    'long': Integer(),
-    'float': Number(),
-    'double': Number(),
-    'number': Number(),
-    'str': String(),
-    'string': String(),
-    'unicode': String(),
-    'basestring': String(),
-    'bool': Boolean(),
-    'boolean': Boolean(),
-    'tuple': Array(),
-    'list': Array(),
-    'set': Array(),
-    'array': Array(),
-    'frozenset': Array(),
-    'dict': Dict(allow_extra=True),
-    'OrderedDict': Dict(allow_extra=True),
-    'object': Dict(allow_extra=True),
-    'datetime': Date(),
-    'date': Date(),
-    'NoneType': Null(),
-    'null': Null(),
-}
-
-
-def merge_context(a, b):
-  if b is None:
-    return a
-  if a is None:
-    return b
-  merged = a.copy()
-  merged.update(b)
-  return merged

@@ -28,7 +28,7 @@ def _test_node(node_cls, attr=None, core=None, **inputs):
         node_cls = get_registered_class(node_cls)
 
     attributes = {
-        'type': get_definition_pathname(node_cls),
+        'type': get_definition_name(node_cls),
         'name': 'foo',
         'id': 'bar'
     }

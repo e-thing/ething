@@ -1,7 +1,7 @@
 # coding: utf-8
 from .dataflow import Flow as _FlowBase, Node as _Node, Debugger, Message
 from ..Resource import Resource, ResourceType
-from ..entity import *
+from ..reg import *
 from ..utils.jsonpath import jsonpath
 from ..utils.objectpath import ObjectPathExp, evaluate
 from ..Process import Process
@@ -15,6 +15,7 @@ import time
 import logging
 import os
 import json
+import abc
 
 
 number_types = integer_types + (float, )
@@ -148,9 +149,7 @@ class TextDescriptor(ValueDescriptor):
     value_type = Text(default='')
 
 
-
 # TODO: JSON
-# TODO: JSONata  cf: https://nodered.org/docs/user-guide/messages#split
 
 
 class TimestampDescriptor(DescriptorData):
@@ -229,13 +228,12 @@ class Wrapper_Node(_Node):
         return self._node.main(**input_msgs)
 
 
-@path('nodes')
-@abstract
+@namespace('nodes')
 @attr('y', type=Number(), default=0)
 @attr('x', type=Number(), default=0)
 @attr('name', type=String(allow_empty=False))
 @attr('color', type=Color(), default='#eeeeee')
-@attr('type', mode=READ_ONLY, type=String(allow_empty=False))
+@discriminate(key='type')
 @attr('id', mode=READ_ONLY, type=String(allow_empty=False))
 class Node(Entity):
 
@@ -247,10 +245,9 @@ class Node(Entity):
         if 'ething' not in context:
             raise Exception('missing "ething" in context')
 
-        Entity.__init__(self, value, context)
+        super(Node, self).__init__(value, context)
 
-        object.__setattr__(self, '_Node__ething', context.get('ething'))
-        object.__setattr__(self, '_Node__log', logging.getLogger('ething.%s.%s' % (self.type.replace('/', '.'), value.get('id'))))
+        self._log = logging.getLogger('ething.%s.%s' % (self.type.replace('/', '.'), value.get('id')))
 
     @property
     def ething(self):
@@ -258,51 +255,33 @@ class Node(Entity):
 
     @property
     def log(self):
-        return self.__log
+        return self._log
 
+    @abc.abstractmethod
     def main(self, **inputs):
         raise NotImplementedError()
 
     def _attach(self, flow, cls=Wrapper_Node):
-        self._m['flow'] = flow
-        self._m['node'] = cls(flow, self)
-        return self._m['node']
+        self._flow = flow
+        self._node = cls(flow, self)
+        return self._node
 
     def emit(self, *args, **kwargs):
-        return self._m['node'].emit(*args, **kwargs)
+        return self._node.emit(*args, **kwargs)
 
     def debug(self, *args, **kwargs):
-        return self._m['node'].debug(*args, **kwargs)
+        return self._node.debug(*args, **kwargs)
 
     @property
     def flow(self):
-        return self._m['flow']
+        return self._flow
 
-    @classmethod
-    def unserialize(cls, data, context=None):
-        type = data.get('type')
-        _cls = get_registered_class(type)
-        if _cls is None:
-            raise Exception('unknown type "%s"' % type)
-        return Entity.unserialize.__func__(_cls, data, context)
-
-    @classmethod
-    def fromJson(cls, data, context=None):
-        type = data.get('type')
-        _cls = get_registered_class(type)
-        if _cls is None:
-            raise Exception('unknown type "%s"' % type)
-        return Entity.fromJson.__func__(_cls, data, context)
-
-    @classmethod
-    def toSchema(cls, context = None):
-        schema = super(Node, cls).toSchema(context)
+    def __schema__(cls, schema, context = None):
         schema['inputs'] = cls.INPUTS
         schema['outputs'] = cls.OUTPUTS
         return schema
 
 
-@abstract
 @attr('resource', type=ResourceType())
 class ResourceNode(Node):
     pass
@@ -402,16 +381,21 @@ class FlowProcess(Process):
 @attr('flow', type=FlowData(), default=empty_flow, description="An object describing a flow.")
 class Flow(Resource):
 
+    def __init__(self, value=None, context=None):
+        super(Flow, self).__init__(value, context)
+        self._process = None
+        self._debuggers = set()
+
     def deploy(self):
         self.stop() # stop any previous flow
         process = FlowProcess(self)
         process.start()
-        self._m['process'] = process
+        self._process = process
 
     def stop(self):
-        if 'process' in self._m:
-            self._m['process'].stop()
-            del self._m['process']
+        if self._process is not None:
+            self._process.stop()
+            del self._process
 
     def remove(self, removeChildren=False):
         self.stop()
@@ -437,39 +421,34 @@ class Flow(Resource):
             flow.connect((flow.get_node(src_id), src_port), (flow.get_node(dest_id), dest_port))
 
         # attach registered debuggers
-        if 'debuggers' in self._m:
-            for d in self._m['debuggers']:
-                flow.attach_debugger(d)
+        for d in self._debuggers:
+            flow.attach_debugger(d)
 
         return flow
 
     def attach_debugger(self, debugger):
         self.log.debug('attach debugger %s', debugger)
 
-        if 'debuggers' not in self._m:
-            self._m['debuggers'] = set()
+        self._debuggers.add(debugger)
 
-        self._m['debuggers'].add(debugger)
-
-        if 'process' in self._m:
-            flow = self._m['process'].flow
+        if self._process is not None:
+            flow = self._process.flow
             if flow is not None:
                 flow.attach_debugger(debugger)
 
     def dettach_debugger(self, debugger):
         self.log.debug('dettach debugger %s', debugger)
 
-        if 'debuggers' in self._m:
-            self._m['debuggers'].remove(debugger)
+        self._debuggers.discard(debugger)
 
-        if 'process' in self._m:
-            flow = self._m['process'].flow
+        if self._process is not None:
+            flow = self._process.flow
             if flow is not None:
                 flow.dettach_debugger(debugger)
 
     def inject(self, node_id, data):
-        if 'process' in self._m:
-            flow = self._m['process'].flow
+        if self._process is not None:
+            flow = self._process.flow
             if flow is not None:
                 nodeflow = flow.get_node(node_id)
                 if nodeflow is not None:
@@ -489,7 +468,7 @@ def _generate_event_node_cls(signal_cls):
     else:
         base_cls = SignalEventNode
 
-    uri = get_definition_pathname(signal_cls)
+    uri = get_definition_name(signal_cls)
     signal_cls_path = uri.split('/')
     signal_cls_name = signal_cls_path.pop()
     signal_cls_path = '/'.join(signal_cls_path)
@@ -504,7 +483,7 @@ def _generate_event_node_cls(signal_cls):
 
     prefix = 'signals/'
     if signal_cls_path.startswith(prefix):
-        path(signal_cls_path[len(prefix):], True)(node_cls)
+        namespace(signal_cls_path[len(prefix):], True)(node_cls)
 
     meta(label=get_meta(signal_cls, 'label'), description=get_meta(signal_cls, 'description'), icon=get_meta(signal_cls, 'icon', 'mdi-signal-variant'), category=get_meta(signal_cls, 'category', 'events'))(node_cls)
 
@@ -520,7 +499,7 @@ class FlowPlugin(Plugin):
 
         # create nodes from registered signals/conditions/actions
 
-        for cls in filter(lambda cls: get_definition_pathname(cls).startswith('signals/') and not is_abstract(cls), list(list_registered_classes())):
+        for cls in filter(lambda cls: get_definition_name(cls).startswith('signals/') and not is_abstract(cls), list(list_registered_classes())):
             _generate_event_node_cls(cls)
 
         self.core.signalDispatcher.bind('ResourceCreated', self._on_resource_created)
@@ -566,17 +545,17 @@ class Input(Node):
 
     def main(self, **inputs):
 
-        self._m['q'] = queue.Queue()
+        self._q = queue.Queue()
 
         while True:
-            data = self._m['q'].get()
+            data = self._q.get()
             self.emit({'payload': data})
 
-        self._m['q'] = None
+        self._q = None
 
 
     def inject(self, flow, data):
-        _q = self._m.get('q')
+        _q = getattr(self, '_q', None)
         if _q is not None:
             _q.put(data)
 

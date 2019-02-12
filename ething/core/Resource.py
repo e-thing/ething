@@ -1,18 +1,17 @@
 # coding: utf-8
 
-from .ShortId import ShortId, Id
-from .dbentity import *
-from .reg import get_definition_pathname
+from .db import *
 from .Signal import ResourceSignal
 from .Interface import Interface
 from .utils.date import TzDate, utcnow
 from .utils.objectpath import evaluate
+from .utils.ShortId import Id
 from collections import Mapping
 import inspect
 import logging
 
 
-@path('resources', True)
+@namespace('resources', True)
 @meta(icon='mdi-plus')
 class ResourceCreated(ResourceSignal):
     """
@@ -21,7 +20,7 @@ class ResourceCreated(ResourceSignal):
     pass
 
 
-@path('resources', True)
+@namespace('resources', True)
 @meta(icon='mdi-delete')
 class ResourceDeleted(ResourceSignal):
     """
@@ -30,7 +29,7 @@ class ResourceDeleted(ResourceSignal):
     pass
 
 
-@path('resources', True)
+@namespace('resources', True)
 @meta(icon='mdi-update')
 class ResourceUpdated(ResourceSignal):
     """
@@ -59,7 +58,7 @@ class ResourceType(Id):
 
     def check_existance(self, value, context = {}):
         ething = context.get('ething')
-        if ething and ething.is_db_loaded:
+        if ething:
             r = ething.get(value)
 
             if r is None:
@@ -78,7 +77,7 @@ class ResourceType(Id):
                 signal = self.must_throw
                 if signal not in signals_thrown_by_resource:
                     raise ValueError("the resource %s does not throw the signal : %s" % (
-                        r, get_definition_pathname(signal)))
+                        r, get_definition_name(signal)))
 
     def fromJson(self, value, context=None):
         value = super(ResourceType, self).fromJson(value, context)
@@ -91,7 +90,7 @@ class ResourceType(Id):
         if self.accepted_types:
             schema['$onlyTypes'] = self.accepted_types
         if self.must_throw:
-            schema['$must_throw'] = get_definition_pathname(self.must_throw)
+            schema['$must_throw'] = get_definition_name(self.must_throw)
         return schema
 
 
@@ -107,30 +106,28 @@ class RDict(Dict):
 
 
 @throw(ResourceCreated, ResourceDeleted, ResourceUpdated)
-@path('resources')
 @attr('public', type=Enum([False, 'readonly', 'readwrite']), default=False, description="False: this resource is not publicly accessible. 'readonly': this resource is accessible for reading by anyone. 'readwrite': this resource is accessible for reading and writing by anyone.")
 @attr('description', type=String(), default='', description="A description of this resource.")
 @attr('data', type=RDict(allow_extra=True), default={}, description="A collection of arbitrary key-value pairs.")
-@attr('createdBy', type=Nullable(Id()), default=None, description="The id of the resource responsible of the creation of this resource, or null.")
+@attr('createdBy', type=Nullable(DBLink('resources/Resource')), default=None, description="The id of the resource responsible of the creation of this resource, or null.")
 @attr('modifiedDate', type=TzDate(), default=lambda _: utcnow(), mode=READ_ONLY, description="Last time this resource was modified")
 @attr('createdDate', type=TzDate(), default=lambda _: utcnow(), mode=READ_ONLY, description="Create time for this resource")
-@attr('type', mode=READ_ONLY, default=lambda cls: get_definition_pathname(cls), description="The type of the resource")
-@attr('id', default=lambda _: ShortId.generate(), mode=READ_ONLY, description="The id of the resource")
 @attr('name', type=String(allow_empty=False, regex='^[a-zA-Z0-9 !#$%&\'()+,\-.;=@^_`{    ]+(\\/[a-zA-Z0-9 !#$%&\'()+,\-.;=@^_`{    ]+)*$'), description="The name of the resource")
-class Resource(DbEntity):
+@discriminate(description="The type of the resource")
+@uid(description="The id of the resource")
+@db(table='resources')
+@namespace('resources')
+class Resource(Entity):
 
     def __init__(self, data, create=True, context=None):
 
         if 'ething' not in context:
             raise Exception('missing "ething" in context')
 
-        if isinstance(data.get('createdBy'), Resource):
-            data['createdBy'] = data.get('createdBy').id
+        super(Resource, self).__init__(data, context)
 
-        super(Resource, self).__init__(data, create, context)
-
-        object.__setattr__(self, '_Resource__ething', context.get('ething'))
-        object.__setattr__(self, '_Resource__log', logging.getLogger('ething.r.%s' % data.get('id')))
+        self._log = logging.getLogger('ething.r.%s' % data.get('id'))
+        self._t = transaction(self)
 
         self.ething.scheduler.bind_instance(self)
 
@@ -161,29 +158,17 @@ class Resource(DbEntity):
 
     @attr(description="An array of classes this resource is based on.")
     def extends(self):
-        return [get_definition_pathname(c) for c in type(self).__mro__ if issubclass(c, DbEntity) and (c is not DbEntity and c is not Resource and c is not Interface)]
-
-    @property
-    def ething(self):
-        return self.__ething
+        return [get_definition_name(c) for c in type(self).__mro__ if issubclass(c, Entity) and (c is not Entity and c is not Resource and c is not Interface)]
 
     @property
     def log(self):
-        return self.__log
-
-    def __getattr__(self,    name):
-        value = super(Resource, self).__getattr__(name)
-
-        if name == 'createdBy' and value is not None:
-            return self.ething.get(value)
-        else:
-            return value
+        return self._log
 
     def isTypeof(self, typename):
         if isinstance(typename, Resource):
-            typename = get_definition_pathname(type(typename))
+            typename = get_definition_name(type(typename))
         elif inspect.isclass(typename) and issubclass(typename, Resource):
-            typename = get_definition_pathname(typename)
+            typename = get_definition_name(typename)
         return typename in self.extends
 
     def dispatchSignal(self, signal, *args, **kwargs):
@@ -200,7 +185,7 @@ class Resource(DbEntity):
 
         return self.ething.find(_filter)
 
-    def removeParent(self):
+    def _removeParent(self):
         with self:
             self.createdBy = None
 
@@ -208,7 +193,7 @@ class Resource(DbEntity):
 
         children = self.children()
 
-        super(Resource, self).remove()
+        remove(self)
 
         self.ething.scheduler.unbind(self)
 
@@ -217,40 +202,34 @@ class Resource(DbEntity):
                 child.remove(removeChildren)
             else:
                 # remove the relationship
-                child.removeParent()
+                child._removeParent()
 
-    def _remove(self, removeChildren=False):
-
-        self.ething.resource_db_cache.remove(self)
-
+    def __db_remove__(self):
         self.log.debug("Resource deleted : %s" % str(self))
-
         self.ething.dispatchSignal(ResourceDeleted(self))
 
-    def _insert(self):
+    def __db_save__(self, insert):
+        if insert:
+            self.ething.dispatchSignal(ResourceCreated(self))
+            self.log.debug("Resource created : %s" % str(self))
+            return
 
-        # insertion
-        self.ething.resource_db_cache.insert(self)
-
-        self.ething.dispatchSignal(ResourceCreated(self))
-
-        self.log.debug("Resource created : %s" % str(self))
-
-    def _before_save(self):
         self.modifiedDate = utcnow()  # update the modification time
 
-    def _save(self, dirty_attrs):
-
+        dirty_attrs = list_dirty_attr(self)
         dirty_keys = [a.name for a in dirty_attrs]
 
         self.log.debug("Resource update : %s , dirtyFields: %s" % (
             str(self), dirty_keys))
 
-        self.ething.resource_db_cache.save(self)
-
         history_data = {}
 
         for a in dirty_attrs:
+            value = getattr(self, a.name)
+
+            if a.get('watch'):
+                self._watch(a.name, value, None)
+
             if a.get('history'):
                 name = a.get('history_name', a.name)
                 if name not in history_data:
@@ -259,7 +238,6 @@ class Resource(DbEntity):
                         'data': {}
                     }
 
-                value = self._get(a)
                 if isinstance(value, Mapping):
                     history_data[name]['data'].update(value)
                 else:
@@ -270,6 +248,9 @@ class Resource(DbEntity):
             self.store(table_name, history_data_item['data'], table_length = history_data_item['length'])
 
         self.ething.dispatchSignal(ResourceUpdated(self, list(dirty_keys)))
+
+    def _watch(self, attr, new_value, old_value):
+        pass
 
     def store(self, table_name, data, name = None, table_length = 5000):
         try:
@@ -300,7 +281,11 @@ class Resource(DbEntity):
     def match(self, expression):
         return bool(evaluate(expression, self.toJson()))
 
-    def repair(self):
-        pass
+    def __enter__(self):
+        self._t.__enter__()
+        return self
+
+    def __exit__(self, type, value, traceback):
+        self._t.__exit__(type, value, traceback)
 
 
