@@ -19,7 +19,8 @@ import threading
 from future.utils import binary_type, string_types
 from .method_override import HTTPMethodOverrideMiddleware
 from .server_utils import ServerException, tb_extract_info, root_path, use_args, use_multi_args
-from .apikey import ApikeyManager, Apikey
+from .apikey import Apikey
+from ething.core.db import db_find, serialize, unserialize, save, toJson, Entity
 from ething.core.plugin import Plugin
 from ething.core.Process import Process
 from ething.core.Helpers import filter_obj
@@ -96,12 +97,14 @@ class WebServer(Plugin):
             del self.process
 
     def export_data(self):
-        return [apikey.export_instance() for apikey in self.app.apikey_manager.list()]
+        return [serialize(apikey) for apikey in db_find(Apikey)]
 
     def import_data(self, data):
-        akm = self.app.apikey_manager
-        for apikey in data:
-            Apikey.import_instance(apikey, context={'manager': akm})
+        for d in data:
+            apikey = unserialize(Apikey, d, {
+                'ething': self.core
+            })
+            save(apikey)
 
 
 class FlaskApp(Flask):
@@ -165,9 +168,6 @@ class FlaskApp(Flask):
 
         for cls in HTTPException.__subclasses__():
             self.register_error_handler(cls, self.error_handler)
-
-        # apikeys manager
-        self.apikey_manager = ApikeyManager(core)
 
         self.running = threading.Event()
 
@@ -248,6 +248,8 @@ class FlaskApp(Flask):
         """JSON serializer for objects not serializable by default json code"""
         if hasattr(obj, 'toJson'):
             return obj.toJson()
+        if isinstance(obj, Entity):
+            return toJson(obj)
         if isinstance(obj, datetime.datetime):
             if obj.tzinfo is None:
                 obj = obj.replace(tzinfo=pytz.utc)

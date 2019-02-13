@@ -228,8 +228,11 @@ class RegObject(object):
   
   def attach(self, child):
     if child is None or isinstance(child, scalar_types): return
-    install(child)._parents.add(self.obj)
-    self._children.add(child)
+    try:
+        install(child)._parents.add(self.obj)
+        self._children.add(child)
+    except AttributeError:
+        return
   
   def detach(self, child):
     reg = install(child, True)
@@ -268,8 +271,11 @@ class RegObjectWithAttr(RegObject):
   
   def attach(self, child, attr):
     if child is None or isinstance(child, scalar_types): return
-    install(child)._parents.add(self.obj)
-    self._children[attr] = child
+    try:
+        install(child)._parents.add(self.obj)
+        self._children[attr] = child
+    except AttributeError:
+        return
   
   def detach(self, child, attr):
     reg = install(child, True)
@@ -543,16 +549,22 @@ class Attribute (RegItemBase):
       except AttributeError:
         pass
       else:
+        reg = install(obj)
+        if reg.context.get('__watching'): return
         data_type = self.get('type')
         if data_type:
           # convert the values
           context = get_context(obj, context)
-          new_val = data_type.get(val, context)
+          val = data_type.get(val, context)
           if old_val is NO_VALUE:
             old_val = None
           else:
             old_val = data_type.get(old_val, context)
-        watcher(self, new_val, old_val)
+        reg.context['__watching'] = True
+        try:
+            watcher(self, val, old_val)
+        finally:
+            del reg.context['__watching']
 
     def __set__(self, obj, val):
       context = get_context(obj)
@@ -1062,7 +1074,7 @@ def is_registered_class(cls):
     return is_meta_class(cls) and registered_cls.get(get_definition_name(cls)) is cls
 
 def get_registered_class(name):
-    return registered_cls.get(name)
+    return registered_cls[name]
 
 def register_class(cls):
     if getattr(cls, '_REGISTER_', True):
@@ -1501,7 +1513,7 @@ def fromJson(cls, data, context=None):
       name = attribute.name
       if name in data:
         mode = attribute.get('mode')
-        if mode == PRIVATE or mode == READ_ONLY:
+        if mode == PRIVATE or (not is_cls and mode == READ_ONLY):
           raise AttributeError('attribute "%s" is not writable' % name)
         d[attribute] = attribute.__from_json__(data[name], context)
   
@@ -1662,7 +1674,7 @@ class Entity(with_metaclass(MetaReg, object)):
       print('%s.%s changed %s -> %s' % (type(self).__name__, attribute.name, old_val, val))
     
     def __instanciate__(cls, data, context):
-      return cls(data)
+      return cls(data, context)
     
     def __getattr__( self, name):
       context = self.__reg__.context

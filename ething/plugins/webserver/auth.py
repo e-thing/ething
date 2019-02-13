@@ -2,6 +2,7 @@
 from future.utils import string_types
 from flask import g, request
 from .session import Session
+from .apikey import Apikey
 from functools import wraps
 import re
 from netaddr import IPAddress
@@ -98,9 +99,10 @@ class Auth(object):
             'HTTP_X_API_KEY') or request.args.get('api_key')
 
         if apikey_value:
-            apikey = self.app.apikey_manager.find(apikey_value)
+            apikeys = self.core.db.os.find(Apikey, lambda x: x.value == apikey_value)
 
-            if apikey:
+            if len(apikeys) > 0:
+                apikey = apikeys[0]
                 return AuthContext('apikey', scope=apikey.scope, resource=None)
             else:
                 raise ServerException('invalid apikey', 401)

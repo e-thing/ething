@@ -3,26 +3,28 @@
 
 from flask import request, Response
 from ..server_utils import *
+from ..apikey import *
 
 
 def install(core, app, auth, **kwargs):
-
-    apikey_manager = app.apikey_manager
 
     @app.route('/api/apikey', methods=['GET', 'POST'])
     @auth.required()
     def apikeys():
         if request.method == 'GET':
-            return app.jsonify(apikey_manager.list())
+            return app.jsonify(core.db.os.find(Apikey))
 
         elif request.method == 'POST':
             attr = request.get_json()
 
             if attr is not None:
 
-                apikey = apikey_manager.create(attr)
+                apikey = fromJson(Apikey, attr, {
+                    'ething': core
+                })
 
                 if apikey:
+                    core.db.os.save(apikey)
                     response = app.jsonify(apikey)
                     response.status_code = 201
                     return response
@@ -34,7 +36,7 @@ def install(core, app, auth, **kwargs):
     @app.route('/api/apikey/<id>', methods=['GET', 'DELETE', 'PATCH'])
     @auth.required()
     def apikey(id):
-        apikey = apikey_manager.get(id)
+        apikey = core.db.os.get(Apikey, id)
 
         if not apikey:
             raise Exception('API key not found')
@@ -48,12 +50,11 @@ def install(core, app, auth, **kwargs):
 
             if isinstance(data, dict):
                 with apikey:
-                    apikey.updateFromJson(data)
-
+                    fromJson(apikey, data)
                     return app.jsonify(apikey)
 
             raise Exception('Invalid request')
 
         elif request.method == 'DELETE':
-            apikey.remove()
+            core.db.os.remove(apikey)
             return '', 204

@@ -141,7 +141,7 @@ class Table(Resource):
     def _update_meta(self, removed_rows = None, added_rows = None, reset = False):
 
         if removed_rows is not None:
-            keys = self.keys
+            keys = dict(self.keys)
             nb = 0
 
             for row in removed_rows:
@@ -154,11 +154,11 @@ class Table(Resource):
 
                 nb += 1
 
-            if nb > 0:
-                self.length = self.length - nb
+            self.keys = keys
+            self.length = self.length - nb
 
         if added_rows is not None:
-            keys = self.keys
+            keys = dict(self.keys)
             nb = 0
 
             for row in added_rows:
@@ -172,8 +172,8 @@ class Table(Resource):
 
                 nb += 1
 
-            if nb > 0:
-                self.length = self.length + nb
+            self.keys = keys
+            self.length = self.length + nb
 
         if reset is True:
             """
@@ -474,14 +474,15 @@ class Table(Resource):
         # apply the filter according to the query string
         # TODO: what about the date firld ? docSerialize() here ?
 
-        def _filter(r):
-            try:
-                tree = objectpath.Tree(r)
-                return bool(tree.execute(query))
-            except:
-                return False
+        if query is not None:
+            def _filter(r):
+                try:
+                    tree = objectpath.Tree(r)
+                    return bool(tree.execute(query))
+                except:
+                    return False
 
-        rows = [row for row in rows if _filter(row)]
+            rows = [row for row in rows if _filter(row)]
 
         if sort:
             sort_attr = sort[0][0]

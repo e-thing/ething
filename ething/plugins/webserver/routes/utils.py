@@ -9,8 +9,7 @@ import string
 from collections import OrderedDict
 from io import open
 
-from ething.core.reg import build_schema_definitions
-from ething.core.dbentity import DbEntity, Entity
+from ething.core.reg import build_schema_definitions, Entity
 from ething.core.utils.export import export_data, import_data
 from ething.core.plugin import Plugin
 
@@ -124,7 +123,7 @@ def install(core, app, auth, **kwargs):
 
         if _meta is None:
             _meta = {
-                "definitions": build_schema_definitions(skip=(DbEntity, Entity)),
+                "definitions": build_schema_definitions(skip=(Entity, )),
                 "scopes": Scope.list,
                 "info": get_info(core),
                 "plugins": OrderedDict(),

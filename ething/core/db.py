@@ -69,6 +69,7 @@ class Db(object):
         self._os = OS(self)
         self._store = Store(self)
         self._connected = False
+        self._commiting = False
 
         if auto_connect:
             self.connect()
@@ -167,16 +168,23 @@ class Db(object):
 
     #
     def commit(self):
-        self.os.commit()
+        if self._commiting: return
 
-        cmds = []
-        while True:
-            try:
-                cmds.append(self._journal.get(False))
-            except Empty:
-                break
-        if cmds:
-            self._driver.commit(cmds)
+        self._commiting = True
+
+        try:
+            self.os.commit()
+
+            cmds = []
+            while True:
+                try:
+                    cmds.append(self._journal.get(False))
+                except Empty:
+                    break
+            if cmds:
+                self._driver.commit(cmds)
+        finally:
+            self._commiting = False
 
     def need_commit(self):
         return not self._journal.empty() or self.os.need_commit()
@@ -629,6 +637,9 @@ class OS(object):
 
   def __getitem__(self, cls):
     return self._get_os(cls)
+
+  def update_context(self, cls, context):
+    return self._get_os(cls).context.update(context)
   
   def find(self, cls, *args, **kwargs):
     return self._get_os(cls).find(*args, **kwargs)
@@ -702,7 +713,6 @@ class OS_item(object):
 
     objs = list(self._ref.values())
 
-    # self.__lock must be release from here
     if query:
         objs = [r for r in objs if query(r)]
 
@@ -723,13 +733,20 @@ class OS_item(object):
     return self._ref[id]
   
   def save(self, obj, force=False):
-    if not is_dirty(obj) and not force:
+
+    reg = install(obj)
+    if '__db' not in reg.context:
+        # no database attached to this instance
+        force=True
+        reg.context['__db'] = self._db
+
+    if not force and not is_dirty(obj):
       return # nothing to save
 
     id = getattr(obj, self._id_key)
 
     if hasattr(obj, '__db_save__'):
-        insert = id in self._ref
+        insert = id not in self._ref
         obj.__db_save__(insert)
 
     # save the ref
@@ -908,25 +925,38 @@ class DBLink(Type):
     def __init__(self, cls, **attributes):
         super(DBLink, self).__init__(**attributes)
         if isinstance(cls, string_types):
-            cls = get_registered_class(cls)
-        self._cls = cls
+            self._clsname = cls
+            self._cls = None
+        else:
+            self._cls = cls
+
+    @property
+    def cls(self):
+        if self._cls is None:
+            self._cls = get_registered_class(self._clsname)
+        return self._cls
+
+    def _db_get(self, value, context=None):
+        if context is not None and '__db' in context:
+            return context['__db'].os.get(self.cls, value)
+        return db_get(self.cls, value)
 
     def set(self, value, context=None):
         if isinstance(value, string_types):
-            value = db_get(self._cls, value)
+            value = self._db_get(value, context)
         return value
 
     def toJson(self, value, context=None):
         return value.id
 
     def fromJson(self, value, context=None):
-        return db_get(self._cls, value)
+        return self._db_get(value, context)
 
     def serialize(self, value, context=None):
         return value.id
 
     def unserialize(self, value, context=None):
-        return db_get(self._cls, value)
+        return self._db_get(value, context)
 
     def toSchema(self, context=None):
         schema = super(DBLink, self).toSchema(context)

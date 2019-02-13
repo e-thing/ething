@@ -2,7 +2,7 @@
 
 from future.utils import string_types
 from .db import Db
-from .reg import get_registered_class, meta
+from .reg import get_registered_class, get_definition_name
 from .Config import CoreConfig
 from .SignalDispatcher import SignalDispatcher
 from .version import __version__
@@ -261,7 +261,8 @@ class Core(object):
             cls = get_registered_class(cls_name)
             if cls is None:
                 raise Exception('the type "%s" is unknown' % cls_name)
-        return self.db.os.create(cls, attributes)
+        attributes['type'] = get_definition_name(cls)
+        return self.db.os.create(Resource, attributes)
 
     def usage(self):
         return {

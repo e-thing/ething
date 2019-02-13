@@ -1,10 +1,7 @@
 # coding: utf-8
 from future.utils import string_types
-
 from flask import request, Response
 from ..server_utils import *
-import csv
-from ething.core.ShortId import ShortId
 
 
 def install(core, app, auth, **kwargs):
@@ -372,7 +369,7 @@ def install(core, app, auth, **kwargs):
 
         if len(ids) > 0:
             for id in ids:
-                if not ShortId.validate(id):
+                if not isinstance(id, string_types):
                     raise Exception('Must be an array of record id.')
 
             nb = r.remove_rows(ids)

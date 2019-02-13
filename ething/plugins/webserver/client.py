@@ -1,6 +1,6 @@
 # coding: utf-8
 from ething.core.flow import *
-from ething.core.dbentity import *
+from ething.core.db import *
 from ething.core.utils.date import TzDate, utcnow
 from flask import request
 
@@ -15,7 +15,8 @@ table_name = 'clients'
 @attr('online', mode=READ_ONLY, default=False)
 @attr('name', type=String(allow_empty=False), default="anonymous")
 @attr('id', mode=READ_ONLY)
-class Client(DbEntity):
+@db(table='clients')
+class Client(Entity):
 
     def __init__(self, data, create=True, context=None):
         if 'app' not in context:
@@ -26,10 +27,9 @@ class Client(DbEntity):
         if 'ething' not in context:
             context['ething'] = app.core # necessary for TzDate.toJson(...)
 
-        super(Client, self).__init__(data, create, context)
+        super(Client, self).__init__(data, context)
 
-        object.__setattr__(self, '_Client__app', app)
-        object.__setattr__(self, '_Client__sio', set())
+        self.__sio = set()
 
     def __str__(self):
         return '<Client id=%s name=%s ip=%s>' % (self.id, self.name, self.ip)
@@ -45,7 +45,7 @@ class Client(DbEntity):
         if sid not in self.__sio:
             self.__sio.add(sid)
             if len(self.__sio) == 1:
-                self.__app.log.debug('client online %s' % self)
+                self.app.log.debug('client online %s' % self)
                 self.online = True
 
     def detach_socket(self, sid):
@@ -53,7 +53,7 @@ class Client(DbEntity):
             self.__sio.remove(sid)
             if len(self.__sio) == 0:
                 self.online = False
-                self.__app.log.debug('client offline %s' % self)
+                self.app.log.debug('client offline %s' % self)
 
     def update_from_request(self):
         """must be executed in a flask context"""
@@ -71,28 +71,10 @@ class Client(DbEntity):
         }
 
         for sid in self.__sio:
-            self.__app.socketio.emit('notification', data, room=sid, namespace='/notifications')
+            self.app.socketio.emit('notification', data, room=sid, namespace='/notifications')
 
-    @property
-    def db(self):
-        return self.__app.core.db
-
-    def _insert(self):
-        self.db.insert_table_row(table_name, self.serialize())
-        self.__app.clients.append(self)
-
-    def _before_save(self):
+    def __db_save__(self, insert):
         self.modifiedDate = utcnow()  # update the modification time
-
-    def _save(self, dirty_attrs):
-        self.db.update_table_row(table_name, self.id, self.serialize(), False)
-
-    def _remove(self):
-        self.db.remove_table_row(table_name, self.id, False)
-        try:
-            self.__app.clients.remove(self)
-        except ValueError:
-            pass
 
 
 def install (app):
@@ -104,15 +86,10 @@ def install (app):
 
     app.notify_client = _notify_client
 
-    app.clients = []
-    db = app.core.db
-    if not db.table_exists(table_name):
-        db.create_table(table_name)
-    for doc in db.get_table_rows(table_name):
-        try:
-            app.clients.append(Client.unserialize(doc, context={'app': app}))
-        except:
-            pass
+    app.core.db.os[Client].context.update({
+        'app': app
+    })
+    app.clients = app.core.db.os.find(Client)
 
     @app.socketio.on('disconnect')
     def client_disc():
@@ -138,7 +115,7 @@ def get_client(app, cid):
 
 
 def create_client(app, cid):
-    return Client.create({'id': cid}, context={'app': app})
+    return app.db.os.create(Client, {'id': cid})
 
 
 def notify_client(app, message, cid=None):

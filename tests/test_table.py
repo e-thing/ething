@@ -65,34 +65,7 @@ def test_table_unicode(core):
     assert len(f.select(query=u'$.name is "rémi"')) == 1
 
 
-@pytest.mark.parametrize("type,database,module", [
-    ("sqlite", ':memory:', 'sqlite3'),
-    ("sqlite", 'dbfile', 'sqlite3'),
-    ("unqlite", ':memory:', 'unqlite'),
-    ("unqlite", 'dbfile', 'unqlite'),
-    ("mongodb", 'db', 'pymongo'),
-    ("cached_sqlite", ':memory:', 'sqlite3'),
-    ("cached_sqlite", 'dbfile', 'sqlite3'),
-])
-def test_benchmark(type, database, module):
-
-    if module:
-        try:
-            importlib.import_module(module)
-        except ImportError:
-            print('module %s not installed, skip test' % module)
-            return
-
-    name = '%s:%s' % (type, database)
-
-    core = Core({
-        'db': {
-            'database': database,
-            'type': type
-        }
-    })
-
-    core.init(clear_db=True)
+def test_benchmark(core):
 
     f = core.create('resources/Table', {
         'name': 'table.tb'
@@ -111,7 +84,7 @@ def test_benchmark(type, database, module):
 
     end = time.time()
 
-    print("[%s] insertion time: %f s" % (name, (end - start) / 100))
+    print("insertion time: %f s" % ((end - start) / 100))
 
     start = time.time()
 
@@ -120,7 +93,7 @@ def test_benchmark(type, database, module):
 
     end = time.time()
 
-    print("[%s] select time: %f s" % (name, (end - start) / 10))
+    print("select time: %f s" % ((end - start) / 10))
 
     start = time.time()
 
@@ -129,7 +102,7 @@ def test_benchmark(type, database, module):
 
     end = time.time()
 
-    print("[%s] filter time: %f s" % (name, (end - start) / 10))
+    print("filter time: %f s" % ((end - start) / 10))
 
     if hasattr(core.db, 'commit'):
         start = time.time()

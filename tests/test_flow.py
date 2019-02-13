@@ -36,7 +36,7 @@ def _test_node(node_cls, attr=None, core=None, **inputs):
     if attr is not None:
         attributes.update(attr)
 
-    node = Node.fromJson(attributes, {
+    node = fromJson(node_cls, attributes, {
         'ething': core
     })._attach(_Flow(), cls=_Test_Node_Wrapper)
 

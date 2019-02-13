@@ -119,7 +119,7 @@ class RDict(Dict):
 @namespace('resources')
 class Resource(Entity):
 
-    def __init__(self, data, create=True, context=None):
+    def __init__(self, data, context=None):
 
         if 'ething' not in context:
             raise Exception('missing "ething" in context')
@@ -287,5 +287,14 @@ class Resource(Entity):
 
     def __exit__(self, type, value, traceback):
         self._t.__exit__(type, value, traceback)
+
+    def export_instance(self):
+        return serialize(self)
+
+    @classmethod
+    def import_instance(cls, data, context=None):
+        instance = unserialize(cls, data, context)
+        core.db.os.save(instance)
+        return instance
 
 

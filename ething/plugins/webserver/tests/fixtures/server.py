@@ -8,7 +8,9 @@ import base64
 
 @pytest.fixture
 def webapp(core):
-    app = FlaskApp(core)
+    app = FlaskApp(core, {
+        'debug': True
+    })
 
     # add a global context
     ctx = app.app_context()

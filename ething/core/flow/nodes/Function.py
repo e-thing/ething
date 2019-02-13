@@ -14,7 +14,6 @@ class Function(Node):
     def main(self, **inputs):
         msg = inputs['default']
         context = self.flow.context
-
         try:
             formatted = []
             for l in self.script.splitlines():
@@ -46,5 +45,5 @@ if res is not None:
                 'context': context
             })
 
-        except:
+        except Exception as e:
             pass
