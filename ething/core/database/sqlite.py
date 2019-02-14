@@ -1,6 +1,7 @@
 # coding: utf-8
 
 from ..db import Driver_Base, LOGGER
+from ..env import USER_DIR
 import threading #from ..utils.lock import SecureLock # todo
 from ..green import make_it_green
 import os
@@ -10,10 +11,6 @@ import time
 import sys
 import sqlite3
 from dateutil import parser
-
-
-USER_DIR = '.' # todo
-gevent_loaded = False # todo
 
 
 if sys.version_info >= (3, 0):
