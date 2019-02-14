@@ -80,7 +80,6 @@ def install(core, app, auth, **kwargs):
               "name":"myfile.txt",
               "data":null,
               "description":null,
-              "expireAfter":null,
               "type":"File",
               "createdBy":{
                "id":"56a7B-5",
@@ -91,8 +90,7 @@ def install(core, app, auth, **kwargs):
               "mime":"text/plain",
               "size":0,
               "location":null,
-              "hasThumbnail":false,
-              "isText": true
+              "hasThumbnail":false
             }
             ```
           parameters:

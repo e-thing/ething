@@ -1,5 +1,5 @@
 # coding: utf-8
-from future.utils import integer_types, string_types
+from future.utils import integer_types, string_types, with_metaclass
 import time
 import logging
 from ..utils import ShortId
@@ -10,6 +10,8 @@ try:
 except ImportError:
     import Queue as queue
 import copy
+from abc import ABCMeta, abstractmethod
+
 
 _LOGGER = logging.getLogger('ething.flow')
 
@@ -22,11 +24,11 @@ RUNNING = 'running'
 
 
 class Flow(object):
-    def __init__(self):
+    def __init__(self, logger=None):
         self._nodes = []
         self._connections = []
         self._event = queue.Queue()
-        self._logger = _LOGGER
+        self._logger = logger or _LOGGER
         self._nodes_data = {}
         self._state = STOPPED
         self._debuggers = set()
@@ -38,6 +40,8 @@ class Flow(object):
         return self._context
 
     def connect(self, src, dest):
+        if self._state == RUNNING:
+            raise Exception('cannot edit flow while running')
         if not isinstance(src, Endpoint):
             node = None
             port = None
@@ -71,9 +75,37 @@ class Flow(object):
 
         self._connections.append(Connection(src, dest))
 
-    def _attach_node(self, node):
+    def add_node(self, node):
+        if self._state == RUNNING:
+            raise Exception('cannot edit flow while running')
         if node not in self._nodes:
             self._nodes.append(node)
+            node._flow = self
+
+    def remove_node(self, node):
+        if self._state == RUNNING:
+            raise Exception('cannot edit flow while running')
+        if node in self._nodes:
+            # remove any connection from/to this node
+            to_remove = set()
+            for c in self._connections:
+                if c.dest.node is node:
+                    to_remove.add(c)
+                elif c.src.node is node:
+                    to_remove.add(c)
+            for c in to_remove:
+                self._connections.remove(c)
+
+            self._nodes.remove(node)
+            node._flow = None
+
+    def clear(self):
+        if self._state == RUNNING:
+            raise Exception('cannot edit flow while running')
+        for node in self._nodes:
+            node._flow = None
+        self._nodes.clear()
+        self._connections.clear()
 
     def get_node(self, node_id):
         for node in self._nodes:
@@ -144,7 +176,7 @@ class Flow(object):
 
         t0 = time.time()
 
-        # clear
+        # clear internal data
         self._nodes_data.clear()
         while True:
             try:
@@ -336,25 +368,21 @@ def _get_pid():
     return str(_pid)
 
 
-class Node(object):
+class Node(with_metaclass(ABCMeta, object)):
 
     INPUTS = None
     OUTPUTS = None
-    COLOR = '#4286f4'
-    ICON = 'mdi-pin'
-    PROPS = None
-    PROPS_REQUIRED = None
 
-    def __init__(self, flow, ntype=None, nid=None, stop_on_error=False, **other):
+    def __init__(self, flow=None, id=None, stop_on_error=False, **other):
         self._flow = flow
-        self._id = nid or ShortId.generate()
-        self._type = ntype or type(self).__name__
+        self._id = id or ShortId.generate()
         self._logger = logging.getLogger('ething.flow.%s' % self._id)
         self._t = {}
         self._emitted = False
-        self.stop_on_error = stop_on_error
+        self._stop_on_error = stop_on_error
 
-        self._flow._attach_node(self)
+        if flow is  not None:
+            flow.add_node(self)
 
     @property
     def id(self):
@@ -364,11 +392,15 @@ class Node(object):
     def flow(self):
         return self._flow
 
+    @property
+    def stop_on_error(self):
+        return self._stop_on_error
+
     def __repr__(self):
         return str(self)
 
     def __str__(self):
-        return '<node id=%s type=%s>' % (self._id, self._type)
+        return '<node id=%s type=%s>' % (self._id, type(self).__name__)
 
     def get(self, port):
         """return stored message from a given port. Return None if no message has been received."""
@@ -391,6 +423,7 @@ class Node(object):
             input_msgs[port] = self.get(port)
         self.run(**input_msgs)
 
+    @abstractmethod
     def main(self, **input_msgs):
         raise NotImplementedError()
 

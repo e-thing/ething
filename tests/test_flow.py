@@ -1,28 +1,19 @@
 # coding: utf-8
-from ething.core.flow.dataflow import Flow as _Flow
 from ething.core.flow import *
 import json
 
 
-class _Test_Node_Wrapper(Wrapper_Node):
+class TestNode(Node):
+    INPUTS = ['default']
 
-    def __init__(self, *args, **kwargs):
-        super(_Test_Node_Wrapper, self).__init__(*args, **kwargs)
-        self.emitted_msg = []
+    def main(self, **inputs):
+        if not hasattr(self, 'list_rec_msg'):
+            setattr(self, 'list_rec_msg', [])
 
-    def emit(self, msg=None, port=None):
-        if port is None:
-            if self.OUTPUTS:
-                port = self.OUTPUTS[0]
-            else:
-                raise Exception('no output port for node %s' % self)
-        if not isinstance(msg, Message):
-            msg = Message(msg)
-
-        self.emitted_msg.append((port, msg))
+        self.list_rec_msg.append(inputs.get('default'))
 
 
-def _test_node(node_cls, attr=None, core=None, **inputs):
+def run_test_node(node_cls, attr=None, core=None, **inputs):
 
     if isinstance(node_cls, string_types):
         node_cls = get_registered_class(node_cls)
@@ -38,17 +29,36 @@ def _test_node(node_cls, attr=None, core=None, **inputs):
 
     node = fromJson(node_cls, attributes, {
         'ething': core
-    })._attach(_Flow(), cls=_Test_Node_Wrapper)
+    })
+
+    flow = FlowBase()
+    flow.add_node(node)
+
+    # patch
+    emitted_msg = []
+
+    def emit(self, msg=None, port=None):
+        if port is None:
+            if self.OUTPUTS:
+                port = self.OUTPUTS[0]
+            else:
+                raise Exception('no output port for node %s' % self)
+        if not isinstance(msg, Message):
+            msg = Message(msg)
+
+        emitted_msg.append((port, msg))
+
+    setattr(node, 'emit', emit.__get__(node, type(node)))
 
     node.main(**inputs)
 
-    return node.emitted_msg
+    return emitted_msg
 
 
 def test_node_Function(core):
     msg = Message(time.time())
 
-    outputs = _test_node('nodes/Function', {
+    outputs = run_test_node('nodes/Function', {
         'script': """
 return msg
 """
@@ -73,10 +83,10 @@ def test_node_JSON(core):
         'payload': json_data
     })
 
-    outputs = _test_node('nodes/JSON', core=core, default=msg0)
+    outputs = run_test_node('nodes/JSON', core=core, default=msg0)
     assert outputs[0][1]['payload'] == json_data
 
-    outputs = _test_node('nodes/JSON', core=core, default=msg1)
+    outputs = run_test_node('nodes/JSON', core=core, default=msg1)
     assert outputs[0][1]['payload'] == data
 
 
@@ -89,7 +99,7 @@ def test_node_Change(core):
             }
         })
 
-    outputs = _test_node('nodes/Change', attr={
+    outputs = run_test_node('nodes/Change', attr={
         'rules': [{
             'type': 'set',
             'value': {
@@ -100,7 +110,7 @@ def test_node_Change(core):
     }, core=core, default=generate_msg())
     assert outputs[0][1]['payload']['foo'] == 'hello'
 
-    outputs = _test_node('nodes/Change', attr={
+    outputs = run_test_node('nodes/Change', attr={
         'rules': [{
             'type': 'delete',
             'value': {
@@ -110,7 +120,7 @@ def test_node_Change(core):
     }, core=core, default=generate_msg())
     assert 'foo' not in outputs[0][1]['payload']
 
-    outputs = _test_node('nodes/Change', attr={
+    outputs = run_test_node('nodes/Change', attr={
         'rules': [{
             'type': 'move',
             'value': {
@@ -122,7 +132,7 @@ def test_node_Change(core):
     assert 'foo' not in outputs[0][1]['payload']
     assert outputs[0][1]['payload']['cp'] == 'bar'
 
-    outputs = _test_node('nodes/Change', attr={
+    outputs = run_test_node('nodes/Change', attr={
         'rules': [{
             'type': 'set',
             'value': {
@@ -146,7 +156,7 @@ def test_node_Switch(core):
         'payload': 'bar'
     })
 
-    outputs = _test_node('nodes/Switch', attr={
+    outputs = run_test_node('nodes/Switch', attr={
         'filter': {
             'type': '==',
             'value': {
@@ -157,7 +167,7 @@ def test_node_Switch(core):
     }, core=core, default=msg)
     assert outputs[0][0] == 'default'
 
-    outputs = _test_node('nodes/Switch', attr={
+    outputs = run_test_node('nodes/Switch', attr={
         'filter': {
             'type': '==',
             'value': {
@@ -168,7 +178,7 @@ def test_node_Switch(core):
     }, core=core, default=msg)
     assert outputs[0][0] == 'fail'
 
-    outputs = _test_node('nodes/Switch', attr={
+    outputs = run_test_node('nodes/Switch', attr={
         'filter': {
             'type': 'type',
             'value': 'string'
@@ -182,7 +192,7 @@ def test_node_Switch(core):
         }
     })
 
-    outputs = _test_node('nodes/Switch', attr={
+    outputs = run_test_node('nodes/Switch', attr={
         'filter': {
             'type': 'expression',
             'value': 'len($.foo) is 3'
@@ -195,7 +205,7 @@ def test_node_Exec(core):
 
     msg = Message()
 
-    outputs = _test_node('nodes/Exec', attr={
+    outputs = run_test_node('nodes/Exec', attr={
         'command': {
             'type': 'string',
             'value': 'ping -n 1 www.google.fr'
@@ -205,7 +215,7 @@ def test_node_Exec(core):
     assert outputs[-1][0] == 'default'
     assert outputs[-1][1]['payload']['code'] == 0
 
-    outputs = _test_node('nodes/Exec', attr={
+    outputs = run_test_node('nodes/Exec', attr={
         'command': {
             'type': 'string',
             'value': 'ping -n 4 www.google.fr'
@@ -221,7 +231,7 @@ def test_node_Http_request(core):
 
     msg = Message()
 
-    outputs = _test_node('nodes/HttpRequest', attr={
+    outputs = run_test_node('nodes/HttpRequest', attr={
         'url': {
             'type': 'string',
             'value': 'http://www.google.fr'
@@ -230,4 +240,45 @@ def test_node_Http_request(core):
 
     assert outputs[0][0] == 'default'
     assert outputs[0][1]['payload']['status_code'] == 200
+
+
+def test_flow(core):
+    
+    n_btn = fromJson('nodes/Button', {
+        'id': 'id_btn',
+        'name': 'btn'
+    }, {
+        'ething': core
+    })
+    
+    n_tst = fromJson('nodes/TestNode', {
+        'id': 'id_tst',
+        'name': 'tst'
+    }, {
+        'ething': core
+    })
+    
+    flow = core.create('resources/Flow', {
+        'name': 'test flow',
+        'nodes': [n_btn, n_tst],
+        'connections': [{
+            'src': ['id_btn', 'default'],
+            'dest': ['id_tst', 'default']
+        }]
+    })
+
+    flow.deploy()
+
+    time.sleep(0.5)
+
+    flow.inject(n_btn)
+
+    time.sleep(0.5)
+
+    assert len(n_tst.list_rec_msg) == 1
+
+    flow.stop()
+
+
+
 

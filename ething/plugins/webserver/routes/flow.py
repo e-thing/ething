@@ -1,6 +1,5 @@
 # coding: utf-8
 
-
 from flask import request, Response
 from ..server_utils import *
 from ething.core.flow import Debugger
@@ -9,19 +8,19 @@ import json
 
 
 class SocketIoDebugger (Debugger):
-    def __init__(self, app, client_id, flowResource):
+    def __init__(self, app, client_id, flow):
         self.app = app
         self.client_id = client_id
-        self.flowResource = flowResource
-        self.flowResourceId = flowResource.id
+        self.flow = flow
+        self.flow_id = flow.id
 
-        flowResource.attach_debugger(self)
+        flow.attach_debugger(self)
 
     def debug(self, obj, node=None):
 
         data = {
             'node': node.id if node is not None else None,
-            'flow_id': self.flowResourceId,
+            'flow_id': self.flow_id,
             'ts': time.time()
         }
 
@@ -41,7 +40,7 @@ class SocketIoDebugger (Debugger):
 
         data = {
             'node': node.id,
-            'flow_id': self.flowResourceId,
+            'flow_id': self.flow_id,
             'ts': time.time()
         }
 
@@ -50,7 +49,7 @@ class SocketIoDebugger (Debugger):
         self.app.socketio.emit('dbg_info', data, namespace='/flow', room=self.client_id)
 
     def destroy(self):
-        self.flowResource.dettach_debugger(self)
+        self.flow.dettach_debugger(self)
 
 
 def install(core, app, auth, **kwargs):
@@ -119,9 +118,9 @@ def install(core, app, auth, **kwargs):
         flow_id = data.get('flow_id')
         client_id = request.sid
 
-        flowResource = app.getResource(flow_id, ['Flow'])
+        flow = app.getResource(flow_id, ['Flow'])
 
-        debugger = SocketIoDebugger(app, client_id, flowResource)
+        debugger = SocketIoDebugger(app, client_id, flow)
         _debuggers.append(debugger)
 
     @app.socketio.on('dbg_close', namespace='/flow')
@@ -129,12 +128,12 @@ def install(core, app, auth, **kwargs):
         flow_id = data.get('flow_id')
         client_id = request.sid
 
-        flowResource = app.getResource(flow_id, ['Flow'])
+        flow = app.getResource(flow_id, ['Flow'])
 
         # find the according debugger
         debugger = None
         for d in _debuggers:
-            if d.client_id == client_id and d.flowResource == flowResource:
+            if d.client_id == client_id and d.flow == flow:
                 debugger = d
                 break
 

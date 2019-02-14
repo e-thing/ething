@@ -14,6 +14,7 @@ class Function(Node):
     def main(self, **inputs):
         msg = inputs['default']
         context = self.flow.context
+
         try:
             formatted = []
             for l in self.script.splitlines():
@@ -36,6 +37,7 @@ if res is not None:
     emit(res)
 
 """
+            print(self.emit)
             exec(formatted, {
                 'msg': msg,
                 'logger': self.log,
@@ -46,4 +48,5 @@ if res is not None:
             })
 
         except Exception as e:
+            raise e
             pass

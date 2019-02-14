@@ -18,14 +18,9 @@ table_name = 'clients'
 @db(table='clients')
 class Client(Entity):
 
-    def __init__(self, data, create=True, context=None):
+    def __init__(self, data, context=None):
         if 'app' not in context:
             raise Exception('missing "app" in context')
-
-        app = context.get('app')
-
-        if 'ething' not in context:
-            context['ething'] = app.core # necessary for TzDate.toJson(...)
 
         super(Client, self).__init__(data, context)
 
@@ -57,7 +52,7 @@ class Client(Entity):
 
     def update_from_request(self):
         """must be executed in a flask context"""
-        with self:
+        with transaction(self):
             self.attach_socket(request.sid)
             user_agent = request.user_agent
             self.online = True
@@ -86,7 +81,7 @@ def install (app):
 
     app.notify_client = _notify_client
 
-    app.core.db.os[Client].context.update({
+    app.core.db.os[Client].update_context({
         'app': app
     })
     app.clients = app.core.db.os.find(Client)
@@ -115,7 +110,7 @@ def get_client(app, cid):
 
 
 def create_client(app, cid):
-    return app.db.os.create(Client, {'id': cid})
+    return app.core.db.os.create(Client, {'id': cid})
 
 
 def notify_client(app, message, cid=None):

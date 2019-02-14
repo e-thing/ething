@@ -61,7 +61,6 @@ class AppendData(ResourceNode):
 
 @throw(TableDataAdded)
 @attr('maxLength', type=Nullable(Integer(min=1)), default=5000, description="The maximum of records allowed in this table. When this number is reached, the oldest records will be removed to insert the new ones (first in, first out). Set it to null or 0 to disable this feature.")
-@attr('expireAfter', type=Nullable(Integer(min=1)), default=None, description="The amount of time (in seconds) after which a records will be automatically removed. Set it to null or 0 to disable this feature.")
 @attr('length', default=0, mode=READ_ONLY, description="The number of records in the table")
 @attr('keys', type=Dict(), default={}, mode=READ_ONLY, description="A key/value object where the keys correspond to the fields available in this table, and the corresponding value is the number of rows where the field is set. __The default keys ('id' and 'date' are not listed)__")
 @attr('contentModifiedDate', type=TzDate(), default=lambda _: utcnow(), mode=READ_ONLY, description="Last time the content of this table was modified.")
@@ -69,8 +68,6 @@ class Table(Resource):
 
     FIELD_VALID_CHAR = 'a-zA-Z0-9_\-'
     VALIDATE_FIELD = '^['+FIELD_VALID_CHAR+']{1,64}$'
-
-    reservedKeys = ['_id'] # mongodb reserved key
 
     INVALID_FIELD_NONE = 0
     INVALID_FIELD_RENAME = 1
@@ -123,20 +120,6 @@ class Table(Resource):
             self.length = 0
             self.keys = {}
             self.contentModifiedDate = utcnow()
-
-    # is called regularly
-
-    def checkExpiredData(self):
-
-        with self:
-            # remove the expired data in the current table
-            expireAfter = self.expireAfter
-            if expireAfter is not None:
-                expiratedDate = utcnow() - datetime.timedelta(0, expireAfter)
-
-                rows_to_be_removed = self.select(query='$.date < dateTime(%s)' % datetime_to_array(expiratedDate))
-
-                self.remove_rows([row.get('id') for row in rows_to_be_removed])
 
     def _update_meta(self, removed_rows = None, added_rows = None, reset = False):
 
@@ -199,7 +182,6 @@ class Table(Resource):
 
             self.length = length
             self.keys = keys
-            self.data = {}
 
         self.contentModifiedDate = utcnow()
 
@@ -276,20 +258,6 @@ class Table(Resource):
                             raise Exception(
                                 'invalid key "%s", must only contain alphanumeric, underscore or dashes characters. Keys must not be empty' % k)
 
-                    if k in Table.reservedKeys:
-
-                        if invalidFields == Table.INVALID_FIELD_SKIP:
-                            del data[k]
-
-                        elif invalidFields == Table.INVALID_FIELD_RENAME:
-                            del data[k]
-                            k = k + '_'
-                            data[k] = v
-
-                        else:
-                            raise Exception('invalid key "%s", must not be one of the following values: %s' % (
-                                k, ",".join(Table.reservedKeys)))
-
                     if k == 'date':
                         # check the format
                         try:
@@ -342,8 +310,6 @@ class Table(Resource):
 
                     self._update_meta(added_rows = dataArray)
 
-                    self.data = dataArray[0]
-
                     # remove extra rows
                     length = self.length
                     maxLength = self.maxLength
@@ -382,7 +348,6 @@ class Table(Resource):
                 for doc in dataArray:
                     self.table.insert(doc)
                 self._update_meta(added_rows=dataArray)
-                self.data = dataArray[-1]
 
         return True
 
@@ -581,8 +546,8 @@ class Table(Resource):
 
         return content
 
-    def export_instance(self):
-        s = super(Table, self).export_instance()
+    def __export__(self, core):
+        s = super(Table, self).__export__(core)
         d = self.select()
         return {
             'object': s,
@@ -590,8 +555,8 @@ class Table(Resource):
         }
 
     @classmethod
-    def import_instance(cls, data, context = None):
-        instance = super(Table, cls).import_instance(data.get('object'), context)
+    def __import__(cls, data, core):
+        instance = super(Table, cls).__import__(data.get('object'), core)
         instance.importData(data.get('content'))
         return instance
 

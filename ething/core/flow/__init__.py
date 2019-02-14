@@ -1,5 +1,5 @@
 # coding: utf-8
-from .dataflow import Flow as _FlowBase, Node as _Node, Debugger, Message
+from .dataflow import Flow as FlowBase, Node as NodeBase, Debugger, Message
 from ..Resource import Resource, ResourceType
 from ..reg import *
 from ..utils.jsonpath import jsonpath
@@ -187,47 +187,6 @@ class Descriptor(OneOf):
         super(Descriptor, self).__init__(items, **attributes)
 
 
-class _Flow(_FlowBase):
-
-    def __init__(self, resource):
-        super(_Flow, self).__init__()
-        self.__resource = resource
-
-    @property
-    def resource(self):
-        return self.__resource
-
-    def run(self):
-        self.resource.data = {}
-        return super(_Flow, self).run()
-
-
-class Wrapper_Node(_Node):
-
-    def __init__(self, flow, node):
-        self._node = node
-        super(Wrapper_Node, self).__init__(flow, nid=node.id)
-        self.INPUTS = node.INPUTS
-        self.OUTPUTS = node.OUTPUTS
-        self._override_receive = hasattr(self._node, 'receive')
-
-    @property
-    def node(self):
-        return self._node
-
-    def receive(self, ports):
-        if self._override_receive:
-            return self._node.receive(ports)
-        else:
-            return super(Wrapper_Node, self).receive(ports)
-
-    def __str__(self):
-        return '<node id=%s name=%s type=%s>' % (self._id, self._node.name, self._node.type)
-
-    def main(self, **input_msgs):
-        return self._node.main(**input_msgs)
-
-
 @namespace('nodes')
 @attr('y', type=Number(), default=0)
 @attr('x', type=Number(), default=0)
@@ -235,7 +194,7 @@ class Wrapper_Node(_Node):
 @attr('color', type=Color(), default='#eeeeee')
 @discriminate(key='type')
 @attr('id', mode=READ_ONLY, type=String(allow_empty=False))
-class Node(Entity):
+class Node(Entity, NodeBase):
 
     INPUTS = None
     OUTPUTS = None
@@ -245,9 +204,8 @@ class Node(Entity):
         if 'ething' not in context:
             raise Exception('missing "ething" in context')
 
-        super(Node, self).__init__(value, context)
-
-        self._log = logging.getLogger('ething.%s.%s' % (self.type.replace('/', '.'), value.get('id')))
+        Entity.__init__(self, value, context)
+        NodeBase.__init__(self, id=self.id)
 
     @property
     def ething(self):
@@ -255,26 +213,7 @@ class Node(Entity):
 
     @property
     def log(self):
-        return self._log
-
-    @abc.abstractmethod
-    def main(self, **inputs):
-        raise NotImplementedError()
-
-    def _attach(self, flow, cls=Wrapper_Node):
-        self._flow = flow
-        self._node = cls(flow, self)
-        return self._node
-
-    def emit(self, *args, **kwargs):
-        return self._node.emit(*args, **kwargs)
-
-    def debug(self, *args, **kwargs):
-        return self._node.debug(*args, **kwargs)
-
-    @property
-    def flow(self):
-        return self._flow
+        return self._logger
 
     def __schema__(cls, schema, context = None):
         schema['inputs'] = cls.INPUTS
@@ -334,131 +273,60 @@ connection_type = Dict(
 )
 
 
-class FlowData(Dict):
-    def __init__(self, **attributes):
-        super(FlowData, self).__init__(
-            allow_extra=False,
-            mapping={
-                'nodes': Array(item_type=Node),
-                'connections': Array(item_type=connection_type),
-            },
-            optionals=['nodes', 'connections'],
-            **attributes
-        )
-
-
-empty_flow = {
-    'nodes': [],
-    'connections': []
-}
-
-class FlowProcess(Process):
-
-    def __init__(self, flow_resource):
-        super(FlowProcess, self).__init__(name='flow')
-        self._flow_resource = flow_resource
-        self._flow_instance = None
-
-    @property
-    def flow(self):
-        return self._flow_instance
-
-    def setup(self):
-        self._flow_instance = self._flow_resource.parseFlow()
-
-    def main(self):
-        self._flow_instance.run()
-
-    def end(self):
-        self._flow_instance = None
-
-    def stop(self, timeout=None):
-        if self._flow_instance is not None:
-            self._flow_instance.stop()
-        super(FlowProcess, self).stop(timeout)
-
-
-@attr('flow', type=FlowData(), default=empty_flow, description="An object describing a flow.")
-class Flow(Resource):
+@attr('nodes', type=Array(item_type=Node), default=[], description="The list of nodes.")
+@attr('connections', type=Array(item_type=connection_type), default=[], description="A list of connections")
+class Flow(Resource, FlowBase):
 
     def __init__(self, value=None, context=None):
-        super(Flow, self).__init__(value, context)
+        Resource.__init__(self, value, context)
+        FlowBase.__init__(self, logger=self.log)
+
         self._process = None
-        self._debuggers = set()
 
     def deploy(self):
         self.stop() # stop any previous flow
-        process = FlowProcess(self)
-        process.start()
-        self._process = process
+        self.clear()
 
-    def stop(self):
-        if self._process is not None:
-            self._process.stop()
-            del self._process
+        if len(self.nodes) == 0:
+            return
 
-    def remove(self, removeChildren=False):
-        self.stop()
-        super(Flow, self).remove(removeChildren)
+        # rebuild the flow
+        for node in self.nodes:
+            self.add_node(node)
 
-    def parseFlow(self):
-        flow_data = self.flow
-
-        nodes_data = flow_data.get('nodes', [])
-        connections_data = flow_data.get('connections', [])
-
-        flow = _Flow(self)
-
-        for node_data in nodes_data:
-            node_data._attach(flow)
-
-        for connection_data in connections_data:
+        for connection_data in self.connections:
             src_id = connection_data['src'][0]
             src_port = connection_data['src'][1]
             dest_id = connection_data['dest'][0]
             dest_port = connection_data['dest'][1]
 
-            flow.connect((flow.get_node(src_id), src_port), (flow.get_node(dest_id), dest_port))
+            self.connect((src_id, src_port), (dest_id, dest_port))
 
-        # attach registered debuggers
-        for d in self._debuggers:
-            flow.attach_debugger(d)
+        process = Process(name='flow.%s' % self.id, target=self.run)
+        process.start()
+        self._process = process
 
-        return flow
-
-    def attach_debugger(self, debugger):
-        self.log.debug('attach debugger %s', debugger)
-
-        self._debuggers.add(debugger)
-
+    def stop(self):
         if self._process is not None:
-            flow = self._process.flow
-            if flow is not None:
-                flow.attach_debugger(debugger)
+            FlowBase.stop(self)
+            self._process.stop()
+            self._process = None
 
-    def dettach_debugger(self, debugger):
-        self.log.debug('dettach debugger %s', debugger)
+    def remove(self, removeChildren=False):
+        self.stop()
+        Resource.remove(self, removeChildren)
 
-        self._debuggers.discard(debugger)
+    def inject(self, node, data=None):
+        if isinstance(node, string_types):
+            node_id = node
+            node = self.get_node(node_id)
+            if node is None:
+                raise Exception('unknown node id=%s' % node_id)
 
-        if self._process is not None:
-            flow = self._process.flow
-            if flow is not None:
-                flow.dettach_debugger(debugger)
-
-    def inject(self, node_id, data):
-        if self._process is not None:
-            flow = self._process.flow
-            if flow is not None:
-                nodeflow = flow.get_node(node_id)
-                if nodeflow is not None:
-                    node = nodeflow.node
-                    if isinstance(node, Input):
-                        node.inject(flow, data)
-                    else:
-                        raise Exception('node %s is not an input' % node)
-                else:
-                    raise Exception('unknown node id=%s' % node_id)
+        if isinstance(node, Input):
+            node.inject(data)
+        else:
+            raise Exception('node %s is not an input' % node)
 
 
 def _generate_event_node_cls(signal_cls):
@@ -554,7 +422,7 @@ class Input(Node):
         self._q = None
 
 
-    def inject(self, flow, data):
+    def inject(self, data):
         _q = getattr(self, '_q', None)
         if _q is not None:
             _q.put(data)

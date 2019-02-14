@@ -57,7 +57,6 @@ def install(core, app, auth, **kwargs):
               "data":null,
               "description":null,
               "maxLength":null,
-              "expireAfter":null,
               "type":"Table",
               "createdBy":null,
               "createdDate":"2016-02-12T14:49:30+00:00",

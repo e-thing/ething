@@ -114,6 +114,13 @@ class Core(object):
             if db_version is None and self.version != 'unknown':
                 self.db.store['VERSION'] = self.version
 
+            if not self.db.auto_commit:
+                # commit every secondes
+                self.scheduler.setInterval(db_conf.get('commit_interval', 1), self.db.commit, condition=lambda _: self.db.connected and self.db.need_commit())
+
+            # run garbage collector regularly
+            self.scheduler.setInterval(300, self.db.run_garbage_collector, condition=lambda _: self.db.connected)
+
         except Exception as e:
             self.log.exception('init database error')
             raise e
@@ -157,7 +164,6 @@ class Core(object):
         if not self.__initialized:
             self.__initialized = True
 
-            self.scheduler.at(self._tick, hour='*', min='*', thread=False)
             self.signalDispatcher.bind('ConfigUpdated', self._on_config_updated)
 
             # load db
@@ -202,9 +208,6 @@ class Core(object):
         self.start()
         self.loop_forever()
         self.stop()
-    
-    def _tick(self):
-        self.dispatchSignal('Tick')
 
     def _on_config_updated(self, signal):
         for key in signal.updated_keys:

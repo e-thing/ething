@@ -639,7 +639,7 @@ class OS(object):
     return self._get_os(cls)
 
   def update_context(self, cls, context):
-    return self._get_os(cls).context.update(context)
+    return self._get_os(cls).update_context(context)
   
   def find(self, cls, *args, **kwargs):
     return self._get_os(cls).find(*args, **kwargs)
@@ -676,6 +676,7 @@ class OS_item(object):
     self._ref = dict()
     self._dirty_obj = set() # only if auto_commit is False
     self._loaded = False
+    self._saving = set()
     self._table_name = get_meta(cls, 'table', cls.__name__)
     self._id_key = get_meta(cls, 'id_key', 'id')
     if not has_registered_attr(cls, self._id_key):
@@ -689,9 +690,12 @@ class OS_item(object):
       c.update(self._context)
       return c
 
+  def update_context(self, c):
+      self._context.update(c)
+
   def create(self, data=None):
     obj = create(self._cls, data, self.context)
-    self.save(obj, force=True)
+    self.save(obj)
     return obj
   
   def _load(self):
@@ -705,7 +709,9 @@ class OS_item(object):
       id = obj.id
       if id not in self._ref: # do not erase previous reference
         self._ref[id] = obj
-    
+
+    LOGGER.debug('[%s] %d items loaded' % (self._cls.__name__, len(self._ref)))
+
     self._loaded = True
 
   def find(self, query=None, sort=None, skip=None, limit=None):
@@ -732,22 +738,32 @@ class OS_item(object):
     self._load()
     return self._ref[id]
   
-  def save(self, obj, force=False):
+  def save(self, obj, force=False, _create=False):
+
+    id = getattr(obj, self._id_key)
+
+    if id in self._saving:
+        return
 
     reg = install(obj)
     if '__db' not in reg.context:
         # no database attached to this instance
-        force=True
         reg.context['__db'] = self._db
 
-    if not force and not is_dirty(obj):
+    _create = id not in self._ref
+
+    if not _create and not force and not is_dirty(obj):
       return # nothing to save
 
-    id = getattr(obj, self._id_key)
-
     if hasattr(obj, '__db_save__'):
-        insert = id not in self._ref
-        obj.__db_save__(insert)
+        # be careful here, because save() may be called again
+        self._saving.add(id)
+        try:
+            obj.__db_save__(_create)
+        finally:
+            self._saving.discard(id)
+
+    LOGGER.debug('[%s] saving %s' % (self._cls.__name__, obj))
 
     # save the ref
     self._ref[id] = obj

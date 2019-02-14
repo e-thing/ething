@@ -60,7 +60,7 @@ def export_data(core):
             'id': r.id,
             'type': r.type,
             'name': r.name,
-            'resource': r.export_instance()
+            'resource': r.__export__(core)
         })
     data['resources'] = resources
 
@@ -97,7 +97,7 @@ def import_data(core, data, import_config=False):
         if cls:
             core.log.info('importing resource id=%s name=%s type=%s' % (r.get('id'), r.get('name', '?'), r.get('type')))
             try:
-                cls.import_instance(r.get('resource'), context={'ething': core})
+                cls.__import__(r.get('resource'), core)
             except:
                 core.log.exception('resource import error id=%s name=%s type=%s' % (r.get('id'), r.get('name', '?'), r.get('type')))
 

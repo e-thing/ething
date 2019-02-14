@@ -132,6 +132,7 @@ def discriminate(key='type', codec=None, **extra):
     def d(cls):
         set_meta(cls, 'discriminate_key', key)
         set_meta(cls, 'discriminate_codec', codec)
+        set_meta(cls, 'discriminate_cls', cls)
 
         attr(key, type=String(allow_empty=False), mode=READ_ONLY, default=codec[0], **extra)(cls)
 
@@ -145,11 +146,19 @@ def _discriminate_cls(cls, data):
     if key is None:
         return cls
     codec = get_meta(cls, 'discriminate_codec')
-    s = data[key]
-    _cls = codec[1](s)
-    if _cls is None:
-        raise Exception('Unable to associate a class to %s' % s)
-    return _cls
+    try:
+        s = data[key]
+    except KeyError:
+        base_cls = get_meta(cls, 'discriminate_cls')
+        if base_cls is not cls and issubclass(cls, base_cls) and not is_abstract(cls):
+            # fall back to the given class
+            return cls
+        raise Exception('the attribute "%s" is mandatory' % key)
+    else:
+        _cls = codec[1](s)
+        if _cls is None:
+            raise Exception('Unable to associate a class to %s' % s)
+        return _cls
 
 
 def abstract(cls):
@@ -198,8 +207,8 @@ def set_context(obj, *args, **kwargs):
 class RegObject(object):
   def __init__(self, obj):
     self.obj = obj
-    self._parents = set()
-    self._children = set()
+    self._parents = list()
+    self._children = list()
     self._dirty = False
     self.data = dict()
     self._context = dict()
@@ -229,16 +238,16 @@ class RegObject(object):
   def attach(self, child):
     if child is None or isinstance(child, scalar_types): return
     try:
-        install(child)._parents.add(self.obj)
-        self._children.add(child)
+        install(child)._parents.append(self.obj)
+        self._children.append(child)
     except AttributeError:
         return
   
   def detach(self, child):
     reg = install(child, True)
     if reg is None: return
-    reg._parents.discard(self.obj)
-    self._children.discard(child)
+    reg._parents.remove(self.obj)
+    self._children.remove(child)
 
   @property
   def dirty(self):
@@ -272,7 +281,7 @@ class RegObjectWithAttr(RegObject):
   def attach(self, child, attr):
     if child is None or isinstance(child, scalar_types): return
     try:
-        install(child)._parents.add(self.obj)
+        install(child)._parents.append(self.obj)
         self._children[attr] = child
     except AttributeError:
         return
@@ -280,7 +289,7 @@ class RegObjectWithAttr(RegObject):
   def detach(self, child, attr):
     reg = install(child, True)
     if reg is None: return
-    reg._parents.discard(self.obj)
+    reg._parents.remove(self.obj)
     self._children.pop(attr, None)
 
   def set_dirty(self, child=None, attr=None):
@@ -463,7 +472,8 @@ class RegItemBase (MutableMapping):
           if data_type:
             d = data_type.toJson(d, context=kwargs)
           schema['default'] = d
-        except:
+        except Exception as e:
+          # todo: print some warning somewhere
           pass
 
       if 'description' in self and self['description']:
@@ -957,6 +967,7 @@ class Method(RegItemBase):
                   default_value = arg_type.toJson(default_value, context=kwargs)
                 arg_schema['default'] = default_value
               except Exception:
+                # todo: warn somehow
                 pass
 
             arguments[arg_name] = arg_schema
@@ -1401,6 +1412,9 @@ def _set(cls, data=None, context=None, raise_when_missing=False):
 
 
 def create(cls, data=None, context=None):
+  if isinstance(cls, string_types):
+    cls = get_registered_class(cls)
+
   cls = _discriminate_cls(cls, data)
 
   if data is None:
@@ -1457,6 +1471,9 @@ def serialize(obj, context=None):
 
 
 def unserialize(cls, data, context=None):
+  if isinstance(cls, string_types):
+    cls = get_registered_class(cls)
+
   is_cls = inspect.isclass(cls)
 
   if not is_cls:
@@ -1492,15 +1509,18 @@ def unserialize(cls, data, context=None):
 def toJson(obj, context=None):
   j = {}
   for attribute in list_registered_attr(obj):
-    if not isinstance(attribute, ComputedAttr):
-        if attribute.get('mode') == PRIVATE:
-          continue
-        name = attribute.name
-        j[name] = attribute.__get_json__(obj, context)
+    if attribute.get('mode') == PRIVATE:
+      continue
+    name = attribute.name
+    j[name] = attribute.__get_json__(obj, context)
   return j
 
 
 def fromJson(cls, data, context=None):
+
+  if isinstance(cls, string_types):
+    cls = get_registered_class(cls)
+
   is_cls = inspect.isclass(cls)
 
   if not is_cls:
@@ -1670,8 +1690,8 @@ class Entity(with_metaclass(MetaReg, object)):
         # call parent constructor
         super(Entity, self).__init__()
     
-    def __watch__(self, attribute, val, old_val):
-      print('%s.%s changed %s -> %s' % (type(self).__name__, attribute.name, old_val, val))
+    #def __watch__(self, attribute, val, old_val):
+    #  print('%s.%s changed %s -> %s' % (type(self).__name__, attribute.name, old_val, val))
     
     def __instanciate__(cls, data, context):
       return cls(data, context)

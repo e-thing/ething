@@ -2,6 +2,7 @@
 
 from flask import request, Response
 from ..server_utils import *
+from ething.core.reg import fromJson
 from future.utils import iteritems
 
 
@@ -148,7 +149,7 @@ def install(core, app, auth, **kwargs):
                 
                 with r:
 
-                    r.updateFromJson(data)
+                    fromJson(r, data)
 
                     return app.jsonify(r)
 

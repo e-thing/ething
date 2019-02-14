@@ -288,12 +288,12 @@ class Resource(Entity):
     def __exit__(self, type, value, traceback):
         self._t.__exit__(type, value, traceback)
 
-    def export_instance(self):
+    def __export__(self, core):
         return serialize(self)
 
     @classmethod
-    def import_instance(cls, data, context=None):
-        instance = unserialize(cls, data, context)
+    def __import__(cls, data, core):
+        instance = unserialize(cls, data, {"ething": core})
         core.db.os.save(instance)
         return instance
 

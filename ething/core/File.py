@@ -27,12 +27,10 @@ class FileDataModified(ResourceSignal):
 
 
 @throw(FileDataModified)
-@attr('expireAfter', type=Nullable(Integer(min=1)), default=None, description="The amount of time (in seconds) after which this resource will be removed.")
 @attr('content', default=None, mode=PRIVATE)
 @attr('thumb', default=None, mode=PRIVATE)
 @attr('size', default=0, mode=READ_ONLY, description="The size of this resource in bytes")
-@attr('isText', default=True, mode=READ_ONLY, description="True if this file has text based content.")
-@attr('mime', default='text/plain', mode=READ_ONLY, description="The MIME type of the file (automatically detected from the content).")
+@attr('mime', default='text/plain', mode=READ_ONLY, description="The MIME type of the file (automatically detected from the content or file extension).")
 @attr('contentModifiedDate', type=TzDate(), default=lambda _: utcnow(), mode=READ_ONLY, description="Last time the content of this file was modified (formatted RFC 3339 timestamp).")
 class File(Resource):
 
@@ -55,21 +53,7 @@ class File(Resource):
 
     def __watch__(self, attr, value, old_value):
         if attr.name == 'name':
-            self.updateMeta(File.META_MIME | File.META_TEXT)
-
-    # must be called regularly by the core
-    def checkExpiredData(self):
-        # remove the file if the data has expired
-        if self.isExpired():
-            self.remove()
-
-    def isExpired(self):
-        expireAfter = self.expireAfter
-        if expireAfter is not None:
-            expiratedDate = self.modifiedDate + \
-                datetime.timedelta(0, expireAfter)
-            return expiratedDate < utcnow()
-        return False
+            self._updateMeta(File.META_MIME)
 
     def read(self, encoding=None):
         if self.content is not None:
@@ -106,7 +90,7 @@ class File(Resource):
 
             self.contentModifiedDate = utcnow()
 
-            self.updateMeta(File.META_ALL, bytes)
+            self._updateMeta(File.META_ALL, bytes)
 
         # generate an event
         self.dispatchSignal(FileDataModified(self))
@@ -123,15 +107,14 @@ class File(Resource):
         d += bytes
         return self.write(d)
 
-    # update meta information : mimeType, isText and thumbnail
+    # update meta information : mimeType and thumbnail
     META_MIME = 1
-    META_TEXT = 2
-    META_THUMB = 4
+    META_THUMB = 2
     META_ALL = 255
     META_NONE = 0
     # the content can be provided to avoid reading it from the database
 
-    def updateMeta(self, opt=META_ALL, content=None):
+    def _updateMeta(self, opt=META_ALL, content=None):
 
         with self:
             if opt & File.META_MIME:
@@ -156,27 +139,6 @@ class File(Resource):
 
                 self.mime = mime
 
-            if opt & File.META_TEXT:
-
-                isText = None
-                mime = self.mime
-                m = re.search('^text', mime.lower())
-                if m is not None:
-                    isText = True
-                else:
-                    m = re.search('^(image|audio|video)', mime.lower())
-                    if m is not None:
-                        isText = False
-
-                # other mime type are undetermined
-                if isText is None:
-                    if not content:
-                        content = self.read()
-
-                    isText = File.isPrintable(content)
-
-                self.isText = isText
-
             if opt & File.META_THUMB:
 
                 if not content:
@@ -199,20 +161,6 @@ class File(Resource):
                     f = self.ething.db.fs.create('File/%s/thumb' % self.id, thumb, parent=self.id)
                     self.thumb = f.id
 
-
-    @staticmethod
-    def isPrintable(content, limit=1000):
-
-        l = min(limit, len(content))
-
-        for i in range(0, l):
-            code = bord(content[i])
-
-            if (code < 32 or code > 126) and code != 9 and code != 10 and code != 13 and (code < 128 or code > 254):
-                return False
-
-        return True
-
     def readThumbnail(self):
         return self.ething.db.fs[self.thumb].read() if self.thumb is not None else None
 
@@ -234,10 +182,10 @@ class File(Resource):
     def __db_save__(self, insert):
         super(File, self).__db_save__(insert)
         if insert:
-            self.updateMeta(File.META_ALL)
+            self._updateMeta(File.META_ALL)
 
-    def export_instance(self):
-        s = super(File, self).export_instance()
+    def __export__(self, core):
+        s = super(File, self).__export__(core)
         s['content'] = None
         s['thumb'] = None
         d = base64.b64encode(self.read())
@@ -247,8 +195,8 @@ class File(Resource):
         }
 
     @classmethod
-    def import_instance(cls, data, context = None):
-        instance = super(File, cls).import_instance(data.get('object'), context)
+    def __import__(cls, data, core):
+        instance = super(File, cls).__import__(data.get('object'), core)
         instance.write(base64.b64decode(data.get('content')))
         return instance
 
