@@ -21,27 +21,27 @@ class BleaDevice(Device):
     @classmethod
     def handleDiscovery(cls, gateway, mac, data, name, rssi, connectable):
         
-        ething = gateway.ething
+        core = gateway.core
         
         # does the device already exist !
-        device = ething.findOne(lambda r: r.isTypeof('resources/BleaDevice') and r.mac == mac)
+        device = core.findOne(lambda r: r.isTypeof('resources/BleaDevice') and r.mac == mac)
         
         if not device:
             if gateway.learning:
-                device = ething.create(cls, {
+                device = core.create(cls, {
                     'name': getattr(cls, 'name', None) or name or 'dev',
                     'mac': mac,
                     'createdBy': gateway.id
                 })
                 
                 if device:
-                    ething.log.info("BLEA: device created mac:%s name:%s , %s" % (mac, name, device))
+                    core.log.info("BLEA: device created mac:%s name:%s , %s" % (mac, name, device))
                 else:
-                    ething.log.error("BLEA: unable to create the device mac:%s name:%s" % (mac, name))
+                    core.log.error("BLEA: unable to create the device mac:%s name:%s" % (mac, name))
             else:
-                ething.log.warning("BLEA: skipping device creation (learning=false) mac:%s name:%s" % (mac, name))
+                core.log.warning("BLEA: skipping device creation (learning=false) mac:%s name:%s" % (mac, name))
         #else:
-        #    ething.log.debug("BLEA: device already exists mac:%s name:%s , %s" % (mac, name, device))
+        #    core.log.debug("BLEA: device already exists mac:%s name:%s , %s" % (mac, name, device))
         
         if device:
             with device:

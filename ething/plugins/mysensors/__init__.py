@@ -166,7 +166,7 @@ class MySensorsProtocol(LineReader):
     def __init__(self, gateway):
         super(MySensorsProtocol, self).__init__(terminator = b'\n')
         self.gateway = gateway
-        self.core = gateway.ething
+        self.core = gateway.core
         self.scheduler = Scheduler()
 
         self.gatewayReady = False

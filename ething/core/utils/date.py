@@ -6,7 +6,7 @@ from dateparser import parse as _parse
 
 
 
-get_local_tz_from_context = lambda context: context['ething'].local_tz
+get_local_tz_from_context = lambda context: context['core'].local_tz
 
 
 class TzDate(Date):

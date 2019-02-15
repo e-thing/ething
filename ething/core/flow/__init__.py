@@ -201,15 +201,11 @@ class Node(Entity, NodeBase):
 
     def __init__(self, value=None, context=None):
 
-        if 'ething' not in context:
-            raise Exception('missing "ething" in context')
+        if 'core' not in context:
+            raise Exception('missing "core" in context')
 
         Entity.__init__(self, value, context)
         NodeBase.__init__(self, id=self.id)
-
-    @property
-    def ething(self):
-        return self.__ething
 
     @property
     def log(self):
@@ -247,12 +243,12 @@ class SignalEventNode(Node):
             if self._filter(signal):
                 q.put(signal.toFlowMessage())
 
-        self.ething.signalDispatcher.bind('*', push)
+        self.core.signalDispatcher.bind('*', push)
 
         while True:
             self.emit(q.get())
 
-        self.ething.signalDispatcher.unbind('*', push)
+        self.core.signalDispatcher.unbind('*', push)
 
 
 @abstract

@@ -16,10 +16,10 @@ class Controller(object):
     def __init__(self, gateway, transport):
 
         self._gateway = gateway
-        self._ething = gateway.ething
+        self._core = gateway.core
         self._isOpened = False
 
-        self._log = gateway.ething.log
+        self._log = gateway.core.log
 
         self._lastState = False
         self._lastAutoconnectLoop = 0
@@ -33,10 +33,10 @@ class Controller(object):
         self._cache = {}
 
         # refresh the gateway each time the gateway properties changes
-        self.ething.signalManager.bind(
+        self.core.signalManager.bind(
             'ResourceUpdated', self.onResourceUpdated)
 
-        self.ething.scheduler.tick(self.update)
+        self.core.scheduler.tick(self.update)
 
         self._transport = transport(self)
 
@@ -48,8 +48,8 @@ class Controller(object):
         return self._gateway
 
     @property
-    def ething(self):
-        return self._ething
+    def core(self):
+        return self._core
 
     @property
     def log(self):
@@ -79,7 +79,7 @@ class Controller(object):
 
     def destroy(self):
         self.close()
-        self.ething.signalManager.unbind(
+        self.core.signalManager.unbind(
             'ResourceUpdated', self.onResourceUpdated)
 
     def open(self):
@@ -129,7 +129,7 @@ class Controller(object):
             attr['createdBy'] = self.gateway.id
 
             try:
-                device = self.ething.create(info.cls.__name__, attr)
+                device = self.core.create(info.cls.__name__, attr)
             except:
                 self.log.exception(
                     "Zigate: unable to create the device %s" % model)

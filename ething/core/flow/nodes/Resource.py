@@ -33,11 +33,11 @@ class ResourceMatch(ResourceNode):
         test_pass = False
         try:
             if self.resource is not None:
-                r = self.ething.get(self.resource)
+                r = self.core.get(self.resource)
             else:
                 r = msg.get('resource')
                 if isinstance(r, string_types):
-                    r = self.ething.get(r)
+                    r = self.core.get(r)
 
             if r:
                 test_pass = r.match(self.expression)

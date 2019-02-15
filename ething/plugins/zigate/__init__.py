@@ -104,7 +104,7 @@ class SerialTransport(object):
         self._buffer = b""
         self._serial = None
         self._controller = controller
-        self._socketManager = controller.ething.socketManager
+        self._socketManager = controller.core.socketManager
         self.log = controller.log
         self._transcodage = False
 

@@ -25,7 +25,7 @@ class CronNode(Node):
 
     def main(self, **inputs):
 
-        local_tz = self.ething.config.get('timezone', 'UTC')
+        local_tz = self.core.config.get('timezone', 'UTC')
         local_ts = datetime.datetime.utcfromtimestamp(time.time())
         if local_tz != 'UTC':
             local_ts = pytz.utc.localize(local_ts).astimezone(pytz.timezone(local_tz))

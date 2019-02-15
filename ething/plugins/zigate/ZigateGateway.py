@@ -18,10 +18,10 @@ class ZigateGateway(Device):
                 return True
             return False
 
-        return self.ething.find(_filter)
+        return self.core.find(_filter)
 
     def getDevice(self, addr):
-        return self.ething.findOne(lambda r: r.isTypeof('resources/ZigateDevice') and r.createdBy == self and r.address == addr)
+        return self.core.findOne(lambda r: r.isTypeof('resources/ZigateDevice') and r.createdBy == self and r.address == addr)
 
     def removeAllDevices(self):
         # remove all the nodes attached to it !
@@ -42,7 +42,7 @@ class ZigateGateway(Device):
         """
         send a message.
         """
-        return self.ething.rpc.request('device.zigate.send', self.id, Message(type, payload), waitResponse)
+        return self.core.rpc.request('device.zigate.send', self.id, Message(type, payload), waitResponse)
 
     @method.return_type('string')
     def getVersion(self):

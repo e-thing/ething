@@ -89,7 +89,7 @@ class YeelightProtocol(LineReader):
     def __init__(self, gateway):
         super(YeelightProtocol, self).__init__(terminator = b'\r\n')
         self.gateway = gateway
-        self.core = gateway.ething
+        self.core = gateway.core
         # response management
         self._pending_cmds = {}
 

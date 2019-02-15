@@ -47,7 +47,7 @@ class ExecuteDevice(ResourceNode):
     OUTPUTS = ['default']
 
     def main(self, **inputs):
-        device = self.ething.get(self.resource)
+        device = self.core.get(self.resource)
 
         if device is None:
             raise Exception("the device has been removed")

@@ -364,18 +364,6 @@ def list_dirty_attr(obj):
   return res
 
 
-def print_tree(obj, prefix=''):
-  reg = install(obj, True)
-  if reg is None:
-    print(prefix + str(obj))
-    return
-  
-  print('%s%s: dirty:%s' % (prefix, str(obj), reg.dirty))
-
-  for child in reg.children:
-    print_tree(child, prefix+'  ')
-
-
 class _NO_VALUE(object):
     pass
 
@@ -515,9 +503,9 @@ class Attribute (RegItemBase):
     def __get__(self, obj, objtype=None):
       if objtype is None:
         objtype = type(obj)
-      
+
       context = get_context(obj)
-      
+
       val = self.__get_raw__(obj, objtype, context=context)
       return self.__get_post__(val, context)
     
@@ -621,7 +609,14 @@ class Attribute (RegItemBase):
     def clone(self, new_cls, new_props=None):
       copy = type(self)(self.name, new_cls, self._props.copy())
       if new_props is not None:
-        copy.update(new_props)
+        for k in new_props:
+            v = new_props[k]
+            if v is NO_VALUE:
+                # remove that key
+                if k in copy:
+                    del copy[k]
+            else:
+                copy[k] = v
       return copy
       
 
@@ -664,8 +659,6 @@ def attr(name=None, **kwargs):
 
       if name is None:
         raise Exception('name argument is mandatory')
-
-      attribute = None
 
       attributes = list_registered_attr(cls)
 
@@ -1479,6 +1472,8 @@ def unserialize(cls, data, context=None):
   if not is_cls:
     # get the context from the instance
     context = get_context(cls, context)
+  else:
+    cls = _discriminate_cls(cls, data)
   
   d = {}
   for attribute in list_registered_attr(cls):
@@ -1491,7 +1486,6 @@ def unserialize(cls, data, context=None):
   d = InternalData(d, context)
 
   if is_cls:
-    cls = _discriminate_cls(cls, d)
     if hasattr(cls, '__instanciate__'):
       instance = cls.__instanciate__(cls, d, context)
     else:
@@ -1526,6 +1520,8 @@ def fromJson(cls, data, context=None):
   if not is_cls:
     # get the context from the instance
     context = get_context(cls, context)
+  else:
+    cls = _discriminate_cls(cls, data)
   
   d = {}
   for attribute in list_registered_attr(cls):
@@ -1539,8 +1535,7 @@ def fromJson(cls, data, context=None):
   
   d = InternalData(d, context)
 
-  if inspect.isclass(cls):
-    cls = _discriminate_cls(cls, d)
+  if is_cls:
     if hasattr(cls, '__instanciate__'):
       instance = cls.__instanciate__(cls, d, context)
     else:
@@ -1701,6 +1696,47 @@ class Entity(with_metaclass(MetaReg, object)):
       if name in context:
         return context[name]
       raise AttributeError()
+
+
+def dbg_attr(obj):
+    for a in list_registered_attr(obj):
+        print(a)
+
+
+def dbg_tree(obj, prefix=''):
+    reg = install(obj, True)
+    if reg is None:
+        print(prefix + str(obj))
+        return
+
+    print('%s%s: dirty:%s' % (prefix, str(obj), reg.dirty))
+
+    for child in reg.children:
+        dbg_tree(child, prefix + '  ')
+
+
+def dbg_data(obj):
+    reg = install(obj, True)
+    if reg is None:
+        return
+
+    data = reg.data
+    for k in data:
+        print("%s:" % k, data[k])
+
+
+def dbg(obj):
+    print('---------------debug----------------')
+    print(obj)
+    print('-------------attributes-------------')
+    dbg_attr(obj)
+    print('---------------tree-----------------')
+    dbg_tree(obj)
+    print('---------------data-----------------')
+    dbg_data(obj)
+    print('------------------------------------')
+
+
 
 
 # import types

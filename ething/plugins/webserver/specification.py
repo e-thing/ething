@@ -228,7 +228,7 @@ def generate(app, core, specification='stdout', documentation=None):
         if name == 'modifiedDate' and 'default' in schema:
             schema['default'] = "<current date>"
 
-    spec._definitions.update(build_schema_definitions(subclass=(Resource, Interface), no_methods = True, ething=core))
+    spec._definitions.update(build_schema_definitions(subclass=(Resource, Interface), no_methods = True, core=core))
 
     spec.definition("Error", description="An object describing an error", properties={
         "message": {

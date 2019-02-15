@@ -148,7 +148,7 @@ def install(core, app, auth, **kwargs):
         if attr is not None:
             attr.setdefault('createdBy', g.auth.resource)
 
-            r = core.create('resources/File', attr)
+            r = app.create('resources/File', attr)
 
             if r:
 

@@ -63,7 +63,7 @@ class OpenWeatherMapDevice(Device, Thermometer, PressureSensor, HumiditySensor, 
             self.log.error('no location set')
             return
 
-        appid = self.ething.get_plugin('OpenWeatherMap').config.get('appid')
+        appid = self.core.get_plugin('OpenWeatherMap').config.get('appid')
         if appid:
             self.log.debug('fetch weather data')
             r = requests.get(url=API_WEATHER_URL, params=dict(q=location, APPID=appid, units='metric'))

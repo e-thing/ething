@@ -435,6 +435,7 @@ class FS(object):
         self._commit()
 
     def run_garbage_collector(self):
+        if self.__files is None: return # nothing loaded from now
         now = time()
         for file_id in self._files:
             file = self._files[file_id]
@@ -702,17 +703,20 @@ class OS_item(object):
     if self._loaded:
       return
 
+    self._loaded = True
+
     context = self.context
     rows = self._table.select()
     for doc in rows:
-      obj = unserialize(self._cls, doc, context)
-      id = obj.id
-      if id not in self._ref: # do not erase previous reference
-        self._ref[id] = obj
+      try:
+          obj = unserialize(self._cls, doc, context)
+          id = getattr(obj, self._id_key)
+          if id not in self._ref: # do not erase previous reference
+            self._ref[id] = obj
+      except:
+          LOGGER.exception('unable to unserialize a %s' % self._cls.__name__)
 
     LOGGER.debug('[%s] %d items loaded' % (self._cls.__name__, len(self._ref)))
-
-    self._loaded = True
 
   def find(self, query=None, sort=None, skip=None, limit=None):
     self._load()
@@ -874,6 +878,11 @@ def db_find(cls, *args, **kwargs):
   return get_meta(cls, 'database').os.find(cls, *args, **kwargs)
 
 
+def db_id(obj):
+    key = get_meta(obj, 'id_key', 'id')
+    return getattr(obj, key)
+
+
 # key-value store
 
 class Store(MutableMapping):
@@ -936,10 +945,10 @@ class Store(MutableMapping):
         return iter([k for k in self._store if k != 'id'])
 
 
-class DBLink(Type):
+class DBLink(String):
 
     def __init__(self, cls, **attributes):
-        super(DBLink, self).__init__(**attributes)
+        super(DBLink, self).__init__(allow_empty=False, **attributes)
         if isinstance(cls, string_types):
             self._clsname = cls
             self._cls = None
@@ -957,24 +966,10 @@ class DBLink(Type):
             return context['__db'].os.get(self.cls, value)
         return db_get(self.cls, value)
 
+    def get(self, value, context=None):
+        return self._db_get(value, context)
+
     def set(self, value, context=None):
-        if isinstance(value, string_types):
-            value = self._db_get(value, context)
-        return value
-
-    def toJson(self, value, context=None):
-        return value.id
-
-    def fromJson(self, value, context=None):
-        return self._db_get(value, context)
-
-    def serialize(self, value, context=None):
-        return value.id
-
-    def unserialize(self, value, context=None):
-        return self._db_get(value, context)
-
-    def toSchema(self, context=None):
-        schema = super(DBLink, self).toSchema(context)
-        schema['type'] = 'string'
-        return schema
+        if not isinstance(value, string_types):
+            value = db_id(value)
+        return super(DBLink, self).set(value, context)

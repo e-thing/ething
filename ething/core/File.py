@@ -42,11 +42,11 @@ class File(Resource):
 
         # remove the file from GridFS
         if self.content is not None:
-            self.ething.db.fs.remove(self.content)
+            self.core.db.fs.remove(self.content)
 
         # remove any thumbnail
         if self.thumb is not None:
-            self.ething.db.fs.remove(self.thumb)
+            self.core.db.fs.remove(self.thumb)
 
         # remove the resource
         super(File, self).remove(removeChildren)
@@ -57,7 +57,7 @@ class File(Resource):
 
     def read(self, encoding=None):
         if self.content is not None:
-            contents = self.ething.db.fs[self.content].read()
+            contents = self.core.db.fs[self.content].read()
         else:
             contents = None
 
@@ -79,12 +79,12 @@ class File(Resource):
 
             # remove that file if it exists
             if self.content is not None:
-                self.ething.db.fs.remove(self.content)
+                self.core.db.fs.remove(self.content)
             self.content = None
             self.size = 0
 
             if bytes:
-                f = self.ething.db.fs.create('File/%s/content' % self.id, bytes, parent=self.id)
+                f = self.core.db.fs.create('File/%s/content' % self.id, bytes, parent=self.id)
                 self.content = f.id
                 self.size = f.size
 
@@ -154,15 +154,15 @@ class File(Resource):
                         pass
 
                 if self.thumb is not None:
-                    self.ething.db.fs.remove(self.thumb)
+                    self.core.db.fs.remove(self.thumb)
                 self.thumb = None
 
                 if thumb:
-                    f = self.ething.db.fs.create('File/%s/thumb' % self.id, thumb, parent=self.id)
+                    f = self.core.db.fs.create('File/%s/thumb' % self.id, thumb, parent=self.id)
                     self.thumb = f.id
 
     def readThumbnail(self):
-        return self.ething.db.fs[self.thumb].read() if self.thumb is not None else None
+        return self.core.db.fs[self.thumb].read() if self.thumb is not None else None
 
     @staticmethod
     def createThumb(imagedata, thumbWidth):
@@ -212,7 +212,7 @@ class FileWrite(ResourceNode):
 
     def main(self, **inputs):
         msg = inputs.get('default')
-        file = self.ething.get(self.resource)
+        file = self.core.get(self.resource)
         content = msg.payload
         if not (isinstance(content, string_types) or isinstance(content, binary_type)):
             content = str(content)
@@ -233,6 +233,6 @@ class FileRead(ResourceNode):
 
     def main(self, **inputs):
         msg = inputs.get('default')
-        file = self.ething.get(self.resource)
+        file = self.core.get(self.resource)
         content = file.read(encoding=self.encoding or None)
         self.emit(content)

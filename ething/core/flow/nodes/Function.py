@@ -41,7 +41,7 @@ if res is not None:
             exec(formatted, {
                 'msg': msg,
                 'logger': self.log,
-                'ething': self.ething,
+                'core': self.core,
                 'debug': self.debug,
                 'emit': self.emit,
                 'context': context

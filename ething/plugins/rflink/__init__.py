@@ -88,7 +88,7 @@ class RFLinkProtocol(LineReader):
     def __init__(self, gateway):
         super(RFLinkProtocol, self).__init__()
         self.gateway = gateway
-        self.core = gateway.ething
+        self.core = gateway.core
         # response management
         self._responseListeners = []
 

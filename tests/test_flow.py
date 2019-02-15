@@ -3,7 +3,7 @@ from ething.core.flow import *
 import json
 
 
-class TestNode(Node):
+class NodeTest(Node):
     INPUTS = ['default']
 
     def main(self, **inputs):
@@ -28,7 +28,7 @@ def run_test_node(node_cls, attr=None, core=None, **inputs):
         attributes.update(attr)
 
     node = fromJson(node_cls, attributes, {
-        'ething': core
+        'core': core
     })
 
     flow = FlowBase()
@@ -248,14 +248,14 @@ def test_flow(core):
         'id': 'id_btn',
         'name': 'btn'
     }, {
-        'ething': core
+        'core': core
     })
     
-    n_tst = fromJson('nodes/TestNode', {
+    n_tst = fromJson('nodes/NodeTest', {
         'id': 'id_tst',
         'name': 'tst'
     }, {
-        'ething': core
+        'core': core
     })
     
     flow = core.create('resources/Flow', {
@@ -266,7 +266,6 @@ def test_flow(core):
             'dest': ['id_tst', 'default']
         }]
     })
-
     flow.deploy()
 
     time.sleep(0.5)

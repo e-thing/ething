@@ -25,7 +25,7 @@ class RFLinkGateway(Device):
                 return True
             return False
 
-        return self.ething.find(_filter)
+        return self.core.find(_filter)
 
     def getNode(self, filter):
 
@@ -36,7 +36,7 @@ class RFLinkGateway(Device):
                 return True
             return False
 
-        return self.ething.findOne(_filter)
+        return self.core.findOne(_filter)
 
     def removeAllNodes(self):
         # remove all the nodes attached to it !

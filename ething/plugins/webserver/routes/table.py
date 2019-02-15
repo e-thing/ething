@@ -106,7 +106,7 @@ def install(core, app, auth, **kwargs):
 
             attr.setdefault('createdBy', g.auth.resource)
 
-            r = core.create('resources/Table', attr)
+            r = app.create('resources/Table', attr)
 
             if r:
 

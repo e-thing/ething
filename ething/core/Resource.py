@@ -57,9 +57,9 @@ class ResourceType(Id):
 
 
     def check_existance(self, value, context = {}):
-        ething = context.get('ething')
-        if ething:
-            r = ething.get(value)
+        core = context.get('core')
+        if core:
+            r = core.get(value)
 
             if r is None:
                 raise ValueError('the resource id=%s does not exist' % value)
@@ -121,15 +121,15 @@ class Resource(Entity):
 
     def __init__(self, data, context=None):
 
-        if 'ething' not in context:
-            raise Exception('missing "ething" in context')
+        if 'core' not in context:
+            raise Exception('missing "core" in context')
 
         super(Resource, self).__init__(data, context)
 
-        self._log = logging.getLogger('ething.r.%s' % data.get('id'))
+        self._log = logging.getLogger('ething.r.%s' % self.id)
         self._t = transaction(self)
 
-        self.ething.scheduler.bind_instance(self)
+        self.core.scheduler.bind_instance(self)
 
     def __eq__(self, other):
         if isinstance(other, Resource):
@@ -172,7 +172,7 @@ class Resource(Entity):
         return typename in self.extends
 
     def dispatchSignal(self, signal, *args, **kwargs):
-        self.ething.dispatchSignal(signal, *args, **kwargs)
+        self.core.dispatchSignal(signal, *args, **kwargs)
 
     def children(self, filter=None):
 
@@ -183,7 +183,7 @@ class Resource(Entity):
                 return True
             return False
 
-        return self.ething.find(_filter)
+        return self.core.find(_filter)
 
     def _removeParent(self):
         with self:
@@ -195,7 +195,7 @@ class Resource(Entity):
 
         remove(self)
 
-        self.ething.scheduler.unbind(self)
+        self.core.scheduler.unbind(self)
 
         for child in children:
             if removeChildren:
@@ -206,11 +206,11 @@ class Resource(Entity):
 
     def __db_remove__(self):
         self.log.debug("Resource deleted : %s" % str(self))
-        self.ething.dispatchSignal(ResourceDeleted(self))
+        self.core.dispatchSignal(ResourceDeleted(self))
 
     def __db_save__(self, insert):
         if insert:
-            self.ething.dispatchSignal(ResourceCreated(self))
+            self.core.dispatchSignal(ResourceCreated(self))
             self.log.debug("Resource created : %s" % str(self))
             return
 
@@ -247,19 +247,19 @@ class Resource(Entity):
             history_data_item = history_data[table_name]
             self.store(table_name, history_data_item['data'], table_length = history_data_item['length'])
 
-        self.ething.dispatchSignal(ResourceUpdated(self, list(dirty_keys)))
+        self.core.dispatchSignal(ResourceUpdated(self, list(dirty_keys)))
 
     def _watch(self, attr, new_value, old_value):
         pass
 
     def store(self, table_name, data, name = None, table_length = 5000):
         try:
-            table = self.ething.findOne(
+            table = self.core.findOne(
                 lambda r: r.createdBy == self and r.name == table_name and r.isTypeof('resources/Table'))
 
             if not table:
                 # create it !
-                table = self.ething.create('resources/Table', {
+                table = self.core.create('resources/Table', {
                     'name': table_name,
                     'createdBy': self.id,
                     'maxLength': table_length
@@ -293,7 +293,7 @@ class Resource(Entity):
 
     @classmethod
     def __import__(cls, data, core):
-        instance = unserialize(cls, data, {"ething": core})
+        instance = unserialize(cls, data, {"core": core})
         core.db.os.save(instance)
         return instance
 

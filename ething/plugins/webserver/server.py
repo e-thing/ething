@@ -24,7 +24,8 @@ from ething.core.db import db_find, serialize, unserialize, save, toJson, Entity
 from ething.core.plugin import Plugin
 from ething.core.Process import Process
 from ething.core.Helpers import filter_obj
-from ething.core.reg import get_registered_class
+from ething.core.reg import get_registered_class, fromJson, get_definition_name
+from ething.core.Resource import Resource
 from ething.core.green import mode
 from collections import OrderedDict
 
@@ -102,7 +103,7 @@ class WebServer(Plugin):
     def import_data(self, data):
         for d in data:
             apikey = unserialize(Apikey, d, {
-                'ething': self.core
+                'core': self.core
             })
             save(apikey)
 
@@ -309,14 +310,15 @@ class FlaskApp(Flask):
 
         return r
 
-    def create(self, type, attr):
-        cls = get_registered_class(type)
-        if cls is not None:
-            instance =  cls.fromJson(attr, context = {'ething': self.core})
-            instance.save()
-            return instance
-        else:
-            raise Exception('the type "%s" is unknown' % type)
+    def create(self, cls, attr):
+        if isinstance(cls, string_types):
+            cls_name = cls
+            cls = get_registered_class(cls_name)
+            if cls is None:
+                raise Exception('the type "%s" is unknown' % cls_name)
+
+        attr['type'] = get_definition_name(cls)
+        return self.core.db.os.create(Resource, attr)
 
     def etag_match(self, etag):
         req_etag = request.headers.get('If-None-Match')

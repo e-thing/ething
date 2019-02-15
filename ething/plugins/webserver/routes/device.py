@@ -64,7 +64,6 @@ def install(core, app, auth, **kwargs):
             attr.setdefault('createdBy', g.auth.resource)
 
             r = app.create(type, attr)
-            # r = core.create(type, attr)
 
             if r:
 

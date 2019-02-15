@@ -123,7 +123,7 @@ def install(core, app, auth, **kwargs):
 
         if _meta is None:
             _meta = {
-                "definitions": build_schema_definitions(skip=(Entity, ), ething=core),
+                "definitions": build_schema_definitions(skip=(Entity, ), core=core),
                 "scopes": Scope.list,
                 "info": get_info(core),
                 "plugins": OrderedDict(),

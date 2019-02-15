@@ -44,10 +44,10 @@ class MySensorsNode(Device):
                 return True
             return False
 
-        return self.ething.find(_filter)
+        return self.core.find(_filter)
 
     def getSensor(self, sensorId):
-        return self.ething.findOne(lambda r: r.isTypeof('resources/MySensorsSensor') and r.createdBy == self and r.sensorId == sensorId)
+        return self.core.findOne(lambda r: r.isTypeof('resources/MySensorsSensor') and r.createdBy == self and r.sensorId == sensorId)
 
     def removeAllSensors(self):
         # remove all the nodes attached to it !

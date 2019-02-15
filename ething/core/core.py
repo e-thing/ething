@@ -103,7 +103,7 @@ class Core(object):
 
             self.db = Db(driver, auto_commit=False, cache_delay=3600, auto_connect=True)
 
-            self.db.os.context.update({'ething': self})
+            self.db.os.context.update({'core': self})
 
             if clear_db:
                 self.log.info('clear db')

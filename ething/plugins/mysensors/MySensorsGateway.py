@@ -30,10 +30,10 @@ class MySensorsGateway(Device):
                 return True
             return False
 
-        return self.ething.find(_filter)
+        return self.core.find(_filter)
 
     def getNode(self, nodeId):
-        return self.ething.findOne(lambda r: r.isTypeof('resources/MySensorsNode') and r.createdBy == self and r.nodeId == nodeId)
+        return self.core.findOne(lambda r: r.isTypeof('resources/MySensorsNode') and r.createdBy == self and r.nodeId == nodeId)
 
     def removeAllNodes(self):
         # remove all the nodes attached to it !

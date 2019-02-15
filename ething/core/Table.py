@@ -43,7 +43,7 @@ class AppendData(ResourceNode):
 
     def main(self, **inputs):
         msg = inputs.get('default')
-        table = self.ething.get(self.resource)
+        table = self.core.get(self.resource)
 
         if table is None:
             raise Exception("the table has been removed")
@@ -89,7 +89,7 @@ class Table(Resource):
             else:
                 if dt.tzinfo is None:
                     dt = dt.replace(tzinfo=pytz.utc)
-                doc['date'] = dt.astimezone(self.ething.local_tz).isoformat()
+                doc['date'] = dt.astimezone(self.core.local_tz).isoformat()
 
         return doc
 
@@ -101,13 +101,13 @@ class Table(Resource):
     def table(self):
         _t = getattr(self, '_table', None)
         if _t is None:
-            _t = self.ething.db[self.collectionName]
+            _t = self.core.db[self.collectionName]
         return _t
 
     def remove(self, removeChildren=False):
 
         # remove all the data from this table
-        self.ething.db.table_drop(self.collectionName, silent=True)
+        self.core.db.table_drop(self.collectionName, silent=True)
 
         # remove the resource
         super(Table, self).remove(removeChildren)
@@ -268,7 +268,7 @@ class Table(Resource):
 
                             if data[k].tzinfo is None:
                                 # naive datetime
-                                data[k] = self.ething.local_tz.localize(data[k]).astimezone(pytz.utc)
+                                data[k] = self.core.local_tz.localize(data[k]).astimezone(pytz.utc)
                             else:
                                 # make it UTC
                                 data[k] = data[k].astimezone(pytz.utc)
@@ -439,7 +439,7 @@ class Table(Resource):
         # apply the filter according to the query string
         # TODO: what about the date firld ? docSerialize() here ?
 
-        if query is not None:
+        if query:
             def _filter(r):
                 try:
                     tree = objectpath.Tree(r)

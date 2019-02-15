@@ -134,4 +134,4 @@ class NotifyClient(Node):
 
     def main(self, **inputs):
         msg = inputs.get('default')
-        self.ething.get_plugin('webserver').app.notify_client(self.message)
+        self.core.get_plugin('webserver').app.notify_client(self.message)

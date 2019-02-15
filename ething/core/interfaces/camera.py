@@ -28,7 +28,7 @@ class Camera(Interface):
                 # get extension from content
                 filename = "image.%s" % content_to_ext(data, 'jpg')
             
-            storage = self.ething.create('resources/File', {
+            storage = self.core.create('resources/File', {
                 'name': filename,
                 'createdBy': self
             })
