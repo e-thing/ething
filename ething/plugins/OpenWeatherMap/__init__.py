@@ -49,8 +49,8 @@ class OpenWeatherMapPlugin(Plugin):
 @attr('location', type=String(allow_empty=False), default=NO_VALUE, description='a city\'s name. See https://openweathermap.org/find')
 class OpenWeatherMapDevice(Device, Thermometer, PressureSensor, HumiditySensor, Anemometer):
 
-    def _watch(self, attr, new_value, old_value):
-        super(OpenWeatherMapDevice, self)._watch(attr, new_value, old_value)
+    def on_attr_update(self, attr, new_value, old_value):
+        super(OpenWeatherMapDevice, self).on_attr_update(attr, new_value, old_value)
 
         if attr == 'weather':
             if new_value != old_value:

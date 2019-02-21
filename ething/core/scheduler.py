@@ -1,7 +1,6 @@
 # coding: utf-8
 
 from .utils import ShortId
-from .Process import Process, BaseProcess
 import inspect
 import time
 import datetime
@@ -15,15 +14,26 @@ _LOGGER = logging.getLogger('ething.scheduler')
 
 class Task(object):
 
-    def __init__(self, target, args=(), kwargs=None, name=None, thread=True, instance=None, condition=None, allow_multiple=False):
+    def __init__(self, scheduler, target, args=(), kwargs=None, name=None, instance=None, condition=None, allow_multiple=False, **params):
 
         if not callable(target):
             raise Exception('target must be callable')
 
+        self._scheduler = scheduler
+
         self._id = ShortId.generate()
-        self._target = weak_ref(target)
-        if instance is None and getattr(target, '__self__', None) is not None:
-            instance = target.__self__
+
+        self._params = params
+
+        if inspect.ismethod(target):
+            self._is_target_ref = True
+            self._target = weak_ref(target)
+            if instance is None:
+                instance = target.__self__
+        else:
+            self._is_target_ref = False
+            self._target = target
+
         self._args = args
         self._kwargs = kwargs or {}
         self._name = name
@@ -32,7 +42,6 @@ class Task(object):
                 self._name = "%s.%s" % (type(instance).__name__, target.__name__)
             else:
                 self._name = target.__name__
-        self._thread = thread
         self._instance = weak_ref(instance) if instance is not None else None
         self._condition = condition
         self._allow_multiple = allow_multiple
@@ -42,7 +51,8 @@ class Task(object):
         self._valid = True
         self._t0 = time.time()
 
-        self._p = None # last process ran
+    def __getattr__(self, item):
+        return self._params[item]
 
     @property
     def id(self):
@@ -58,15 +68,36 @@ class Task(object):
 
     @property
     def target(self):
-        return self._target()
+        return self._target() if self._is_target_ref else self._target
+
+    @property
+    def args(self):
+        return self._args
+
+    @property
+    def kwargs(self):
+        return self._kwargs
 
     @property
     def instance(self):
         return self._instance() if self._instance is not None else None
 
+    @property
+    def allow_multiple(self):
+        return self._allow_multiple
+
     def run(self):
-        target = self._target()
+        target = self.target
         if target is not None:
+
+            if self._instance is not None:
+                instance = self._instance()
+                if instance is None:
+                    # the instance has been destroyed
+                    self._valid = False
+                    return
+            else:
+                instance = None
 
             self._last_run = time.time()
             self._executed_count += 1
@@ -78,20 +109,10 @@ class Task(object):
                 except:
                     return False
 
-            if self._thread:
-
-                if self._p and not self._p.stopped() and not self._allow_multiple:
-                    _LOGGER.debug('task "%s" already running: skipped' % self._name)
-                    return
-
-                processCls = self._thread if inspect.isclass(self._thread) else Process
-                self._p = processCls(name=self._name, target=target, args=self._args, kwargs=self._kwargs)
-                self._p.start()
-            else:
-                try:
-                    target(*self._args, **self._kwargs)
-                except:
-                    _LOGGER.exception('exception in task "%s"' % self._name)
+            try:
+                self._scheduler.execute(self)
+            except:
+                _LOGGER.exception('exception in task "%s"' % self._name)
 
             return True
         else:  # lost reference
@@ -205,36 +226,60 @@ def at(hour='*', min=0, **kwargs):
     return d
 
 
+def _deco(callback, p):
+    if callback is None:
+        def d(f):
+            p(f)
+            return f
+
+        return d
+    else:
+        return p(callback)
+
+
 class Scheduler(object):
 
     def __init__(self):
         super(Scheduler, self).__init__()
         self.tasks = []
         self.r_lock = threading.RLock()
+        self.log = _LOGGER
 
-    def tick(self, callback, args=(), kwargs=None, **params):
-        with self.r_lock:
-            task = TickTask(callback, args=args, kwargs=kwargs, **params)
-            self.tasks.append(task)
-            return task
+    def tick(self, callback=None, args=(), kwargs=None, **params):
+        def p(f):
+            with self.r_lock:
+                task = TickTask(self, f, args=args, kwargs=kwargs, **params)
+                self.tasks.append(task)
+                return task
 
-    def setInterval(self, interval, callback, start_in_sec=0, args=(), kwargs=None, **params):
-        with self.r_lock:
-            task = IntervalTask(interval, callback, args=args, kwargs=kwargs, start_in_sec=start_in_sec, **params)
-            self.tasks.append(task)
-            return task
+        return _deco(callback, p)
 
-    def delay(self, delay, callback, args=(), kwargs=None, **params):
-        with self.r_lock:
-            task = DelayTask(delay, callback, args=args, kwargs=kwargs, **params)
-            self.tasks.append(task)
-            return task
+    def setInterval(self, interval, callback=None, start_in_sec=0, args=(), kwargs=None, **params):
+        def p(f):
+            with self.r_lock:
+                task = IntervalTask(self, interval, f, args=args, kwargs=kwargs, start_in_sec=start_in_sec, **params)
+                self.tasks.append(task)
+                return task
 
-    def at(self, callback, hour='*', min=0, args=(), kwargs=None, **params):
-        with self.r_lock:
-            task = AtTask(callback, hour=hour, min=min, args=args, kwargs=kwargs, **params)
-            self.tasks.append(task)
-            return task
+        return _deco(callback, p)
+
+    def delay(self, delay, callback=None, args=(), kwargs=None, **params):
+        def p(f):
+            with self.r_lock:
+                task = DelayTask(self, delay, f, args=args, kwargs=kwargs, **params)
+                self.tasks.append(task)
+                return task
+
+        return _deco(callback, p)
+
+    def at(self, hour='*', min=0, callback=None, args=(), kwargs=None, **params):
+        def p(f):
+            with self.r_lock:
+                task = AtTask(self, f, hour=hour, min=min, args=args, kwargs=kwargs, **params)
+                self.tasks.append(task)
+                return task
+
+        return _deco(callback, p)
 
     def _get(self, task_id):
         for task in self.tasks:
@@ -282,3 +327,6 @@ class Scheduler(object):
     def clear(self):
         with self.r_lock:
             self.tasks.clear()
+
+    def execute(self, task):
+        task.target(*task.args, **task.kwargs)

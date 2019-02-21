@@ -1,5 +1,5 @@
 # coding: utf-8
-from ething.core.TransportProcess import BaseResult
+from ething.core.TransportProcess import AsyncResult
 
 specialCtrlCmds = ['OK', 'REBOOT', 'PING', 'PONG', 'VERSION', 'RFDEBUG', 'RFUDEBUG',
                    'QRFDEBUG', 'TRISTATEINVERT', 'RTSCLEAN', 'RTSRECCLEAN', 'RTSSHOW', 'RTSINVERT', 'RTSLONGTX']
@@ -354,7 +354,7 @@ def is_protocol(protocol):
     return True
 
 
-class Result (BaseResult):
+class Result (AsyncResult):
     def __init__(self, response, *args, **kwargs):
         super(Result, self).__init__(*args, **kwargs)
         self.response = response

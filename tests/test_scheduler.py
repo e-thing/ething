@@ -15,7 +15,7 @@ def test_scheduler():
     def increase():
         g['i'] += 1
 
-    scheduler.setInterval(0.5, increase, thread=False)
+    scheduler.setInterval(0.5, increase)
 
     tf = time.time() + 3.2
     while time.time() < tf:
@@ -47,7 +47,7 @@ def test_class_method():
 
     scheduler = Scheduler()
 
-    scheduler.tick(foo.increase, thread=False)
+    scheduler.tick(foo.increase)
 
     scheduler.process()
     scheduler.process()
@@ -75,7 +75,7 @@ def test_class_method2():
 
     scheduler = Scheduler()
 
-    scheduler.tick(foo.increase, thread=False)
+    scheduler.tick(foo.increase)
 
     scheduler.process()
     scheduler.process()
@@ -98,7 +98,7 @@ def test_instance():
         def __init__(self):
             self.i = 0
 
-        @tick(thread=False)
+        @tick()
         def bar(self):
             self.i += 1
 
@@ -118,6 +118,58 @@ def test_instance():
     scheduler.process()
 
     assert foo.i == 2
+
+
+def test_instance_delete():
+    scheduler = Scheduler()
+
+    ctx = {
+        'i': 0
+    }
+
+    class Foo(object):
+
+        def __init__(self, ctx):
+            self.ctx = ctx
+
+        def bar(self):
+            self.ctx['i'] += 1
+
+    foo = Foo(ctx)
+
+    scheduler.tick(foo.bar)
+
+    assert ctx['i'] == 0
+
+    scheduler.process()
+    scheduler.process()
+
+    assert ctx['i'] == 2
+
+    del foo
+
+    scheduler.process()
+
+    assert ctx['i'] == 2
+
+
+def test_decorator():
+    scheduler = Scheduler()
+
+    ctx = {
+        'i': 0
+    }
+
+    @scheduler.tick()
+    def bar():
+        ctx['i'] += 1
+
+    assert ctx['i'] == 0
+
+    scheduler.process()
+    scheduler.process()
+
+    assert ctx['i'] == 2
 
 
 

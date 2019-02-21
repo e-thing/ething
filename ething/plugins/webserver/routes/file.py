@@ -10,166 +10,13 @@ import json
 
 def install(core, app, auth, **kwargs):
 
-    @app.route('/api/files', methods=['POST'])
-    @auth.required('file:write resource:write')
-    def files():
-        """
-        ---
-        post:
-          tags:
-            - file
-          description: |-
-            Creates a new file.
-
-            There are 2 ways to pass directly the content of the file on the same request :
-
-             - pass the content as a base-64 encoded ASCII string through the key 'content' of the metadata object.
-
-             example:
-
-            ```json
-            {
-               "name": "myfile.txt",
-               "content": "SGVsbG8gd29ybGQgIQ==" // 'Hello world !' in base-64
-            }
-            ```
-
-             - multipart/related request: transfers the content along with metadata that describes it. *The metadata part must come first*.
-
-             example:
-
-            ```
-            POST /ething/api/files HTTP/1.1
-            Host: <YOUR_HOST>
-            Content-Type: multipart/related; boundary=foo_bar_baz
-
-            --foo_bar_baz
-            Content-Type: application/json; charset=UTF-8
-
-            {
-              "name": "image.jpg"
-            }
-
-            --foo_bar_baz
-            Content-Type: image/jpeg
-
-            <JPEG DATA>
-            --foo_bar_baz--
-            ```
-
-            #### cURL example
-
-            The next command will create a new file 'myfile.txt'.
-
-            ```bash
-            curl
-                -H 'X-API-KEY: <YOUR_API_KEY>'
-                -H "Content-Type: application/json"
-                -X POST
-                -d '{"name":"myfile.txt"}'
-                http://localhost:8000/api/files
-            ```
-
-            If the command was successful, a response containing the meta data of the created file will be given back.
-            You will find in it the id of that file.
-            This id is a unique string identifying this file and is necessary to make any operation on it.
-
-            ```json
-            {
-              "id":"73c66-4",
-              "name":"myfile.txt",
-              "data":null,
-              "description":null,
-              "type":"File",
-              "createdBy":{
-               "id":"56a7B-5",
-               "type":"Device"
-              },
-              "createdDate":"2016-01-27T07:46:43+00:00",
-              "modifiedDate":"2016-02-13T10:34:31+00:00",
-              "mime":"text/plain",
-              "size":0,
-              "location":null,
-              "hasThumbnail":false
-            }
-            ```
-          parameters:
-            - name: metadata
-              in: body
-              description: |-
-
-                the metadata of the file to be created
-
-                example:
-
-                ```json
-                {
-                   "name": "myfile.txt",
-                   "description": "an optional description"
-                }
-                ```
-
-              required: true
-              schema:
-                $ref: '#/definitions/File'
-          responses:
-            '200':
-              description: The file was successfully created
-              schema:
-                $ref: '#/definitions/File'
-        """
-
-        attr = None
-        content = None
-
-        if request.mimetype == 'multipart/related':
-
-            parts = list(parse_multipart_data(request.stream,
-                                              request.mimetype_params['boundary']))
-
-            for headers, body in parts:
-                mimetype, params = parse_options_header(
-                    headers['Content-Type'])
-
-                if mimetype == 'application/json':
-                    attr = json.loads(body.decode())
-                else:
-                    content = body
-
-        else:
-            attr = request.get_json()
-
-            if isinstance(attr, dict):
-
-                if 'content' in attr:
-                    content = base64.b64decode(attr['content'])
-                    attr.pop('content')
-
-        if attr is not None:
-            attr.setdefault('createdBy', g.auth.resource)
-
-            r = app.create('resources/File', attr)
-
-            if r:
-
-                if content:
-                    r.write(content)
-
-                response = app.jsonify(r)
-                response.status_code = 201
-                return response
-            else:
-                raise Exception('Unable to create the file')
-
-        raise Exception('Invalid request')
-
     file_put_args = {
         'append': fields.Bool(missing=False, description="If true, the content will be appended."),
     }
 
     @app.route('/api/files/<id>', methods=['GET', 'PUT'])
     @use_multi_args(PUT=(file_put_args, ('query',)))
-    @auth.required(GET='file:read resource:read', PUT='file:write resource:write')
+    @auth.required(GET='file:read', PUT='file:write')
     def file(args, id):
         """
         ---
@@ -248,7 +95,7 @@ def install(core, app, auth, **kwargs):
             return app.jsonify(r)
 
     @app.route('/api/files/<id>/thumbnail')
-    @auth.required('file:read resource:read')
+    @auth.required('file:read')
     def file_thumb(id):
         r = app.getResource(id, ['File'])
         thumb = r.readThumbnail()

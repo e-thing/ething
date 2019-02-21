@@ -81,21 +81,7 @@ class WebServer(Plugin):
     def setup(self):
         # clients
         install_clients_manager(self.app)
-
-    def start(self):
-        self.start_process()
-
-    def stop(self):
-        self.stop_process()
-
-    def start_process(self):
-        self.process = WebServerProcess(self.app)
-        self.process.start()
-
-    def stop_process(self):
-        if hasattr(self, 'process'):
-            self.process.stop()
-            del self.process
+        self.core.process_manager.add(WebServerProcess(self.app))
 
     def export_data(self):
         return [serialize(apikey) for apikey in db_find(Apikey)]
@@ -105,7 +91,7 @@ class WebServer(Plugin):
             apikey = unserialize(Apikey, d, {
                 'core': self.core
             })
-            save(apikey)
+            self.core.db.os.save(apikey)
 
 
 class FlaskApp(Flask):
@@ -309,16 +295,6 @@ class FlaskApp(Flask):
                         raise Exception(message)
 
         return r
-
-    def create(self, cls, attr):
-        if isinstance(cls, string_types):
-            cls_name = cls
-            cls = get_registered_class(cls_name)
-            if cls is None:
-                raise Exception('the type "%s" is unknown' % cls_name)
-
-        attr['type'] = get_definition_name(cls)
-        return self.core.db.os.create(Resource, attr)
 
     def etag_match(self, etag):
         req_etag = request.headers.get('If-None-Match')

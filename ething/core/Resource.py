@@ -5,8 +5,9 @@ from .Signal import ResourceSignal
 from .Interface import Interface
 from .utils.date import TzDate, utcnow
 from .utils.objectpath import evaluate
-from .utils.ShortId import Id
-from collections import Mapping
+from .scheduler import *
+from .Process import Process, get_processes
+from collections import Mapping, Sequence
 import inspect
 import logging
 
@@ -46,43 +47,30 @@ class ResourceUpdated(ResourceSignal):
         return self.payload['attributes']
 
 
-class ResourceType(Id):
+class ResourceType(DBLink):
 
     def __init__(self, accepted_types=None, must_throw=None, **attributes):
-        super(ResourceType, self).__init__(**attributes)
+        super(ResourceType, self).__init__('resources/Resource', **attributes)
         self.accepted_types = accepted_types
         self.must_throw = must_throw
         if isinstance(self.must_throw, string_types):
             self.must_throw = get_registered_class(self.must_throw)
 
+    def check(self, r):
+        if self.accepted_types is not None:
+            for t in self.accepted_types:
+                if r.isTypeof(t):
+                    break
+            else:
+                raise ValueError('the Resource %s does not match the following types: %s' % (r, ','.join(
+                    self.accepted_types)))
 
-    def check_existance(self, value, context = {}):
-        core = context.get('core')
-        if core:
-            r = core.get(value)
-
-            if r is None:
-                raise ValueError('the resource id=%s does not exist' % value)
-
-            if self.accepted_types is not None:
-                for t in self.accepted_types:
-                    if r.isTypeof(t):
-                        break
-                else:
-                    raise ValueError('the Resource %s does not match the following types: %s' % (r, ','.join(
-                        self.accepted_types)))
-
-            if self.must_throw:
-                signals_thrown_by_resource = [s.signal for s in list_registered_signals(r)]
-                signal = self.must_throw
-                if signal not in signals_thrown_by_resource:
-                    raise ValueError("the resource %s does not throw the signal : %s" % (
-                        r, get_definition_name(signal)))
-
-    def fromJson(self, value, context=None):
-        value = super(ResourceType, self).fromJson(value, context)
-        self.check_existance(value, context)
-        return value
+        if self.must_throw:
+            signals_thrown_by_resource = [s.signal for s in list_registered_signals(r)]
+            signal = self.must_throw
+            if signal not in signals_thrown_by_resource:
+                raise ValueError("the resource %s does not throw the signal : %s" % (
+                    r, get_definition_name(signal)))
 
     def toSchema(self, context = None):
         schema = super(ResourceType, self).toSchema(context)
@@ -109,7 +97,7 @@ class RDict(Dict):
 @attr('public', type=Enum([False, 'readonly', 'readwrite']), default=False, description="False: this resource is not publicly accessible. 'readonly': this resource is accessible for reading by anyone. 'readwrite': this resource is accessible for reading and writing by anyone.")
 @attr('description', type=String(), default='', description="A description of this resource.")
 @attr('data', type=RDict(allow_extra=True), default={}, description="A collection of arbitrary key-value pairs.")
-@attr('createdBy', type=Nullable(DBLink('resources/Resource')), default=None, description="The id of the resource responsible of the creation of this resource, or null.")
+@attr('createdBy', type=Nullable(ResourceType()), default=None, description="The id of the resource responsible of the creation of this resource, or null.")
 @attr('modifiedDate', type=TzDate(), default=lambda _: utcnow(), mode=READ_ONLY, description="Last time this resource was modified")
 @attr('createdDate', type=TzDate(), default=lambda _: utcnow(), mode=READ_ONLY, description="Create time for this resource")
 @attr('name', type=String(allow_empty=False, regex='^[a-zA-Z0-9 !#$%&\'()+,\-.;=@^_`{    ]+(\\/[a-zA-Z0-9 !#$%&\'()+,\-.;=@^_`{    ]+)*$'), description="The name of the resource")
@@ -130,6 +118,8 @@ class Resource(Entity):
         self._t = transaction(self)
 
         self.core.scheduler.bind_instance(self)
+
+        self._process_bind()
 
     def __eq__(self, other):
         if isinstance(other, Resource):
@@ -196,6 +186,7 @@ class Resource(Entity):
         remove(self)
 
         self.core.scheduler.unbind(self)
+        self._process_stop()
 
         for child in children:
             if removeChildren:
@@ -228,7 +219,7 @@ class Resource(Entity):
             value = getattr(self, a.name)
 
             if a.get('watch'):
-                self._watch(a.name, value, None)
+                self.on_attr_update(a.name, value, None)
 
             if a.get('history'):
                 name = a.get('history_name', a.name)
@@ -247,9 +238,14 @@ class Resource(Entity):
             history_data_item = history_data[table_name]
             self.store(table_name, history_data_item['data'], table_length = history_data_item['length'])
 
-        self.core.dispatchSignal(ResourceUpdated(self, list(dirty_keys)))
+        self.on_update(dirty_keys)
 
-    def _watch(self, attr, new_value, old_value):
+        self.core.dispatchSignal(ResourceUpdated(self, dirty_keys))
+
+    def on_update(self, dirty_keys):
+        pass
+
+    def on_attr_update(self, attr, new_value, old_value):
         pass
 
     def store(self, table_name, data, name = None, table_length = 5000):
@@ -279,7 +275,7 @@ class Resource(Entity):
             self.log.exception('history error for %s' % table_name)
 
     def match(self, expression):
-        return bool(evaluate(expression, self.toJson()))
+        return bool(evaluate(expression, toJson(self)))
 
     def __enter__(self):
         self._t.__enter__()
@@ -297,4 +293,41 @@ class Resource(Entity):
         core.db.os.save(instance)
         return instance
 
+    def _process_bind(self):
+        """
+        bind processes to this instance
+        look for __process__ attribute which can either be :
+         - a method:
+           def __process__(self): return MyProcess(...)
+         - a Process subclass:
+           __process__ = MyProcess # will be instanciated with a single argument corresponding to the current resource
+         - an array of Process subclass:
+           __process__ = [MyProcess0, MyProcess1, ...]
+        """
+        processses = []
+
+        if hasattr(self, '__process__'):
+            pa = self.__process__
+
+            if callable(pa):
+                pres = pa()
+                if isinstance(pres, Process):
+                    processses.append(pres)
+                elif isinstance(pres, Sequence):
+                    processses += pres
+            elif issubclass(pa, Process):
+                processses.append(pa(self))
+            elif isinstance(pa, Sequence):
+                for ppa in pa:
+                    processses.append(ppa(self))
+
+        for p in processses:
+            p.set_parent(self)
+            self.core.process_manager.add(p)
+
+        self.__processes = processses
+
+    def _process_stop(self):
+        for p in self.core.process_manager.find(parent=self):
+            self.core.process_manager.remove(p)
 

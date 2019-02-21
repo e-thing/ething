@@ -12,43 +12,22 @@ class Scope(object):
             'description': 'read the content of any resource'
         },
         'resource:write': {
-            'description': 'create resources of any kind and modify the content of any resource'
-        },
-        'resource:admin': {
-            'description': 'modify resource properties, delete resource and access to apikeys'
+            'description': 'create resources of any kind or update the resource\'s metadata'
         },
         'file:read': {
             'description': 'read the content of any file'
         },
         'file:write': {
-            'description': 'create files and modify the content of any file'
+            'description': 'modify the content of any file'
         },
         'table:read': {
             'description': 'read the content of any table'
         },
         'table:write': {
-            'description': 'create tables and modify the content of any table'
+            'description': 'modify the content of any table'
         },
-        'table:append': {
-            'description': 'append data to any existing table'
-        },
-        'app:read': {
-            'description': 'read the raw script content of any apps'
-        },
-        'app:write': {
-            'description': 'create and edit apps'
-        },
-        'app:execute': {
-            'description': 'execute apps'
-        },
-        'device:read': {
-            'description': 'send GET request to any device'
-        },
-        'device:write': {
-            'description': 'send POST,PUT,PATCH,DELETE request to any device'
-        },
-        'notification': {
-            'description': 'send notification'
+        'device:execute': {
+            'description': 'execute a device command'
         },
         'settings:read': {
             'description': 'read the settings'
@@ -56,13 +35,9 @@ class Scope(object):
         'settings:write': {
             'description': 'modify the settings'
         },
-        'flow:read': {
-            'description': 'read flows attributes and start/stop them'
-        },
-        'flow:write': {
-            'description': 'create flows'
+        'flow:inject': {
+            'description': 'inject data into flows'
         }
-
     }
 
     @staticmethod

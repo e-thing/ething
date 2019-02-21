@@ -961,15 +961,35 @@ class DBLink(String):
             self._cls = get_registered_class(self._clsname)
         return self._cls
 
-    def _db_get(self, value, context=None):
-        if context is not None and '__db' in context:
-            return context['__db'].os.get(self.cls, value)
-        return db_get(self.cls, value)
+    def _db_get(self, id, context=None):
+        # throw KeyError if the id does not exist
+        try:
+            if context is not None and '__db' in context:
+                return context['__db'].os.get(self.cls, id)
+            return db_get(self.cls, id)
+        except KeyError:
+            raise ValueError('the %s object with id=%s does not exist' % (self.cls.__name__, id))
+
+    def check(self, obj):
+        pass
 
     def get(self, value, context=None):
         return self._db_get(value, context)
 
     def set(self, value, context=None):
-        if not isinstance(value, string_types):
+        if isinstance(value, string_types):
+            value = super(DBLink, self).set(value, context)
+            # check the id exist !
+            obj = self._db_get(value, context)
+            self.check(obj)
+        else:
+            self.check(value)
             value = db_id(value)
-        return super(DBLink, self).set(value, context)
+        return value
+
+    def fromJson(self, value, context=None):
+        value = super(DBLink, self).fromJson(value, context)
+        # check the id exist !
+        obj = self._db_get(value, context)
+        self.check(obj)
+        return value

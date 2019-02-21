@@ -19,8 +19,8 @@ class LevelChanged(ResourceSignal):
 @attr('level', type = Range(0, 100), default = 0, mode = READ_ONLY, history = True, watch = True, description = "the level of this dimmer")
 class Dimmer(Interface):
 
-    def _watch(self, attr, new_value, old_value):
-        super(Dimmer, self)._watch(attr, new_value, old_value)
+    def on_attr_update(self, attr, new_value, old_value):
+        super(Dimmer, self).on_attr_update(attr, new_value, old_value)
 
         if attr == 'state':
             if new_value != old_value:

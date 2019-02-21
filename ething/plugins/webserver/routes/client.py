@@ -6,10 +6,12 @@ def install(core, app, auth, **kwargs):
 
 
     @app.route('/api/clients')
+    @auth.required()
     def list_clients():
         return app.jsonify(app.clients)
 
     @app.route('/api/clients/<id>')
+    @auth.required()
     def get_client(id):
         cl = app.get_client(id)
         if cl:
@@ -18,6 +20,7 @@ def install(core, app, auth, **kwargs):
             raise Exception('Not found')
 
     @app.route('/api/clients/<id>', methods=['DELETE'])
+    @auth.required()
     def delete_client(id):
         cl = app.get_client(id)
         if cl:
@@ -27,6 +30,7 @@ def install(core, app, auth, **kwargs):
             raise Exception('Not found')
 
     @app.route('/api/clients/<id>/notify', methods=['POST'])
+    @auth.required()
     def notify_client(id):
         cl = app.get_client(id)
         if cl:

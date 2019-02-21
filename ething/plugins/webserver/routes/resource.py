@@ -1,9 +1,8 @@
 # coding: utf-8
-
+from future.utils import string_types
 from flask import request, Response
 from ..server_utils import *
 from ething.core.reg import fromJson
-from future.utils import iteritems
 
 
 def install(core, app, auth, **kwargs):
@@ -22,8 +21,8 @@ def install(core, app, auth, **kwargs):
 
     @app.route('/api/resources', methods=['GET'])
     @use_args(resources_args)
-    @auth.required('resource:read resource:write file:read file:write table:read table:write table:append device:read device:write app:read app:write')
-    def resources(args):
+    @auth.required('resource:read')
+    def resources_get(args):
         """list the resources
         ---
         get:
@@ -75,13 +74,81 @@ def install(core, app, auth, **kwargs):
 
         return app.jsonify(core.find(query=query, **args))
 
+    @app.route('/api/resources', methods=['POST'])
+    @auth.required('resource:write')
+    def resources_post():
+        """
+        ---
+        post:
+          tags:
+            - resource
+          description: Creates a new resource.
+          parameters:
+            - name: metadata
+              in: body
+              description: |
+
+                The metadata of the resource to be created.
+
+                example:
+
+                ```json
+                {
+                   "type": "resources/SSH",
+                   "name": "mydevice",
+                   "location": "room 1",
+                   "host": "192.168.1.25"
+                }
+                ```
+              required: true
+              schema:
+                $ref: '#/definitions/Resource'
+          responses:
+            '200':
+              description: The resource was successfully created
+              schema:
+                allOf:
+                  - type: object
+                    required:
+                      - type
+                    properties:
+                      type:
+                        type: string
+                        description: 'The type of the device to create (eg: "MySensorsEthernetGateway").'
+                  - $ref: '#/definitions/Device'
+        """
+        attr = request.get_json()
+
+        if isinstance(attr, dict):
+
+            type = attr.pop('type', None)
+
+            if not isinstance(type, string_types) or len(type) == 0:
+                raise Exception(
+                    'the "type" attribute is mandatory and must be a non empty string')
+
+            attr.setdefault('createdBy', g.auth.resource)
+
+            r = core.create(type, attr)
+
+            if r:
+                response = app.jsonify(r)
+                response.status_code = 201
+                return response
+            else:
+                raise Exception(
+                    'Unable to create the resource (type = %s)' % type)
+
+        raise Exception('Invalid request')
+
+
     resource_delete_args = {
         'children': fields.Bool(missing=False)
     }
 
     @app.route('/api/resources/<id>', methods=['GET', 'DELETE', 'PATCH'])
     @use_multi_args(DELETE=resource_delete_args)
-    @auth.required(GET='resource:read resource:write file:read file:write table:read table:write table:append device:read device:write app:read app:write', DELETE='resource:admin', PATCH='resource:admin')
+    @auth.required(GET='resource:read', DELETE='resource:write', PATCH='resource:write')
     def resource(args, id):
         """Get a resource by its id
         ---
@@ -148,9 +215,7 @@ def install(core, app, auth, **kwargs):
             if isinstance(data, dict):
                 
                 with r:
-
                     fromJson(r, data)
-
                     return app.jsonify(r)
 
             raise Exception('Invalid request')

@@ -33,12 +33,6 @@ if bluepy_imported:
 
 
     from ething.core.plugin import Plugin
-    from ething.core.green import mode
-    if mode == 'eventlet':
-        from ething.core.Process import ThreadProcess # do not use GreenProcess since bluepy use select (blocking and not patchable)
-        process_mode = ThreadProcess
-    else:
-        process_mode = True # pick default
     from .BleaGateway import BleaGateway
     from .devices import devices
 
@@ -62,7 +56,7 @@ if bluepy_imported:
         }
 
         def setup(self):
-            self.core.scheduler.setInterval(self.config['scan_interval'], self.scan, thread=process_mode, name="blea.scan")
+            self.core.scheduler.setInterval(self.config['scan_interval'], self.scan, name="blea.scan")
 
         def scan(self):
 

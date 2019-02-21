@@ -266,7 +266,7 @@ class TransportProcess(Process):
         self.protocol.init(self)
         self.transport.init(self)
         
-        while not self.stopped():
+        while self.is_running:
         
             error = None
             
@@ -280,7 +280,7 @@ class TransportProcess(Process):
                 self.log.exception('exception in transport.open()')
                 error = e
 
-            while not error and not self.stopped():
+            while not error and self.is_running:
                 try:
                     # used mainly for regular check such as timeout...
                     self.protocol.loop()
@@ -316,7 +316,7 @@ class TransportProcess(Process):
             
             if self.reconnect_delay > 0:
                 t_end = time.time() + self.reconnect_delay
-                while not self.stopped() and time.time() < t_end:
+                while self.is_running and time.time() < t_end:
                     time.sleep(0.5)
 
 
@@ -370,7 +370,7 @@ class ThreadedTransport(Transport):
             self._thread = None
 
 
-class BaseResult (object):
+class AsyncResult (object):
 
     def __init__(self, command = None, done = None, err = None):
         self.__command = command

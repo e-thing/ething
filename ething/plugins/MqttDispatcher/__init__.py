@@ -42,27 +42,12 @@ class MqttDispatcher(Plugin):
         ])
     }
 
-    def start(self):
-        super(MqttDispatcher, self).start()
-        self.start_process()
-
-    def stop(self):
-        super(MqttDispatcher, self).stop()
-        self.stop_process()
-
-    def start_process(self):
-        if self.config.get('host'):
-            self.process = MqttDispatcherService(self.core, self.config)
-            self.process.start()
-
-    def stop_process(self):
-        if hasattr(self, 'process'):
-            self.process.stop()
-            del self.process
+    def setup(self):
+        self.service = MqttDispatcherService(self.core, self.config)
+        self.core.process_manager.add(self.service)
 
     def on_config_change(self):
-        self.stop_process()
-        self.start_process()
+        self.service.restart()
 
 
 
@@ -92,7 +77,7 @@ class MqttDispatcherService(Process):
         if user and password:
             self._mqttClient.username_pw_set(user, password=password)
 
-        while not self.stopped():
+        while self.is_running:
 
             try:
                 self._mqttClient.connect(host, port=port, keepalive=self.KEEPALIVE)
@@ -101,13 +86,13 @@ class MqttDispatcherService(Process):
                 self.log.error("Error: unable to connect to %s:%d" % (host, port))
                 # wait before retry
                 t_end = time.time() + self.RECONNECT_DELAY
-                while not self.stopped() and time.time() < t_end:
+                while self.is_running and time.time() < t_end:
                     time.sleep(0.5)
                 continue
 
             self.log.info("connected to %s:%d" % (host, port))
 
-            while not self.stopped():
+            while self.is_running:
                 self._mqttClient.loop(1.0)
 
             self.log.info("disconnect")

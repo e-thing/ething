@@ -1,12 +1,27 @@
 # coding: utf-8
 
-
 from future.utils import string_types
 from ething.core.Device import Device
 from ething.core.reg import *
 from .helpers import *
 from .Message import Message
-from ething.core.Process import get_process
+from .protocol import MySensorsProtocol
+from ething.core.TransportProcess import TransportProcess
+
+
+class MySensorsController(TransportProcess):
+
+    def __init__(self, gateway, transport):
+
+        super(MySensorsController, self).__init__(
+            'mysensors.%s' % gateway.id,
+            transport=transport,
+            protocol=MySensorsProtocol(gateway)
+        )
+        self.gateway = gateway
+
+    def send(self, *args, **kwargs):
+        return self.protocol.send(*args, **kwargs)
 
 
 @abstract
@@ -17,9 +32,15 @@ class MySensorsGateway(Device):
     see https://www.mysensors.org
     """
 
-    @property
-    def controller(self):
-        return get_process('mysensors.%s' % self.id)
+    def __process__(self):
+        self.controller = self.__controller__(self)
+        return self.controller
+
+    def on_update(self, dirty_keys):
+        for attr in self.controller.RESET_ATTR:
+            if attr in dirty_keys:
+                self.controller.restart()
+                break
 
     def getNodes(self, filter=None):
 

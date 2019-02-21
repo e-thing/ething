@@ -3,10 +3,12 @@
 
 from .RFLinkNode import RFLinkNode
 from ething.core.reg import *
+from ething.core.Interface import Interface
 from .helpers import attrMap
 
 
 @abstract
+@attr('interfaces', mode=PRIVATE, default=lambda cls: [get_definition_name(c) for c in cls.__mro__ if issubclass(c, Interface) and c is not Interface])
 class RFLinkGenericSensor(RFLinkNode):
 
     def _handle_incoming_data(self, protocol, data):
@@ -29,36 +31,18 @@ class RFLinkGenericSensor(RFLinkNode):
     @classmethod
     def create_dynamic_class(cls, interface_types):
 
-        bases = set()
-        bases.add(cls)
+        bases = []
+        bases.append(cls)
 
         for interface_type in interface_types:
             interface_cls = get_registered_class(interface_type)
-            bases.add(interface_cls)
+            bases.append(interface_cls)
 
-        return type('RFLinkSensor', tuple(bases), {
+        return  type('RFLinkGenericSensor', tuple(bases), {
             '_REGISTER_': False
         })
 
-
-    @classmethod
-    def unserialize(cls, data, context = None):
-        interface_types = list(filter(lambda t: t.startswith('interfaces/'), data.get('extends', [])))
-        dyn_cls = cls.create_dynamic_class(interface_types)
-        return RFLinkNode.unserialize.__func__(dyn_cls, data, context)
-
-    @classmethod
-    def create_class_from_data(cls, protocol, data):
-
-        interfaces = set()
-
-        if 'TEMP' in data:
-            interfaces.add('interfaces/Thermometer')
-        if 'HUM' in data:
-            interfaces.add('interfaces/HumiditySensor')
-        if 'BARO' in data:
-            interfaces.add('interfaces/PressureSensor')
-
-        if len(interfaces)>0:
-            return cls.create_dynamic_class(interfaces)
+    def __instanciate__(cls, data, context):
+        dyn_cls = cls.create_dynamic_class(data.get('interfaces', []))
+        return dyn_cls(data, context)
 

@@ -13,7 +13,7 @@ class ResourceFilter(ResourceNode):
         msg = inputs['default']
         test_pass = False
         try:
-            test_pass = (msg.get('resource') == self.resource)
+            test_pass = (self.resource == msg.get('resource'))
         finally:
             self.emit(msg, port='default' if test_pass else 'fail')
 
@@ -33,7 +33,7 @@ class ResourceMatch(ResourceNode):
         test_pass = False
         try:
             if self.resource is not None:
-                r = self.core.get(self.resource)
+                r = self.resource
             else:
                 r = msg.get('resource')
                 if isinstance(r, string_types):

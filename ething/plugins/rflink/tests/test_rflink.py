@@ -1,7 +1,8 @@
 # coding: utf-8
 import pytest
-from .. import RFLinkProtocol
-from  ething.core.interfaces import Relay
+from .. import RFLinkGenericSensor
+from ..protocol import RFLinkProtocol
+from  ething.core.interfaces import Relay, Thermometer, HumiditySensor
 
 
 def test_rflink_controller(core, process):
@@ -42,3 +43,22 @@ def test_rflink_controller(core, process):
     assert len(list(table.keys)) == 1
 
     assert table.select(start=-1)[0].get('state') is True
+
+
+    # generic sensor
+    protocol.handle_line(u'20;05;Cresta;ID=2801;TEMP=00af;HUM=53;BAT=OK;')
+
+    th_sensor = gateway.children(lambda r: r.nodeId == '2801')[0]
+
+    assert th_sensor
+
+    assert isinstance(th_sensor, RFLinkGenericSensor)
+    assert isinstance(th_sensor, Thermometer)
+    assert isinstance(th_sensor, HumiditySensor)
+
+
+
+
+
+
+

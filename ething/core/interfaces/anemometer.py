@@ -8,8 +8,8 @@ from ..reg import *
 @attr('wind_speed', type = Number(), default = 0, mode = READ_ONLY, history = True, watch = True, description = "The speed of wind (m/s)")
 class Anemometer(Sensor):
 
-    def _watch(self, attr, new_value, old_value):
-        super(Anemometer, self)._watch(attr, new_value, old_value)
+    def on_attr_update(self, attr, new_value, old_value):
+        super(Anemometer, self).on_attr_update(attr, new_value, old_value)
 
         if attr == 'wind_speed' or attr == 'wind_direction':
             if new_value != old_value:

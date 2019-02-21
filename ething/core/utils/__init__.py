@@ -1,8 +1,6 @@
 # coding: utf-8
 
 from .null_context_manager import NullContextManager
-import inspect
-import sys
 
 
 _info = None
@@ -44,14 +42,6 @@ def print_info(core, printer):
     platform_info = info.get('platform', {})
     printer("PLATFORM  : %s" % (platform_info.get('name')))
     printer("SYSTEM    : %s" % (platform_info.get('version')))
-
-
-if sys.version_info >= (3, 0):
-    def get_cls_methods(cls):
-      return inspect.getmembers(cls, inspect.isfunction)
-else:
-    def get_cls_methods(cls):
-      return [(n,m.__func__) for n,m in inspect.getmembers(cls, inspect.ismethod)]
 
 
 class _Comparable:

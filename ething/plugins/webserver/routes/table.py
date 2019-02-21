@@ -6,120 +6,6 @@ from ..server_utils import *
 
 def install(core, app, auth, **kwargs):
 
-    @app.route('/api/tables', methods=['POST'])
-    @auth.required('table:write resource:write')
-    def tables():
-        """
-        ---
-        post:
-          tags:
-            - table
-          description: |-
-            Creates a new table.
-
-            You may want to pass directly the content of the table in the same request. To do so, just pass the data through the key 'content' of the metadata object;
-
-            example:
-
-            ```json
-            {
-               "name": "foobar.db",
-               "content": [
-                    {
-                        "temperature": 12.5,
-                        "pressure": 101325
-                    }
-               ]
-            }
-            ```
-
-            #### cURL example
-
-            The next command will create a new table 'mytable.db'.
-
-            ```bash
-            curl
-                -H 'X-API-KEY: <YOUR_API_KEY>'
-                -H "Content-Type: application/json"
-                -X POST
-                -d '{"name":"mytable.db"}'
-                http://localhost:8000/api/tables
-            ```
-
-            If the command was successful, a response containing the meta data of the created table will be given back.
-            You will find in it the id of that table.
-            This id is a unique string identifying this table and is necessary to make any operation on it.
-
-            ```json
-            {
-              "id":"56_df0f",
-              "name":"mytable.db",
-              "data":null,
-              "description":null,
-              "maxLength":null,
-              "type":"Table",
-              "createdBy":null,
-              "createdDate":"2016-02-12T14:49:30+00:00",
-              "modifiedDate":"2016-02-15T13:03:20+00:00",
-              "length":421,
-              "keys":{
-                 "temp1":421,
-                 "temp2":421
-              },
-              "location":null
-            }
-            ```
-          parameters:
-            - name: metadata
-              in: body
-              description: |-
-
-
-                The metadata of the table to be created.
-
-                example:
-
-                ```json
-                {
-                    "name":"mytable.db"
-                }
-                ```
-
-              required: true
-              schema:
-                $ref: '#/definitions/Table'
-          responses:
-            '200':
-              description: The table was successfully created
-              schema:
-                $ref: '#/definitions/Table'
-        """
-        attr = request.get_json()
-
-        if isinstance(attr, dict):
-
-            content = None
-
-            if 'content' in attr:
-                content = attr['content']
-                attr.pop('content')
-
-            attr.setdefault('createdBy', g.auth.resource)
-
-            r = app.create('resources/Table', attr)
-
-            if r:
-
-                if content:
-                    r.importData(content)
-
-                response = app.jsonify(r)
-                response.status_code = 201
-                return response
-            else:
-                raise Exception('Unable to create the table')
-
-        raise Exception('Invalid request')
 
     table_fmts = ["json", "json_pretty", "csv", "csv_no_header"]
     date_fmts = ['timestamp', 'timestamp_ms', 'rfc3339']
@@ -143,7 +29,7 @@ def install(core, app, auth, **kwargs):
 
     @app.route('/api/tables/<id>', methods=['GET', 'PUT', 'POST'])
     @use_multi_args(GET=table_get_args, PUT=(table_put_args, ('query',)), POST=(table_post_args, ('query',)))
-    @auth.required(GET='table:read resource:read', PUT='table:write resource:write', POST='table:write table:append resource:write')
+    @auth.required(GET='table:read', PUT='table:write', POST='table:write')
     def table(args, id):
         """
         ---
@@ -338,7 +224,7 @@ def install(core, app, auth, **kwargs):
 
     @app.route('/api/tables/<id>/remove', methods=['POST'])
     @use_args(table_action_remove_args, locations=('query', 'form'))
-    @auth.required('table:write resource:write')
+    @auth.required('table:write')
     def table_delete_rows(args, id):
         """
         ---
@@ -389,7 +275,7 @@ def install(core, app, auth, **kwargs):
 
     @app.route('/api/tables/<id>/replace', methods=['POST'])
     @use_args(table_action_replace_args, locations=('query',))
-    @auth.required('table:write resource:write')
+    @auth.required('table:write')
     def table_replace_rows(args, id):
         """
         ---
@@ -421,7 +307,7 @@ def install(core, app, auth, **kwargs):
     }
 
     @app.route('/api/tables/<id>/statistics')
-    @auth.required('table:read resource:read')
+    @auth.required('table:read')
     @use_args(table_statistics_args)
     def table_statistics(args, id):
         """
@@ -451,7 +337,7 @@ def install(core, app, auth, **kwargs):
 
     @app.route('/api/tables/<id>/id/<doc_id>', methods=['GET', 'DELETE', 'PATCH'])
     @use_multi_args(PATCH=(table_cell_id_patch_args, ('query',)))
-    @auth.required(GET='table:read resource:read', DELETE='table:write resource:write', PATCH='table:write resource:write')
+    @auth.required(GET='table:read', DELETE='table:write', PATCH='table:write')
     def table_cell_id(args, id, doc_id):
 
         r = app.getResource(id, ['Table'])

@@ -3,7 +3,26 @@
 from ething.core.Device import Device
 from ething.core.reg import *
 from ething.core.interfaces import Light
-from ething.core.Process import get_process
+from ething.core.TransportProcess import TransportProcess, NetTransport, UdpTransport, Protocol
+from .protocol import YeelightProtocol
+from .yeelight import PORT
+
+
+class Controller(TransportProcess):
+
+    def __init__(self, device):
+        super(Controller, self).__init__(
+            'yeelight.%s' % device.id,
+            transport=NetTransport(
+                host=device.host,
+                port=PORT
+            ),
+            protocol=YeelightProtocol(device)
+        )
+        self.device = device
+
+    def send(self, *args, **kwargs):
+        return self.protocol.send(*args, **kwargs)
 
 
 @abstract
@@ -13,14 +32,18 @@ from ething.core.Process import get_process
 @attr('host', type=String(allow_empty=False), mode=READ_ONLY, description="The ip address of the device.")
 class YeelightDevice (Device, Light):
 
+    def __process__(self):
+        self.controller = Controller(self)
+        return self.controller
+
+    def on_update(self, dirty_keys):
+        if 'host' in dirty_keys:
+            self.controller.restart()
+
     def _update(self, params):
         if "power" in params:
             state = bool('on' in params["power"].lower())
             self.state = state
-
-    @property
-    def controller(self):
-        return get_process('yeelight.%s' % self.id)
 
     def setState(self, state):
         result = self.controller.send("set_power", ['on' if state else 'off', "smooth", 500], done = lambda _, device : setattr(device, 'state', state) )

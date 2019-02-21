@@ -47,7 +47,7 @@ class ExecuteDevice(ResourceNode):
     OUTPUTS = ['default']
 
     def main(self, **inputs):
-        device = self.core.get(self.resource)
+        device = self.resource
 
         if device is None:
             raise Exception("the device has been removed")
@@ -74,10 +74,6 @@ class Device(Resource):
     BATTERY_HALF = 50
     BATTERY_FULL = 100
 
-    @attr(description="The list of the methods available.")
-    def methods(self):
-        return [m.name for m in list_registered_methods(self)]
-
     def setConnectState(self, connected):
 
         with self:
@@ -89,8 +85,8 @@ class Device(Resource):
             if self.connected != connected:
                 self.connected = connected
 
-    def _watch(self, attr, new_value, old_value):
-        super(Device, self)._watch(attr, new_value, old_value)
+    def on_attr_update(self, attr, new_value, old_value):
+        super(Device, self).on_attr_update(attr, new_value, old_value)
 
         if attr == 'battery':
             if new_value != old_value:
@@ -103,9 +99,3 @@ class Device(Resource):
                 else:
                     self.log.debug("device disconnected %s" % self)
                     self.dispatchSignal(DeviceDisconnected(self))
-
-    @classmethod
-    def unserialize(cls, data, context = None):
-        if data['location'] is None:
-            data['location'] = ''
-        return super(Device, cls).unserialize(data, context)

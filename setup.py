@@ -30,7 +30,7 @@ requires = [
     "jsonschema",
     "multiping",
     "requests",
-    "gevent", #eventlet
+    "gevent",
     "jsonpath-rw", # flow
     "objectpath",
 

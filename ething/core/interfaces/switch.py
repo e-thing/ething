@@ -8,8 +8,8 @@ from .sensor import Sensor, SensorValueChanged
 @attr('state', type = Boolean(), default = False, mode = READ_ONLY, history = True, watch = True, description = "the state of the device")
 class Switch(Interface):
 
-    def _watch(self, attr, new_value, old_value):
-        super(Switch, self)._watch(attr, new_value, old_value)
+    def on_attr_update(self, attr, new_value, old_value):
+        super(Switch, self).on_attr_update(attr, new_value, old_value)
 
         if attr == 'state':
             if new_value != old_value:

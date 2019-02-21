@@ -212,7 +212,7 @@ class FileWrite(ResourceNode):
 
     def main(self, **inputs):
         msg = inputs.get('default')
-        file = self.core.get(self.resource)
+        file = self.resource
         content = msg.payload
         if not (isinstance(content, string_types) or isinstance(content, binary_type)):
             content = str(content)
@@ -233,6 +233,6 @@ class FileRead(ResourceNode):
 
     def main(self, **inputs):
         msg = inputs.get('default')
-        file = self.core.get(self.resource)
+        file = self.resource
         content = file.read(encoding=self.encoding or None)
         self.emit(content)

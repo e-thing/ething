@@ -12,10 +12,28 @@ from .green import mode
 from .Signal import Signal
 from .utils.objectpath import generate_filter, patch_all
 from .Resource import Resource
+from .Process import Process, Manager as ProcessManager
 
 import logging
 import pytz
 import time
+
+
+class _CoreScheduler(Scheduler):
+    def __init__(self, core):
+        super(_CoreScheduler, self).__init__()
+        self.core = core
+        self._p = None
+
+    def execute(self, task):
+        if not task.allow_multiple:
+            if self._p:
+                p = self.core.process_manager.get(self._p)
+                if p.is_running:
+                    self.log.debug('task "%s" already running: skipped' % task.name)
+                    return
+
+        self._p = self.core.process_manager.add(Process(name=task.name, target=task.target, args=task.args, kwargs=task.kwargs, parent=task.instance)).id
 
 
 class Core(object):
@@ -44,7 +62,8 @@ class Core(object):
         self._init_logger()
 
         self.signalDispatcher = SignalDispatcher()
-        self.scheduler = Scheduler()
+        self.process_manager = ProcessManager()
+        self.scheduler = _CoreScheduler(self)
 
         self.plugins = list()
 
@@ -127,8 +146,9 @@ class Core(object):
 
     def stop(self, callback = None):
         self.log.info("stopping ...")
-        self._plugins_call('stop')
         self.running = False
+        self._plugins_call('stop')
+        self.process_manager.stop(timeout=2)
 
         if callback is not None:
             try:
@@ -149,6 +169,7 @@ class Core(object):
         self._plugins_call('unload')
 
         self.signalDispatcher.clear()
+        self.process_manager.clear()
         self.scheduler.clear()
 
         if hasattr(self, 'db'):
@@ -195,6 +216,7 @@ class Core(object):
 
         self.running = True
         self._plugins_call('start')
+        self.process_manager.start()
 
     def loop(self, timeout=1):
         self.signalDispatcher.process(timeout)

@@ -1,6 +1,6 @@
 # coding: utf-8
 
-from ething.core.TransportProcess import BaseResult
+from ething.core.TransportProcess import AsyncResult
 import socket
 import struct
 import json
@@ -51,7 +51,7 @@ def scan_gateways():
     return listvalues(gateways)
 
 
-class Result (BaseResult):
+class Result (AsyncResult):
     def __init__(self, ack, **kwargs):
         super(Result, self).__init__(**kwargs)
         self.ack = ack

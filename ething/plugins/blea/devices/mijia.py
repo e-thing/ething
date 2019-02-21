@@ -1,6 +1,5 @@
 # coding: utf-8
 
-from .. import process_mode
 from ..BleaDevice import BleaDevice
 from ething.core.interfaces import Thermometer, HumiditySensor
 from ething.core import scheduler
@@ -19,7 +18,7 @@ class Mijia(BleaDevice, Thermometer, HumiditySensor):
         if name is not None and name.upper().startswith('MJ_HT_'):
             return True
 
-    @scheduler.setInterval(READ_INTERVAL, thread=process_mode, name="blea.mijia.read")
+    @scheduler.setInterval(READ_INTERVAL, name="blea.mijia.read")
     def read(self):
 
         try:

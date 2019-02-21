@@ -56,35 +56,15 @@ def install(core, app, auth, **kwargs):
 
     _debuggers = []
 
-    @app.route('/api/flows', methods=['POST'])
-    @auth.required('flow:write resource:write')
-    def flows():
-
-        attr = request.get_json()
-
-        if attr is not None:
-            attr.setdefault('createdBy', g.auth.resource)
-
-            r = app.create('resources/Flow', attr)
-
-            if r:
-                response = app.jsonify(r)
-                response.status_code = 201
-                return response
-            else:
-                raise Exception('Unable to create the flow')
-
-        raise Exception('Invalid request')
-
     @app.route('/api/flows/<id>/deploy')
-    @auth.required('flow:read resource:read')
+    @auth.required('resource:write')
     def flow_deploy(id):
         r = app.getResource(id, ['Flow'])
         r.deploy()
         return '', 204
 
     @app.route('/api/flows/<id>/inject/<node_id>', methods=['POST'])
-    @auth.required('flow:write resource:write')
+    @auth.required('flow:inject')
     def flow_inject(id, node_id):
 
         data = request.get_json()

@@ -257,7 +257,7 @@ class ResourceSignalEventNode(SignalEventNode, ResourceNode):
 
     def _filter(self, signal):
         if super(ResourceSignalEventNode, self)._filter(signal):
-            return self._resource is None or signal.resource.id == self.resource  # None means all resources
+            return self.resource is None or signal.resource == self.resource  # None means all resources
 
 
 connection_type = Dict(
@@ -269,6 +269,35 @@ connection_type = Dict(
 )
 
 
+class FlowProcess(Process):
+
+    def __init__(self, flow):
+        super(FlowProcess, self).__init__(name='flow.%s' % flow.id)
+        self.flow = flow
+
+    def setup(self):
+        self.flow.clear()
+
+        # rebuild the flow
+        for node in self.flow.nodes:
+            self.flow.add_node(node)
+
+        for connection_data in self.flow.connections:
+            src_id = connection_data['src'][0]
+            src_port = connection_data['src'][1]
+            dest_id = connection_data['dest'][0]
+            dest_port = connection_data['dest'][1]
+
+            self.flow.connect((src_id, src_port), (dest_id, dest_port))
+
+    def main(self):
+        self.flow.run()
+
+    def stop(self, timeout=None):
+        self.flow.stop()
+        return super(FlowProcess, self).stop(timeout=timeout)
+
+
 @attr('nodes', type=Array(item_type=Node), default=[], description="The list of nodes.")
 @attr('connections', type=Array(item_type=connection_type), default=[], description="A list of connections")
 class Flow(Resource, FlowBase):
@@ -277,40 +306,12 @@ class Flow(Resource, FlowBase):
         Resource.__init__(self, value, context)
         FlowBase.__init__(self, logger=self.log)
 
-        self._process = None
-
     def deploy(self):
-        self.stop() # stop any previous flow
-        self.clear()
+        self._process.restart()
 
-        if len(self.nodes) == 0:
-            return
-
-        # rebuild the flow
-        for node in self.nodes:
-            self.add_node(node)
-
-        for connection_data in self.connections:
-            src_id = connection_data['src'][0]
-            src_port = connection_data['src'][1]
-            dest_id = connection_data['dest'][0]
-            dest_port = connection_data['dest'][1]
-
-            self.connect((src_id, src_port), (dest_id, dest_port))
-
-        process = Process(name='flow.%s' % self.id, target=self.run)
-        process.start()
-        self._process = process
-
-    def stop(self):
-        if self._process is not None:
-            FlowBase.stop(self)
-            self._process.stop()
-            self._process = None
-
-    def remove(self, removeChildren=False):
-        self.stop()
-        Resource.remove(self, removeChildren)
+    def __process__(self):
+        self._process = FlowProcess(self)
+        return self._process
 
     def inject(self, node, data=None):
         if isinstance(node, string_types):

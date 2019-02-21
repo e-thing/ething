@@ -7,8 +7,8 @@ from ..reg import *
 @attr('temperature', type = Number(), default = 0, mode = READ_ONLY, history = True, watch = True, description = u"the temperature of the sensor")
 class Thermometer(Sensor):
 
-    def _watch(self, attr, new_value, old_value):
-        super(Thermometer, self)._watch(attr, new_value, old_value)
+    def on_attr_update(self, attr, new_value, old_value):
+        super(Thermometer, self).on_attr_update(attr, new_value, old_value)
 
         if attr == 'temperature':
             if new_value != old_value:

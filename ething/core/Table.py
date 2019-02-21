@@ -4,7 +4,7 @@ from .utils.date import TzDate, utcnow, utcfromtimestamp, datetime_to_array
 from .reg import *
 from .Signal import ResourceSignal
 from .Helpers import filter_obj
-from .utils import object_sort, ShortId
+from .utils import object_sort, ShortId, objectpath
 from .flow import ResourceNode
 import datetime
 import time
@@ -14,7 +14,6 @@ import csv
 import sys
 import pytz
 import math
-import objectpath
 
 if (sys.version_info > (3, 0)):
     from io import StringIO
@@ -43,7 +42,7 @@ class AppendData(ResourceNode):
 
     def main(self, **inputs):
         msg = inputs.get('default')
-        table = self.core.get(self.resource)
+        table = self.resource
 
         if table is None:
             raise Exception("the table has been removed")
@@ -440,13 +439,7 @@ class Table(Resource):
         # TODO: what about the date firld ? docSerialize() here ?
 
         if query:
-            def _filter(r):
-                try:
-                    tree = objectpath.Tree(r)
-                    return bool(tree.execute(query))
-                except:
-                    return False
-
+            _filter = objectpath.generate_filter(query)
             rows = [row for row in rows if _filter(row)]
 
         if sort:

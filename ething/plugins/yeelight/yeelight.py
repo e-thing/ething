@@ -5,7 +5,7 @@ import socket
 import struct
 import re
 import colorsys
-from ething.core.TransportProcess import BaseResult
+from ething.core.TransportProcess import AsyncResult
 
 
 MULTICAST_ADDRESS = '239.255.255.250'
@@ -144,7 +144,7 @@ def parse_result_error(msg):
         return ( code, message )
 
 
-class Result (BaseResult):
+class Result (AsyncResult):
 
     def resolve(self, msg, *args, **kwargs):
         err = parse_result_error(msg)

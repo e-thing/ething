@@ -1,9 +1,23 @@
 # coding: utf-8
 
-
 from ething.core.Device import Device
 from ething.core.reg import *
-from ething.core.Process import get_process
+from ething.core.TransportProcess import TransportProcess
+from .protocol import RFLinkProtocol
+
+
+class RFLinkController(TransportProcess):
+
+    def __init__(self, gateway, transport):
+        super(RFLinkController, self).__init__(
+            'rflink.%s' % gateway.id,
+            transport = transport,
+            protocol = RFLinkProtocol(gateway)
+        )
+        self.gateway = gateway
+
+    def send(self, *args, **kwargs):
+        return self.protocol.send(*args, **kwargs)
 
 
 @abstract
@@ -13,9 +27,15 @@ from ething.core.Process import get_process
 @attr('inclusion', default=False, type=Boolean(),  description="If true, new devices will be automatically created.")
 class RFLinkGateway(Device):
 
-    @property
-    def controller(self):
-        return get_process('rflink.%s' % self.gateway.id)
+    def __process__(self):
+        self.controller = self.__controller__(self)
+        return self.controller
+
+    def on_update(self, dirty_keys):
+        for attr in self.controller.RESET_ATTR:
+            if attr in dirty_keys:
+                self.controller.restart()
+                break
 
     def getNodes(self, filter=None):
         def _filter (r):

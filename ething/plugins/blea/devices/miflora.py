@@ -1,6 +1,5 @@
 # coding: utf-8
 
-from .. import process_mode
 from ..BleaDevice import BleaDevice
 from ething.core.reg import *
 from ething.core.interfaces import Thermometer, LightSensor, MoistureSensor
@@ -25,7 +24,7 @@ class Miflora(BleaDevice, Thermometer, LightSensor, MoistureSensor):
         if (name is not None and name.lower() in VALID_DEVICE_NAMES) or (mac is not None and mac.upper().startswith(DEVICE_PREFIX)):
             return True
 
-    @scheduler.setInterval(READ_INTERVAL, thread=process_mode, name="blea.miflora.read")
+    @scheduler.setInterval(READ_INTERVAL, name="blea.miflora.read")
     def read(self):
 
         try:
