@@ -699,7 +699,7 @@ class OS_item(object):
     self.save(obj)
     return obj
   
-  def _load(self):
+  def load(self):
     if self._loaded:
       return
 
@@ -719,7 +719,7 @@ class OS_item(object):
     LOGGER.debug('[%s] %d items loaded' % (self._cls.__name__, len(self._ref)))
 
   def find(self, query=None, sort=None, skip=None, limit=None):
-    self._load()
+    self.load()
 
     objs = list(self._ref.values())
 
@@ -739,7 +739,7 @@ class OS_item(object):
     return objs[offset:(limit + offset if limit is not None else None)]
   
   def get(self, id):
-    self._load()
+    self.load()
     return self._ref[id]
   
   def save(self, obj, force=False, _create=False):

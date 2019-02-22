@@ -16,7 +16,6 @@ from ething.core.plugin import Plugin
 from ..Scope import Scope
 
 from ething.core.utils import get_info
-from ething.core.Process import get_processes
 
 
 _meta = None
@@ -168,4 +167,4 @@ def install(core, app, auth, **kwargs):
     @app.route('/api/process')
     @auth.required()
     def list_processes():
-        return app.jsonify(get_processes())
+        return app.jsonify(core.process_manager)

@@ -204,79 +204,78 @@ class Flow(object):
 
         self._logger.debug("starting_nodes=%s" % starting_nodes)
 
-        if not starting_nodes:
-            self._logger.warning("empty flow")
-            return
+        if starting_nodes:
+            for node in starting_nodes:
+                node.run()
 
-        for node in starting_nodes:
-            node.run()
+            running_nodes_nb = 0
 
-        running_nodes_nb = 0
+            while True:
+                evt = self._event.get()
+                #self._logger.debug("process event=%s" % evt)
 
-        while True:
-            evt = self._event.get()
-            #self._logger.debug("process event=%s" % evt)
+                node = evt.node
+                evt_name = evt.name
 
-            node = evt.node
-            evt_name = evt.name
+                if evt_name == 'started':
+                    running_nodes_nb += 1
+                    self._nodes_data[node.id]['state'] = evt_name
+                    self._nodes_data[node.id]['start_ts'] = time.time()
+                    self._nodes_data[node.id]['count'] += 1
 
-            if evt_name == 'started':
-                running_nodes_nb += 1
-                self._nodes_data[node.id]['state'] = evt_name
-                self._nodes_data[node.id]['start_ts'] = time.time()
-                self._nodes_data[node.id]['count'] += 1
+                elif evt_name == 'emmited':
+                    msg = evt['msg']
+                    port = evt['port']
+                    endpoint = self.get_output_endpoint(node, port)
+                    self._nodes_data[node.id]['outputs'][port] = msg
+                    self._logger.debug('emit msg %s on port %s from node %s' % (msg, port, node))
 
-            elif evt_name == 'emmited':
-                msg = evt['msg']
-                port = evt['port']
-                endpoint = self.get_output_endpoint(node, port)
-                self._nodes_data[node.id]['outputs'][port] = msg
-                self._logger.debug('emit msg %s on port %s from node %s' % (msg, port, node))
+                    if endpoint is not None:
+                        # propagate the message
 
-                if endpoint is not None:
-                    # propagate the message
+                        connected_endpoints = self.get_connected_endpoints(endpoint)
+                        connected_nodes = set()
+                        for ep in connected_endpoints:
+                            self._nodes_data[ep.node.id]['inputs'][ep.port] = self._nodes_data[ep.node.id]['inputs']['__last'] = msg.clone()
+                            connected_nodes.add(ep.node)
 
-                    connected_endpoints = self.get_connected_endpoints(endpoint)
-                    connected_nodes = set()
-                    for ep in connected_endpoints:
-                        self._nodes_data[ep.node.id]['inputs'][ep.port] = self._nodes_data[ep.node.id]['inputs']['__last'] = msg.clone()
-                        connected_nodes.add(ep.node)
+                        for n in connected_nodes:
+                            # self._logger.debug('receive %s' % n)
+                            eps = list(filter(lambda ep: ep.node == n, connected_endpoints))
+                            n.receive([ep.port for ep in eps])
 
-                    for n in connected_nodes:
-                        # self._logger.debug('receive %s' % n)
-                        eps = list(filter(lambda ep: ep.node == n, connected_endpoints))
-                        n.receive([ep.port for ep in eps])
+                    else:
+                        # endpoint not connected
+                        # nothing to propagate
+                        pass
 
-                else:
-                    # endpoint not connected
-                    # nothing to propagate
-                    pass
+                elif evt_name == 'stopped':
+                    running_nodes_nb -= 1
+                    err = evt['error']
+                    self._nodes_data[node.id]['state'] = evt_name
+                    self._nodes_data[node.id]['stop_ts'] = time.time()
+                    self._nodes_data[node.id]['error'] = err
 
-            elif evt_name == 'stopped':
-                running_nodes_nb -= 1
-                err = evt['error']
-                self._nodes_data[node.id]['state'] = evt_name
-                self._nodes_data[node.id]['stop_ts'] = time.time()
-                self._nodes_data[node.id]['error'] = err
+                    if err is not None and node.stop_on_error:
+                        self._logger.debug("stop flow on error=%s node=%s" % (err, node))
+                        break
 
-                if err is not None and node.stop_on_error:
-                    self._logger.debug("stop flow on error=%s node=%s" % (err, node))
+                elif evt_name == 'quit':
                     break
 
-            elif evt_name == 'quit':
-                break
+                if node is not None:
+                    for d in self._debuggers:
+                        self._send_info(d, node)
 
-            if node is not None:
-                for d in self._debuggers:
-                    self._send_info(d, node)
+                if self._event.empty() and running_nodes_nb == 0:
+                    self._logger.debug("end of the flow")
+                    break
 
-            if self._event.empty() and running_nodes_nb == 0:
-                self._logger.debug("end of the flow")
-                break
-
-        # stop/kill any remaining running nodes
-        for node in self._nodes:
-            node.stop()
+            # stop/kill any remaining running nodes
+            for node in self._nodes:
+                node.stop()
+        else:
+            self._logger.warning("empty flow")
 
         tf = time.time()
 
@@ -450,7 +449,7 @@ class Node(with_metaclass(ABCMeta, object)):
         del self._t[pid]
 
     def stop(self):
-        for pid in self._t:
+        for pid in list(self._t):
             p = self._t[pid]
             try:
                 gevent.kill(p)

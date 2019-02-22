@@ -6,7 +6,7 @@ from .Interface import Interface
 from .utils.date import TzDate, utcnow
 from .utils.objectpath import evaluate
 from .scheduler import *
-from .Process import Process, get_processes
+from .Process import Process
 from collections import Mapping, Sequence
 import inspect
 import logging
@@ -322,12 +322,16 @@ class Resource(Entity):
                     processses.append(ppa(self))
 
         for p in processses:
-            p.set_parent(self)
-            self.core.process_manager.add(p)
+            p.parent = self
+            self.core.process_manager.attach(p)
 
+        # keep references to this process
         self.__processes = processses
 
     def _process_stop(self):
+        self.__processes = None # remove references
+
+        # stop any processes binded to this resource
         for p in self.core.process_manager.find(parent=self):
-            self.core.process_manager.remove(p)
+            p.stop(timeout=2)
 

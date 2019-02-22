@@ -12,7 +12,7 @@ from .protocol import MihomeProtocol
 class Mihome(Plugin):
 
     def setup(self):
-        self.core.process_manager.add(Controller(self.core))
+        self.core.process_manager.attach(Controller(self.core))
 
 
 class Controller(TransportProcess):
@@ -23,9 +23,10 @@ class Controller(TransportProcess):
             transport=ThreadedTransport(UdpTransport(
                 host=MULTICAST_ADDRESS,
                 port=MULTICAST_PORT
-            ), 'mihome.read'),
+            ), core.process_manager, 'mihome.read'),
 
-            protocol=MihomeProtocol(core)
+            protocol=MihomeProtocol(core),
+            id='mihome'
         )
 
     def send(self, *args, **kwargs):

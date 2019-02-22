@@ -81,7 +81,7 @@ class WebServer(Plugin):
     def setup(self):
         # clients
         install_clients_manager(self.app)
-        self.core.process_manager.add(WebServerProcess(self.app))
+        self.core.process_manager.attach(WebServerProcess(self.app))
 
     def export_data(self):
         return [serialize(apikey) for apikey in db_find(Apikey)]
@@ -314,9 +314,8 @@ class WebServerProcess(Process):
         super(WebServerProcess, self).__init__(name='webserver')
         self.app = app
 
-    def stop(self):
+    def terminate(self):
         self.app.stop()
-        super(WebServerProcess, self).stop()
 
     def main(self):
         self.app.run()

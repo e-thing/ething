@@ -52,7 +52,10 @@ class Task(object):
         self._t0 = time.time()
 
     def __getattr__(self, item):
-        return self._params[item]
+        if item in self._params:
+            return self._params[item]
+        else:
+            raise AttributeError()
 
     @property
     def id(self):
@@ -257,7 +260,7 @@ class Scheduler(object):
     def setInterval(self, interval, callback=None, start_in_sec=0, args=(), kwargs=None, **params):
         def p(f):
             with self.r_lock:
-                task = IntervalTask(self, interval, f, args=args, kwargs=kwargs, start_in_sec=start_in_sec, **params)
+                task = IntervalTask(interval, self, f, args=args, kwargs=kwargs, start_in_sec=start_in_sec, **params)
                 self.tasks.append(task)
                 return task
 
@@ -266,7 +269,7 @@ class Scheduler(object):
     def delay(self, delay, callback=None, args=(), kwargs=None, **params):
         def p(f):
             with self.r_lock:
-                task = DelayTask(self, delay, f, args=args, kwargs=kwargs, **params)
+                task = DelayTask(delay, self, f, args=args, kwargs=kwargs, **params)
                 self.tasks.append(task)
                 return task
 

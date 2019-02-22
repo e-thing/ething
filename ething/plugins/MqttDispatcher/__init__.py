@@ -43,11 +43,20 @@ class MqttDispatcher(Plugin):
     }
 
     def setup(self):
-        self.service = MqttDispatcherService(self.core, self.config)
-        self.core.process_manager.add(self.service)
+        self.service = None
+        self.update_service()
 
     def on_config_change(self):
-        self.service.restart()
+        self.update_service()
+
+    def update_service(self):
+        if self.service is not None:
+            self.service.stop()
+            self.service = None
+        if self.config.get('host'):
+            self.service = MqttDispatcherService(self.core, self.config)
+            self.core.process_manager.attach(self.service)
+
 
 
 

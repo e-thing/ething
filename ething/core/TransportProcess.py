@@ -222,6 +222,7 @@ class Packetizer(Protocol):
     def handle_packet(self, packet):
         raise NotImplementedError()
 
+
 class LineReader(Packetizer):
     """
     Read and write (Unicode) lines.
@@ -330,9 +331,10 @@ class QueueProtocol(Protocol):
 
 class ThreadedTransport(Transport):
 
-    def __init__(self, transport, name = None, timeout=3):
+    def __init__(self, transport, manager, name = None, timeout=1):
         super(ThreadedTransport, self).__init__()
         self._transport = transport
+        self._manager = manager
         self._q = queue.Queue()
         self._thread = None
         self._name = name or 'ThreadedTransport.%s' % type(transport).__name__
@@ -345,7 +347,7 @@ class ThreadedTransport(Transport):
     def open(self):
         if self._thread:
             raise Exception('already opened')
-        self._thread = TransportProcess(self._name, transport=self._transport, protocol=QueueProtocol(self._q))
+        self._thread = TransportProcess(self._name, transport=self._transport, protocol=QueueProtocol(self._q), manager=self._manager)
         self._thread.start()
         # wait for the Process to be opened
         self._transport.opened.wait(5)

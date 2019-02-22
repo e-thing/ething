@@ -10,7 +10,7 @@ from .yeelight import MULTICAST_ADDRESS, MULTICAST_PORT
 class Yeelight(Plugin):
 
     def setup(self):
-        self.core.process_manager.add(AdvertisementController(self.core))
+        self.core.process_manager.attach(AdvertisementController(self.core))
 
 
 class AdvertisementController(TransportProcess):

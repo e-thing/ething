@@ -1,70 +1,343 @@
 # coding: utf-8
 
-from future.utils import string_types
+from future.utils import with_metaclass
 import logging
 import threading
 import time
-
-from .green import mode
+import gevent
+from abc import ABCMeta, abstractmethod
 from .utils.weak_ref import weak_ref
 from .utils import ShortId
 
 
-_processes_list = []
+class Runner(with_metaclass(ABCMeta, object)):
+
+    def __init__(self, manager, process):
+        self._manager = manager
+        self._start_t = None
+        self._stop_t = None
+        self._cnt = 0
+        self._running_evt = threading.Event()
+        self._stop_evt = threading.Event()
+        self._log = self._manager.log
+        self._id = process.id
+        self._process = process
+        self._weak_ref = weak_ref(process)
+        self._exception = None
+
+    @property
+    def process(self):
+        if self._process is not None:
+            return self._process
+        return self._weak_ref()
+
+    @property
+    def id(self):
+        return self._id
+
+    @property
+    def manager(self):
+        return self._manager
+
+    @property
+    def log(self):
+        return self._log
+
+    @property
+    def is_running(self):
+        return self._running_evt.isSet()
+
+    @property
+    def start_t(self):
+        return self._start_t
+
+    @property
+    def stop_t(self):
+        return self._stop_t
+
+    def run(self):
+        self.log.debug('Process "%s" started' % self._process)
+
+        self._started()
+
+        try:
+            self._process.run()
+        except Exception as e:
+            self._exception = e
+            self.log.exception('Exception in process "%s"' % self._process)
+
+        self._end()
+
+    def start(self):
+        if self._running_evt.is_set():
+            raise Exception('the process already started')
+
+        process = self._weak_ref()
+        if process is None:
+            raise Exception('the process has been destroyed')
+
+        self._process = process
+        self._exception = None
+        self._start_t = time.time()
+        self._stop_t = 0
+        self._cnt += 1
+        self._stop_evt.clear()
+        self._running_evt.set()
+        self.launch()
+
+    def stop(self, block=True, timeout=None):
+        if not self._running_evt.is_set():
+            # not started !
+            return
+
+        self._process.terminate()
+
+        self._running_evt.clear()
+
+        if not block:
+            return
+
+        if not self._stop_evt.wait(timeout):
+            # kill the process
+            try:
+                self.kill()
+            finally:
+                self._end()
+
+    def wait(self, timeout=None):
+        """wait until the process is over"""
+        return self._stop_evt.wait(timeout)
+
+    @abstractmethod
+    def launch(self):
+        raise NotImplementedError()
+
+    @abstractmethod
+    def kill(self):
+        raise NotImplementedError()
+
+    def _started(self):
+        pass
+
+    def _end(self):
+        if self._process is not None:
+            self._running_evt.clear()
+            self._stop_t = time.time()
+            self.log.debug('Process "%s" stopped after %f sec' % (self._process, self._stop_t - self._start_t))
+
+            # kill any children processes left
+            children = self._manager.find(filter=lambda p: p.parent is self._process)
+            for p in children:
+                p.stop(timeout=0)
+
+            self._process = None
+            self._manager._process_evt('end', self)
+            self._stop_evt.set()
 
 
-def add_process(process):
-    if process not in _processes_list:
-        _processes_list.append(process)
+class GeventRunner(Runner):
+
+    def launch(self):
+        self._g = gevent.spawn(self.run)
+
+    def kill(self):
+        try:
+            gevent.kill(self._g)
+        except gevent.GreenletExit:
+            pass
 
 
-def remove_process(process):
-    if process in _processes_list:
-        _processes_list.remove(process)
+class Manager(object):
+    RUNNER = GeventRunner
+
+    def __init__(self, runner_cls=None, log=None, start=None):
+        self._map = {}
+        if start is None:
+            start = True
+        self._started = start
+        self._runner_cls = runner_cls or self.RUNNER
+        if self._runner_cls is None:
+            raise Exception('no runner class defined')
+        self._log = log or logging.getLogger("ething.processes")
+
+    @property
+    def log(self):
+        return self._log
+
+    def _runners(self):
+        r = []
+        for id in list(self._map):
+            p = self._map[id]
+            if p.process is None:
+                del self._map[id]
+            else:
+                r.append(p)
+        return r
+
+    @property
+    def processes(self):
+        return [r.process for r in self._runners()]
+
+    def find(self, filter=None, name=None, parent=None):
+        res = []
+        for p in self.processes:
+            if p is None: continue
+            if filter is not None and not filter(p):
+                continue
+            if name is not None and p.name != name:
+                continue
+            if parent is not None and p.parent is not parent:
+                continue
+            res.append(p)
+        return res
+
+    def __getitem__(self, item):
+        return self._get(item).process
+
+    def get(self, id):
+        try:
+            return self[id]
+        except IndexError:
+            pass
+
+    def _get(self, process):
+        if isinstance(process, Process):
+            id = process.id
+        else:
+            id = process
+        if id in self._map:
+            r = self._map[id]
+            if r.process is None:
+                del self._map[id]
+            else:
+                return r
+        raise IndexError('the process id=%s does not exist' % process)
+
+    def attach(self, process, auto_start=True):
+        if not isinstance(process, Process):
+            raise Exception('not a process instance')
+
+        if process.id in self:
+            # already in the list
+            return
+
+        if process.manager is not None and process.manager is not self:
+            raise Exception('this process is already attached to a manager')
+
+        process.manager = self
+
+        self._map[process.id] = self._runner_cls(self, process)
+
+        if auto_start:
+            # automatically start
+            if not process.is_running:
+                process.start()
+
+        return process
+
+    def start(self):
+        self._started = True
+        # start all processes
+        for p in self._runners():
+            if not p.is_running:
+                p.start()
+
+    def stop(self, timeout=None):
+        self._started = False
+        # stop all processes
+        for r in self._runners():
+            if r.is_running:
+                r.stop(timeout=timeout)
+
+    def clear(self):
+        for r in self._runners():
+            r.stop()
+        self._map.clear()
+
+    def p_start(self, process):
+        p = self._get(process)
+
+        if p.is_running:
+            raise Exception('Process "%s" already running' % p)
+
+        if not self._started:
+            return
+
+        return p.start()
+
+    def p_stop(self, process, *args, **kwargs):
+        p = self._get(process)
+        return p.stop(*args, **kwargs)
+
+    def p_is_running(self, process):
+        p = self._get(process)
+        return p.is_running
+
+    def p_wait(self, process, *args, **kwargs):
+        p = self._get(process)
+        return p.wait(*args, **kwargs)
+
+    def _process_evt(self, evt, runner):
+        if evt == 'end':
+            if runner.process is None:
+                # no more reference to this process, remove it
+                del self._map[runner.id]
+
+    def toJson(self):
+        j = []
+        for r in self._runners():
+            process = r.process
+
+            parent = process.parent
+            if isinstance(parent, Process):
+                parent = parent.id
+
+            start_ts = None
+            stop_ts = None
+
+            if r.start_t is not None:
+                start_ts = int(r.start_t)
+
+            if r.stop_t is not None:
+                stop_ts = int(r.stop_t)
+
+            rj = {
+                'id': process.id,
+                'name': process.name,
+                'parent': parent,
+                'active': r.is_running,
+                'start_ts': start_ts,
+                'stop_ts': stop_ts
+            }
+
+            j.append(rj)
+
+        return j
 
 
-def get_process(*args, **kwargs):
-    pp = get_processes(*args, **kwargs)
-    return pp[0] if len(pp)>0 else None
-
-
-def get_processes(name=None, parent=None):
-    pp = []
-    for p in _processes_list:
-        if name is not None and p.name != name:
-            continue
-        if parent is not None and p.parent is not parent:
-            continue
-        pp.append(p)
-    return pp
-
-
-class BaseProcess(object):
-
-    def __init__(self, name=None, loop=None, target=None, args=(), kwargs=None, parent=None, manager=None):
+class Process(object):
+    def __init__(self, name=None, loop=None, target=None, args=(), kwargs=None, terminate=None, parent=None, manager=None, log=None, id=None):
         self._name = name or 'process'
 
-        self._id = ShortId.generate()
+        self._id = id or ShortId.generate()
 
-        self.set_parent(parent)
+        self.parent = parent
 
         if kwargs is None:
             kwargs = {}
-        
+
         self._loop = loop
         self._target = target
         self._args = args
         self._kwargs = kwargs
+        self._terminate = terminate
 
-        self._log = logging.getLogger("ething.%s" % self._name)
-        self._start_ts = None
-        self._stop_evt = threading.Event()
-        self._running_evt = threading.Event()
-        self._cnt = 0
-        self._handlers = {}
+        self._log = log or logging.getLogger("ething.%s" % self._name)
+
+        self.manager = manager
 
         if manager:
-            manager.add(self, auto_start=False)
+            manager.attach(self, auto_start=False)
 
     @property
     def name(self):
@@ -82,76 +355,36 @@ class BaseProcess(object):
     def parent(self):
         return self._parent() if self._parent is not None else None
 
-    @property
-    def children(self):
-        return [p for p in get_processes(parent=self)]
+    @parent.setter
+    def parent(self, p):
+        self._parent = weak_ref(p) if p is not None else None
 
     @property
-    def start_ts(self):
-        return self._start_ts
-
-    def set_parent(self, parent):
-        self._parent = weak_ref(parent) if parent is not None else None
+    def _manager(self):
+        if self.manager is None:
+            raise AttributeError('No manager bind to the process %s' % self)
+        return self.manager
 
     @property
     def is_running(self):
-        return self._running_evt.isSet()
-
-    def add_handler(self, evt_name, handler):
-        if evt_name not in self._handlers:
-            self._handlers[evt_name] = []
-        self._handlers[evt_name].append(handler)
-
-    def remove_handler(self, evt_name, handler):
-        if evt_name in self._handlers:
-            try:
-                self._handlers[evt_name].remove(handler)
-            except ValueError:
-                pass
-
-    def _trigger(self, evt_name):
-        if evt_name in self._handlers:
-            for h in self._handlers[evt_name]:
-                try:
-                    h(self)
-                except:
-                    pass
+        return self._manager.p_is_running(self)
 
     def __repr__(self):
         return str(self)
 
     def __str__(self):
-        return '<%s name=%s>' % (type(self).__name__, self.name)
+        return '<%s id=%s name=%s>' % (type(self).__name__, self.id, self.name)
 
     def start(self):
-        self._start_ts = time.time()
-        self._cnt += 1
-        self._stop_evt.clear()
-        self._running_evt.set()
-        self._trigger('start')
+        return self._manager.p_start(self)
 
-    def stop(self, timeout=None):
-        if not self._running_evt.is_set():
-            # not started !
-            return
+    def stop(self, *args, **kwargs):
+        return self._manager.p_stop(self, *args, **kwargs)
 
-        # stop the children process
-        for p in self.children:
-            p.stop(timeout=timeout)
-
-        self._running_evt.clear()
-
-        if timeout is not None:
-            if not self._stop_evt.wait(timeout):
-                # kill the process
-                self.kill()
-
-    def kill(self):
-        pass # to be implemented if possible
+    def wait(self, *args, **kwargs):
+        return self._manager.p_wait(self, *args, **kwargs)
 
     def run(self):
-
-        self.log.debug('Process "%s" started' % self.name)
 
         try:
             self.setup()
@@ -168,32 +401,19 @@ class BaseProcess(object):
         except Exception:
             self.log.exception('Exception in process "%s" in end()' % self.name)
 
-        self._stop_evt.set()
-
-        self.log.debug('Process "%s" stopped after %f sec' % (self.name, time.time() - self._start_ts))
-
-        self._trigger('end')
+    def terminate(self):
+        if self._terminate is not None:
+            self._terminate()
 
     def main(self):
         if self._loop is not None:
-            try:
-                while self.is_running:
-                    if self._loop(*self._args, **self._kwargs) is False:
-                        self.stop()
-                        break
-            finally:
-                # Avoid a refcycle if the thread is running a function with
-                # an argument that has a member that points to the thread.
-                del self._loop, self._target, self._args, self._kwargs
+            while self.is_running:
+                if self._loop(*self._args, **self._kwargs) is False:
+                    self.stop()
+                    break
         else:
-            # run any target
-            try:
-                if self._target:
-                    self._target(*self._args, **self._kwargs)
-            finally:
-                # Avoid a refcycle if the thread is running a function with
-                # an argument that has a member that points to the thread.
-                del self._loop, self._target, self._args, self._kwargs
+            if self._target:
+                self._target(*self._args, **self._kwargs)
 
     def setup(self):
         pass
@@ -201,262 +421,6 @@ class BaseProcess(object):
     def end(self):
         pass
 
-    def toJson(self):
-        parent = self.parent
-        if isinstance(parent, BaseProcess):
-            parent = parent.id
-        return {
-            'id': self.id,
-            'name': self.name,
-            'parent': parent,
-            'active': self.is_running,
-            'start_ts': int(self.start_ts) if self.start_ts is not None else self.start_ts
-        }
-
     def restart(self, timeout=None):
-        if self.is_running:
-            self.stop(timeout=timeout)
-            self.start()
-
-
-class ThreadProcess(BaseProcess):
-
-    def __init__(self, **kwargs):
-        super(ThreadProcess, self).__init__(**kwargs)
-        self._thread = None
-
-    def start(self):
-        if self._thread:
-            raise Exception('Process "%s" already running' % self.name)
-        # start the thread
-        super(ThreadProcess, self).start()
-        self._thread = threading.Thread(name=self.name, target=self.run)
-        self._thread.daemon = True
-        self._thread.start()
-
-    def run(self):
-        t = self._thread
-        super(ThreadProcess, self).run()
-        if self._thread is t:
-            self._thread = None
-
-    def kill(self):
-        if self._thread is not None:
-            # unable to kill a thread ! just leave the reference
-            self._thread = None
-
-
-if mode == 'greenlet':
-
-    import eventlet
-    import greenlet
-
-    class GreenThreadProcess(BaseProcess):
-        def __init__(self, **kwargs):
-            super(GreenThreadProcess, self).__init__(**kwargs)
-
-            self._g = None
-
-        def start(self):
-            if self._g:
-                raise Exception('Process "%s" already running' % self.name)
-            super(GreenThreadProcess, self).start()
-            self._g = eventlet.spawn_n(self.run)
-
-        def run(self):
-            g = self._g
-            super(GreenThreadProcess, self).run()
-            if self._g is g:
-                self._g = None
-
-        def kill(self):
-            if self._g is not None:
-                try:
-                    eventlet.greenthread.kill(self._g)
-                except greenlet.GreenletExit:
-                    pass
-                self._g = None
-
-
-    Process = GreenThreadProcess
-
-elif mode == 'gevent':
-
-    import gevent
-
-    class GreenThreadProcess(BaseProcess):
-        def __init__(self, **kwargs):
-            super(GreenThreadProcess, self).__init__(**kwargs)
-
-            self._g = None
-
-        def start(self):
-            if self._g:
-                raise Exception('Process "%s" already running' % self.name)
-            super(GreenThreadProcess, self).start()
-            self._g = gevent.spawn(self.run)
-
-        def run(self):
-            g = self._g
-            super(GreenThreadProcess, self).run()
-            if self._g is g:
-                self._g = None
-
-        def kill(self):
-            if self._g is not None:
-                try:
-                    gevent.kill(self._g)
-                except gevent.GreenletExit:
-                    pass
-                self._g = None
-
-
-    Process = GreenThreadProcess
-
-else:
-    Process = ThreadProcess
-
-
-#
-# Process Manager
-#
-
-class ManagerItem(object):
-
-    def __init__(self, process, manager):
-        self._manager = manager
-        self.ref(process)
-
-    def _get_weak_ref(self):
-        wrp = self._weak_ref()
-        if wrp is None:
-            self._destroy()
-        return wrp
-
-    def _destroy(self):
-        try:
-            self._manager._processes.remove(self)
-        except ValueError:
-            pass
-
-    @property
-    def process(self):
-        if self._process is not None:
-            return self._process
-        return self._get_weak_ref()
-
-    def ref(self, process):
-        self._process = process
-        self._weak_ref = weak_ref(process)
-
-    def make_weak(self):
-        self._process = None
-        self._get_weak_ref()
-
-
-class Manager(object):
-
-    def __init__(self):
-        self._processes = []
-        self._started = False
-
-    def find(self, filter=None, name=None, parent=None):
-        res = []
-        for p_ in list(self._processes):
-            p = p_.process
-            if p is None: continue
-            if filter is not None and not filter(p):
-                continue
-            if name is not None and p.name != name:
-                continue
-            if parent is not None and p.parent is not parent:
-                continue
-            res.append(p)
-        return res
-
-    @property
-    def processes(self):
-        return self.find()
-
-    def __getitem__(self, item):
-        p = self.get(id)
-        if p is None:
-            raise KeyError('no process %s' % item)
-        return p
-
-    def get(self, id):
-        return self.find_one(filter=lambda p: p.id == id)
-
-    def find_one(self, *args, **kwargs):
-        pp = self.find(*args, **kwargs)
-        return pp[0] if len(pp) > 0 else None
-
-    def add(self, process, auto_start=True):
-        if not isinstance(process, BaseProcess):
-            raise Exception('not a process instance')
-
-        if process.id in self:
-            # already in the list
-            return
-
-        process.add_handler('start', self._process_start_handler)
-        process.add_handler('end', self._process_end_handler)
-
-        self._processes.append(ManagerItem(process, self))
-
-        if self._started and auto_start:
-            # automatically start
-            if not process.is_running:
-                process.start()
-
-        return process
-
-    def remove(self, process, stop=True, timeout=None):
-        if isinstance(process, string_types):
-            process = self.get(process)
-            if process is None: return
-        p_ = self._get_p_item(process)
-        if p_ is not None:
-            self._processes.remove(p_)
-
-            process.remove_handler('start', self._process_start_handler)
-            process.remove_handler('end', self._process_end_handler)
-
-            if stop and process.is_running:
-                process.stop(timeout=timeout)
-
-    def _get_p_item(self, process):
-        for p_ in list(self._processes):
-            if p_.process is process:
-                return p_
-
-    def _process_start_handler(self, process):
-        p_ = self._get_p_item(process)
-        if p_ is not None:
-            p_.ref(process)
-
-    def _process_end_handler(self, process):
-        p_ = self._get_p_item(process)
-        if p_ is not None:
-            p_.make_weak()
-
-    def start(self):
-        self._started = True
-        # start all processes
-        for p in self.processes:
-            if not p.is_running:
-                p.start()
-
-    def stop(self, timeout=None):
-        self._started = False
-        # stop all processes
-        for p in self.processes:
-            if p.is_running:
-                p.stop(timeout=timeout)
-
-    def clear(self):
-        for p in self.processes:
-            self.remove(p)
-
-    def toJson(self):
-        return self.processes
+        self.stop(timeout=timeout)
+        self.start()

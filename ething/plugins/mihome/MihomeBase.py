@@ -2,7 +2,6 @@
 
 from ething.core.Device import Device
 from ething.core.reg import *
-from ething.core.Process import get_process
 from .helpers import IV
 import binascii
 import pyaes
@@ -21,7 +20,7 @@ class MihomeBase(Device):
 
     @property
     def controller(self):
-        return get_process('mihome')
+        return self.core.process_manager['mihome']
 
     def _get_gateway(self):
         raise NotImplementedError()

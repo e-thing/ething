@@ -4,6 +4,7 @@ from ..Resource import Resource, ResourceType
 from ..reg import *
 from ..utils.jsonpath import jsonpath
 from ..utils.objectpath import ObjectPathExp, evaluate
+from ..utils.weak_ref import weak_ref
 from ..Process import Process
 from ..plugin import Plugin, register_plugin
 from ..Signal import ResourceSignal
@@ -269,35 +270,6 @@ connection_type = Dict(
 )
 
 
-class FlowProcess(Process):
-
-    def __init__(self, flow):
-        super(FlowProcess, self).__init__(name='flow.%s' % flow.id)
-        self.flow = flow
-
-    def setup(self):
-        self.flow.clear()
-
-        # rebuild the flow
-        for node in self.flow.nodes:
-            self.flow.add_node(node)
-
-        for connection_data in self.flow.connections:
-            src_id = connection_data['src'][0]
-            src_port = connection_data['src'][1]
-            dest_id = connection_data['dest'][0]
-            dest_port = connection_data['dest'][1]
-
-            self.flow.connect((src_id, src_port), (dest_id, dest_port))
-
-    def main(self):
-        self.flow.run()
-
-    def stop(self, timeout=None):
-        self.flow.stop()
-        return super(FlowProcess, self).stop(timeout=timeout)
-
-
 @attr('nodes', type=Array(item_type=Node), default=[], description="The list of nodes.")
 @attr('connections', type=Array(item_type=connection_type), default=[], description="A list of connections")
 class Flow(Resource, FlowBase):
@@ -307,11 +279,12 @@ class Flow(Resource, FlowBase):
         FlowBase.__init__(self, logger=self.log)
 
     def deploy(self):
-        self._process.restart()
+        self._process().restart()
 
     def __process__(self):
-        self._process = FlowProcess(self)
-        return self._process
+        p = Process(name="flow.%s" % self.id, target=self.run, terminate=self.stop)
+        self._process = weak_ref(p)
+        return p
 
     def inject(self, node, data=None):
         if isinstance(node, string_types):
@@ -324,6 +297,23 @@ class Flow(Resource, FlowBase):
             node.inject(data)
         else:
             raise Exception('node %s is not an input' % node)
+
+    def run(self):
+        self.clear()
+
+        # rebuild the flow
+        for node in self.nodes:
+            self.add_node(node)
+
+        for connection_data in self.connections:
+            src_id = connection_data['src'][0]
+            src_port = connection_data['src'][1]
+            dest_id = connection_data['dest'][0]
+            dest_port = connection_data['dest'][1]
+
+            self.connect((src_id, src_port), (dest_id, dest_port))
+
+        return super(Flow, self).run()
 
 
 def _generate_event_node_cls(signal_cls):
@@ -363,20 +353,9 @@ class FlowPlugin(Plugin):
     def setup(self):
 
         # create nodes from registered signals/conditions/actions
-
         for cls in filter(lambda cls: get_definition_name(cls).startswith('signals/') and not is_abstract(cls), list(list_registered_classes())):
             _generate_event_node_cls(cls)
 
-        self.core.signalDispatcher.bind('ResourceCreated', self._on_resource_created)
-
-    def start(self):
-        for f in self.core.find(lambda r: r.isTypeof('resources/Flow')):
-            f.deploy()
-
-    def _on_resource_created(self, signal):
-        r = signal.resource
-        if isinstance(r, Flow):
-            r.deploy()
 
 
 register_plugin(FlowPlugin)

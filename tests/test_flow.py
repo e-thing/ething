@@ -1,6 +1,7 @@
 # coding: utf-8
 from ething.core.flow import *
 import json
+import gevent
 
 
 class NodeTest(Node):
@@ -266,7 +267,9 @@ def test_flow(core):
             'dest': ['id_tst', 'default']
         }]
     })
-    flow.deploy()
+
+    # run flow in a new process
+    g = gevent.spawn(flow.run)
 
     time.sleep(0.5)
 
@@ -277,6 +280,8 @@ def test_flow(core):
     assert len(n_tst.list_rec_msg) == 1
 
     flow.stop()
+
+    g.join()
 
 
 

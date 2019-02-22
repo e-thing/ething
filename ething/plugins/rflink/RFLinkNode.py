@@ -1,9 +1,7 @@
 # coding: utf-8
 
-
 from ething.core.Device import Device
 from ething.core.reg import *
-from ething.core.Process import get_process
 from .helpers import *
 
 
@@ -14,7 +12,7 @@ class RFLinkNode(Device):
 
     @property
     def controller(self):
-        return get_process('rflink.%s' % self.gateway.id)
+        return self.gateway.controller
 
     @property
     def gateway(self):
