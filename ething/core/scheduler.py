@@ -7,10 +7,11 @@ import datetime
 import logging
 
 import threading
-from .utils.weak_ref import weak_ref
+from .utils.weak_ref import weak_ref, proxy_method
 
 
 _LOGGER = logging.getLogger('ething.scheduler')
+
 
 class Task(object):
 
@@ -25,14 +26,9 @@ class Task(object):
 
         self._params = params
 
-        if inspect.ismethod(target):
-            self._is_target_ref = True
-            self._target = weak_ref(target)
-            if instance is None:
-                instance = target.__self__
-        else:
-            self._is_target_ref = False
-            self._target = target
+        self._target = proxy_method(target)
+        if instance is None and hasattr(target, '__self__'):
+            instance = target.__self__
 
         self._args = args
         self._kwargs = kwargs or {}
@@ -71,7 +67,7 @@ class Task(object):
 
     @property
     def target(self):
-        return self._target() if self._is_target_ref else self._target
+        return self._target
 
     @property
     def args(self):

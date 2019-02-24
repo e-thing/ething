@@ -3,7 +3,7 @@
 import logging
 import threading
 import time
-from .utils.weak_ref import weak_ref
+from .utils.weak_ref import proxy_method, LostReferenceException
 try:
     import queue
 except ImportError:
@@ -43,16 +43,16 @@ class SignalDispatcher(object):
 
             for weakref_handlers in [self.handlers.get('*', []), self.handlers.get(event_type, [])]:
                 for weakref_handler_info in weakref_handlers:
-                    weakref_handler, once, args = weakref_handler_info
-                    handler = weakref_handler()
-                    if handler is not None:
-                        try:
-                            handler(signal, *args)
-                        except Exception as e:
-                            self.log.exception("Error calling signal handler with signal: %s handler: %s" % (str(signal), handler))
-                        if once:
-                            weakref_handlers.remove(weakref_handler_info)
-                    else: # lost reference
+                    handler, once, args = weakref_handler_info
+                    remove = False
+                    try:
+                        handler(signal, *args)
+                    except LostReferenceException:
+                        # lost reference
+                        remove = True
+                    except Exception as e:
+                        self.log.exception("Error calling signal handler with signal: %s handler: %s" % (str(signal), handler))
+                    if once or remove:
                         weakref_handlers.remove(weakref_handler_info)
 
     def bind(self, event_types, handler, once = False, args=()):
@@ -65,7 +65,7 @@ class SignalDispatcher(object):
                 if event_type not in self.handlers:
                     self.handlers[event_type] = []
 
-                self.handlers[event_type].append((weak_ref(handler), once, args))
+                self.handlers[event_type].append((proxy_method(handler), once, args))
 
     def unbind(self, event_types, handler = None):
         """removes previously added event listener"""
@@ -79,9 +79,9 @@ class SignalDispatcher(object):
                         if handler is None:
                             del self.handlers[type]
                         else:
-                            for index, weakref_handler_info in enumerate(self.handlers[type]):
-                                weakref_handler, once, args = weakref_handler_info
-                                if handler == weakref_handler():
+                            for index, handler_info in enumerate(self.handlers[type]):
+                                _handler, once, args = handler_info
+                                if handler == _handler:
                                     del self.handlers[type][index]
                                     break
 

@@ -8,7 +8,6 @@ from .SignalDispatcher import SignalDispatcher
 from .version import __version__
 from .plugin import search_plugin_cls, list_registered_plugins
 from .scheduler import Scheduler
-from .green import mode
 from .Signal import Signal
 from .utils.objectpath import generate_filter, patch_all
 from .Resource import Resource
@@ -198,7 +197,7 @@ class Core(object):
     def start(self):
         self.init()
 
-        if self.config.get('debug') and mode == 'gevent' and not getattr(self, '_gevent_dbg_installed', False):
+        if self.config.get('debug') and not getattr(self, '_gevent_dbg_installed', False):
             from gevent import events, config
 
             setattr(self, '_gevent_dbg_installed', True)

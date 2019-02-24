@@ -6,7 +6,7 @@ import threading
 import time
 import gevent
 from abc import ABCMeta, abstractmethod
-from .utils.weak_ref import weak_ref
+from .utils.weak_ref import weak_ref, proxy_method
 from .utils import ShortId
 
 
@@ -235,6 +235,16 @@ class Manager(object):
 
         return process
 
+    def detach(self, process, stop=True, timeout=None):
+        r = self._get(process)
+
+        if stop:
+            r.stop(timeout=timeout)
+
+        self._map.pop(r.id, None)
+
+        process.manager = None
+
     def start(self):
         self._started = True
         # start all processes
@@ -281,7 +291,7 @@ class Manager(object):
         if evt == 'end':
             if runner.process is None:
                 # no more reference to this process, remove it
-                del self._map[runner.id]
+                self._map.pop(runner.id, None)
 
     def toJson(self):
         j = []
@@ -317,20 +327,19 @@ class Manager(object):
 
 class Process(object):
     def __init__(self, name=None, loop=None, target=None, args=(), kwargs=None, terminate=None, parent=None, manager=None, log=None, id=None):
-        self._name = name or 'process'
-
         self._id = id or ShortId.generate()
+        self._name = name or ('process_%s' % self._id)
 
         self.parent = parent
 
         if kwargs is None:
             kwargs = {}
 
-        self._loop = loop
-        self._target = target
+        self._loop = proxy_method(loop)
+        self._target = proxy_method(target)
         self._args = args
         self._kwargs = kwargs
-        self._terminate = terminate
+        self._terminate = proxy_method(terminate)
 
         self._log = log or logging.getLogger("ething.%s" % self._name)
 
@@ -424,3 +433,10 @@ class Process(object):
     def restart(self, timeout=None):
         self.stop(timeout=timeout)
         self.start()
+
+    def destroy(self, timeout=None):
+        """free memory"""
+        try:
+            self._manager.detach(self, timeout=timeout)
+        finally:
+            self.__dict__.clear()

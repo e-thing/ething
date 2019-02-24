@@ -26,7 +26,6 @@ from ething.core.Process import Process
 from ething.core.Helpers import filter_obj
 from ething.core.reg import get_registered_class, fromJson, get_definition_name
 from ething.core.Resource import Resource
-from ething.core.green import mode
 from collections import OrderedDict
 
 
@@ -133,7 +132,7 @@ class FlaskApp(Flask):
 
         # socketio
         socketio = SocketIO()
-        socketio.init_app(self, async_mode=mode, logger=self.debug, engineio_logger=self.debug)
+        socketio.init_app(self, async_mode='gevent', logger=self.debug, engineio_logger=self.debug)
         self.socketio = socketio
 
         @socketio.on('connect')
@@ -179,11 +178,7 @@ class FlaskApp(Flask):
 
         self.running.set()
 
-        options = {}
-        if mode == 'eventlet':
-            options['minimum_chunk_size'] = 0
-
-        self.socketio.run(self, host='0.0.0.0', port=port, use_reloader=False, **options)
+        self.socketio.run(self, host='0.0.0.0', port=port, use_reloader=False)
 
     def stop(self):
         self.running.clear()

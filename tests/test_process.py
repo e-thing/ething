@@ -1,5 +1,4 @@
 # coding: utf-8
-from ething.core.green import mode
 import pytest
 from ething.core.Process import Process, Manager
 import time

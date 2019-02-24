@@ -7,6 +7,7 @@ from ..green import make_it_green
 import os
 import json
 import datetime
+import pytz
 import time
 import sys
 import sqlite3
@@ -79,7 +80,11 @@ class Decoder(json.JSONDecoder):
         if '_type' in obj:
             type = obj['_type']
             if type == 'datetime':
-                return parser.parse(obj['value'])
+                d = parser.parse(obj['value'])
+                # be sure to make it offset-aware (UTC)
+                if d.tzinfo is None or d.tzinfo.utcoffset(d) is None:
+                    d = d.replace(tzinfo=pytz.utc)
+                return d
             if type == 'bytes':
                 return obj['value'].encode('utf8')
         return obj

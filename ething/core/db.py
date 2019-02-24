@@ -707,6 +707,7 @@ class OS_item(object):
 
     context = self.context
     rows = self._table.select()
+    skipped = 0
     for doc in rows:
       try:
           obj = unserialize(self._cls, doc, context)
@@ -714,9 +715,10 @@ class OS_item(object):
           if id not in self._ref: # do not erase previous reference
             self._ref[id] = obj
       except:
+          skipped += 1
           LOGGER.exception('unable to unserialize a %s' % self._cls.__name__)
 
-    LOGGER.debug('[%s] %d items loaded' % (self._cls.__name__, len(self._ref)))
+    LOGGER.debug('[%s] %d items loaded, %d skipped' % (self._cls.__name__, len(self._ref), skipped))
 
   def find(self, query=None, sort=None, skip=None, limit=None):
     self.load()

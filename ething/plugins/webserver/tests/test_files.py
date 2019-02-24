@@ -13,10 +13,9 @@ def test_get_files(core, webapp, webapp_auth_header):
         name = 'file1.txt'
         content = u'hello world,  I also accept accents éàç...'
 
-        response = c.post('/api/files', data=json.dumps({
-            'name': name,
-            # pass some base64 binary data here
-            'content': base64.b64encode(content.encode('utf8')).decode('utf8')
+        response = c.post('/api/resources', data=json.dumps({
+            'type': 'resources/File',
+            'name': name
         }), headers=webapp_auth_header, content_type='application/json')
 
         data = json.loads(response.data.decode('utf8'))
@@ -26,6 +25,11 @@ def test_get_files(core, webapp, webapp_auth_header):
         assert response.status_code == 201
 
         assert data['name'] == name
+
+        response = c.put('/api/files/%s' % data['id'],
+            data=content.encode('utf8'), headers=webapp_auth_header)
+
+        data = json.loads(response.data.decode('utf8'))
 
         # size correspond to the byte length
         assert data['size'] == len(content.encode('utf8'))

@@ -1695,7 +1695,7 @@ class Entity(with_metaclass(MetaReg, object)):
       context = self.__reg__.context
       if name in context:
         return context[name]
-      raise AttributeError()
+      raise AttributeError('no attribute %s' % name)
 
 
 def dbg_attr(obj):

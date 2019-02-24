@@ -115,7 +115,7 @@ class Resource(Entity):
         super(Resource, self).__init__(data, context)
 
         self._log = logging.getLogger('ething.r.%s' % self.id)
-        self._t = transaction(self)
+        self.__t = transaction(self)
 
         self.core.scheduler.bind_instance(self)
 
@@ -175,25 +175,31 @@ class Resource(Entity):
 
         return self.core.find(_filter)
 
-    def _removeParent(self):
-        with self:
-            self.createdBy = None
-
     def remove(self, removeChildren=False):
 
         children = self.children()
 
-        remove(self)
-
         self.core.scheduler.unbind(self)
         self._process_stop()
+
+        remove(self)
+
+        # clear internal __dict__ entries: free memory
+        # necessary to remove all refs to other objects
+        for k in list(self.__dict__):
+            if k is not '__reg__': # no need to remove this one
+                self.__dict__.pop(k)
+
+        # flag it as destroyed
+        # avoid to be saved again by mistake
+        self.__destroyed__ = True
 
         for child in children:
             if removeChildren:
                 child.remove(removeChildren)
             else:
                 # remove the relationship
-                child._removeParent()
+                child.createdBy = None
 
     def __db_remove__(self):
         self.log.debug("Resource deleted : %s" % str(self))
@@ -201,6 +207,8 @@ class Resource(Entity):
 
     def __db_save__(self, insert):
         if insert:
+            if getattr(self, '__destroyed__', False):
+                raise Exception('this object was previously destroyed')
             self.core.dispatchSignal(ResourceCreated(self))
             self.log.debug("Resource created : %s" % str(self))
             return
@@ -278,11 +286,11 @@ class Resource(Entity):
         return bool(evaluate(expression, toJson(self)))
 
     def __enter__(self):
-        self._t.__enter__()
+        self.__t.__enter__()
         return self
 
     def __exit__(self, type, value, traceback):
-        self._t.__exit__(type, value, traceback)
+        self.__t.__exit__(type, value, traceback)
 
     def __export__(self, core):
         return serialize(self)
@@ -304,7 +312,7 @@ class Resource(Entity):
          - an array of Process subclass:
            __process__ = [MyProcess0, MyProcess1, ...]
         """
-        processses = []
+        processes = []
 
         if hasattr(self, '__process__'):
             pa = self.__process__
@@ -312,26 +320,27 @@ class Resource(Entity):
             if callable(pa):
                 pres = pa()
                 if isinstance(pres, Process):
-                    processses.append(pres)
+                    processes.append(pres)
                 elif isinstance(pres, Sequence):
-                    processses += pres
+                    processes += pres
             elif issubclass(pa, Process):
-                processses.append(pa(self))
+                processes.append(pa(self))
             elif isinstance(pa, Sequence):
                 for ppa in pa:
-                    processses.append(ppa(self))
+                    processes.append(ppa(self))
 
-        for p in processses:
+        # keep references to this process during the lifetime of this resource
+        self._processes = dict()
+
+        for p in processes:
             p.parent = self
+            self._processes[p.id] = p
             self.core.process_manager.attach(p)
 
-        # keep references to this process
-        self.__processes = processses
-
     def _process_stop(self):
-        self.__processes = None # remove references
+        self._processes.clear() # remove references
 
-        # stop any processes binded to this resource
+        # stop & destroy any processes binded to this resource
         for p in self.core.process_manager.find(parent=self):
-            p.stop(timeout=2)
+            p.destroy(timeout=2)
 

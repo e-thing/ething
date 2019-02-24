@@ -168,3 +168,6 @@ def install(core, app, auth, **kwargs):
     @auth.required()
     def list_processes():
         return app.jsonify(core.process_manager)
+
+    #if hasattr(app, 'socketio'):
+    #    todo

@@ -20,7 +20,7 @@ class MihomeBase(Device):
 
     @property
     def controller(self):
-        return self.core.process_manager['mihome']
+        return self.core.process_manager.get('mihome')
 
     def _get_gateway(self):
         raise NotImplementedError()

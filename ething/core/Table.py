@@ -98,10 +98,7 @@ class Table(Resource):
 
     @property
     def table(self):
-        _t = getattr(self, '_table', None)
-        if _t is None:
-            _t = self.core.db[self.collectionName]
-        return _t
+        return self.core.db[self.collectionName]
 
     def remove(self, removeChildren=False):
 

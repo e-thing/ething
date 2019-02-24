@@ -279,10 +279,10 @@ class Flow(Resource, FlowBase):
         FlowBase.__init__(self, logger=self.log)
 
     def deploy(self):
-        self._process().restart()
+        self._processes["flow.%s" % self.id].restart()
 
     def __process__(self):
-        p = Process(name="flow.%s" % self.id, target=self.run, terminate=self.stop)
+        p = Process(id="flow.%s" % self.id, target=self.run, terminate=self.stop)
         self._process = weak_ref(p)
         return p
 

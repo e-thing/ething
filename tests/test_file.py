@@ -24,6 +24,20 @@ def test_file_create(core):
     assert f.size == len(content)
 
 
+def test_file_delete(core):
+    content = b'hello world'
+
+    f = core.create('resources/File', {
+        'name': 'file1.txt'
+    })
+
+    assert isinstance(f, File)
+
+    f.remove()
+
+    with pytest.raises(KeyError):
+        f = core.get(f.id)
+
 def test_file_image(core):
 
     r = requests.get(
