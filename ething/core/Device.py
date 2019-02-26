@@ -62,9 +62,9 @@ class ExecuteDevice(ResourceNode):
 @abstract
 @throw(BatteryLevelChanged, DeviceConnected, DeviceDisconnected)
 # 0-100 : the battery level, if None it means that no battery information is provided
-@attr('battery', type=Nullable(Number(min=0, max=100)), default=None, watch=True, description="The battery level of this device (must be between 0 (empty) and 100 (full) , or null if the device has no battery information).")
+@attr('battery', type=Nullable(Number(min=0, max=100)), default=None, description="The battery level of this device (must be between 0 (empty) and 100 (full) , or null if the device has no battery information).")
 @attr('location', type=String(), default='', description="The location of this device.")
-@attr('connected', type=Boolean(), default=True, watch=True, description="Set to true when this device is connected.")
+@attr('connected', type=Boolean(), default=True, description="Set to true when this device is connected.")
 @attr('lastSeenDate', type=Nullable(TzDate()), mode=READ_ONLY, default=None, description="The last time this device was reached or made a request.")
 @attr('error', type=Nullable(String()), mode=READ_ONLY, default=None, description="Any error concerning this device.")
 class Device(Resource):
@@ -90,16 +90,14 @@ class Device(Resource):
         super(Device, self).on_attr_update(attr, new_value, old_value)
 
         if attr == 'battery':
-            if new_value != old_value:
-                self.dispatchSignal(BatteryLevelChanged(self, new_value, old_value))
+            self.dispatchSignal(BatteryLevelChanged(self, new_value, old_value))
         elif attr == 'connected':
-            if new_value != old_value:
-                if new_value:
-                    self.log.debug("device connected %s" % self)
-                    self.dispatchSignal(DeviceConnected(self))
-                else:
-                    self.log.debug("device disconnected %s" % self)
-                    self.dispatchSignal(DeviceDisconnected(self))
+            if new_value:
+                self.log.debug("device connected %s" % self)
+                self.dispatchSignal(DeviceConnected(self))
+            else:
+                self.log.debug("device disconnected %s" % self)
+                self.dispatchSignal(DeviceDisconnected(self))
         elif attr == 'error':
             if new_value is not None:
                 self.log.error(new_value)

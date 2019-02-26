@@ -2,7 +2,6 @@
 
 from .db import *
 from .Signal import ResourceSignal
-from .Interface import Interface
 from .utils.date import TzDate, utcnow
 from .utils.objectpath import evaluate
 from .scheduler import *
@@ -108,7 +107,7 @@ class RDict(Dict):
 @namespace('resources')
 class Resource(Entity):
 
-    def __init__(self, data, context=None):
+    def __init__(self, data=None, context=None):
 
         if 'core' not in context:
             raise Exception('missing "core" in context')
@@ -148,7 +147,7 @@ class Resource(Entity):
 
     @attr(description="An array of classes this resource is based on.")
     def extends(self):
-        return [get_definition_name(c) for c in type(self).__mro__ if issubclass(c, Entity) and (c is not Entity and c is not Resource and c is not Interface)]
+        return [get_definition_name(c) for c in type(self).__mro__ if issubclass(c, Resource)]
 
     @property
     def log(self):
@@ -226,8 +225,7 @@ class Resource(Entity):
         for a in dirty_attrs:
             value = getattr(self, a.name)
 
-            if a.get('watch'):
-                self.on_attr_update(a.name, value, None)
+            self.on_attr_update(a.name, value, None)
 
             if a.get('history'):
                 name = a.get('history_name', a.name)

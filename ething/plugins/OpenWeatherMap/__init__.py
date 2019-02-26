@@ -38,7 +38,7 @@ class OpenWeatherMapPlugin(Plugin):
 
 
 
-@attr('weather', type=String(), mode=READ_ONLY, default='', history = True, watch = True, description='a string descibing the current weather')
+@attr('weather', type=String(), mode=READ_ONLY, default='', history = True, force_watch = True, description='a string descibing the current weather')
 @attr('location', type=String(allow_empty=False), default=NO_VALUE, description='a city\'s name. See https://openweathermap.org/find')
 class OpenWeatherMapDevice(Device, Thermometer, PressureSensor, HumiditySensor, Anemometer):
 
@@ -46,8 +46,7 @@ class OpenWeatherMapDevice(Device, Thermometer, PressureSensor, HumiditySensor, 
         super(OpenWeatherMapDevice, self).on_attr_update(attr, new_value, old_value)
 
         if attr == 'weather':
-            if new_value != old_value:
-                self.dispatchSignal(SensorValueChanged(self, attr, new_value, old_value))
+            self.dispatchSignal(SensorValueChanged(self, attr, new_value, old_value))
 
     @scheduler.setInterval(REFRESH_INTERVAL)
     def refresh(self):

@@ -537,7 +537,7 @@ class Attribute (RegItemBase):
 
       if not init:
         # detect change !
-        if not (type(val)==type(old_val) and val==old_val): # val is not old_val:
+        if self.get('force_watch') or not (type(val)==type(old_val) and val==old_val): # val is not old_val:
           #print('__set_raw__', val, old_val, type(val), type(old_val), val is not old_val, val != old_val)
           reg.set_dirty(attr=self)
           self.__watch__(obj, val, old_val, context)
@@ -607,24 +607,15 @@ class Attribute (RegItemBase):
     def __repr__(self):
       return str(self)
     
-    def clone(self, new_cls, new_props=None):
+    def clone(self, new_cls):
       copy = type(self)(self.name, new_cls, self._props.copy())
-      if new_props is not None:
-        for k in new_props:
-            v = new_props[k]
-            if v is NO_VALUE:
-                # remove that key
-                if k in copy:
-                    del copy[k]
-            else:
-                copy[k] = v
       return copy
       
 
 
 class ComputedAttr(Attribute):
   
-  def __init__(self, func, name=None, props=None):
+  def __init__(self, func, name=None, cls=None, props=None):
     if name is None:
       if isinstance(func, (staticmethod, classmethod)):
         name = func.__func__.__name__
@@ -633,7 +624,7 @@ class ComputedAttr(Attribute):
     if props is None:
       props = {}
     props.setdefault('mode', READ_ONLY)
-    super(ComputedAttr, self).__init__(name, None, props)
+    super(ComputedAttr, self).__init__(name, cls, props)
     self._func = func
   
   def __get_raw__(self, obj, objtype, context=None):
@@ -650,6 +641,10 @@ class ComputedAttr(Attribute):
   
   def __set_raw__(self, obj, val, context=None):
       raise ValueError('[%s] computed attributes are read only' % self._name)
+
+  def clone(self, new_cls):
+      copy = type(self)(self._func, self.name, new_cls, self._props.copy())
+      return copy
 
 
 def attr(name=None, **kwargs):
@@ -671,7 +666,8 @@ def attr(name=None, **kwargs):
             attribute = a
           else:
             # come from a base class, copy it before updating
-            attribute = a.clone(cls, kwargs)
+            attribute = a.clone(cls)
+            attribute.update(kwargs)
             setattr(cls, name, attribute)
           break
       else:
@@ -1113,7 +1109,6 @@ class MetaReg(ABCMeta):
       extended_attributes = []
       for b in reversed(bases):
         for attribute_b in list_registered_attr(b):
-
           attribute = None
           i = 0
           for a in extended_attributes:
@@ -1126,8 +1121,10 @@ class MetaReg(ABCMeta):
               extended_attributes.insert(0, attribute_b)
           else:
             # copy it before updating
-            extended_attributes[i] = attribute.clone(cls, attribute_b.properties)
-      
+            c = attribute.clone(cls)
+            c.update(attribute_b.properties)
+            extended_attributes[i] = c
+
       for a in extended_attributes:
         setattr(cls, a.name, a)
 

@@ -121,8 +121,8 @@ export default {
     data () {
         var appid = null
 
-        if (EThingUI.settings && EThingUI.settings.OpenWeatherMapPlugin) {
-            appid = EThingUI.settings.OpenWeatherMapPlugin.appid
+        if (EThingUI.settings && EThingUI.settings.OpenWeatherMap) {
+            appid = EThingUI.settings.OpenWeatherMap.appid
         }
 
         return {

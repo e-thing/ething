@@ -6,7 +6,6 @@ from ..utils.jsonpath import jsonpath
 from ..utils.objectpath import ObjectPathExp, evaluate
 from ..utils.weak_ref import weak_ref
 from ..Process import Process
-from ..plugin import Plugin, register_plugin
 from ..Signal import ResourceSignal
 try:
     import queue
@@ -235,7 +234,7 @@ class SignalEventNode(Node):
         super(SignalEventNode, self).__init__(value, context)
 
     def _filter(self, signal):
-        return isinstance(signal, self._context['signal'])
+        return isinstance(signal, self.signal)
 
     def main(self, **inputs):
         q = queue.Queue()
@@ -332,33 +331,29 @@ def _generate_event_node_cls(signal_cls):
         context['signal'] = signal_cls
         base_cls.__init__(self, value, context)
 
-    node_cls = type('%s' % signal_cls_name, (base_cls,), {
-        '__init__': init
-    })
+    try:
+        node_cls = type('%s' % signal_cls_name, (base_cls,), {
+            '__init__': init
+        })
 
-    prefix = 'signals/'
-    if signal_cls_path.startswith(prefix):
-        namespace(signal_cls_path[len(prefix):], True)(node_cls)
+        prefix = 'signals/'
+        if signal_cls_path.startswith(prefix):
+            namespace(signal_cls_path[len(prefix):], True)(node_cls)
 
-    meta(label=get_meta(signal_cls, 'label'), description=get_meta(signal_cls, 'description'), icon=get_meta(signal_cls, 'icon', 'mdi-signal-variant'), category=get_meta(signal_cls, 'category', 'events'))(node_cls)
+        meta(label=get_meta(signal_cls, 'label'), description=get_meta(signal_cls, 'description'), icon=get_meta(signal_cls, 'icon', 'mdi-signal-variant'), category=get_meta(signal_cls, 'category', 'events'))(node_cls)
 
-    if issubclass(signal_cls, ResourceSignal):
-        attr('resource', type=ResourceType(must_throw=signal_cls))(node_cls)
+        if issubclass(signal_cls, ResourceSignal):
+            attr('resource', type=ResourceType(must_throw=signal_cls))(node_cls)
 
-    return node_cls
-
-
-class FlowPlugin(Plugin):
-
-    def setup(self):
-
-        # create nodes from registered signals/conditions/actions
-        for cls in filter(lambda cls: get_definition_name(cls).startswith('signals/') and not is_abstract(cls), list(list_registered_classes())):
-            _generate_event_node_cls(cls)
+        return node_cls
+    except:
+        return
 
 
-
-register_plugin(FlowPlugin)
+def generate_event_nodes():
+    # create nodes from registered signals/conditions/actions
+    for cls in filter(lambda cls: get_definition_name(cls).startswith('signals/') and not is_abstract(cls), list(list_registered_classes())):
+        _generate_event_node_cls(cls)
 
 
 # special nodes

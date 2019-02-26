@@ -12,6 +12,7 @@ from .Signal import Signal
 from .utils.objectpath import generate_filter, patch_all
 from .Resource import Resource
 from .Process import Process, Manager as ProcessManager
+from .flow import generate_event_nodes
 import collections
 import logging
 import pytz
@@ -197,6 +198,8 @@ class Core(object):
     def init(self):
         if not self.__initialized:
             self.__initialized = True
+
+            generate_event_nodes()
 
             # preload all resources
             self.db.os[Resource].load()
