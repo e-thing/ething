@@ -1,21 +1,14 @@
 # coding: utf-8
 import pytest
 from ething.core import Core
+import logging
 
 
 @pytest.fixture
 def core():
-    _core = Core({
-        'db': {
-            'database': ':memory:'
-        },
-        'log': {
-            'level': 'DEBUG'
-        },
-        'debug': True
-    })
+    _core = Core(clear_db=True, database=':memory:', log_level=logging.DEBUG, debug=True)
 
-    _core.init(clear_db=True)
+    _core.init()
 
     return _core
 

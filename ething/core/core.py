@@ -2,8 +2,8 @@
 
 from future.utils import string_types
 from .db import Db
-from .reg import get_registered_class, get_definition_name
-from .Config import CoreConfig
+from .reg import get_registered_class, get_definition_name, update
+from .Config import Config
 from .SignalDispatcher import SignalDispatcher
 from .version import __version__
 from .plugin import search_plugin_cls, list_registered_plugins
@@ -12,10 +12,11 @@ from .Signal import Signal
 from .utils.objectpath import generate_filter, patch_all
 from .Resource import Resource
 from .Process import Process, Manager as ProcessManager
-
+import collections
 import logging
 import pytz
 import time
+import inspect
 
 
 class _CoreScheduler(Scheduler):
@@ -47,23 +48,30 @@ class Core(object):
                 if instance.name == name:
                     return instance
 
-    def __init__(self, config=None, name=None):
+    def __init__(self, name=None, debug=False, log_level=None, database=None, clear_db=False, **config):
         self.__initialized = False
 
         patch_all(self)
 
         self.running = False
         self.name = name
+        self.plugins = list()
+        self.debug = debug
 
-        self.config = CoreConfig(self, config)
-
-        self._init_logger()
+        self._init_logger(log_level)
 
         self.signalDispatcher = SignalDispatcher()
         self.process_manager = ProcessManager(start=False)
         self.scheduler = _CoreScheduler(self)
 
-        self.plugins = list()
+        # load db
+        self._init_database(database, clear_db=clear_db)
+
+        self.config = Config(self)
+
+        if config:
+            with self.config:
+                update(self.config, config)
 
         self.__instances.append(self)
 
@@ -72,20 +80,21 @@ class Core(object):
 
     @property
     def local_tz (self):
-        local_tz = self.config.get('timezone', 'UTC')
+        local_tz = self.config.timezone
         return pytz.timezone(local_tz)
 
-    def _init_logger(self):
+    def _init_logger(self, log_level=None):
         self.log = logging.getLogger('ething')
-        self.log.setLevel(
-            getattr(logging, self.config.get('log', {}).get('level', 'info').upper(), logging.INFO))
+        if log_level is None:
+            log_level = logging.INFO
+        self.log.setLevel(log_level)
 
     def use(self, something):
         plugin_cls = search_plugin_cls(something)
-        plugin_name = getattr(plugin_cls, 'PACKAGE', {}).get('name', type(plugin_cls).__name__)
+        plugin_name = plugin_cls.get_name()
 
         for p in self.plugins:
-            if type(p) is plugin_cls:
+            if p.name == plugin_name:
                 self.log.debug('plugin %s: already loaded' % plugin_name)
                 return p
 
@@ -105,16 +114,18 @@ class Core(object):
             self.log.info('plugin %s loaded, info: %s' % (plugin.name, info))
             return plugin
 
-    def _init_database(self, clear_db=False):
+    def _init_database(self, database=None, clear_db=False, commit_interval=None, garbage_collector_period=None):
         try:
-            db_conf = self.config.get('db', {})
-            db_type = db_conf.get('db.type', 'sqlite').lower()
+            if database is None:
+                database = 'database'
+
+            db_type = 'sqlite'
 
             self.log.info('db type: %s' % (db_type))
 
             if db_type == 'sqlite':
                 from .database.sqlite import SQLiteDriver
-                driver = SQLiteDriver(database=db_conf.get('database', 'database'))
+                driver = SQLiteDriver(database=database)
             else:
                 raise Exception('unknown db_type %s' % db_type)
 
@@ -133,13 +144,14 @@ class Core(object):
 
             if not self.db.auto_commit:
                 # commit every secondes
-                self.scheduler.setInterval(db_conf.get('commit_interval', 1), self.db.commit, condition=lambda _: self.db.connected and self.db.need_commit())
+                if commit_interval is None:
+                    commit_interval = 1
+                self.scheduler.setInterval(commit_interval, self.db.commit, condition=lambda _: self.db.connected and self.db.need_commit())
 
             # run garbage collector regularly
-            self.scheduler.setInterval(300, self.db.run_garbage_collector, condition=lambda _: self.db.connected)
-
-            # preload all resources
-            self.db.os[Resource].load()
+            if garbage_collector_period is None:
+                garbage_collector_period = 300
+            self.scheduler.setInterval(garbage_collector_period, self.db.run_garbage_collector, condition=lambda _: self.db.connected)
 
         except Exception as e:
             self.log.exception('init database error')
@@ -182,14 +194,12 @@ class Core(object):
         self.stop(callback)
         self.restart_flag = True
 
-    def init(self, clear_db=False):
+    def init(self):
         if not self.__initialized:
             self.__initialized = True
 
-            self.signalDispatcher.bind('ConfigUpdated', self._on_config_updated)
-
-            # load db
-            self._init_database(clear_db=clear_db)
+            # preload all resources
+            self.db.os[Resource].load()
 
             # setup plugins
             self._plugins_call('setup')
@@ -197,7 +207,7 @@ class Core(object):
     def start(self):
         self.init()
 
-        if self.config.get('debug') and not getattr(self, '_gevent_dbg_installed', False):
+        if self.debug and not getattr(self, '_gevent_dbg_installed', False):
             from gevent import events, config
 
             setattr(self, '_gevent_dbg_installed', True)
@@ -232,12 +242,6 @@ class Core(object):
         self.loop_forever()
         self.stop()
 
-    def _on_config_updated(self, signal):
-        for key in signal.updated_keys:
-            if key == "log":
-                self.log.debug('log config updated')
-                self._init_logger()
-
     #
     # Resources
     #
@@ -246,16 +250,19 @@ class Core(object):
 
         if query is not None:
 
-            if isinstance(query, string_types) or callable(query):
+            if not isinstance(query, collections.Sequence):
                 query = [query]
 
-            filters = []
-            for q in query:
+            def _mapper(q):
                 if isinstance(q, string_types):
                     # expression
-                    filters.append(generate_filter(q, converter=lambda r:r.toJson()))
+                    return generate_filter(q, converter=lambda r:r.toJson())
+                elif inspect.isclass(q):
+                    return lambda r: r.isTypeof(q)
                 else:
-                    filters.append(q)
+                    return q
+
+            filters = list(map(_mapper, query))
 
             def fn(r):
                 for f in filters:

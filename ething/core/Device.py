@@ -66,6 +66,7 @@ class ExecuteDevice(ResourceNode):
 @attr('location', type=String(), default='', description="The location of this device.")
 @attr('connected', type=Boolean(), default=True, watch=True, description="Set to true when this device is connected.")
 @attr('lastSeenDate', type=Nullable(TzDate()), mode=READ_ONLY, default=None, description="The last time this device was reached or made a request.")
+@attr('error', type=Nullable(String()), mode=READ_ONLY, default=None, description="Any error concerning this device.")
 class Device(Resource):
 
     BATTERY_NONE = None
@@ -99,3 +100,6 @@ class Device(Resource):
                 else:
                     self.log.debug("device disconnected %s" % self)
                     self.dispatchSignal(DeviceDisconnected(self))
+        elif attr == 'error':
+            if new_value is not None:
+                self.log.error(new_value)

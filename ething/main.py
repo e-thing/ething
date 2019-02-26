@@ -19,7 +19,7 @@ import logging
 from logging.handlers import RotatingFileHandler
 import signal
 
-from .core.env import USER_DIR, LOG_FILE, CONFIG_FILE, PID_FILE
+from .core.env import USER_DIR, LOG_FILE, PID_FILE
 
 
 # Default daemon parameters.
@@ -196,21 +196,6 @@ def remove_logger():
         h.close()
 
 
-def load_config(filename):
-    config = dict()
-
-    if os.path.isfile(filename):
-        # try to read it !
-        config = json.load(open(filename, encoding='utf8'))
-
-    return config
-
-
-def save_config(filename, conf):
-    with open(filename, 'w', encoding='utf8') as outfile:
-        json.dump(conf, outfile, indent=1)
-
-
 def destroy():
     if 'core' in globals():
         try:
@@ -231,14 +216,13 @@ def exit(status=None):
 
 def main():
 
-    global CONFIG_FILE, PID_FILE, core
+    global PID_FILE, core
 
     parser = argparse.ArgumentParser(
         description='Launch EThing home automation server.')
 
     parser.add_argument('-v', '--version', action='store_true',
                         help='return the version number and exit')
-    parser.add_argument('-c', '--config', type=str, help='set the config file')
     parser.add_argument('-p', '--pidfile', type=str,
                         help='set pid to the given file')
     parser.add_argument('-q', '--quiet', action='store_true',
@@ -251,14 +235,11 @@ def main():
         parser.add_argument('--stop', action='store_true',
                             help='stop any running instance and exit')
 
-    parser.add_argument('--export', type=str,
-                        help='dump the database content into the given file')
-    parser.add_argument('--import', type=str,
-                        help='load the database content into the given file')
-    parser.add_argument('--import-ignore-config', action='store_true',
-                        help='ignore the config during import')
     parser.add_argument('--clear', action='store_true',
-                        help='clear all the database but keep the configuration')
+                        help='clear all the database and the configuration')
+
+    parser.add_argument('--log-level', type=str,
+                        help='set the log level')
 
     args = parser.parse_args()
 
@@ -295,17 +276,6 @@ def main():
         print("first startup, initializing...")
         os.makedirs(USER_DIR)
 
-    if args.config:
-        CONFIG_FILE = args.config
-
-    if not os.path.exists(CONFIG_FILE) or os.stat(CONFIG_FILE).st_size == 0:
-        # copy default config
-        old_umask = os.umask(0o177)
-        save_config(CONFIG_FILE, {})
-        os.umask(old_umask)
-
-    print("config : %s" % CONFIG_FILE)
-
     if getattr(args, 'daemon', None):
         createDaemon()
 
@@ -313,15 +283,13 @@ def main():
 
     log = init_logger(not (getattr(args, 'daemon', None) or getattr(args, 'quiet', False)))
 
-    try:
-        config = load_config(CONFIG_FILE)
-    except:
-        log.exception('unable to load the configuration. Default configuration loaded instead.')
-        config = {}
-
     from .core import Core
 
-    core = Core(config)
+    loglevel = getattr(args, 'log_level', None)
+    if loglevel:
+        loglevel = getattr(logging, loglevel.upper(), None)
+
+    core = Core(clear_db=bool(args.clear), log_level=loglevel)
 
     print_info(core, core.log.info)
 
@@ -334,37 +302,7 @@ def main():
     for module_name in find_plugins():
         core.use(module_name)
 
-    if args.clear:
-        core.log.info("clear database")
-        core.init(clear_db=True)
-        if getattr(args, 'import') is None:
-            exit()
-    else:
-        core.init()
-
-    if args.export is not None:
-        from ething.core.utils.export import export_data
-        core.log.info("export to %s" % args.export)
-        data = export_data(core)
-
-        file = open(args.export, "w", encoding='utf8')
-        file.write(data)
-        file.close()
-
-        exit()
-
-    if getattr(args, 'import') is not None:
-        from ething.core.utils.export import import_data
-        filename = getattr(args, 'import')
-        core.log.info("import from %s" % filename)
-
-        file = open(filename, "r", encoding='utf8')
-        data = file.read()
-        file.close()
-
-        import_data(core, data, import_config=getattr(args, 'import_ignore_config'))
-
-        exit()
+    core.init()
 
     exit_code = 0
 
@@ -375,12 +313,6 @@ def main():
 
     signal.signal(signal.SIGINT, stop)
     signal.signal(signal.SIGTERM, stop)
-
-    def _save_config(signal):
-        save_config(CONFIG_FILE, core.config.toJson())
-        core.log.info('configuration saved !')
-
-    core.signalDispatcher.bind('ConfigUpdated', _save_config)
 
     try:
 

@@ -347,18 +347,9 @@ def get_headers(input):
 if __name__ == "__main__":
     from .server import FlaskApp
     from ething.core.core import Core
+    import logging
 
-    core = Core({
-        'db': {
-            'database': 'test'
-        },
-        'webserver': {
-            'port': 8000
-        },
-        'log': {
-            'level': 'DEBUG'
-        }
-    })
+    core = Core(clear_db=True, database=':memory:')
 
     app = FlaskApp(core)
 

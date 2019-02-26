@@ -93,6 +93,7 @@ class RDict(Dict):
         return j
 
 
+@abstract
 @throw(ResourceCreated, ResourceDeleted, ResourceUpdated)
 @attr('public', type=Enum([False, 'readonly', 'readwrite']), default=False, description="False: this resource is not publicly accessible. 'readonly': this resource is accessible for reading by anyone. 'readwrite': this resource is accessible for reading and writing by anyone.")
 @attr('description', type=String(), default='', description="A description of this resource.")
@@ -115,7 +116,6 @@ class Resource(Entity):
         super(Resource, self).__init__(data, context)
 
         self._log = logging.getLogger('ething.r.%s' % self.id)
-        self.__t = transaction(self)
 
         self.core.scheduler.bind_instance(self)
 
@@ -284,22 +284,6 @@ class Resource(Entity):
 
     def match(self, expression):
         return bool(evaluate(expression, toJson(self)))
-
-    def __enter__(self):
-        self.__t.__enter__()
-        return self
-
-    def __exit__(self, type, value, traceback):
-        self.__t.__exit__(type, value, traceback)
-
-    def __export__(self, core):
-        return serialize(self)
-
-    @classmethod
-    def __import__(cls, data, core):
-        instance = unserialize(cls, data, {"core": core})
-        core.db.os.save(instance)
-        return instance
 
     def _process_bind(self):
         """

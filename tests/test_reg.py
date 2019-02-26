@@ -29,6 +29,40 @@ def test_glob():
     assert a.foo == 'toot'
 
 
+def test_transaction():
+    @attr('id', type='int')
+    @attr('foo', type=String(allow_empty=False), default="bar")
+    class AT(Entity):
+        def __init__(self, *args):
+            super(AT, self).__init__(*args)
+            self.t_cnt = 0
+            self.watch_map = {}
+
+        def __watch__(self, attr, val, old_val):
+            if attr.name not in self.watch_map:
+                self.watch_map[attr.name] = 0
+            self.watch_map[attr.name] += 1
+
+        def __transaction_end__(self):
+            self.t_cnt += 1
+
+    a = AT({
+        'id': 2
+    })
+
+    assert a.foo == 'bar'
+    assert a.t_cnt == 0
+
+    with a:
+        a.foo = 'toto'
+        assert a.t_cnt == 0
+        a.foo = 'titi'
+        assert a.t_cnt == 0
+
+    assert a.t_cnt == 1
+    assert a.foo == 'titi'
+
+
 def test_computed_attr():
 
     @attr('id', type='int')

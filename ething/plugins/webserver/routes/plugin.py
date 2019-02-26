@@ -10,7 +10,7 @@ def install(core, app, auth, **kwargs):
         p = core.get_plugin(name)
         if p:
             if p.is_js_index_valid():
-                return send_file(p.js_index)
+                return send_file(p.js_index())
             else:
                 raise Exception('no js index defined for this plugin')
         else:

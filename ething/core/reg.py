@@ -537,7 +537,8 @@ class Attribute (RegItemBase):
 
       if not init:
         # detect change !
-        if val is not old_val:
+        if not (type(val)==type(old_val) and val==old_val): # val is not old_val:
+          #print('__set_raw__', val, old_val, type(val), type(old_val), val is not old_val, val != old_val)
           reg.set_dirty(attr=self)
           self.__watch__(obj, val, old_val, context)
     
@@ -1390,7 +1391,7 @@ class InternalData(Mapping):
     raise KeyError('invalid key: %s' % key)
 
 
-def _set(cls, data=None, context=None, raise_when_missing=False):
+def _set_base(cls, data=None, context=None, init=False):
   if isinstance(data, InternalData): return data
   d = {}
   for attribute in list_registered_attr(cls):
@@ -1398,13 +1399,50 @@ def _set(cls, data=None, context=None, raise_when_missing=False):
       name = attribute.name
       if name in data:
         d[attribute] = attribute.__set_pre__(data[name], context)
-      elif attribute.required and raise_when_missing:
+      elif attribute.required and init:
         raise AttributeError('[%s] attribute "%s" is not set' % (cls.__name__, name))
 
   return InternalData(d, context)
 
 
-def create(cls, data=None, context=None):
+def _set_json(cls, data=None, context=None, init=False):
+    d = {}
+    for attribute in list_registered_attr(cls):
+        if not isinstance(attribute, ComputedAttr):
+            name = attribute.name
+            if name in data:
+                mode = attribute.get('mode')
+                if mode == PRIVATE or (not init and mode == READ_ONLY):
+                    raise AttributeError('attribute "%s" is not writable' % name)
+                d[attribute] = attribute.__from_json__(data[name], context)
+
+    return InternalData(d, context)
+
+
+def _set_db(cls, data=None, context=None, init=False):
+    d = {}
+    for attribute in list_registered_attr(cls):
+        if not isinstance(attribute, ComputedAttr):
+            name = attribute.name
+            model_key = attribute.get('model_key', name)
+            if model_key in data:
+                d[attribute] = attribute.__unserialize__(data[model_key], context)
+
+    return InternalData(d, context)
+
+
+def _set(cls, data=None, context=None, init=False, data_src=None):
+    if data_src == 'db':
+        h = _set_db
+    elif data_src == 'json':
+        h = _set_json
+    else:
+        h = _set_base
+
+    return h(cls, data, context, init)
+
+
+def create(cls, data=None, context=None, data_src=None):
   if isinstance(cls, string_types):
     cls = get_registered_class(cls)
 
@@ -1413,7 +1451,7 @@ def create(cls, data=None, context=None):
   if data is None:
     data = {}
   
-  d = _set(cls, data, context, True)
+  d = _set(cls, data, context, True, data_src)
 
   if hasattr(cls, '__instanciate__'):
     instance = cls.__instanciate__(cls, d, context)
@@ -1428,21 +1466,21 @@ def create(cls, data=None, context=None):
   return instance
 
 
-def update(obj, data):
+def update(obj, data, data_src=None):
   cls = type(obj)
   context = get_context(obj)
 
-  d = _set(cls, data, context, False)
+  d = _set(cls, data, context, False, data_src)
   d.set_to(obj)
 
   return obj
 
 
-def init(obj, data):
+def init(obj, data, data_src=None):
   cls = type(obj)
   context = get_context(obj)
 
-  d = _set(cls, data, context, True)
+  d = _set(cls, data, context, True, data_src)
 
   set_context(obj, '__init', True)
   try:
@@ -1463,41 +1501,8 @@ def serialize(obj, context=None):
   return j
 
 
-def unserialize(cls, data, context=None):
-  if isinstance(cls, string_types):
-    cls = get_registered_class(cls)
-
-  is_cls = inspect.isclass(cls)
-
-  if not is_cls:
-    # get the context from the instance
-    context = get_context(cls, context)
-  else:
-    cls = _discriminate_cls(cls, data)
-  
-  d = {}
-  for attribute in list_registered_attr(cls):
-    if not isinstance(attribute, ComputedAttr):
-      name = attribute.name
-      model_key = attribute.get('model_key', name)
-      if model_key in data:
-        d[attribute] = attribute.__unserialize__(data[model_key], context)
-
-  d = InternalData(d, context)
-
-  if is_cls:
-    if hasattr(cls, '__instanciate__'):
-      instance = cls.__instanciate__(cls, d, context)
-    else:
-      instance = cls()
-    if context is not None:
-      set_context(instance, context)
-  else:
-    instance = cls
-
-  d.set_to(instance)
-
-  return instance
+def unserialize(cls, data=None, context=None):
+  return create(cls, data, context, data_src='db')
 
 
 def toJson(obj, context=None):
@@ -1507,47 +1512,15 @@ def toJson(obj, context=None):
       continue
     name = attribute.name
     j[name] = attribute.__get_json__(obj, context)
+
+  if hasattr(obj, '__json__'):
+    j = obj.__json__(j, context=context)
+
   return j
 
 
 def fromJson(cls, data, context=None):
-
-  if isinstance(cls, string_types):
-    cls = get_registered_class(cls)
-
-  is_cls = inspect.isclass(cls)
-
-  if not is_cls:
-    # get the context from the instance
-    context = get_context(cls, context)
-  else:
-    cls = _discriminate_cls(cls, data)
-  
-  d = {}
-  for attribute in list_registered_attr(cls):
-    if not isinstance(attribute, ComputedAttr):
-      name = attribute.name
-      if name in data:
-        mode = attribute.get('mode')
-        if mode == PRIVATE or (not is_cls and mode == READ_ONLY):
-          raise AttributeError('attribute "%s" is not writable' % name)
-        d[attribute] = attribute.__from_json__(data[name], context)
-  
-  d = InternalData(d, context)
-
-  if is_cls:
-    if hasattr(cls, '__instanciate__'):
-      instance = cls.__instanciate__(cls, d, context)
-    else:
-      instance = cls()
-    if context is not None:
-      set_context(instance, context)
-  else:
-    instance = cls
-
-  d.set_to(instance)
-
-  return instance
+  return create(cls, data, context, data_src='json')
 
 
 registered_types = []
@@ -1671,7 +1644,7 @@ def get_type_from_value(value):
 
 class Entity(with_metaclass(MetaReg, object)):
 
-    def __init__(self, value=None, context=None):
+    def __init__(self, value=None, context=None, data_src=None):
         if value is None:
             value = {}
         
@@ -1680,13 +1653,10 @@ class Entity(with_metaclass(MetaReg, object)):
         if context is not None:
           self.__reg__.update_context(context)
         
-        init(self, value)
+        init(self, value, data_src=data_src)
         
         # call parent constructor
         super(Entity, self).__init__()
-    
-    #def __watch__(self, attribute, val, old_val):
-    #  print('%s.%s changed %s -> %s' % (type(self).__name__, attribute.name, old_val, val))
     
     def __instanciate__(cls, data, context):
       return cls(data, context)
@@ -1696,6 +1666,34 @@ class Entity(with_metaclass(MetaReg, object)):
       if name in context:
         return context[name]
       raise AttributeError('no attribute %s' % name)
+
+    def __transaction_start__(self):
+        pass
+
+    def __transaction_end__(self):
+        pass
+
+    def __watch__(self, attribute, val, old_val):
+        #  print('%s.%s changed %s -> %s' % (type(self).__name__, attribute.name, old_val, val))
+        t = self.__reg__.context.get('__transaction', 0)
+        if t == 0:
+            self.__transaction_start__()
+            self.__transaction_end__()
+
+    def __enter__(self):
+        t = self.__reg__.context.get('__transaction', 0)
+        if t==0:
+            self.__transaction_start__()
+        self.__reg__.context['__transaction'] = t + 1
+        return self
+
+    def __exit__(self, type, value, traceback):
+        t = self.__reg__.context['__transaction']
+        t = t - 1
+        try:
+            if t == 0: self.__transaction_end__()
+        finally:
+            self.__reg__.context['__transaction'] = t
 
 
 def dbg_attr(obj):

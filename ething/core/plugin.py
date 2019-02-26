@@ -1,17 +1,24 @@
 # coding: utf-8
 from future.utils import string_types
-from .Config import ConfigItem
+from .reg import *
+from .utils import ShortId
 import logging
 import inspect
 import os
-import copy
 import pkgutil
 import importlib
 import pkg_resources
 from email.parser import FeedParser
 
 
-class BasePlugin(object):
+def generate_plugin_name(suffix):
+    return "%s_%s" % (suffix, ShortId.generate())
+
+
+@abstract
+@namespace('plugins')
+class Plugin(Entity):
+    _REGISTER_ = False
 
     # if this plugin come from a package, this attribute will contain his name
     PACKAGE = None
@@ -19,33 +26,58 @@ class BasePlugin(object):
     # the path to the plugin javascript file (metadata, widgets ...). This file is loaded by the web interface. (default to index.js)
     JS_INDEX = './index.js'
 
-    def __init__(self, core, js_index = None):
-        self.core = core
-        package = getattr(self, 'PACKAGE', None) or {}
-        self._name = package.get('name') or type(self).__name__
-        self._js_index = js_index or getattr(self, 'JS_INDEX')
+    @classmethod
+    def get_name(cls):
+        return getattr(cls, 'PACKAGE', {}).get('name', cls.__name__)
+
+    def __init__(self, core):
+        # get the config from the core db
+        config = core.db.store.get('config.%s' % self.name, None)
+
+        super(Plugin, self).__init__(config, {
+            'core': core
+        }, data_src='db')
+
+        self._log = getattr(self, 'log', None) or logging.getLogger("ething.%s" % self.name)
+
+    def __transaction_end__(self):
+        if is_dirty(self):
+
+            self.on_config_change([a.name for a in list_dirty_attr(self)])
+
+            self.core.db.store['config.%s' % self.name] = serialize(self)
+            clean(self)
 
     @property
     def name(self):
-        return self._name
+        return self.get_name()
 
     @property
-    def js_index(self):
-        if os.path.isabs(self._js_index):
-            return self._js_index
-        # make it absolute !
-        package = getattr(self, 'PACKAGE', None) or {}
-        root = package.get('location')
-        return os.path.normpath(os.path.join(root or os.getcwd(), self._js_index))
+    def log(self):
+        return self._log
 
-    def is_js_index_valid(self):
-        return os.path.isfile(self.js_index)
+    @classmethod
+    def js_index(cls):
+        _js_index = getattr(cls, 'JS_INDEX', None)
+        if os.path.isabs(_js_index):
+            return _js_index
+        # make it absolute !
+        package = getattr(cls, 'PACKAGE', None) or {}
+        root = package.get('location')
+        return os.path.normpath(os.path.join(root or os.getcwd(), _js_index))
+
+    @classmethod
+    def is_js_index_valid(cls):
+        return os.path.isfile(cls.js_index())
 
     def __str__(self):
         return '<plugin %s>' % self.name
 
     def __repr__(self):
         return str(self)
+
+    def on_config_change(self, dirty_attributes):
+        pass
 
     def load(self):
         pass
@@ -61,57 +93,6 @@ class BasePlugin(object):
 
     def unload(self):
         pass
-
-    def export_data(self):
-        pass
-
-    def import_data(self, data):
-        pass
-
-    def toJson(self):
-        return {
-            'name': self.name,
-            'package': self.PACKAGE
-        }
-
-
-class Plugin(BasePlugin):
-
-    # a dictionary object defining the default configuration of the plugin
-    CONFIG_DEFAULTS = None
-
-    # a json schema describing the configuration data. The web interface use this to create the configuration form
-    CONFIG_SCHEMA = None
-
-    def __init__(self, core, js_index=None, config_defaults=None, config_schema=None):
-        super(Plugin, self).__init__(core, js_index)
-
-        self._log = getattr(self, 'log', None) or logging.getLogger("ething.%s" % self.name)
-
-        self._config = ConfigItem(core.config, self.name, schema=config_schema or getattr(self, 'CONFIG_SCHEMA'),
-                                 defaults=copy.deepcopy(config_defaults or getattr(self, 'CONFIG_DEFAULTS')))
-
-        self.core.signalDispatcher.bind('ConfigUpdated', self._on_core_config_updated)
-
-    @property
-    def config(self):
-        return self._config
-
-    @property
-    def log(self):
-        return self._log
-
-    def on_config_change(self):
-        pass
-
-    def _on_core_config_updated(self, signal):
-        if self.name in signal.updated_keys:
-            self.on_config_change()
-
-    def toJson(self):
-        data = super(Plugin, self).toJson()
-        data['config'] = self.config
-        return data
 
 
 def get_package_info(mod):
@@ -176,25 +157,28 @@ def get_package_info(mod):
     return package
 
 
-def install_func_to_plugin(install_func, name = 'AnonymousPlugin'):
+def install_func_to_plugin(install_func, name=None):
 
     def load(self):
         return install_func(self.core)
 
-    return type(name, (BasePlugin,), {
+    if name is None:
+        name = generate_plugin_name('AnonymousPlugin')
+
+    return type(name, (Plugin,), {
         'load': load
     })
 
 
-#class EmptyPlugin(BasePlugin):
-#    pass
-
+def _is_in_module(mod_name, base_mod_name):
+    if base_mod_name == mod_name:
+        return True
+    return (base_mod_name + ".") in mod_name
 
 def extract_plugin_from_module(mod):
-
     for attr_name in dir(mod):
         attr = getattr(mod, attr_name, None)
-        if inspect.isclass(attr) and issubclass(attr, Plugin) and attr is not Plugin:
+        if inspect.isclass(attr) and issubclass(attr, Plugin) and attr is not Plugin and _is_in_module(getattr(attr, '__module__', None), mod.__name__):
             return attr
     else:
         install_func = getattr(mod, 'install', None)
@@ -204,7 +188,7 @@ def extract_plugin_from_module(mod):
     # raise Exception('module "%s" has no plugin install function found nor plugin class found' % mod)
 
     # no install found -> EmptyPlugin
-    return type('EmptyPlugin', (BasePlugin,), {})
+    return type(generate_plugin_name('EmptyPlugin'), (Plugin,), {})
 
 
 def search_plugin_cls(something):

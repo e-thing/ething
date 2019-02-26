@@ -21,76 +21,42 @@ from .method_override import HTTPMethodOverrideMiddleware
 from .server_utils import ServerException, tb_extract_info, root_path, use_args, use_multi_args
 from .apikey import Apikey
 from ething.core.db import db_find, serialize, unserialize, save, toJson, Entity
-from ething.core.plugin import Plugin
+from ething.core.plugin import *
 from ething.core.Process import Process
 from ething.core.Helpers import filter_obj
+from ething.core.utils import dict_merge
 from ething.core.reg import get_registered_class, fromJson, get_definition_name
 from ething.core.Resource import Resource
 from collections import OrderedDict
 
 
+@attr('auth', type=Dict(mapping={
+    'username': String(allow_empty=False),
+    'password': String(allow_empty=False, password=True),
+    'localonly': Boolean()
+}), default={
+        'username': 'ething',
+        'password': 'admin',
+        'localonly': False
+    })
+@attr('debug', type=Boolean(), default=True)
+@attr('port', type=Integer(min=1, max=65535), default=8000)
 class WebServer(Plugin):
-    CONFIG_DEFAULTS = {
-        'port': 8000,
-        'debug': True,
-        'auth': {
-            'username': 'ething',
-            'password': 'admin',
-            'localonly': False
-        },
-        'session': {
-            'expiration': 86400,  # in seconds, the time after which a session is expired
-            'cookie_name': 'ething_session',
-            'secret': 'taupesecretstring'  # must not be shared
-        },
-    }
-
-    CONFIG_SCHEMA = {
-        'type': 'object',
-        'properties': OrderedDict([
-            ('port', {
-                'type': 'integer',
-                'minimum': 1,
-                'maximum': 65535
-            }),
-            ('auth', {
-                'type': 'object',
-                'required': ['username', 'password'],
-                'properties': OrderedDict([
-                    ('username', {
-                        'type': 'string',
-                        'minLength': 1
-                    }),
-                    ('password', {
-                        'type': 'string',
-                        "format": "password",
-                        'minLength': 4
-                    }),
-                    ('localonly', {
-                        'type': 'boolean'
-                    })
-                ])
-            })
-        ])
-    }
 
     def load(self):
-        self.app = FlaskApp(self.core, config=self.config, logger=self.log, root_path=root_path)
+
+        config = {
+            'auth': self.auth,
+            'debug': self.debug,
+            'port': self.port
+        }
+
+        self.app = FlaskApp(self.core, config=config, logger=self.log, root_path=root_path)
 
     def setup(self):
         # clients
         install_clients_manager(self.app)
         self.core.process_manager.attach(WebServerProcess(self.app))
-
-    def export_data(self):
-        return [serialize(apikey) for apikey in db_find(Apikey)]
-
-    def import_data(self, data):
-        for d in data:
-            apikey = unserialize(Apikey, d, {
-                'core': self.core
-            })
-            self.core.db.os.save(apikey)
 
 
 class FlaskApp(Flask):
@@ -100,7 +66,23 @@ class FlaskApp(Flask):
         super(FlaskApp, self).__init__(__name__, **kwargs)
 
         self.core = core
-        self._config = config if config is not None else dict()
+
+        self._config = {
+            'auth': {
+                'username': 'ething',
+                'password': 'admin',
+                'localonly': False
+            },
+            'debug': False,
+            'port': 8000,
+            'session': {
+                'expiration': 86400,  # in seconds, the time after which a session is expired
+                'cookie_name': 'ething_session',
+                'secret': 'taupesecretstring'  # must not be shared
+            }
+        }
+
+        dict_merge(self._config, config if config is not None else dict())
 
         if logger is None:
             self.log = logging.getLogger("ething.FlaskApp")
@@ -108,7 +90,7 @@ class FlaskApp(Flask):
             self.log = logger
 
         # debug
-        self.debug = bool(self._config.get('debug', False))
+        self.debug = bool(self.conf.get('debug', False))
         if self.debug:
             self.log.info('webserver: debug mode enabled')
 
@@ -128,7 +110,7 @@ class FlaskApp(Flask):
         compress.init_app(self)
 
         # auth
-        self.auth = install_auth(self, self._config)
+        self.auth = install_auth(self)
 
         # socketio
         socketio = SocketIO()
@@ -160,8 +142,13 @@ class FlaskApp(Flask):
         # routes
         install_routes(core=self.core, app=self, auth=self.auth, debug=self.debug)
 
+    @property
+    def conf(self):
+        # config is already used by Flask class
+        return self._config
+
     def run(self):
-        port = self._config.get('port', 80)
+        port = self.conf.get('port', 80)
 
         # retrieve current ip:
         current_ip = None

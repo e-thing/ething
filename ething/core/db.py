@@ -812,40 +812,32 @@ def db(table=None, id_key=None, database=None):
     if id_key is not None: set_meta(cls, 'id_key', id_key)
     if database is not None: set_meta(cls, 'database', database)
 
-    original_watch = getattr(cls, '__watch__', None)
+    if issubclass(cls, Entity):
+        # use transaction
+        original_t_end = getattr(cls, '__transaction_end__', None)
 
-    def __watch__(self, attribute, val, old_val):
-      if original_watch is not None:
-        original_watch(self, attribute, val, old_val)
-      
-      t = self.__reg__.context.get('__transaction', 0)
-      if t == 0:
-        save(self)
-    
-    setattr(cls, '__watch__', __watch__)
+        def __transaction_end__(self):
+            if original_t_end is not None:
+                original_t_end(self)
+
+            save(self)
+
+        setattr(cls, '__transaction_end__', __transaction_end__)
+
+    else:
+        # else save on each change
+        original_watch = getattr(cls, '__watch__', None)
+
+        def __watch__(self, attribute, val, old_val):
+          if original_watch is not None:
+            original_watch(self, attribute, val, old_val)
+
+          save(self)
+
+        setattr(cls, '__watch__', __watch__)
 
     return cls
   return d
-
-
-class transaction(object):
-
-  def __init__(self, obj):
-    self._obj = obj
-    self._reg = install(obj)
-  
-  def __enter__(self):
-    t = self._reg.context.get('__transaction', 0)
-    self._reg.context['__transaction'] = t+1
-    return self._obj
-  
-  def __exit__(self, type, value, traceback):
-    t = self._reg.context['__transaction']
-    t = t - 1
-    try:
-      if t==0: save(self._obj)
-    finally:
-      self._reg.context['__transaction'] = t
 
 
 def _get_db(obj):

@@ -73,33 +73,3 @@ def test_put_file(core, webapp, webapp_auth_header):
 
         assert response.data.decode('utf8') == content
 
-
-def test_post_multipart_file(core, webapp, webapp_auth_header):
-
-    with webapp.test_client() as c:
-
-        content = u"""--foo_bar_baz
-Content-Type: application/json; charset=UTF-8
-
-{
-  "name": "file1.txt"
-}
-
---foo_bar_baz
-Content-Type: text/plain
-
-hello world
---foo_bar_baz--"""
-
-        response = c.post('/api/files', data=content.replace('\n', '\r\n'),
-                          headers=webapp_auth_header, content_type='multipart/related; boundary=foo_bar_baz')
-
-        data = json.loads(response.data.decode('utf8'))
-
-        print(data)
-
-        assert response.status_code == 201
-
-        assert data['name'] == "file1.txt"
-
-        assert data['size'] == 13

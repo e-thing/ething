@@ -234,12 +234,13 @@ class String(Basetype):
   
   __synonyms__ = string_types + ('str', 'string', 'unicode', 'basestring')
 
-  def __init__(self, allow_empty=True, regex=None, enum=None, maxLength = None, **attributes):
+  def __init__(self, allow_empty=True, regex=None, enum=None, maxLength = None, password=None, **attributes):
     super(String, self).__init__(**attributes)
     self.allow_empty = allow_empty
     self.enum = enum
     self.maxLength = maxLength
     self.regex = None
+    self.password = password
     if regex:
         if isinstance(regex, string_types):
             self.regex = regex
@@ -290,6 +291,8 @@ class String(Basetype):
       schema['pattern'] = self.regex_c.pattern
     if self.maxLength is not None:
       schema['maxLength'] = self.maxLength
+    if self.password:
+      schema['$component'] = 'password'
     return schema
 
 class Email(String):

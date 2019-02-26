@@ -50,7 +50,7 @@ def install(core, app, auth, **kwargs):
 
             if isinstance(data, dict):
                 with apikey:
-                    fromJson(apikey, data)
+                    update(apikey, data, data_src='json')
                     return app.jsonify(apikey)
 
             raise Exception('Invalid request')

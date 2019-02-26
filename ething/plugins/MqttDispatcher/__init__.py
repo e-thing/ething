@@ -1,6 +1,6 @@
 # coding: utf-8
 
-from ething.core.plugin import Plugin
+from ething.core.plugin import *
 from ething.core.Process import Process
 import threading
 import paho.mqtt.client as mqttClient
@@ -12,52 +12,26 @@ from ething.core.Helpers import toJson
 from collections import OrderedDict
 
 
+@attr('password', type=String(password=True), default='')
+@attr('user', type=String(), default='')
+@attr('port', type=Number(min=1, max=65535), default=1883)
+@attr('host', type=String(), default='', description='leave empty to disable this plugin')
 class MqttDispatcher(Plugin):
-    CONFIG_DEFAULTS = {
-        'port': 1883,
-        'user': '',
-        'password': '',
-        'host': ''
-    }
-
-    CONFIG_SCHEMA = {
-        'type': 'object',
-        'properties': OrderedDict([
-            ('host', {
-                'description': 'leave empty to disable this plugin',
-                'type': 'string'
-            }),
-            ('port', {
-                'type': 'integer',
-                'minimum': 1,
-                'maximum': 65535
-            }),
-            ('user', {
-                'type': 'string'
-            }),
-            ('password', {
-                'type': 'string',
-                "format": "password"
-            })
-        ])
-    }
 
     def setup(self):
         self.service = None
         self.update_service()
 
-    def on_config_change(self):
+    def on_config_change(self, dirty_attributes):
         self.update_service()
 
     def update_service(self):
         if self.service is not None:
             self.service.stop()
             self.service = None
-        if self.config.get('host'):
-            self.service = MqttDispatcherService(self.core, self.config)
+        if self.host:
+            self.service = MqttDispatcherService(self.core, self.host, self.port, self.user, self.password)
             self.core.process_manager.attach(self.service)
-
-
 
 
 class MqttDispatcherService(Process):
@@ -65,10 +39,13 @@ class MqttDispatcherService(Process):
     KEEPALIVE = 60  # seconds
     RECONNECT_DELAY = 30
 
-    def __init__(self, core, config):
+    def __init__(self, core, host, port=1883, user=None, password=None):
         super(MqttDispatcherService, self).__init__(name='mqttDispatcher')
         self.core = core
-        self.config = config
+        self.host = host
+        self.port = port
+        self.user = user
+        self.password = password
         self._lock = threading.Lock()
 
     def main(self):
@@ -78,11 +55,11 @@ class MqttDispatcherService(Process):
         self._mqttClient.on_connect = self.on_connect
         self._mqttClient.on_disconnect = self.on_disconnect
 
-        host = self.config.get('host')
-        port = self.config.get('port', 1883)
+        host = self.host
+        port = self.port
 
-        user = self.config.get('user')
-        password = self.config.get('password')
+        user = self.user
+        password = self.password
         if user and password:
             self._mqttClient.username_pw_set(user, password=password)
 

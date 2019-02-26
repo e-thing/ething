@@ -20,10 +20,10 @@ def webapp(core):
 
 
 @pytest.fixture
-def webapp_auth_header(core):
+def webapp_auth_header(webapp):
 
-    username = core.config(u'auth.username')
-    password = core.config(u'auth.password')
+    username = webapp.conf['auth']['username']
+    password = webapp.conf['auth']['password']
 
     if username and password:
 

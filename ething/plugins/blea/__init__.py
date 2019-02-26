@@ -32,31 +32,16 @@ if bluepy_imported:
             os.system('hciconfig hci%d up' % iface)
 
 
-    from ething.core.plugin import Plugin
+    from ething.core.plugin import *
     from .BleaGateway import BleaGateway
     from .devices import devices
 
 
+    @attr('scan_interval', label='scan interval', type=Integer(min=5), default=60, description="Seconds between each scan for new devices")
     class Blea(Plugin):
 
-        CONFIG_DEFAULTS = {
-            'scan_interval': 60,
-        }
-
-        CONFIG_SCHEMA = {
-            'type': 'object',
-            'properties': OrderedDict([
-                ('scan_interval', {
-                    'title': 'scan interval',
-                    'description': 'Seconds between each scan for new devices',
-                    'type': 'integer',
-                    'minimum': 5
-                })
-            ])
-        }
-
         def setup(self):
-            self.core.scheduler.setInterval(self.config['scan_interval'], self.scan, name="blea.scan")
+            self.core.scheduler.setInterval(self.scan_interval, self.scan, name="blea.scan")
 
         def scan(self):
 

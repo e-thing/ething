@@ -132,11 +132,11 @@ class Auth(object):
                     return AuthContext('public', scope='resource:read resource:write')
 
 
-def install_auth(app, config):
+def install_auth(app):
 
-    auth = Auth(app, config)
+    auth = Auth(app, app.conf)
 
-    if config.get('auth.localonly'):
+    if app.conf['auth']['localonly']:
         @app.before_request
         def check_local_only():
 

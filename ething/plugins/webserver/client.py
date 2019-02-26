@@ -52,7 +52,7 @@ class Client(Entity):
 
     def update_from_request(self):
         """must be executed in a flask context"""
-        with transaction(self):
+        with self:
             self.attach_socket(request.sid)
             user_agent = request.user_agent
             self.online = True

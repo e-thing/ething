@@ -9,9 +9,7 @@ import string
 from collections import OrderedDict
 from io import open
 
-from ething.core.reg import build_schema_definitions, Entity
-from ething.core.utils.export import export_data, import_data
-from ething.core.plugin import Plugin
+from ething.core.reg import build_schema_definitions, Entity, build_schema
 
 from ..Scope import Scope
 
@@ -126,43 +124,19 @@ def install(core, app, auth, **kwargs):
                 "scopes": Scope.list,
                 "info": get_info(core),
                 "plugins": OrderedDict(),
-                "config": core.config.SCHEMA
             }
 
             for plugin in core.plugins:
-                name = plugin.name
-                definition = {
+                _meta['plugins'][plugin.name] = {
                     'js_index': plugin.is_js_index_valid(),
-                    'schema': None,
-                    'package': plugin.PACKAGE
+                    'package': plugin.PACKAGE,
+                    'schema': build_schema(plugin)
                 }
-
-                if isinstance(plugin, Plugin):
-                    definition['schema'] = plugin.config.schema
-
-                _meta['plugins'][name] = definition
         else:
             if app.etag_match(definitions_etag):
                 return Response(status=304)
 
         return app.set_etag(app.jsonify(_meta), definitions_etag)
-
-    @app.route('/api/utils/export')
-    @auth.required()
-    def export_route():
-        return Response(export_data(core), mimetype='application/json')
-
-    @app.route('/api/utils/import', methods=['POST'])
-    @auth.required()
-    def import_route():
-
-        data = request.data
-
-        if data:
-            import_data(core, data)
-            return '', 204
-
-        raise Exception('Invalid request')
 
     @app.route('/api/process')
     @auth.required()

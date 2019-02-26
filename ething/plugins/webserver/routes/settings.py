@@ -2,6 +2,7 @@
 
 from flask import request
 from ..server_utils import *
+from ething.core.reg import update
 
 
 def install(core, app, auth, **kwargs):
@@ -38,6 +39,24 @@ def install(core, app, auth, **kwargs):
                 type: object
         """
         if request.method == 'PATCH':
-            core.config.update(request.get_json())
 
-        return app.jsonify(core.config)
+            data = request.get_json()
+
+            for k in data:
+                d = data[k]
+                if k == 'global':
+                    with core.config:
+                        update(core.config, d)
+                else:
+                    p = core.get_plugin(k)
+                    if p is not None:
+                        with p:
+                            update(p, d)
+
+        data = {
+            'global': core.config
+        }
+        for p in core.plugins:
+            data[p.name] = p
+
+        return app.jsonify(data)

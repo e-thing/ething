@@ -162,13 +162,8 @@ def test_db_entity(core):
 
     assert g.save_cnt == 0
 
-    with transaction(g):
-        g.name = 'hello'
-        assert g.save_cnt == 0
-        assert g.watch_map['name'] == 1
-        g.nickname = 'world'
-        assert g.save_cnt == 0
-
+    g.name = 'hello'
+    assert g.watch_map['name'] == 1
     assert g.save_cnt == 1
 
     g.name = 'hello'
@@ -177,7 +172,7 @@ def test_db_entity(core):
     assert g.save_cnt == 2
     g.name = 'hello2'
     assert g.save_cnt == 3
-    assert g.watch_map['nickname'] == 1
+    assert g.watch_map['name'] == 3
 
     save(g)
     assert g.save_cnt == 3

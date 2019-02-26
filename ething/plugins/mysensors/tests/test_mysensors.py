@@ -2,7 +2,7 @@
 import pytest
 from ..Message import Message
 from .. import helpers as MySensors
-from .. import MySensorsProtocol
+from ..protocol import MySensorsProtocol
 from ething.core.interfaces import Thermometer
 
 

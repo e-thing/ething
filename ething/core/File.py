@@ -184,22 +184,6 @@ class File(Resource):
         if insert:
             self._updateMeta(File.META_ALL)
 
-    def __export__(self, core):
-        s = super(File, self).__export__(core)
-        s['content'] = None
-        s['thumb'] = None
-        d = base64.b64encode(self.read())
-        return {
-            'object': s,
-            'content': d
-        }
-
-    @classmethod
-    def __import__(cls, data, core):
-        instance = super(File, cls).__import__(data.get('object'), core)
-        instance.write(base64.b64decode(data.get('content')))
-        return instance
-
 
 @meta(icon='mdi-file', label="File out", category="storage")
 @attr('encoding', type=String(), default='utf8')

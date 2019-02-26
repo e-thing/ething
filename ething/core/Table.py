@@ -536,17 +536,3 @@ class Table(Resource):
 
         return content
 
-    def __export__(self, core):
-        s = super(Table, self).__export__(core)
-        d = self.select()
-        return {
-            'object': s,
-            'content': d
-        }
-
-    @classmethod
-    def __import__(cls, data, core):
-        instance = super(Table, cls).__import__(data.get('object'), core)
-        instance.importData(data.get('content'))
-        return instance
-

@@ -1,45 +1,17 @@
 # coding: utf-8
 
-from ething.core.plugin import Plugin
-from collections import OrderedDict
+from ething.core.plugin import *
 from .smtp import SmtpMail
 from ething.core.flow import Node, Descriptor
 from ething.core.reg import *
 
 
+@attr('password', type=String(password=True), default='')
+@attr('user', type=String(), default='')
+@attr('port', type=Number(min=1, max=65535), default=587)
+@attr('host', type=String(allow_empty=False), default="smtp.gmail.com")
 class Mail(Plugin):
-
-    CONFIG_DEFAULTS = {
-        'host': 'smtp.gmail.com',
-        'port' : 587,
-        'user' : '',
-        'password' : ''
-    }
-
-    CONFIG_SCHEMA = {
-        "type": "object",
-        "additionalProperties": False,
-        "properties": OrderedDict([
-            ("host", {
-                "type": "string",
-                "minLength": 1
-            }),
-            ("port", {
-                "type": "integer",
-                "title": "The Port Schema ",
-                'minimum': 1,
-                'maximum': 65535
-            }),
-            ("user", {
-                "type": "string"
-            }),
-            ("password", {
-                "type": "string",
-                "format": "password"
-            })
-        ])
-    }
-
+    pass
 
 
 @meta(icon='mdi-email', category="notification")
@@ -62,8 +34,8 @@ class SendEmail(Node):
         subject = self.subject.get(**_context)
         message = self.message.get(**_context)
 
-        conf = self.core.get_plugin('Mail').config
-        mailer = SmtpMail(host=conf.get('host'), port=conf.get('port'), user=conf.get('user'), password=conf.get('password'))
+        mail_plugin = self.core.get_plugin('Mail')
+        mailer = SmtpMail(host=mail_plugin.host, port=mail_plugin.port, user=mail_plugin.user, password=mail_plugin.password)
         mailer.send(subject=subject, message=message, to=to)
         self.log.debug('email "%s" send to %s' % (subject, to))
 

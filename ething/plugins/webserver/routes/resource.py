@@ -2,7 +2,7 @@
 from future.utils import string_types
 from flask import request, Response
 from ..server_utils import *
-from ething.core.reg import fromJson
+from ething.core.reg import update
 
 
 def install(core, app, auth, **kwargs):
@@ -215,7 +215,7 @@ def install(core, app, auth, **kwargs):
             if isinstance(data, dict):
                 
                 with r:
-                    fromJson(r, data)
+                    update(r, data, data_src='json')
                     return app.jsonify(r)
 
             raise Exception('Invalid request')
