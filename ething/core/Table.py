@@ -395,7 +395,6 @@ class Table(Resource):
         # If length is given and is positive, the selection returned will contain at most length lines beginning from start.
         # If length is omitted, the selection starting from start until the end of the table will be returned.
         # length >= 0
-
         if sort is None:
             # always sort by date
             sort = [('date', True)]
@@ -433,7 +432,7 @@ class Table(Resource):
         rows = self.table.select()
 
         # apply the filter according to the query string
-        # TODO: what about the date firld ? docSerialize() here ?
+        # TODO: what about the date field ? docSerialize() here ?
 
         if query:
             _filter = objectpath.generate_filter(query)
