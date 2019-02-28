@@ -431,18 +431,19 @@ class RegItemBase (MutableMapping):
         return self.name == other.name
       return self.name == other
     
-    def make_default(self, *args):
+    def make_default(self, *args, **kwargs):
       if 'default' not in self:
         raise AttributeError('%s: no default set' % self._name)
       default_val = self['default']
       if callable(default_val):
-        default_val = default_val(*args)
+        default_val = default_val(*args, **kwargs)
       else:
         default_val = copy.deepcopy(default_val)
       return default_val
     
-    def _make_default(self, context=None, *args):
-      d = self.make_default(*args)
+    def _make_default(self, *args, **kwargs):
+      context = kwargs.pop('context', None)
+      d = self.make_default(*args, **kwargs)
       data_type = self.get('type')
       if data_type:
         d = data_type.set(d, context=context)

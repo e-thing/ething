@@ -149,6 +149,7 @@ class YeelightProtocol(LineReader):
 class YeelightAdvertisementProtocol(Protocol):
 
     def __init__(self, core):
+        super(YeelightAdvertisementProtocol, self).__init__()
         self.core = core
 
     def connection_made(self):

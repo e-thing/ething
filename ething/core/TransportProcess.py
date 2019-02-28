@@ -6,10 +6,8 @@ import serial
 import socket
 import struct
 import time
-try:
-    import queue
-except ImportError:
-    import Queue as queue
+import logging
+from queue import Queue, Empty
 
 
 class Transport(object):
@@ -180,7 +178,10 @@ class UdpTransport(Transport):
 
 
 class Protocol(object):
-    
+
+    def __init__(self):
+        self.log = logging.getLogger()
+
     def init(self, process):
         self.process = process
         self.transport = process.transport
@@ -209,6 +210,7 @@ class Packetizer(Protocol):
     """
 
     def __init__(self, terminator = b'\0'):
+        super(Packetizer, self).__init__()
         self.buffer = bytearray()
         self.terminator = terminator
 
@@ -323,6 +325,7 @@ class TransportProcess(Process):
 
 class QueueProtocol(Protocol):
     def __init__(self, queue):
+        super(QueueProtocol, self).__init__()
         self._q = queue
 
     def data_received(self, data):
@@ -335,7 +338,7 @@ class ThreadedTransport(Transport):
         super(ThreadedTransport, self).__init__()
         self._transport = transport
         self._manager = manager
-        self._q = queue.Queue()
+        self._q = Queue()
         self._thread = None
         self._name = name or 'ThreadedTransport.%s' % type(transport).__name__
         self._timeout = timeout
@@ -357,7 +360,7 @@ class ThreadedTransport(Transport):
     def read(self):
         try:
             data = self._q.get(timeout=self._timeout)
-        except queue.Empty:
+        except Empty:
             return None
 
         return data

@@ -1,10 +1,7 @@
 # coding: utf-8
 from flask import Response, request
 from ething.core.Signal import ResourceSignal
-try:
-    import queue
-except ImportError:
-    import Queue as queue
+from queue import Queue, Empty
 
 
 def on_signal_sio(signal, app):
@@ -28,7 +25,7 @@ def install(core, app, auth, **kwargs):
 
         def gen():
 
-            q = queue.Queue()
+            q = Queue()
 
             def on_signal(signal):
                 if not filter or filter(signal):
@@ -43,7 +40,7 @@ def install(core, app, auth, **kwargs):
 
                     try:
                         signal = q.get(True, 1)
-                    except queue.Empty:
+                    except Empty:
                         yield "event:ping\ndata:\n\n"
                         continue
 

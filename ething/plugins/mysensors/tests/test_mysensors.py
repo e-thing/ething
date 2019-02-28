@@ -43,7 +43,7 @@ def test_mysensors_thermometer(core):
     assert isinstance(d, Thermometer)
 
 
-def test_mysensors_protocol(core, process):
+def test_mysensors_protocol(core):
 
     gateway = core.create('resources/MySensorsEthernetGateway', {
         'name': 'gateway',
@@ -53,8 +53,6 @@ def test_mysensors_protocol(core, process):
     assert gateway
 
     protocol = MySensorsProtocol(gateway)
-
-    protocol.init(process)
 
     assert protocol
 

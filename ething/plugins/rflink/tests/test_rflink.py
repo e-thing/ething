@@ -5,7 +5,7 @@ from ..protocol import RFLinkProtocol
 from  ething.core.interfaces import Relay, Thermometer, HumiditySensor
 
 
-def test_rflink_controller(core, process):
+def test_rflink_controller(core):
 
     gateway = core.create('resources/RFLinkSerialGateway', {
         'name': 'gateway',
@@ -15,8 +15,6 @@ def test_rflink_controller(core, process):
     assert gateway
 
     protocol = RFLinkProtocol(gateway)
-
-    protocol.init(process)
 
     assert protocol
 

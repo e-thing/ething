@@ -1,10 +1,7 @@
 
 # coding: utf-8
 from future.utils import string_types
-try:
-    from queue import Queue, Empty
-except ImportError:
-    from Queue import Queue, Empty
+from queue import Queue, Empty
 from .reg import *
 from .utils import object_sort, ShortId
 from collections import OrderedDict, MutableMapping

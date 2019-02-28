@@ -4,10 +4,7 @@ import logging
 import threading
 import time
 from .utils.weak_ref import proxy_method, LostReferenceException
-try:
-    import queue
-except ImportError:
-    import Queue as queue
+from queue import Queue, Empty
 
 
 class SignalDispatcher(object):
@@ -19,7 +16,7 @@ class SignalDispatcher(object):
 
         self.handlers = {}
 
-        self._queue = queue.Queue()
+        self._queue = Queue()
 
     def queue(self, signal):
         self._queue.put(signal)
@@ -31,7 +28,7 @@ class SignalDispatcher(object):
             try:
                 signal = self._queue.get(block, timeout)
                 self.dispatch(signal)
-            except queue.Empty:
+            except Empty:
                 break
             else:
                 timeout -= time.time() - t0
@@ -92,5 +89,5 @@ class SignalDispatcher(object):
         while True:
             try:
                 signal = self._queue.get(False)
-            except queue.Empty:
+            except Empty:
                 break

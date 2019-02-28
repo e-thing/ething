@@ -18,12 +18,7 @@ if py3 and False:
     _Lock = threading.Lock
     _RLock = threading.RLock
 else:
-
-    try:
-        from queue import Queue, Full, Empty
-    except ImportError:
-        from Queue import Queue, Full, Empty
-
+    from queue import Queue, Full, Empty
 
     class _Lock(object):
         """

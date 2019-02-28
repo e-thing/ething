@@ -4,7 +4,7 @@ from ..protocol import YeelightProtocol
 from ething.core.interfaces import Light
 
 
-def test_yeelight_controller(core, process):
+def test_yeelight_controller(core):
 
     device = core.create('resources/YeelightBulbRGBW', {
         'name': 'device',
@@ -18,8 +18,6 @@ def test_yeelight_controller(core, process):
     assert isinstance(device, Light)
 
     protocol = YeelightProtocol(device)
-
-    protocol.init(process)
 
     assert protocol
 
