@@ -4,7 +4,7 @@ from .utils.date import TzDate, utcnow, utcfromtimestamp, datetime_to_array
 from .reg import *
 from .Signal import ResourceSignal
 from .Helpers import filter_obj
-from .utils import object_sort, ShortId, objectpath
+from .utils import object_sort, ShortId, ObjectPath
 from .flow import ResourceNode
 import datetime
 import time
@@ -435,7 +435,7 @@ class Table(Resource):
         # TODO: what about the date field ? docSerialize() here ?
 
         if query:
-            _filter = objectpath.generate_filter(query)
+            _filter = ObjectPath.generate_filter(query)
             rows = [row for row in rows if _filter(row)]
 
         if sort:

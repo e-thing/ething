@@ -440,7 +440,7 @@ class Color(String):
     return schema
 
 
-class Range(Integer):
+class Range(Number):
   def __init__(self, min, max, **attributes):
     super(Range, self).__init__(min=min, max=max, **attributes)
 

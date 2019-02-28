@@ -1,9 +1,10 @@
 # coding: utf-8
 
-from ..reg import *
+from ..Interface import *
 from .light import Light
 
 
+@interface
 @attr('color', type = Color(), default = '#FFFFFF', mode = READ_ONLY, history = True, description = "the color of the light (#ffffff format)")
 class RGBLight (Light):
 

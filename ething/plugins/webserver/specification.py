@@ -6,7 +6,6 @@ from future.utils import string_types
 import apispec
 from ething.core.version import __version__
 from ething.core.Resource import Resource
-from ething.core.Interface import Interface
 from ething.core.reg import *
 import json
 import jinja2
@@ -228,7 +227,7 @@ def generate(app, core, specification='stdout', documentation=None):
         if name == 'modifiedDate' and 'default' in schema:
             schema['default'] = "<current date>"
 
-    spec._definitions.update(build_schema_definitions(subclass=(Resource, Interface), no_methods = True, core=core))
+    spec._definitions.update(build_schema_definitions(subclass=(Resource, ), no_methods = True, core=core))
 
     spec.definition("Error", description="An object describing an error", properties={
         "message": {

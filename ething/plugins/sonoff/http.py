@@ -13,7 +13,7 @@ REQUESTS_TIMEOUT = None
 
 @attr('port', type=Integer(min=0, max=65535), default=80, description="The port number of the device to connect to. The default port number is 80.")
 @attr('host', type=String(allow_empty=False), description="The ip address or hostname of the device to connect to.")
-class Sonoff_http(Device, Relay):
+class Sonoff_http(Relay):
     """
     Sonoff_http Device resource representation.
     See https://github.com/arendst/Sonoff-Tasmota for more details.

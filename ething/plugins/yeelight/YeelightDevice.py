@@ -30,7 +30,7 @@ class Controller(TransportProcess):
 @attr('model', type=String(), mode=READ_ONLY, description="The model of the device.")
 @attr('dev_id', mode = PRIVATE)
 @attr('host', type=String(allow_empty=False), mode=READ_ONLY, description="The ip address of the device.")
-class YeelightDevice (Device, Light):
+class YeelightDevice (Light):
 
     def __process__(self):
         self.controller = Controller(self)

@@ -1,10 +1,9 @@
 # coding: utf-8
 
 from .reg import *
-from .Resource import Resource
 
 
-@namespace('interfaces')
-@abstract
-class Interface (Resource):
-    pass
+def interface(cls):
+    namespace('interfaces', inherit=False)(cls)
+    abstract(cls)
+    return cls

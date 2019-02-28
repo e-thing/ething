@@ -2,7 +2,7 @@
 
 
 from .MihomeDevice import MihomeDevice
-from ething.core.interfaces.button import Button, ButtonClicked
+from ething.core.interfaces import Button
 
 
 class MihomeButton(MihomeDevice, Button):
@@ -14,9 +14,9 @@ class MihomeButton(MihomeDevice, Button):
 
         if name == 'status' or name == 'button_0':
             if value == 'click':
-                self.dispatchSignal(ButtonClicked(self, type='single'))
+                self.click(type='single')
             elif value == 'long_click_release':
-                self.dispatchSignal(ButtonClicked(self, type='long_click'))
+                self.click(type='long_click')
             elif value == 'double_click':
-                self.dispatchSignal(ButtonClicked(self, type='double'))
+                self.click(type='double')
 

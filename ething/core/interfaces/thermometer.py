@@ -1,9 +1,10 @@
 # coding: utf-8
 
 from .sensor import Sensor, SensorValueChanged
-from ..reg import *
+from ..Interface import *
 
 
+@interface
 @attr('temperature', type = Number(), default = 0, mode = READ_ONLY, history = True, force_watch = True, description = u"the temperature of the sensor")
 class Thermometer(Sensor):
 

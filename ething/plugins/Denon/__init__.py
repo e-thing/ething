@@ -8,7 +8,7 @@ import xmltodict
 
 @pingable()
 @attr('host', type=String(allow_empty=False), description="The ip address or hostname of the device to connect to.")
-class Denon(Device, Relay):
+class Denon(Relay):
     """
     Denon Device resource representation
     """

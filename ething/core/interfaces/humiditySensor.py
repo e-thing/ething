@@ -1,9 +1,10 @@
 # coding: utf-8
 
 from .sensor import Sensor, SensorValueChanged
-from ..reg import *
+from ..Interface import *
 
 
+@interface
 @attr('humidity', type = Number(min = 0, max = 100), default = 0, mode = READ_ONLY, history = True, force_watch = True, description = "the humidity measured by the sensor in percent.")
 class HumiditySensor(Sensor):
 

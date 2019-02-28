@@ -5,29 +5,24 @@ e-Thing
 
 ![e-Thing diagram](https://cloud.githubusercontent.com/assets/17341216/17180858/1fce5e54-541e-11e6-8e0a-09cc853e4e93.png)
 
-This project is an "Internet of Things" application. Store and retrieve data using HTTP requests from devices such as an [Arduino](https://github.com/e-thing/arduino).
+This project is an "Internet of Things" application written in Python.
 Access remotely to your data and control your devices from anywhere.
 
-This project was developped on a Raspberry Pi but should work on any Linux computer.
+This project was developped on a Raspberry Pi but should work on any computer with Python installed.
 
-Written in Python.
 
 ## Overview
 
 
-
 #### Access your data anywhere
 
-A web interface is provided to browse, view and edit your data, to manage and communicate with your devices.
-Use the online editor to write your own script or application using the [Javascript API](https://github.com/e-thing/ething-js).
+A web interface is provided to browse, view and edit your data, to manage and communicate with your devices at `http://localhost:8000`..
 
-![screenshot of the dashboard](https://user-images.githubusercontent.com/17341216/32382863-abc4d784-c0b6-11e7-8c4d-71708fe670d9.PNG)
 
 #### Hardware
 
 Compatible devices/protocols :
 
-- any HTTP device
 - IP camera with RTSP support
 - [MySensors](//www.mysensors.org)
 - [RFLink](//rflink.nl)
@@ -35,7 +30,7 @@ Compatible devices/protocols :
 - Denon/Marantz audio receiver (tested on Marantz M-CR611)
 - Yeelight
 - MiHome
-- bluetooth low energy devices (coming soon...)
+- bluetooth low energy devices
 - SSH
 - [Zigate](//zigate.fr) (coming soon...)
 
@@ -45,9 +40,9 @@ Compatible devices/protocols :
 Compatible with [Node-RED](//nodered.org). 
 See [ething-node-red repository](//github.com/e-thing/ething-node-red).
 
-#### Script editor
+#### Flow editor
 
-Create JavaScript script to execute custom tasks when an event occurs and under certains conditions.
+Create flow to execute custom tasks when an event occurs and under certains conditions.
 
 
 #### APIs
@@ -64,9 +59,7 @@ Use these APIs to create your own device !
 
 ### Requirements
 
- - [Node](//nodejs.org/en/download/package-manager/)
  - Python 2.7 or >= 3.4
- - [MongoDB](//www.mongodb.com)
 
 ### Installation
 
@@ -85,8 +78,6 @@ ething [--daemon]
 
 The --daemon argument will start the process as a daemon.
 
-The web interface is available at `http://localhost:8000`. The default password is `admin`.
-The log file is stored in `/var/log`.
-The configuration file is stored in `~/.ething`.
-
+The web interface is available at `http://localhost:8000`. The default login is `ething` and the default password is `admin`.
+The log file and the database are stored in `~/.ething` (on windows: `C:\Users\<username>\.ething`).
 

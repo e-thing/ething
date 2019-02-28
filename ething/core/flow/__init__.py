@@ -3,7 +3,7 @@ from .dataflow import Flow as FlowBase, Node as NodeBase, Debugger, Message
 from ..Resource import Resource, ResourceType
 from ..reg import *
 from ..utils.jsonpath import jsonpath
-from ..utils.objectpath import ObjectPathExp, evaluate
+from ..utils.ObjectPath import ObjectPathExp, evaluate
 from ..utils.weak_ref import weak_ref
 from ..Process import Process
 from ..Signal import ResourceSignal

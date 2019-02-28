@@ -1,7 +1,7 @@
 # coding: utf-8
 
-from ..Interface import Interface
-from ..reg import *
+from ..Device import Device
+from ..Interface import *
 from ..Signal import ResourceSignal
 
 
@@ -14,7 +14,7 @@ class SensorValueChanged(ResourceSignal):
             self.payload[name+'_old'] = old_value
 
 
-@abstract
+@interface
 @throw(SensorValueChanged)
-class Sensor(Interface):
+class Sensor(Device):
     pass

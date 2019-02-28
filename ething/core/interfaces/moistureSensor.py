@@ -1,9 +1,10 @@
 # coding: utf-8
 
 from .sensor import Sensor, SensorValueChanged
-from ..reg import *
+from ..Interface import *
 
 
+@interface
 @attr('moisture', type = Number(), default = 0, mode = READ_ONLY, history = True, force_watch = True, description = "the moisture level measured by this sensor.")
 class MoistureSensor(Sensor):
 

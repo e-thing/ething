@@ -3,7 +3,7 @@
 from .db import *
 from .Signal import ResourceSignal
 from .utils.date import TzDate, utcnow
-from .utils.objectpath import evaluate
+from .utils.ObjectPath import evaluate
 from .scheduler import *
 from .Process import Process
 from collections import Mapping, Sequence

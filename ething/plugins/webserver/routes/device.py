@@ -51,7 +51,7 @@ def install(core, app, auth, **kwargs):
 
         if request.method == 'GET':
 
-            for arg_name in list(set(list(request.args)).intersection(list(method.args))):
+            for arg_name in list(set(list(request.args)).intersection(list(method.get('args', {})))):
                 kwargs[arg_name] = request.args[arg_name]
 
         elif request.method == 'POST':
@@ -66,16 +66,16 @@ def install(core, app, auth, **kwargs):
             except:
                 pass
 
-        return_type = method.return_type
+        return_type = method.get('return_type')
 
         if return_type:
 
             if isinstance(return_type, string_types) and re.search('^[^/]+/[^/]+$', return_type):
-                return Response(method.call(*args, **kwargs), mimetype=return_type)
+                return Response(method.call(r, *args, **kwargs), mimetype=return_type)
             else:
-                return app.jsonify(method.call(*args, **kwargs))
+                return app.jsonify(method.call(r, *args, **kwargs))
 
         else:
-            method.call(*args, **kwargs)
+            method.call(r, *args, **kwargs)
             return '', 204
 

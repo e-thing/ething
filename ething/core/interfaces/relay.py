@@ -1,9 +1,10 @@
 # coding: utf-8
 
 from .switch import Switch
-from ..reg import *
+from ..Interface import *
 
 
+@interface
 class Relay(Switch):
 
     @method.arg('state', type=Boolean())

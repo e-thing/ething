@@ -2,8 +2,10 @@
 
 from .relay import Relay
 from .dimmable import Dimmable
+from ..Interface import interface
 
 
+@interface
 class DimmableRelay(Relay, Dimmable):
 
     def setState(self, state):

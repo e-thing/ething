@@ -1,9 +1,10 @@
 # coding: utf-8
 
 from .sensor import Sensor, SensorValueChanged
-from ..reg import *
+from ..Interface import *
 
 
+@interface
 @attr('light_level', type = Number(), default = 0, mode = READ_ONLY, history = True, force_watch = True, description = "the light level measured by the sensor.")
 class LightSensor(Sensor):
 

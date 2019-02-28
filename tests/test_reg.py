@@ -304,3 +304,22 @@ def test_context():
 
     assert i.foo == 'bar'
 
+
+def test_namespace():
+
+    @namespace('foo')
+    class FH(Entity):
+        pass
+
+    @namespace('bar', inherit=False)
+    class FHC(FH):
+        pass
+
+    class FHCC(FHC):
+        pass
+
+
+    assert get_definition_name(FH) == 'foo/FH'
+    assert get_definition_name(FHC) == 'bar/FHC'
+    assert get_definition_name(FHCC) == 'foo/FHCC'
+

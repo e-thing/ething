@@ -1,9 +1,10 @@
 # coding: utf-8
 
 from .sensor import Sensor, SensorValueChanged
-from ..reg import *
+from ..Interface import *
 
 
+@interface
 @attr('state', type = Boolean(), default = False, mode = READ_ONLY, history = True, force_watch = True, description = u"the state of the door. True if open.")
 class DoorSensor(Sensor):
 

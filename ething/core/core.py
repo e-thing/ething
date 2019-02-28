@@ -9,10 +9,11 @@ from .version import __version__
 from .plugin import search_plugin_cls, list_registered_plugins
 from .scheduler import Scheduler
 from .Signal import Signal
-from .utils.objectpath import generate_filter, patch_all
+from .utils.ObjectPath import generate_filter, patch_all
 from .Resource import Resource
 from .Process import Process, Manager as ProcessManager
 from .flow import generate_event_nodes
+from functools import wraps
 import collections
 import logging
 import pytz
@@ -36,6 +37,15 @@ class _CoreScheduler(Scheduler):
         task._p = self.core.process_manager.attach(Process(name=task.name, target=task.target, args=task.args, kwargs=task.kwargs, parent=task.instance)).id
 
 
+def after_init(f):
+    @wraps(f)
+    def wrapper(self, *args, **kwargs):
+        if not self._initialized:
+            raise Exception('Core is not initialized !')
+        return f(self, *args, **kwargs)
+    return wrapper
+
+
 class Core(object):
     __instances = []
 
@@ -50,7 +60,7 @@ class Core(object):
                     return instance
 
     def __init__(self, name=None, debug=False, log_level=None, database=None, clear_db=False, **config):
-        self.__initialized = False
+        self._initialized = False
 
         patch_all(self)
 
@@ -102,11 +112,11 @@ class Core(object):
         # instanciate:
         try:
             plugin = plugin_cls(self)
+            plugin.load()
         except:
             self.log.exception('plugin %s: unable to load' % plugin_name)
         else:
             self.plugins.append(plugin)
-            plugin.load()
 
             info = getattr(plugin, 'PACKAGE', None)
             if info:
@@ -116,47 +126,42 @@ class Core(object):
             return plugin
 
     def _init_database(self, database=None, clear_db=False, commit_interval=None, garbage_collector_period=None):
-        try:
-            if database is None:
-                database = 'database'
+        if database is None:
+            database = 'database'
 
-            db_type = 'sqlite'
+        db_type = 'sqlite'
 
-            self.log.info('db type: %s' % (db_type))
+        self.log.info('db type: %s' % (db_type))
 
-            if db_type == 'sqlite':
-                from .database.sqlite import SQLiteDriver
-                driver = SQLiteDriver(database=database)
-            else:
-                raise Exception('unknown db_type %s' % db_type)
+        if db_type == 'sqlite':
+            from .database.sqlite import SQLiteDriver
+            driver = SQLiteDriver(database=database)
+        else:
+            raise Exception('unknown db_type %s' % db_type)
 
-            self.db = Db(driver, auto_commit=False, cache_delay=3600, auto_connect=True)
+        self.db = Db(driver, auto_commit=False, cache_delay=3600, auto_connect=True)
 
-            self.db.os.context.update({'core': self})
+        self.db.os.context.update({'core': self})
 
-            if clear_db:
-                self.log.info('clear db')
-                self.db.clear()
+        if clear_db:
+            self.log.info('clear db')
+            self.db.clear()
 
-            db_version = self.db.store.get('VERSION')
-            self.log.info('db version: %s' % (db_version))
-            if db_version is None and self.version != 'unknown':
-                self.db.store['VERSION'] = self.version
+        db_version = self.db.store.get('VERSION')
+        self.log.info('db version: %s' % (db_version))
+        if db_version is None and self.version != 'unknown':
+            self.db.store['VERSION'] = self.version
 
-            if not self.db.auto_commit:
-                # commit every secondes
-                if commit_interval is None:
-                    commit_interval = 1
-                self.scheduler.setInterval(commit_interval, self.db.commit, condition=lambda _: self.db.connected and self.db.need_commit())
+        if not self.db.auto_commit:
+            # commit every secondes
+            if commit_interval is None:
+                commit_interval = 1
+            self.scheduler.setInterval(commit_interval, self.db.commit, condition=lambda _: self.db.connected and self.db.need_commit())
 
-            # run garbage collector regularly
-            if garbage_collector_period is None:
-                garbage_collector_period = 300
-            self.scheduler.setInterval(garbage_collector_period, self.db.run_garbage_collector, condition=lambda _: self.db.connected)
-
-        except Exception as e:
-            self.log.exception('init database error')
-            raise e
+        # run garbage collector regularly
+        if garbage_collector_period is None:
+            garbage_collector_period = 300
+        self.scheduler.setInterval(garbage_collector_period, self.db.run_garbage_collector, condition=lambda _: self.db.connected)
 
     def stop(self, callback = None):
         self.log.info("stopping ...")
@@ -189,15 +194,15 @@ class Core(object):
         if hasattr(self, 'db'):
             self.db.disconnect()
 
-        self.__initialized = False
+        self._initialized = False
 
     def restart(self, callback = None):
         self.stop(callback)
         self.restart_flag = True
 
     def init(self):
-        if not self.__initialized:
-            self.__initialized = True
+        if not self._initialized:
+            self._initialized = True
 
             generate_event_nodes()
 
@@ -249,6 +254,7 @@ class Core(object):
     # Resources
     #
 
+    @after_init
     def find(self, query=None, limit=None, skip=None, sort=None):
 
         if query is not None:
@@ -282,15 +288,18 @@ class Core(object):
 
         return self.db.os.find(Resource, query = query, limit = limit, skip = skip, sort = sort)
 
+    @after_init
     def findOne(self, query=None):
         r = self.find(query, 1)
         return r[0] if len(r) > 0 else None
 
+    @after_init
     def get(self, id):
         if not isinstance(id, string_types):
             raise ValueError('id must be a string')
         return self.db.os.get(Resource, id)
 
+    @after_init
     def create(self, cls, attributes):
         if isinstance(cls, string_types):
             cls_name = cls

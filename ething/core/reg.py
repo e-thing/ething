@@ -100,7 +100,7 @@ def get_meta(class_or_instance, key=None, default=None):
   return getattr(class_or_instance, '__meta', {}).get(key, default)
 
 
-def namespace(name, relative=False):
+def namespace(name, relative=False, inherit=True):
     def d(cls):
 
         if relative:
@@ -110,6 +110,9 @@ def namespace(name, relative=False):
             ns += name
         else:
             ns = name
+
+        if not inherit:
+            set_meta(cls, 'namespace_parent', get_meta(cls, 'namespace'))
 
         set_meta(cls, 'namespace', ns)
 
@@ -438,7 +441,7 @@ class RegItemBase (MutableMapping):
         default_val = copy.deepcopy(default_val)
       return default_val
     
-    def _make_default(self, *args, context=None):
+    def _make_default(self, context=None, *args):
       d = self.make_default(*args)
       data_type = self.get('type')
       if data_type:
@@ -884,6 +887,9 @@ class Method(RegItemBase):
         _kwargs = self._parse_args(args, kwargs, context=get_context(obj))
         return self._func.__get__(obj, objtype)(**_kwargs)
       return handler
+
+    def call(self, obj, *args, **kwargs):
+        return self.__get__(obj)(*args, **kwargs)
     
     def _parse_args(self, args, kwargs, context=None):
       _args = self.get('args')
@@ -1075,16 +1081,16 @@ def is_registered_class(cls):
     return is_meta_class(cls) and registered_cls.get(get_definition_name(cls)) is cls
 
 def get_registered_class(name):
+    if name not in registered_cls:
+        raise Exception('No registered class: "%s"' % (name))
     return registered_cls[name]
 
 def register_class(cls):
-    if getattr(cls, '_REGISTER_', True):
+    cls_name = get_definition_name(cls)
+    if cls_name in registered_cls:
+        raise Exception('A class with the name "%s" already exists: %s' % (cls_name, registered_cls.get(cls_name)))
 
-        cls_name = get_definition_name(cls)
-        if cls_name in registered_cls:
-            raise Exception('A class with the name "%s" already exists: %s' % (cls_name, registered_cls.get(cls_name)))
-
-        registered_cls[cls_name] = cls
+    registered_cls[cls_name] = cls
 
 def update_registered_class(cls):
     cls_name = get_definition_name(cls)
@@ -1160,6 +1166,11 @@ class MetaReg(ABCMeta):
           'description': cls.__doc__,
           'label': format_label(cls.__name__)
       })
+
+      if 'namespace_parent' in inherited_meta:
+          inherited_meta['namespace'] = inherited_meta['namespace_parent']
+          del inherited_meta['namespace_parent']
+
       setattr(cls, '__meta', inherited_meta)
 
       # methods
@@ -1182,7 +1193,8 @@ class MetaReg(ABCMeta):
             setattr(cls, b_m.name, member)
 
       # globals
-      register_class(cls)
+      if getattr(cls, '_REGISTER_', True):
+        register_class(cls)
 
       return cls
 

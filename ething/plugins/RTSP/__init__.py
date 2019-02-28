@@ -32,7 +32,7 @@ def install(core):
 @attr('url', type=String(allow_empty=False, regex='^rtsp://'), description="The URL of the device rtsp://... .")
 @attr('transport', type=String(allow_empty=False, enum=['udp', 'tcp', 'http']), default='tcp',
       description="Lower transport protocol. Allowed values are the ones defined for the flags for rtsp_transport (see https://libav.org/avconv.html).")
-class RTSP(Device, Camera):
+class RTSP(Camera):
     """
     RTSP Device resource representation, usually IP camera.
     avconv must be installed (apt-get install libav-tools)

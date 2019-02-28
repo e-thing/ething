@@ -1,11 +1,12 @@
 # coding: utf-8
 
-from ..Interface import Interface
+from ..Interface import *
+from ..Device import Device
 from ..utils.mime import content_to_ext
-from ..reg import *
 
 
-class Camera(Interface):
+@interface
+class Camera(Device):
     
     @method.return_type('image/*')
     def snapshot(self):

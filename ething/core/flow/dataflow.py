@@ -5,10 +5,7 @@ import logging
 from ..utils import ShortId
 import gevent
 from collections import MutableMapping, Mapping
-try:
-    import queue
-except ImportError:
-    import Queue as queue
+from queue import Queue, Empty
 import copy
 from abc import ABCMeta, abstractmethod
 
@@ -27,7 +24,7 @@ class Flow(object):
     def __init__(self, logger=None):
         self._nodes = []
         self._connections = []
-        self._event = queue.Queue()
+        self._event = Queue()
         self._logger = logger or _LOGGER
         self._nodes_data = {}
         self._state = STOPPED
@@ -181,7 +178,7 @@ class Flow(object):
         while True:
             try:
                 self._event.get(False)
-            except queue.Empty:
+            except Empty:
                 break
 
         # init

@@ -1,9 +1,10 @@
 # coding: utf-8
 
 from .sensor import Sensor, SensorValueChanged
-from ..reg import *
+from ..Interface import *
 
 
+@interface
 @attr('wind_direction', type = Nullable(Number()), default = None, mode = READ_ONLY, history = True, force_watch = True, description = "The direction of wind (deg)")
 @attr('wind_speed', type = Number(), default = 0, mode = READ_ONLY, history = True, force_watch = True, description = "The speed of wind (m/s)")
 class Anemometer(Sensor):

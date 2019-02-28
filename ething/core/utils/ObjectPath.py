@@ -1,7 +1,6 @@
 # coding: utf-8
 from future.utils import string_types, integer_types
 import objectpath
-from objectpath.utils import timeutils
 from .date import parse, utcfromtimestamp
 from ..type import String
 
@@ -23,7 +22,7 @@ def evaluate(expr, data):
     return generate_filter(expr)(data)
 
 
-dateTime_orig = timeutils.dateTime
+dateTime_orig = objectpath.timeutils.dateTime
 
 
 def patch_dateTime(core):
@@ -38,7 +37,7 @@ def patch_dateTime(core):
 
         return dateTime_orig(arg)
 
-    timeutils.dateTime = patched_dateTime
+    objectpath.timeutils.dateTime = patched_dateTime
 
 
 def patch_all(core, **kwargs):

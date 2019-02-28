@@ -1,17 +1,20 @@
 # coding: utf-8
 
-from ..Interface import Interface
-from ..reg import *
+from ..Device import Device
+from ..Interface import *
 from ..Signal import ResourceSignal
 
 
 class ButtonClicked(ResourceSignal):
-    def __init__(self, resource, type='single'):
+    def __init__(self, resource, type=None):
         super(ButtonClicked, self).__init__(resource)
-        self.payload['type'] = type
+        self.payload['type'] = type or 'single'
 
 
+@interface
 @throw(ButtonClicked)
-class Button(Interface):
-    pass
+class Button(Device):
+
+    def click(self, type=None):
+        self.dispatchSignal(ButtonClicked(self, type=type))
 

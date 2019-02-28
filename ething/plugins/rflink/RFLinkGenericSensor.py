@@ -3,12 +3,11 @@
 
 from .RFLinkNode import RFLinkNode
 from ething.core.reg import *
-from ething.core.Interface import Interface
 from .helpers import attrMap
 
 
 @abstract
-@attr('interfaces', mode=PRIVATE, default=lambda cls: [get_definition_name(c) for c in cls.__mro__ if issubclass(c, Interface) and c is not Interface])
+@attr('interfaces', mode=PRIVATE, default=lambda cls: [get_definition_name(c) for c in cls.__mro__ if get_definition_name(c).startswith('interfaces/')])
 class RFLinkGenericSensor(RFLinkNode):
 
     def _handle_incoming_data(self, protocol, data):

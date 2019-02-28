@@ -12,7 +12,7 @@ class Signal(with_metaclass(MetaReg, Mapping)):
     def __init__(self):
         self._type = type(self).__name__
         self._ts = time.time()
-        self.payload = None
+        self.payload = dict()
 
     def __str__(self):
         return '<signal %s>' % self._type

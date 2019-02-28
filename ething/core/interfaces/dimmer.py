@@ -1,7 +1,7 @@
 # coding: utf-8
 
-from ..Interface import Interface
-from ..reg import *
+from ..Interface import *
+from ..Device import Device
 from ..Signal import ResourceSignal
 
 
@@ -16,8 +16,9 @@ class LevelChanged(ResourceSignal):
 
 
 @throw(LevelChanged)
+@interface
 @attr('level', type = Range(0, 100), default = 0, mode = READ_ONLY, history = True, force_watch = True, description = "the level of this dimmer")
-class Dimmer(Interface):
+class Dimmer(Device):
 
     def on_attr_update(self, attr, new_value, old_value):
         super(Dimmer, self).on_attr_update(attr, new_value, old_value)
