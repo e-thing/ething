@@ -9,7 +9,10 @@ import base64
 @pytest.fixture
 def webapp(core):
     app = FlaskApp(core, {
-        'debug': True
+        'debug': True,
+        'auth': {
+            'no_auth_for_localhost': False
+        }
     })
 
     # add a global context

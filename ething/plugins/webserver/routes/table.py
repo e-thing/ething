@@ -29,7 +29,7 @@ def install(core, app, auth, **kwargs):
 
     @app.route('/api/tables/<id>', methods=['GET', 'PUT', 'POST'])
     @use_multi_args(GET=table_get_args, PUT=(table_put_args, ('query',)), POST=(table_post_args, ('query',)))
-    @auth.required(GET='table:read', PUT='table:write', POST='table:write')
+    @auth.required(GET='resource:read table:read', PUT='resource:write table:write', POST='resource:write table:write')
     def table(args, id):
         """
         ---
@@ -307,7 +307,7 @@ def install(core, app, auth, **kwargs):
     }
 
     @app.route('/api/tables/<id>/statistics')
-    @auth.required('table:read')
+    @auth.required('resource:read table:read')
     @use_args(table_statistics_args)
     def table_statistics(args, id):
         """
@@ -337,7 +337,7 @@ def install(core, app, auth, **kwargs):
 
     @app.route('/api/tables/<id>/id/<doc_id>', methods=['GET', 'DELETE', 'PATCH'])
     @use_multi_args(PATCH=(table_cell_id_patch_args, ('query',)))
-    @auth.required(GET='table:read', DELETE='table:write', PATCH='table:write')
+    @auth.required(GET='resource:read table:read', DELETE='resource:write table:write', PATCH='resource:write table:write')
     def table_cell_id(args, id, doc_id):
 
         r = app.getResource(id, ['Table'])

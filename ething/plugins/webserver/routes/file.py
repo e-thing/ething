@@ -16,7 +16,7 @@ def install(core, app, auth, **kwargs):
 
     @app.route('/api/files/<id>', methods=['GET', 'PUT'])
     @use_multi_args(PUT=(file_put_args, ('query',)))
-    @auth.required(GET='file:read', PUT='file:write')
+    @auth.required(GET='resource:read file:read', PUT='resource:write file:write')
     def file(args, id):
         """
         ---
@@ -95,7 +95,7 @@ def install(core, app, auth, **kwargs):
             return app.jsonify(r)
 
     @app.route('/api/files/<id>/thumbnail')
-    @auth.required('file:read')
+    @auth.required('resource:read file:read')
     def file_thumb(id):
         r = app.getResource(id, ['File'])
         thumb = r.readThumbnail()

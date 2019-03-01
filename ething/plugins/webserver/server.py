@@ -71,7 +71,8 @@ class FlaskApp(Flask):
             'auth': {
                 'username': 'ething',
                 'password': 'admin',
-                'localonly': False
+                'localonly': False,
+                'no_auth_for_localhost': True
             },
             'debug': False,
             'port': 8000,

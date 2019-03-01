@@ -72,8 +72,7 @@ class Auth(object):
 
     def check(self, permissions = None):
 
-        authctx = self.check_localhost() or self.check_session(
-        ) or self.check_apikey() or self.check_basic() or self.check_public()
+        authctx = self.check_localhost() or self.check_session() or self.check_apikey() or self.check_basic() or self.check_public()
 
         if authctx and isinstance(authctx, AuthContext):
             g.auth = authctx
@@ -87,7 +86,7 @@ class Auth(object):
         raise ServerException('not authenticated', 401)
 
     def check_localhost(self):
-        if request.remote_addr == '127.0.0.1':
+        if request.remote_addr == '127.0.0.1' and self.config['auth']['no_auth_for_localhost']:
             return AuthContext('localhost')
 
     def check_session(self):
@@ -129,7 +128,7 @@ class Auth(object):
                 if public == 'readonly':
                     return AuthContext('public', scope='resource:read')
                 elif public == 'readwrite':
-                    return AuthContext('public', scope='resource:read resource:write')
+                    return AuthContext('public', scope='resource:read resource:write device:execute')
 
 
 def install_auth(app):
