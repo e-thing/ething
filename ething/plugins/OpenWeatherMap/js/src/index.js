@@ -5,7 +5,7 @@ import EThingUI from 'ething-quasar-core'
 
 console.log('loading plugin OpenWeatherMap...')
 
-EThingUI.registerWidget(WOpenWeatherMapDevice)
+// register globally this widget
 EThingUI.registerWidget(WOpenWeatherMapForecast)
 
 EThingUI.extend('resources/OpenWeatherMapDevice', {
@@ -14,7 +14,7 @@ EThingUI.extend('resources/OpenWeatherMapDevice', {
 
     widgets: {
 
-        'default': 'WOpenWeatherMapDevice'
+        'default': WOpenWeatherMapDevice
 
     }
 

@@ -1,7 +1,7 @@
  
 The eThing project is an 'Internet of Things' application. Store and retrieve data from devices using HTTP requests.
 
-Access to your resources (file, table, device ...) through HTTP requests.
+Access to your resources (files, tables, devices ...) through HTTP requests.
 
 -------------
 
@@ -13,7 +13,7 @@ There are different types of resources. A resource can either be :
  - file : use this kind of objects to store text data or binary data (image, ...)
  - table : tables are used to store a collection of related data. Table consists of fields and rows.
  - device : this resource describes a device.
- - app : this resource is used to store a HTML/JavaScript script. Use it to handle your data/devices (for instance, you can create an interface to communicate with your device).
+ - flow : this resource describes a flow.
 
 
 
@@ -30,10 +30,13 @@ When the API returns error messages, it does so in JSON format. For example, an 
 
 The code value correspond to the HTTP status code of the response.
 
+If the server was launched in debug mode, more information is provided.
+
 
 ### Authorization
 
 There are several options for authenticating with the API.
+
 
 #### Basic authentication
 
@@ -48,9 +51,7 @@ curl -u username:password ...
 
 #### API key
 
-Every device or app has an API key. API keys are listed on developer page [http://localhost:8000/client/developer.html](http://localhost:8000/client/developer.html).
-
-API calls authenticated with API key are made on behalf of the Application or Device that own this it ! The permissions can be modified in the resource settings.
+API keys can be generated through the [web interface](http://localhost:8000/#/settings).
 
 Send the following header below on every request :
 
@@ -73,35 +74,6 @@ curl http://localhost:8000/api/resources?api_key=<YOUR_API_KEY>
 ```
 
 
-
-
-### Scopes
-
-Scopes let you specify exactly what type of data access your application or device needs.
-
-| Scope          | Description                                                          |
-|----------------|----------------------------------------------------------------------|
-| resource:read  | read the content of any resource                                     |
-| resource:write | create resources of any kind and modify the content of any resource  |
-| resource:admin | modify resource properties, delete resource and access to apikeys    |
-| file:read      | read the content of any file                                         |
-| file:write     | create files and modify the content of any file                      |
-| table:read     | read the content of any table                                        |
-| table:write    | create tables and modify the content of any table                    |
-| table:append   | append data to any existing table                                    |
-| app:read       | execute apps                                                         |
-| app:write      | create and edit apps                                                 |
-| app:execute    | execute apps                                                         |
-| device:read    | send GET request to any device                                       |
-| device:write   | send POST,PUT,PATCH,DELETE request to any device                     |
-| notification   | send notification                                                    |
-| settings:read  | read the settings                                                    |
-| settings:write | modify the settings                                                  |
-| rule:read      | read rules attributes                                                |
-| rule:write     | create rules                                                         |
-| rule:execute   | execute rules                                                        |
-| rule:admin     | delete rules                                                         |
-
 ### Partial response
 
 By default, the server sends back the full representation of a resource after processing requests.
@@ -119,95 +91,29 @@ This request will return the meta-data representation containing only the specif
 
 ### Filter resource or table data
 
-You can search or filter resources or table's rows using a search query combining one or more search clauses. Each search clause is made up of three parts.
-
- - Field : in case of resource filtering, it corresponds to the attribute of the resource that is searched (e.g. 'name'). In case of table's rows filtering, it corresponds to the column's name.
- - Operator : test that is performed on the data to provide a match.
- - Value : The content of the field that is tested.
- 
-Combine clauses with the conjunctions and or or.
+You can search or filter resources or table's rows using a search query based on [ObjectPath query language](http://objectpath.org).
 
 
-The available fields for resource filtering :
-
- - 'type'
- - 'name'
- - 'mime'
- - 'id'
- - 'location'
- - 'createdDate'
- - 'modifiedDate'
- - 'createdBy'
- - 'description'
- - 'length' : only available for Table resources
- - 'size' : only available for File resources
- - 'hasThumbnail' : only available for File resources
- - 'hasIcon' : only available for App resources
- - 'battery' : only available for Device resources
- - 'lastSeenDate' : only available for Device resources
-
-
-The available operators :
-
- - '==' : equal to ... This operator is compatible with any types of value.
- - '!=' : not equal to ... This operator is compatible with any types of value.
- - 'is' : is of type ... This operator is compatible with any types of value.
- - '>' : greater than ... This operator is only compatible with numbers or dates.
- - '<' : less than ... This operator is only compatible with numbers or dates.
- - '>=' : greater than or equal to ... This operator is only compatible with numbers.
- - '<=' : less than or equal to ... This operator is only compatible with numbers.
- - '^=' : start with ... This operator is only compatible with strings.
- - '$=' : end with ... This operator is only compatible with strings.
- - '*=' : contain ... This operator is only compatible with strings.
- - '~=' : contain the word ... This operator is only compatible with strings.
- 
- 
-Value types :
-
- - String : surround with single quotes ' or double quotes.
- - Number : either integer numbers or floating numbers.
- - Boolean : true or false.
- - Date : *RFC 3339* format,  e.g., *2015-03-24T12:00:00+02:00*. Also accept the formats accepted by the [dateparser library](https://github.com/scrapinghub/dateparser).
-
-Constants :
-
- - 'me' : available only when using API key authentication method. It corresponds to the current Device or App.
-
- 
 Examples:
-
-All examples on this page show the unencoded q parameter, where name == 'foobar' is encoded as name+%3d%3d+%27foobar%27.
-Client libraries handle this encoding automatically.
 
 Search for resources with the name "foobar"
 
-`name == 'foobar'`
+`$.name is 'foobar'`
 
 Search for plain text files
 
-`mime == 'text/plain'`
+`$.mime is 'text/plain'`
 
 Search for tables resources only
 
-`type == 'Table'`
+`$.type is 'resources/Table'`
 
 Search for non empty files or tables
 
-`size > 0 OR length > 0`
+`$.size > 0 or $.length > 0`
 
-Search for resources with the name starting with "foo"
+Search for resources modified after Mars 4th 2018
 
-`name ^= 'foobar'`
+`$.modifiedDate > '2018-03-04T00:00:00+01:00'`
 
-Search for tables with the extension 'db' or files with the extension 'csv'
-
-`( type == 'Table' AND name $= '.db' ) OR ( type == 'File' AND name $= '.csv' )`
-
-Search for resources modified after Mars 4th 2016
-
-`modifiedDate > '2016-03-04T00:00:00+01:00'`
-
-Search for resources created by the current authenticated Device or App
-
-`createdBy > me`
 

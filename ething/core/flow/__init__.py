@@ -7,15 +7,11 @@ from ..utils.ObjectPath import ObjectPathExp, evaluate
 from ..utils.weak_ref import weak_ref
 from ..Process import Process
 from ..Signal import ResourceSignal
-try:
-    import queue
-except ImportError:
-    import Queue as queue
+from queue import Queue
 import time
-import logging
 import os
 import json
-import abc
+import jinja2
 
 
 number_types = integer_types + (float, )
@@ -149,6 +145,17 @@ class TextDescriptor(ValueDescriptor):
     value_type = Text(default='')
 
 
+class TemplateDescriptor(DescriptorData):
+    value_type = Text(default='', description='''
+Based on [Jinja2](http://jinja.pocoo.org) templating engine.
+The message payload can be accessible through `{{ msg.payload }}`.
+''')
+
+    def get(self, **context):
+        template = jinja2.Template(self.value)
+        return template.render(**context)
+
+
 # TODO: JSON
 
 
@@ -166,6 +173,7 @@ class Descriptor(OneOf):
         'number': NumberDescriptor,
         'boolean': BooleanDescriptor,
         'text': TextDescriptor,
+        'template': TemplateDescriptor,
         'glob': GlobalDescriptor,
         'timestamp': TimestampDescriptor,
         'msg': MsgDescriptor,
@@ -237,7 +245,7 @@ class SignalEventNode(Node):
         return isinstance(signal, self.signal)
 
     def main(self, **inputs):
-        q = queue.Queue()
+        q = Queue()
 
         def push(signal):
             if self._filter(signal):
@@ -384,7 +392,7 @@ class Input(Node):
 
     def main(self, **inputs):
 
-        self._q = queue.Queue()
+        self._q = Queue()
 
         while True:
             data = self._q.get()

@@ -23,5 +23,5 @@ class Dimmer(Device):
     def on_attr_update(self, attr, new_value, old_value):
         super(Dimmer, self).on_attr_update(attr, new_value, old_value)
 
-        if attr == 'state':
+        if attr == 'level':
             self.dispatchSignal(LevelChanged(self, new_value, old_value))

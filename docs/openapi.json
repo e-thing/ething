@@ -1,108 +1,101 @@
 {
-  "tags": [],
+  "info": {
+    "title": "EThing HTTP API",
+    "version": "unknown",
+    "description": " \nThe eThing project is an 'Internet of Things' application. Store and retrieve data from devices using HTTP requests.\n\nAccess to your resources (files, tables, devices ...) through HTTP requests.\n\n-------------\n\n\n### Resource description\n\nThere are different types of resources. A resource can either be :\n\n - file : use this kind of objects to store text data or binary data (image, ...)\n - table : tables are used to store a collection of related data. Table consists of fields and rows.\n - device : this resource describes a device.\n - flow : this resource describes a flow.\n\n\n\n### Error messages\n\nWhen the API returns error messages, it does so in JSON format. For example, an error might look like this:\n\n```json\n{\n  \"message\": \"The resource does not exist\",\n  \"code\" : 404\n}\n```\n\nThe code value correspond to the HTTP status code of the response.\n\nIf the server was launched in debug mode, more information is provided.\n\n\n### Authorization\n\nThere are several options for authenticating with the API.\n\n\n#### Basic authentication\n\nHTTP Basic authentication is the simplest way of interacting with the API. \nSimply pass the username (default to 'ething') and password with each request through the `Authorization` header.\nThis value should be encoded (using base64 encoding) as per the HTTP Basic specification.\n\n```bash\ncurl -u username:password ...\n```\n\n\n#### API key\n\nAPI keys can be generated through the [web interface](http://localhost:8000/#/settings).\n\nSend the following header below on every request :\n\n```\nGET /ething/api/resources HTTP/1.1\nHost: localhost:8000\nX-API-KEY: <YOUR_API_KEY>\n```\n\nHere is a cURL example of how to send this header :\n\n```bash\ncurl -H 'X-API-KEY: <YOUR_API_KEY>' ...\n```\n\nYou can also simply pass the key as a URL query parameter when making Web service requests. For example:\n\n```bash\ncurl http://localhost:8000/api/resources?api_key=<YOUR_API_KEY>\n```\n\n\n### Partial response\n\nBy default, the server sends back the full representation of a resource after processing requests.\nFor better performance, you can ask the server to send only the fields you really need and get a partial response instead.\n\nTo request a partial response, use the fields request parameter to specify the fields you want returned.\nYou can use this parameter with any request that returns response data.\n\nexample:\n\nThis request will return the meta-data representation containing only the specified keys of a resource\n\n`/resources/56731_a?fields=id,name`\n\n\n### Filter resource or table data\n\nYou can search or filter resources or table's rows using a search query based on [ObjectPath query language](http://objectpath.org).\n\n\nExamples:\n\nSearch for resources with the name \"foobar\"\n\n`$.name is 'foobar'`\n\nSearch for plain text files\n\n`$.mime is 'text/plain'`\n\nSearch for tables resources only\n\n`$.type is 'resources/Table'`\n\nSearch for non empty files or tables\n\n`$.size > 0 or $.length > 0`\n\nSearch for resources modified after Mars 4th 2018\n\n`$.modifiedDate > '2018-03-04T00:00:00+01:00'`\n\n\n\n\n\n### Scopes\n\nScopes let you specify exactly what type of data access an API key needs.\n\n| Scope          | Description                                                          |\n|----------------|----------------------------------------------------------------------|\n|   resource:read|                                      read the content of any resource|\n|  resource:write|        create resources of any kind or update the resource's metadata|\n|       file:read|                                          read the content of any file|\n|      file:write|                                        modify the content of any file|\n|      table:read|                                         read the content of any table|\n|     table:write|                                       modify the content of any table|\n|  device:execute|                                              execute a device command|\n|   settings:read|                                                     read the settings|\n|  settings:write|                                                   modify the settings|\n|     flow:inject|                                                inject data into flows|\n"
+  },
   "paths": {
-    "/api/notification": {
-      "post": {
-        "description": "Send a notification to the registered email addresses (cf. settings).",
-        "parameters": [
-          {
-            "name": "notification data",
-            "in": "body",
-            "description": "the data of the notification to be sent",
-            "schema": {
-              "type": "object",
-              "properties": {
-                "subject": {
-                  "description": "the subject of the notification (default to 'notification')",
-                  "type": "string"
-                },
-                "body": {
-                  "description": "the content of the notification",
-                  "type": "string"
-                }
-              }
-            },
-            "required": true
-          },
-          {
-            "name": "body",
-            "schema": {
-              "type": "object",
-              "properties": {
-                "subject": {
-                  "x-nullable": true,
-                  "default": null,
-                  "type": "string"
-                },
-                "body": {
-                  "type": "string"
-                }
-              },
-              "required": [
-                "body"
-              ]
-            },
-            "in": "body",
-            "required": false
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "The notification was successfully sent"
-          }
-        }
-      }
-    },
     "/api/resources": {
       "get": {
         "tags": [
           "resource"
         ],
         "description": "Lists the resources.\n\n#### cURL example\n\n```bash\ncurl -H 'X-API-KEY: <YOUR_API_KEY>' http://localhost:8000/api/resources\n```",
-        "parameters": [
-          {
-            "name": "sort",
-            "type": "string",
-            "description": "The key on which to do the sorting, by default the sort is made by modifiedDate descending. To make the sort descending, prepend the field name by minus \"-\". For instance, \"-createdDate\" will sort by createdDate descending",
-            "in": "query",
-            "required": false
-          },
-          {
-            "x-nullable": true,
-            "default": null,
-            "in": "query",
-            "name": "q",
-            "description": "Query string for searching resources",
-            "type": "string",
-            "required": false
-          },
-          {
-            "minimum": 0,
-            "in": "query",
-            "format": "int32",
-            "name": "limit",
-            "description": "Limits the number of resources returned",
-            "type": "integer",
-            "required": false
-          },
-          {
-            "minimum": 0,
-            "in": "query",
-            "format": "int32",
-            "name": "skip",
-            "description": "Skips a number of resources",
-            "type": "integer",
-            "required": false
-          }
-        ],
         "responses": {
           "200": {
             "description": "A list of resources",
             "schema": {
+              "type": "array",
               "items": {
                 "$ref": "#/definitions/Resource"
-              },
-              "type": "array"
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "type": "string",
+            "default": null,
+            "x-nullable": true,
+            "description": "Query string for searching resources"
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "type": "integer",
+            "format": "int32",
+            "minimum": 0,
+            "description": "Limits the number of resources returned"
+          },
+          {
+            "in": "query",
+            "name": "skip",
+            "required": false,
+            "type": "integer",
+            "format": "int32",
+            "minimum": 0,
+            "description": "Skips a number of resources"
+          },
+          {
+            "in": "query",
+            "name": "sort",
+            "required": false,
+            "type": "string",
+            "description": "The key on which to do the sorting, by default the sort is made by modifiedDate descending. To make the sort descending, prepend the field name by minus \"-\". For instance, \"-createdDate\" will sort by createdDate descending"
+          }
+        ]
+      },
+      "post": {
+        "tags": [
+          "resource"
+        ],
+        "description": "Creates a new resource.",
+        "parameters": [
+          {
+            "name": "metadata",
+            "in": "body",
+            "description": "\nThe metadata of the resource to be created.\n\nexample:\n\n```json\n{\n   \"type\": \"resources/SSH\",\n   \"name\": \"mydevice\",\n   \"location\": \"room 1\",\n   \"host\": \"192.168.1.25\"\n}\n```\n",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/Resource"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The resource was successfully created",
+            "schema": {
+              "allOf": [
+                {
+                  "type": "object",
+                  "required": [
+                    "type"
+                  ],
+                  "properties": {
+                    "type": {
+                      "type": "string",
+                      "description": "The type of the device to create (eg: \"MySensorsEthernetGateway\")."
+                    }
+                  }
+                },
+                {
+                  "$ref": "#/definitions/Device"
+                }
+              ]
             }
           }
         }
@@ -114,7 +107,6 @@
           "settings"
         ],
         "description": "Returns the settings",
-        "parameters": [],
         "responses": {
           "200": {
             "description": "The settings",
@@ -122,7 +114,8 @@
               "type": "object"
             }
           }
-        }
+        },
+        "parameters": []
       },
       "patch": {
         "tags": [
@@ -134,10 +127,10 @@
             "name": "data",
             "in": "body",
             "description": "the attributes to modify",
+            "required": true,
             "schema": {
               "type": "object"
-            },
-            "required": true
+            }
           }
         ],
         "responses": {
@@ -150,105 +143,35 @@
         }
       }
     },
-    "/api/devices": {
-      "post": {
+    "/api/auth": {},
+    "/api/devices/{id}/call/{operationId}": {
+      "get": {
         "tags": [
           "device"
         ],
-        "description": "Creates a new device.",
-        "parameters": [
-          {
-            "name": "metadata",
-            "in": "body",
-            "description": "\nThe metadata of the device to be created.\n\nexample:\n\n```json\n{\n   \"name\": \"mydevice.txt\",\n   \"location\": \"room 1\",\n   \"scope\": \"resource:read notification\",\n}\n```\n",
-            "schema": {
-              "$ref": "#/definitions/Device"
-            },
-            "required": true
-          }
-        ],
+        "description": "Execute an operation identified by operationId. The parameters must be passed in the query string.",
         "responses": {
           "200": {
-            "description": "The device was successfully created",
-            "schema": {
-              "allOf": [
-                {
-                  "type": "object",
-                  "properties": {
-                    "type": {
-                      "description": "The type of the device to create (eg: \"MySensorsEthernetGateway\").",
-                      "type": "string"
-                    }
-                  },
-                  "required": [
-                    "type"
-                  ]
-                },
-                {
-                  "$ref": "#/definitions/Device"
-                }
-              ]
-            }
+            "description": "The response of the device."
           }
-        }
-      }
-    },
-    "/api/tables": {
-      "post": {
-        "tags": [
-          "table"
-        ],
-        "description": "Creates a new table.\n\nYou may want to pass directly the content of the table in the same request. To do so, just pass the data through the key 'content' of the metadata object;\n\nexample:\n\n```json\n{\n   \"name\": \"foobar.db\",\n   \"content\": [\n        {\n            \"temperature\": 12.5,\n            \"pressure\": 101325\n        }\n   ]\n}\n```\n\n#### cURL example\n\nThe next command will create a new table 'mytable.db'.\n\n```bash\ncurl\n    -H 'X-API-KEY: <YOUR_API_KEY>'\n    -H \"Content-Type: application/json\"\n    -X POST\n    -d '{\"name\":\"mytable.db\"}'\n    http://localhost:8000/api/tables\n```\n\nIf the command was successful, a response containing the meta data of the created table will be given back.\nYou will find in it the id of that table.\nThis id is a unique string identifying this table and is necessary to make any operation on it.\n\n```json\n{\n  \"id\":\"56_df0f\",\n  \"name\":\"mytable.db\",\n  \"data\":null,\n  \"description\":null,\n  \"maxLength\":null,\n  \"expireAfter\":null,\n  \"type\":\"Table\",\n  \"createdBy\":null,\n  \"createdDate\":\"2016-02-12T14:49:30+00:00\",\n  \"modifiedDate\":\"2016-02-15T13:03:20+00:00\",\n  \"length\":421,\n  \"keys\":{\n     \"temp1\":421,\n     \"temp2\":421\n  },\n  \"location\":null\n}\n```",
+        },
         "parameters": [
           {
-            "name": "metadata",
-            "in": "body",
-            "description": "\n\nThe metadata of the table to be created.\n\nexample:\n\n```json\n{\n    \"name\":\"mytable.db\"\n}\n```",
-            "schema": {
-              "$ref": "#/definitions/Table"
-            },
-            "required": true
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "The table was successfully created",
-            "schema": {
-              "$ref": "#/definitions/Table"
-            }
-          }
-        }
-      }
-    },
-    "/api/files": {
-      "post": {
-        "tags": [
-          "file"
-        ],
-        "description": "Creates a new file.\n\nThere are 2 ways to pass directly the content of the file on the same request :\n\n - pass the content as a base-64 encoded ASCII string through the key 'content' of the metadata object.\n\n example:\n\n```json\n{\n   \"name\": \"myfile.txt\",\n   \"content\": \"SGVsbG8gd29ybGQgIQ==\" // 'Hello world !' in base-64\n}\n```\n\n - multipart/related request: transfers the content along with metadata that describes it. *The metadata part must come first*.\n\n example:\n\n```\nPOST /ething/api/files HTTP/1.1\nHost: <YOUR_HOST>\nContent-Type: multipart/related; boundary=foo_bar_baz\n\n--foo_bar_baz\nContent-Type: application/json; charset=UTF-8\n\n{\n  \"name\": \"image.jpg\"\n}\n\n--foo_bar_baz\nContent-Type: image/jpeg\n\n<JPEG DATA>\n--foo_bar_baz--\n```\n\n#### cURL example\n\nThe next command will create a new file 'myfile.txt'.\n\n```bash\ncurl\n    -H 'X-API-KEY: <YOUR_API_KEY>'\n    -H \"Content-Type: application/json\"\n    -X POST\n    -d '{\"name\":\"myfile.txt\"}'\n    http://localhost:8000/api/files\n```\n\nIf the command was successful, a response containing the meta data of the created file will be given back.\nYou will find in it the id of that file.\nThis id is a unique string identifying this file and is necessary to make any operation on it.\n\n```json\n{\n  \"id\":\"73c66-4\",\n  \"name\":\"myfile.txt\",\n  \"data\":null,\n  \"description\":null,\n  \"expireAfter\":null,\n  \"type\":\"File\",\n  \"createdBy\":{\n   \"id\":\"56a7B-5\",\n   \"type\":\"Device\"\n  },\n  \"createdDate\":\"2016-01-27T07:46:43+00:00\",\n  \"modifiedDate\":\"2016-02-13T10:34:31+00:00\",\n  \"mime\":\"text/plain\",\n  \"size\":0,\n  \"location\":null,\n  \"hasThumbnail\":false,\n  \"isText\": true\n}\n```",
-        "parameters": [
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "description": "An id representing a Resource",
+            "type": "string"
+          },
           {
-            "name": "metadata",
-            "in": "body",
-            "description": "\nthe metadata of the file to be created\n\nexample:\n\n```json\n{\n   \"name\": \"myfile.txt\",\n   \"description\": \"an optional description\"\n}\n```",
-            "schema": {
-              "$ref": "#/definitions/File"
-            },
-            "required": true
+            "in": "path",
+            "name": "operationId",
+            "required": true,
+            "description": "id of the operation",
+            "type": "string"
           }
-        ],
-        "responses": {
-          "200": {
-            "description": "The file was successfully created",
-            "schema": {
-              "$ref": "#/definitions/File"
-            }
-          }
-        }
-      }
-    },
-    "/api/auth": {},
-    "/api/devices/{id}/call/{operationId}": {
+        ]
+      },
       "post": {
         "tags": [
           "device"
@@ -256,54 +179,27 @@
         "description": "Execute an operation identified by operationId. The parameters can either be passed in the query string or in the body as a JSON object or a x-www-form-urlencoded string.",
         "parameters": [
           {
-            "in": "path",
-            "type": "string",
             "name": "operationId",
+            "in": "path",
             "description": "id of the operation.",
-            "required": true
+            "required": true,
+            "type": "string"
           },
           {
             "name": "data",
             "in": "body",
             "description": "required parameters for this operation.",
+            "required": false,
             "schema": {
               "type": "object"
-            },
-            "required": false
+            }
           },
           {
+            "in": "path",
             "name": "id",
-            "type": "string",
+            "required": true,
             "description": "An id representing a Resource",
-            "in": "path",
-            "required": true
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "The response of the device."
-          }
-        }
-      },
-      "get": {
-        "tags": [
-          "device"
-        ],
-        "description": "Execute an operation identified by operationId. The parameters must be passed in the query string.",
-        "parameters": [
-          {
-            "name": "id",
-            "type": "string",
-            "description": "An id representing a Resource",
-            "in": "path",
-            "required": true
-          },
-          {
-            "name": "operationId",
-            "type": "string",
-            "description": "id of the operation",
-            "in": "path",
-            "required": true
+            "type": "string"
           }
         ],
         "responses": {
@@ -319,40 +215,40 @@
           "table"
         ],
         "description": "Compute statistics of a column (=key)",
-        "parameters": [
-          {
-            "name": "id",
-            "type": "string",
-            "description": "An id representing a Resource",
-            "in": "path",
-            "required": true
-          },
-          {
-            "name": "key",
-            "type": "string",
-            "description": "the name of the key. Statistics can only be computed for a single key.",
-            "in": "query",
-            "required": true
-          },
-          {
-            "x-nullable": true,
-            "default": null,
-            "in": "query",
-            "name": "q",
-            "description": "A query string to select the rows used for the statistics computation",
-            "type": "string",
-            "required": false
-          }
-        ],
         "responses": {
           "200": {
             "description": "The records was successfully updated",
             "schema": {
-              "description": "The statistics object.",
-              "type": "object"
+              "type": "object",
+              "description": "The statistics object."
             }
           }
-        }
+        },
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "description": "An id representing a Resource",
+            "type": "string"
+          },
+          {
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "type": "string",
+            "default": null,
+            "x-nullable": true,
+            "description": "A query string to select the rows used for the statistics computation"
+          },
+          {
+            "in": "query",
+            "name": "key",
+            "required": true,
+            "type": "string",
+            "description": "the name of the key. Statistics can only be computed for a single key."
+          }
+        ]
       }
     },
     "/api/tables/{id}/replace": {
@@ -361,44 +257,6 @@
           "table"
         ],
         "description": "Update records in a table",
-        "parameters": [
-          {
-            "name": "id",
-            "type": "string",
-            "description": "An id representing a Resource",
-            "in": "path",
-            "required": true
-          },
-          {
-            "default": false,
-            "in": "query",
-            "name": "upsert",
-            "description": "If true and no records was found, the data will be added to the table as a new record.",
-            "type": "boolean",
-            "required": false
-          },
-          {
-            "name": "q",
-            "type": "string",
-            "description": "A query that select the rows to update",
-            "in": "query",
-            "required": true
-          },
-          {
-            "enum": [
-              "rename",
-              "stop",
-              "skip",
-              "none"
-            ],
-            "default": "rename",
-            "in": "query",
-            "name": "invalid_field",
-            "description": "The behaviour to adopt when an invalid field name appears.",
-            "type": "string",
-            "required": false
-          }
-        ],
         "responses": {
           "200": {
             "description": "The records was successfully updated",
@@ -406,7 +264,45 @@
               "$ref": "#/definitions/Table"
             }
           }
-        }
+        },
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "description": "An id representing a Resource",
+            "type": "string"
+          },
+          {
+            "in": "query",
+            "name": "q",
+            "required": true,
+            "type": "string",
+            "description": "A query that select the rows to update"
+          },
+          {
+            "in": "query",
+            "name": "invalid_field",
+            "required": false,
+            "type": "string",
+            "default": "rename",
+            "enum": [
+              "rename",
+              "stop",
+              "skip",
+              "none"
+            ],
+            "description": "The behaviour to adopt when an invalid field name appears."
+          },
+          {
+            "in": "query",
+            "name": "upsert",
+            "required": false,
+            "type": "boolean",
+            "default": false,
+            "description": "If true and no records was found, the data will be added to the table as a new record."
+          }
+        ]
       }
     },
     "/api/tables/{id}/remove": {
@@ -415,27 +311,6 @@
           "table"
         ],
         "description": "Remove one or more records in a table",
-        "parameters": [
-          {
-            "name": "id",
-            "type": "string",
-            "description": "An id representing a Resource",
-            "in": "path",
-            "required": true
-          },
-          {
-            "default": [],
-            "in": "query",
-            "items": {
-              "type": "string"
-            },
-            "type": "string",
-            "collectionFormat": "multi",
-            "name": "ids",
-            "description": "The records id to be removed as a comma separated list.",
-            "required": false
-          }
-        ],
         "responses": {
           "200": {
             "description": "The records was successfully deleted",
@@ -443,51 +318,36 @@
               "$ref": "#/definitions/Table"
             }
           }
-        }
+        },
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "description": "An id representing a Resource",
+            "type": "string"
+          },
+          {
+            "in": "query",
+            "name": "ids",
+            "required": false,
+            "collectionFormat": "multi",
+            "type": "string",
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "description": "The records id to be removed as a comma separated list."
+          }
+        ]
       }
     },
     "/api/resources/{id}": {
-      "delete": {
-        "tags": [
-          "resource"
-        ],
-        "description": "deletes a resource",
-        "parameters": [
-          {
-            "name": "id",
-            "type": "string",
-            "description": "An id representing a Resource",
-            "in": "path",
-            "required": true
-          },
-          {
-            "name": "children",
-            "type": "boolean",
-            "default": false,
-            "in": "query",
-            "required": false
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "the resource has been deleted successfully"
-          }
-        }
-      },
       "get": {
         "tags": [
           "resource"
         ],
         "description": "Returns the meta-data of a resource in JSON.",
-        "parameters": [
-          {
-            "name": "id",
-            "type": "string",
-            "description": "An id representing a Resource",
-            "in": "path",
-            "required": true
-          }
-        ],
         "responses": {
           "200": {
             "description": "resource object",
@@ -495,7 +355,43 @@
               "$ref": "#/definitions/Resource"
             }
           }
-        }
+        },
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "description": "An id representing a Resource",
+            "type": "string"
+          }
+        ]
+      },
+      "delete": {
+        "tags": [
+          "resource"
+        ],
+        "description": "deletes a resource",
+        "responses": {
+          "200": {
+            "description": "the resource has been deleted successfully"
+          }
+        },
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "description": "An id representing a Resource",
+            "type": "string"
+          },
+          {
+            "in": "query",
+            "name": "children",
+            "required": false,
+            "type": "boolean",
+            "default": false
+          }
+        ]
       },
       "patch": {
         "tags": [
@@ -507,17 +403,17 @@
             "name": "modification",
             "in": "body",
             "description": "the attributes to modify",
+            "required": true,
             "schema": {
               "$ref": "#/definitions/Resource"
-            },
-            "required": true
+            }
           },
           {
-            "name": "id",
-            "type": "string",
-            "description": "An id representing a Resource",
             "in": "path",
-            "required": true
+            "name": "id",
+            "required": true,
+            "description": "An id representing a Resource",
+            "type": "string"
           }
         ],
         "responses": {
@@ -531,55 +427,151 @@
       }
     },
     "/api/tables/{id}": {
+      "get": {
+        "tags": [
+          "table"
+        ],
+        "description": "Retrieves the content of a table.\n\n#### cURL examples\n\n```bash\n# get all the data of a table :\ncurl -H 'X-API-KEY: <YOUR_API_KEY>' http://localhost:8000/api/tables/<TABLE_ID>\n\n# only the first 20 rows :\ncurl -H 'X-API-KEY: <YOUR_API_KEY>' http://localhost:8000/api/tables/<TABLE_ID>?start=0&length=20\n\n# only the last 20 rows :\ncurl -H 'X-API-KEY: <YOUR_API_KEY>' http://localhost:8000/api/tables/<TABLE_ID>?start=-20\n\n# only the last 10 rows sorted by the field \"temperature\" in ascending order\n# (put a minus before the name of the field if you want to sort in descending order)\ncurl -H 'X-API-KEY: <YOUR_API_KEY>' http://localhost:8000/api/tables/<TABLE_ID>?start=-10&sort=temperature\n```",
+        "produces": [
+          "application/json",
+          "text/plain"
+        ],
+        "responses": {
+          "200": {
+            "description": "The records of this table",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "description": "record's object. Every record has at least the 'id' and 'date' keys.",
+                "properties": {
+                  "id": {
+                    "type": "string",
+                    "description": "an unique id to identify a record"
+                  },
+                  "date": {
+                    "type": "string",
+                    "format": "date-time",
+                    "description": "the create date of this record"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "description": "An id representing a Resource",
+            "type": "string"
+          },
+          {
+            "in": "query",
+            "name": "start",
+            "required": false,
+            "type": "integer",
+            "format": "int32",
+            "default": 0,
+            "description": "Position of the first rows to return. If start is negative, the position will start from the end. (default to 0)"
+          },
+          {
+            "in": "query",
+            "name": "length",
+            "required": false,
+            "type": "integer",
+            "format": "int32",
+            "minimum": 0,
+            "description": "Maximum number of rows to return. If not set, returns until the end"
+          },
+          {
+            "in": "query",
+            "name": "sort",
+            "required": false,
+            "type": "string",
+            "description": "the key on which to do the sorting, by default the sort is made by date ascending. To make the sort descending, prepend the field name by minus \"-\". For instance, \"-date\" will sort by date descending"
+          },
+          {
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "type": "string",
+            "description": "Query string for filtering results"
+          },
+          {
+            "in": "query",
+            "name": "datefmt",
+            "required": false,
+            "type": "string",
+            "default": "rfc3339",
+            "description": "the format of the date field (default to RFC3339) : timestamp,timestamp_ms,rfc3339"
+          },
+          {
+            "in": "query",
+            "name": "fmt",
+            "required": false,
+            "type": "string",
+            "default": "json",
+            "enum": [
+              "json",
+              "json_pretty",
+              "csv",
+              "csv_no_header"
+            ],
+            "description": "the output format (default to JSON) : json,json_pretty,csv,csv_no_header"
+          }
+        ]
+      },
       "put": {
         "tags": [
           "table"
         ],
+        "description": "Set the content of a table. The new data will erase the previous one.",
         "consumes": [
           "application/json"
         ],
-        "description": "Set the content of a table. The new data will erase the previous one.",
         "parameters": [
           {
             "name": "content",
             "in": "body",
             "description": "The content to be inserted as an array of object.\n\nThe data must be sent in a JSON formatted object :\n\n```json\n[{\n    \"<KEY>\":<VALUE>\n}]\n```\n\nexample:\n\n```json\n[\n    {\n      \"date\": \"2016-02-06T15:03:07+01:00\",\n      \"temperature\": 12.5,\n      \"pressure\": 101325\n    },\n    {\n      \"date\": \"2016-02-06T16:03:07+01:00\",\n      \"temperature\": 13.5,\n      \"pressure\": 101212\n    }\n]\n```\n\nIf the 'date' field is not present, the current date will be set automatically.\nIf an 'id' field is present, it will be automatically be resetted to a new value.",
+            "required": true,
             "schema": {
+              "type": "array",
               "items": {
                 "type": "object"
-              },
-              "type": "array"
-            },
-            "required": true
+              }
+            }
           },
           {
-            "name": "id",
-            "type": "string",
-            "description": "An id representing a Resource",
             "in": "path",
-            "required": true
+            "name": "id",
+            "required": true,
+            "description": "An id representing a Resource",
+            "type": "string"
           },
           {
-            "default": true,
             "in": "query",
-            "name": "skip_error",
-            "description": "Whether to skip data on error or not.",
-            "type": "boolean",
-            "required": false
-          },
-          {
+            "name": "invalid_field",
+            "required": false,
+            "type": "string",
+            "default": "rename",
             "enum": [
               "rename",
               "stop",
               "skip",
               "none"
             ],
-            "default": "rename",
+            "description": "The behaviour to adopt when an invalid field name appears."
+          },
+          {
             "in": "query",
-            "name": "invalid_field",
-            "description": "The behaviour to adopt when an invalid field name appears.",
-            "type": "string",
-            "required": false
+            "name": "skip_error",
+            "required": false,
+            "type": "boolean",
+            "default": true,
+            "description": "Whether to skip data on error or not."
           }
         ],
         "responses": {
@@ -601,31 +593,31 @@
             "name": "record",
             "in": "body",
             "description": "The record to be inserted.\n\nThe data must be sent in a JSON formatted object :\n\n```json\n{\n    \"<KEY>\":<VALUE>\n}\n```\n\ncURL example :\n\n```bash\ncurl\n    -H 'X-API-KEY: <YOUR_API_KEY>'\n    -H \"Content-Type: application/json\"\n    -X POST\n    -d '{\"temperature\":15.2, \"comment\":\"outdoor\"}'\n    http://localhost:8000/api/tables/<TABLE_ID>\n```",
+            "required": true,
             "schema": {
               "type": "object"
-            },
-            "required": true
+            }
           },
           {
-            "name": "id",
-            "type": "string",
-            "description": "An id representing a Resource",
             "in": "path",
-            "required": true
+            "name": "id",
+            "required": true,
+            "description": "An id representing a Resource",
+            "type": "string"
           },
           {
+            "in": "query",
+            "name": "invalid_field",
+            "required": false,
+            "type": "string",
+            "default": "rename",
             "enum": [
               "rename",
               "stop",
               "skip",
               "none"
             ],
-            "default": "rename",
-            "in": "query",
-            "name": "invalid_field",
-            "description": "The behaviour to adopt when an invalid field name appears.",
-            "type": "string",
-            "required": false
+            "description": "The behaviour to adopt when an invalid field name appears."
           }
         ],
         "responses": {
@@ -636,138 +628,68 @@
             }
           }
         }
-      },
-      "get": {
-        "tags": [
-          "table"
-        ],
-        "description": "Retrieves the content of a table.\n\n#### cURL examples\n\n```bash\n# get all the data of a table :\ncurl -H 'X-API-KEY: <YOUR_API_KEY>' http://localhost:8000/api/tables/<TABLE_ID>\n\n# only the first 20 rows :\ncurl -H 'X-API-KEY: <YOUR_API_KEY>' http://localhost:8000/api/tables/<TABLE_ID>?start=0&length=20\n\n# only the last 20 rows :\ncurl -H 'X-API-KEY: <YOUR_API_KEY>' http://localhost:8000/api/tables/<TABLE_ID>?start=-20\n\n# only the last 10 rows sorted by the field \"temperature\" in ascending order\n# (put a minus before the name of the field if you want to sort in descending order)\ncurl -H 'X-API-KEY: <YOUR_API_KEY>' http://localhost:8000/api/tables/<TABLE_ID>?start=-10&sort=temperature\n```",
-        "produces": [
-          "application/json",
-          "text/plain"
-        ],
-        "parameters": [
-          {
-            "name": "id",
-            "type": "string",
-            "description": "An id representing a Resource",
-            "in": "path",
-            "required": true
-          },
-          {
-            "name": "sort",
-            "type": "string",
-            "description": "the key on which to do the sorting, by default the sort is made by date ascending. To make the sort descending, prepend the field name by minus \"-\". For instance, \"-date\" will sort by date descending",
-            "in": "query",
-            "required": false
-          },
-          {
-            "enum": [
-              "json",
-              "json_pretty",
-              "csv",
-              "csv_no_header"
-            ],
-            "default": "json",
-            "in": "query",
-            "name": "fmt",
-            "description": "the output format (default to JSON) : json,json_pretty,csv,csv_no_header",
-            "type": "string",
-            "required": false
-          },
-          {
-            "default": "rfc3339",
-            "in": "query",
-            "name": "datefmt",
-            "description": "the format of the date field (default to RFC3339) : timestamp,timestamp_ms,rfc3339",
-            "type": "string",
-            "required": false
-          },
-          {
-            "name": "q",
-            "type": "string",
-            "description": "Query string for filtering results",
-            "in": "query",
-            "required": false
-          },
-          {
-            "minimum": 0,
-            "in": "query",
-            "format": "int32",
-            "name": "length",
-            "description": "Maximum number of rows to return. If not set, returns until the end",
-            "type": "integer",
-            "required": false
-          },
-          {
-            "default": 0,
-            "in": "query",
-            "format": "int32",
-            "name": "start",
-            "description": "Position of the first rows to return. If start is negative, the position will start from the end. (default to 0)",
-            "type": "integer",
-            "required": false
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "The records of this table",
-            "schema": {
-              "items": {
-                "description": "record's object. Every record has at least the 'id' and 'date' keys.",
-                "type": "object",
-                "properties": {
-                  "id": {
-                    "description": "an unique id to identify a record",
-                    "type": "string"
-                  },
-                  "date": {
-                    "description": "the create date of this record",
-                    "type": "string",
-                    "format": "date-time"
-                  }
-                }
-              },
-              "type": "array"
-            }
-          }
-        }
       }
     },
     "/api/files/{id}": {
+      "get": {
+        "tags": [
+          "file"
+        ],
+        "description": "Retrieves the content of a file.\n\n#### cURL example\n\nThe next command show you how to read the content of a file identified by its id.\n\n```bash\ncurl -H 'X-API-KEY: <YOUR_API_KEY>' http://localhost:8000/api/files/<FILE_ID>\n```",
+        "produces": [
+          "*/*"
+        ],
+        "responses": {
+          "200": {
+            "description": "The content of this file",
+            "schema": {
+              "type": "file"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "description": "An id representing a Resource",
+            "type": "string"
+          }
+        ]
+      },
       "put": {
         "tags": [
           "file"
         ],
+        "description": "Upload the content of a file.\n\n#### cURL example\n\nThe next command show you how to send the content of the local file 'data.txt' into a file.\n\n```bash\ncurl\n    -H 'X-API-KEY: <YOUR_API_KEY>'\n    -X PUT\n    --data @data.txt\n    http://localhost:8000/api/files/<FILE_ID>\n```",
         "consumes": [
           "*/*"
         ],
-        "description": "Upload the content of a file.\n\n#### cURL example\n\nThe next command show you how to send the content of the local file 'data.txt' into a file.\n\n```bash\ncurl\n    -H 'X-API-KEY: <YOUR_API_KEY>'\n    -X PUT\n    --data @data.txt\n    http://localhost:8000/api/files/<FILE_ID>\n```",
         "parameters": [
           {
             "name": "content",
             "in": "body",
             "description": "The new content. Could be of any type.",
+            "required": true,
             "schema": {
               "type": "string",
               "format": "binary"
-            },
-            "required": true
+            }
           },
           {
-            "name": "id",
-            "type": "string",
-            "description": "An id representing a Resource",
             "in": "path",
-            "required": true
+            "name": "id",
+            "required": true,
+            "description": "An id representing a Resource",
+            "type": "string"
           },
           {
-            "default": false,
             "in": "query",
             "name": "append",
-            "description": "If true, the content will be appended.",
+            "required": false,
             "type": "boolean",
-            "required": false
+            "default": false,
+            "description": "If true, the content will be appended."
           }
         ],
         "responses": {
@@ -778,136 +700,80 @@
             }
           }
         }
-      },
-      "get": {
-        "tags": [
-          "file"
-        ],
-        "description": "Retrieves the content of a file.\n\n#### cURL example\n\nThe next command show you how to read the content of a file identified by its id.\n\n```bash\ncurl -H 'X-API-KEY: <YOUR_API_KEY>' http://localhost:8000/api/files/<FILE_ID>\n```",
-        "produces": [
-          "*/*"
-        ],
-        "parameters": [
-          {
-            "name": "id",
-            "type": "string",
-            "description": "An id representing a Resource",
-            "in": "path",
-            "required": true
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "The content of this file",
-            "schema": {
-              "type": "file"
-            }
-          }
-        }
       }
     }
   },
-  "securityDefinitions": {
-    "basic_auth": {
-      "description": "basic authentication.",
-      "type": "basic"
-    },
-    "api_key_query": {
-      "name": "api_key",
-      "in": "query",
-      "description": "authentication through an API key, used only by devices or apps.",
-      "type": "apiKey"
-    },
-    "api_key": {
-      "name": "X-API-KEY",
-      "in": "header",
-      "description": "authentication through an API key, used only by devices or apps.",
-      "type": "apiKey"
-    }
-  },
-  "parameters": {},
-  "schemes": [
-    "http"
-  ],
+  "tags": [],
+  "swagger": "2.0",
   "definitions": {
-    "Error": {
-      "description": "An object describing an error",
-      "type": "object",
-      "properties": {
-        "message": {
-          "description": "A description of the error",
-          "type": "string",
-          "readOnly": true
-        },
-        "code": {
-          "description": "The HTTP response status code",
-          "type": "integer",
-          "readOnly": true
-        }
-      }
-    },
+    "interfaces": {},
     "resources": {
       "Resource": {
-        "signals": [
-          "signals/resources/ResourceCreated",
-          "signals/resources/ResourceDeleted",
-          "signals/resources/ResourceUpdated"
-        ],
+        "type": "class",
         "properties": {
           "extends": {
             "description": "An array of classes this resource is based on.",
-            "readOnly": true
-          },
-          "name": {
-            "description": "The name of the resource",
-            "minLength": 1,
-            "type": "string",
-            "pattern": "^[a-zA-Z0-9 !#$%&'()+,\\-.;=@^_`{    ]+(\\/[a-zA-Z0-9 !#$%&'()+,\\-.;=@^_`{    ]+)*$"
+            "$readOnly": true
           },
           "id": {
+            "type": "string",
+            "minLength": 1,
+            "default": "C7ropPi",
             "description": "The id of the resource",
-            "readOnly": true
+            "$readOnly": true
           },
           "type": {
+            "type": "string",
+            "minLength": 1,
+            "default": "resources/Resource",
             "description": "The type of the resource",
-            "readOnly": true
+            "$readOnly": true
+          },
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "^[a-zA-Z0-9 !#$%&'()+,\\-.;=@^_`{    ]+(\\/[a-zA-Z0-9 !#$%&'()+,\\-.;=@^_`{    ]+)*$",
+            "description": "The name of the resource"
           },
           "createdDate": {
-            "description": "Create time for this resource",
-            "readOnly": true,
             "type": "string",
-            "format": "date-time"
+            "format": "date-time",
+            "default": "2019-03-01T14:45:18.562652+01:00",
+            "description": "Create time for this resource",
+            "$readOnly": true
           },
           "modifiedDate": {
-            "description": "Last time this resource was modified",
-            "readOnly": true,
             "type": "string",
-            "format": "date-time"
+            "format": "date-time",
+            "default": "2019-03-01T14:45:18.791515+01:00",
+            "description": "Last time this resource was modified",
+            "$readOnly": true
           },
           "createdBy": {
-            "description": "The id of the resource responsible of the creation of this resource, or null.",
-            "default": null,
             "anyOf": [
               {
                 "type": "null"
               },
               {
                 "type": "string",
-                "pattern": "^[-_a-zA-Z0-9]{7}$"
+                "minLength": 1,
+                "$component": "ething.resource"
               }
-            ]
+            ],
+            "default": null,
+            "description": "The id of the resource responsible of the creation of this resource, or null."
           },
           "data": {
-            "description": "A collection of arbitrary key-value pairs.",
-            "default": {},
             "type": "object",
+            "additionalProperties": true,
             "properties": {},
-            "additionalProperties": true
+            "default": {},
+            "description": "A collection of arbitrary key-value pairs."
           },
           "description": {
-            "description": "A description of this resource.",
+            "type": "string",
             "default": "",
-            "type": "string"
+            "description": "A description of this resource."
           },
           "public": {
             "enum": [
@@ -915,17 +781,149 @@
               "readonly",
               "readwrite"
             ],
-            "description": "False: this resource is not publicly accessible. 'readonly': this resource is accessible for reading by anyone. 'readwrite': this resource is accessible for reading and writing by anyone.",
-            "default": false
+            "default": false,
+            "description": "False: this resource is not publicly accessible. 'readonly': this resource is accessible for reading by anyone. 'readwrite': this resource is accessible for reading and writing by anyone."
           }
         },
         "additionalProperties": false,
-        "label": "Resource",
-        "description": "The base representation of a resource object",
-        "type": "class",
+        "title": "Resource",
+        "signals": [
+          "signals/resources/ResourceCreated",
+          "signals/resources/ResourceDeleted",
+          "signals/resources/ResourceUpdated"
+        ],
         "required": [
           "name"
+        ],
+        "virtual": true
+      },
+      "Flow": {
+        "allOf": [
+          {
+            "$ref": "#/resources/Resource"
+          },
+          {
+            "type": "class",
+            "properties": {
+              "connections": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "src": {
+                      "type": "array",
+                      "items": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "minItems": 2,
+                      "maxItems": 2
+                    },
+                    "dest": {
+                      "type": "array",
+                      "items": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "minItems": 2,
+                      "maxItems": 2
+                    }
+                  },
+                  "required": [
+                    "src",
+                    "dest"
+                  ]
+                },
+                "default": [],
+                "description": "A list of connections"
+              },
+              "nodes": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/nodes/Node"
+                },
+                "default": [],
+                "description": "The list of nodes."
+              }
+            },
+            "additionalProperties": false,
+            "title": "Flow",
+            "required": []
+          }
         ]
+      },
+      "Device": {
+        "allOf": [
+          {
+            "$ref": "#/resources/Resource"
+          },
+          {
+            "type": "class",
+            "properties": {
+              "error": {
+                "anyOf": [
+                  {
+                    "type": "null"
+                  },
+                  {
+                    "type": "string"
+                  }
+                ],
+                "default": null,
+                "description": "Any error concerning this device.",
+                "$readOnly": true
+              },
+              "lastSeenDate": {
+                "anyOf": [
+                  {
+                    "type": "null"
+                  },
+                  {
+                    "type": "string",
+                    "format": "date-time"
+                  }
+                ],
+                "default": null,
+                "description": "The last time this device was reached or made a request.",
+                "$readOnly": true
+              },
+              "connected": {
+                "type": "boolean",
+                "default": true,
+                "description": "Set to true when this device is connected."
+              },
+              "location": {
+                "type": "string",
+                "default": "",
+                "description": "The location of this device."
+              },
+              "battery": {
+                "anyOf": [
+                  {
+                    "type": "null"
+                  },
+                  {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 100
+                  }
+                ],
+                "default": null,
+                "description": "The battery level of this device (must be between 0 (empty) and 100 (full) , or null if the device has no battery information)."
+              }
+            },
+            "additionalProperties": false,
+            "title": "Device",
+            "signals": [
+              "signals/devices/BatteryLevelChanged",
+              "signals/devices/DeviceConnected",
+              "signals/devices/DeviceDisconnected"
+            ],
+            "required": []
+          }
+        ],
+        "virtual": true
       },
       "File": {
         "allOf": [
@@ -933,45 +931,34 @@
             "$ref": "#/resources/Resource"
           },
           {
-            "signals": [
-              "signals/FileDataModified"
-            ],
+            "type": "class",
             "properties": {
+              "hasThumbnail": {
+                "$readOnly": true
+              },
               "contentModifiedDate": {
-                "description": "Last time the content of this file was modified (formatted RFC 3339 timestamp).",
-                "readOnly": true,
                 "type": "string",
-                "format": "date-time"
+                "format": "date-time",
+                "default": "2019-03-01T14:45:18.793517+01:00",
+                "description": "Last time the content of this file was modified (formatted RFC 3339 timestamp).",
+                "$readOnly": true
               },
               "mime": {
-                "description": "The MIME type of the file (automatically detected from the content).",
-                "readOnly": true
-              },
-              "isText": {
-                "description": "True if this file has text based content.",
-                "readOnly": true
+                "default": "text/plain",
+                "description": "The MIME type of the file (automatically detected from the content or file extension).",
+                "$readOnly": true
               },
               "size": {
+                "default": 0,
                 "description": "The size of this resource in bytes",
-                "readOnly": true
-              },
-              "expireAfter": {
-                "description": "The amount of time (in seconds) after which this resource will be removed.",
-                "default": null,
-                "anyOf": [
-                  {
-                    "type": "null"
-                  },
-                  {
-                    "minimum": 1,
-                    "type": "integer"
-                  }
-                ]
+                "$readOnly": true
               }
             },
             "additionalProperties": false,
-            "label": "File",
-            "type": "class",
+            "title": "File",
+            "signals": [
+              "signals/FileDataModified"
+            ],
             "required": []
           }
         ]
@@ -982,147 +969,97 @@
             "$ref": "#/resources/Resource"
           },
           {
+            "type": "class",
+            "properties": {
+              "contentModifiedDate": {
+                "type": "string",
+                "format": "date-time",
+                "default": "2019-03-01T14:45:18.793517+01:00",
+                "description": "Last time the content of this table was modified.",
+                "$readOnly": true
+              },
+              "keys": {
+                "type": "object",
+                "additionalProperties": true,
+                "properties": {},
+                "default": {},
+                "description": "A key/value object where the keys correspond to the fields available in this table, and the corresponding value is the number of rows where the field is set. __The default keys ('id' and 'date' are not listed)__",
+                "$readOnly": true
+              },
+              "length": {
+                "default": 0,
+                "description": "The number of records in the table",
+                "$readOnly": true
+              },
+              "maxLength": {
+                "anyOf": [
+                  {
+                    "type": "null"
+                  },
+                  {
+                    "type": "integer",
+                    "minimum": 1
+                  }
+                ],
+                "default": 5000,
+                "description": "The maximum of records allowed in this table. When this number is reached, the oldest records will be removed to insert the new ones (first in, first out). Set it to null or 0 to disable this feature."
+              }
+            },
+            "additionalProperties": false,
+            "title": "Table",
             "signals": [
               "signals/TableDataAdded"
             ],
-            "properties": {
-              "contentModifiedDate": {
-                "description": "Last time the content of this table was modified.",
-                "readOnly": true,
-                "type": "string",
-                "format": "date-time"
-              },
-              "keys": {
-                "description": "A key/value object where the keys correspond to the fields available in this table, and the corresponding value is the number of rows where the field is set. __The default keys ('id' and 'date' are not listed)__",
-                "type": "object",
-                "properties": {},
-                "additionalProperties": true,
-                "readOnly": true
-              },
-              "length": {
-                "description": "The number of records in the table",
-                "readOnly": true
-              },
-              "expireAfter": {
-                "description": "The amount of time (in seconds) after which a records will be automatically removed. Set it to null or 0 to disable this feature.",
-                "default": null,
-                "anyOf": [
-                  {
-                    "type": "null"
-                  },
-                  {
-                    "minimum": 1,
-                    "type": "integer"
-                  }
-                ]
-              },
-              "maxLength": {
-                "description": "The maximum of records allowed in this table. When this number is reached, the oldest records will be removed to insert the new ones (first in, first out). Set it to null or 0 to disable this feature.",
-                "default": 5000,
-                "anyOf": [
-                  {
-                    "type": "null"
-                  },
-                  {
-                    "minimum": 1,
-                    "type": "integer"
-                  }
-                ]
-              }
-            },
-            "additionalProperties": false,
-            "label": "Table",
-            "type": "class",
-            "required": []
-          }
-        ]
-      },
-      "Flow": {
-        "allOf": [
-          {
-            "$ref": "#/resources/Resource"
-          },
-          {
-            "label": "Flow",
-            "type": "class",
-            "properties": {
-              "flow": {
-                "description": "An object describing a flow.",
-                "default": {
-                  "nodes": [],
-                  "connections": []
-                },
-                "type": "object",
-                "properties": {
-                  "nodes": {
-                    "items": {
-                      "outputs": null,
-                      "inputs": null,
-                      "$ref": "#/nodes/Node"
-                    },
-                    "type": "array"
-                  },
-                  "connections": {
-                    "items": {
-                      "type": "object",
-                      "properties": {
-                        "src": {
-                          "items": {
-                            "minLength": 1,
-                            "type": "string"
-                          },
-                          "maxItems": 2,
-                          "type": "array",
-                          "minItems": 2
-                        },
-                        "dest": {
-                          "items": {
-                            "minLength": 1,
-                            "type": "string"
-                          },
-                          "maxItems": 2,
-                          "type": "array",
-                          "minItems": 2
-                        }
-                      },
-                      "additionalProperties": false,
-                      "required": [
-                        "src",
-                        "dest"
-                      ]
-                    },
-                    "type": "array"
-                  }
-                },
-                "additionalProperties": false
-              }
-            },
-            "additionalProperties": false,
             "required": []
           }
         ]
       }
     },
-    "interfaces": {
-      "Interface": {
-        "properties": {},
-        "additionalProperties": false,
-        "label": "Interface",
-        "virtual": true,
-        "type": "class",
-        "required": []
-      }
+    "Error": {
+      "properties": {
+        "message": {
+          "type": "string",
+          "description": "A description of the error",
+          "$readOnly": true
+        },
+        "code": {
+          "type": "integer",
+          "description": "The HTTP response status code",
+          "$readOnly": true
+        }
+      },
+      "description": "An object describing an error",
+      "type": "object"
     }
   },
-  "info": {
-    "description": " \nThe eThing project is an 'Internet of Things' application. Store and retrieve data from devices using HTTP requests.\n\nAccess to your resources (file, table, device ...) through HTTP requests.\n\n-------------\n\n\n### Resource description\n\nThere are different types of resources. A resource can either be :\n\n - file : use this kind of objects to store text data or binary data (image, ...)\n - table : tables are used to store a collection of related data. Table consists of fields and rows.\n - device : this resource describes a device.\n - app : this resource is used to store a HTML/JavaScript script. Use it to handle your data/devices (for instance, you can create an interface to communicate with your device).\n\n\n\n### Error messages\n\nWhen the API returns error messages, it does so in JSON format. For example, an error might look like this:\n\n```json\n{\n  \"message\": \"The resource does not exist\",\n  \"code\" : 404\n}\n```\n\nThe code value correspond to the HTTP status code of the response.\n\n\n### Authorization\n\nThere are several options for authenticating with the API.\n\n#### Basic authentication\n\nHTTP Basic authentication is the simplest way of interacting with the API. \nSimply pass the username (default to 'ething') and password with each request through the `Authorization` header.\nThis value should be encoded (using base64 encoding) as per the HTTP Basic specification.\n\n```bash\ncurl -u username:password ...\n```\n\n\n#### API key\n\nEvery device or app has an API key. API keys are listed on developer page [http://localhost:8000/client/developer.html](http://localhost:8000/client/developer.html).\n\nAPI calls authenticated with API key are made on behalf of the Application or Device that own this it ! The permissions can be modified in the resource settings.\n\nSend the following header below on every request :\n\n```\nGET /ething/api/resources HTTP/1.1\nHost: localhost:8000\nX-API-KEY: <YOUR_API_KEY>\n```\n\nHere is a cURL example of how to send this header :\n\n```bash\ncurl -H 'X-API-KEY: <YOUR_API_KEY>' ...\n```\n\nYou can also simply pass the key as a URL query parameter when making Web service requests. For example:\n\n```bash\ncurl http://localhost:8000/api/resources?api_key=<YOUR_API_KEY>\n```\n\n\n\n\n### Scopes\n\nScopes let you specify exactly what type of data access your application or device needs.\n\n| Scope          | Description                                                          |\n|----------------|----------------------------------------------------------------------|\n| resource:read  | read the content of any resource                                     |\n| resource:write | create resources of any kind and modify the content of any resource  |\n| resource:admin | modify resource properties, delete resource and access to apikeys    |\n| file:read      | read the content of any file                                         |\n| file:write     | create files and modify the content of any file                      |\n| table:read     | read the content of any table                                        |\n| table:write    | create tables and modify the content of any table                    |\n| table:append   | append data to any existing table                                    |\n| app:read       | execute apps                                                         |\n| app:write      | create and edit apps                                                 |\n| app:execute    | execute apps                                                         |\n| device:read    | send GET request to any device                                       |\n| device:write   | send POST,PUT,PATCH,DELETE request to any device                     |\n| notification   | send notification                                                    |\n| settings:read  | read the settings                                                    |\n| settings:write | modify the settings                                                  |\n| rule:read      | read rules attributes                                                |\n| rule:write     | create rules                                                         |\n| rule:execute   | execute rules                                                        |\n| rule:admin     | delete rules                                                         |\n\n### Partial response\n\nBy default, the server sends back the full representation of a resource after processing requests.\nFor better performance, you can ask the server to send only the fields you really need and get a partial response instead.\n\nTo request a partial response, use the fields request parameter to specify the fields you want returned.\nYou can use this parameter with any request that returns response data.\n\nexample:\n\nThis request will return the meta-data representation containing only the specified keys of a resource\n\n`/resources/56731_a?fields=id,name`\n\n\n### Filter resource or table data\n\nYou can search or filter resources or table's rows using a search query combining one or more search clauses. Each search clause is made up of three parts.\n\n - Field : in case of resource filtering, it corresponds to the attribute of the resource that is searched (e.g. 'name'). In case of table's rows filtering, it corresponds to the column's name.\n - Operator : test that is performed on the data to provide a match.\n - Value : The content of the field that is tested.\n \nCombine clauses with the conjunctions and or or.\n\n\nThe available fields for resource filtering :\n\n - 'type'\n - 'name'\n - 'mime'\n - 'id'\n - 'location'\n - 'createdDate'\n - 'modifiedDate'\n - 'createdBy'\n - 'description'\n - 'length' : only available for Table resources\n - 'size' : only available for File resources\n - 'hasThumbnail' : only available for File resources\n - 'hasIcon' : only available for App resources\n - 'battery' : only available for Device resources\n - 'lastSeenDate' : only available for Device resources\n\n\nThe available operators :\n\n - '==' : equal to ... This operator is compatible with any types of value.\n - '!=' : not equal to ... This operator is compatible with any types of value.\n - 'is' : is of type ... This operator is compatible with any types of value.\n - '>' : greater than ... This operator is only compatible with numbers or dates.\n - '<' : less than ... This operator is only compatible with numbers or dates.\n - '>=' : greater than or equal to ... This operator is only compatible with numbers.\n - '<=' : less than or equal to ... This operator is only compatible with numbers.\n - '^=' : start with ... This operator is only compatible with strings.\n - '$=' : end with ... This operator is only compatible with strings.\n - '*=' : contain ... This operator is only compatible with strings.\n - '~=' : contain the word ... This operator is only compatible with strings.\n \n \nValue types :\n\n - String : surround with single quotes ' or double quotes.\n - Number : either integer numbers or floating numbers.\n - Boolean : true or false.\n - Date : *RFC 3339* format,  e.g., *2015-03-24T12:00:00+02:00*. Also accept the formats accepted by the [dateparser library](https://github.com/scrapinghub/dateparser).\n\nConstants :\n\n - 'me' : available only when using API key authentication method. It corresponds to the current Device or App.\n\n \nExamples:\n\nAll examples on this page show the unencoded q parameter, where name == 'foobar' is encoded as name+%3d%3d+%27foobar%27.\nClient libraries handle this encoding automatically.\n\nSearch for resources with the name \"foobar\"\n\n`name == 'foobar'`\n\nSearch for plain text files\n\n`mime == 'text/plain'`\n\nSearch for tables resources only\n\n`type == 'Table'`\n\nSearch for non empty files or tables\n\n`size > 0 OR length > 0`\n\nSearch for resources with the name starting with \"foo\"\n\n`name ^= 'foobar'`\n\nSearch for tables with the extension 'db' or files with the extension 'csv'\n\n`( type == 'Table' AND name $= '.db' ) OR ( type == 'File' AND name $= '.csv' )`\n\nSearch for resources modified after Mars 4th 2016\n\n`modifiedDate > '2016-03-04T00:00:00+01:00'`\n\nSearch for resources created by the current authenticated Device or App\n\n`createdBy > me`\n\n",
-    "version": "0.1.2",
-    "title": "EThing HTTP API"
-  },
-  "swagger": "2.0",
+  "parameters": {},
+  "schemes": [
+    "http"
+  ],
+  "consumes": [
+    "application/json"
+  ],
   "produces": [
     "application/json"
   ],
+  "securityDefinitions": {
+    "api_key": {
+      "type": "apiKey",
+      "description": "authentication through an API key, used only by devices or apps.",
+      "name": "X-API-KEY",
+      "in": "header"
+    },
+    "api_key_query": {
+      "type": "apiKey",
+      "description": "authentication through an API key, used only by devices or apps.",
+      "name": "api_key",
+      "in": "query"
+    },
+    "basic_auth": {
+      "type": "basic",
+      "description": "basic authentication."
+    }
+  },
   "security": [
     {
       "api_key": []
@@ -1133,8 +1070,5 @@
     {
       "basic_auth": []
     }
-  ],
-  "consumes": [
-    "application/json"
   ]
 }

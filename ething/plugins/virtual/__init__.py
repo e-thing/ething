@@ -24,7 +24,7 @@ class VirtualDimmer(Dimmer):
 
     @setInterval(30)
     def _main(self):
-        self.level = random.random() * 100.
+        self.level = int(random.random() * 100.)
 
 
 #
@@ -69,43 +69,43 @@ class VirtualRGBWLight(RGBWLight):
 class VirtualThermometer(Thermometer):
     @setInterval(30)
     def _main(self):
-        self.temperature = random.random() * 30.
+        self.temperature = round(random.random() * 30., 2)
 
 
 @meta(category="virtual")
 class VirtualPressureSensor(PressureSensor):
     @setInterval(30)
     def _main(self):
-        self.pressure = random.random() * 110000.
+        self.pressure = int(random.random() * 110000.)
 
 
 @meta(category="virtual")
 class VirtualHumiditySensor(HumiditySensor):
     @setInterval(30)
     def _main(self):
-        self.humidity = random.random() * 100.
+        self.humidity = round(random.random() * 100., 1)
 
 
 @meta(category="virtual")
 class VirtualLightSensor(LightSensor):
     @setInterval(30)
     def _main(self):
-        self.light_level = random.random() * 800.
+        self.light_level = round(random.random() * 800., 2)
 
 
 @meta(category="virtual")
 class VirtualMoistureSensor(MoistureSensor):
     @setInterval(30)
     def _main(self):
-        self.moisture = random.random() * 100.
+        self.moisture = round(random.random() * 100., 1)
 
 
 @meta(category="virtual")
 class VirtualAnemometer(Anemometer):
     @setInterval(30)
     def _main(self):
-        self.wind_speed = random.random() * 40.
-        self.wind_direction = random.random() * 360.
+        self.wind_speed = round(random.random() * 40., 2)
+        self.wind_direction = int(random.random() * 360.)
 
 
 @meta(category="virtual")

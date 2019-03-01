@@ -128,10 +128,14 @@ def notify_client(app, message, cid=None):
 
 
 @meta(icon='mdi-bell', category='notification')
-@attr('message', type=Descriptor(('text', 'msg', 'flow', 'glob', 'env')), description='The message of the notification')
+@attr('message', type=Descriptor(('text', 'template', 'msg', 'flow', 'glob', 'env')), description='The message of the notification')
 class NotifyClient(Node):
     INPUTS = ['default']
 
     def main(self, **inputs):
         msg = inputs.get('default')
-        self.core.get_plugin('webserver').app.notify_client(self.message)
+        _context = {
+            'msg': msg,
+            'flow': self.flow
+        }
+        self.core.get_plugin('webserver').app.notify_client(self.message.get(**_context))

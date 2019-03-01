@@ -70,6 +70,7 @@ items: {{ render_schema(schema["items"], indent + 2) }}
 
 {% macro render_definitions(definitions, level = 0) %}
   {% for ref, definition in definitions | dictsort %}
+{% if definition %}
 {{ "#######"[:level] + " " + ref }}
 
 {% set object = definition %}
@@ -106,6 +107,7 @@ items: {{ render_schema(schema["items"], indent + 2) }}
 
 {{ render_properties(object.properties, object.required, 2) }}
 {% endif %}
+{% endif %}
   {% endfor %}
 {% endmacro %}
 
@@ -138,13 +140,18 @@ items: {{ render_schema(schema["items"], indent + 2) }}
 {% endfor %}
 * [Definitions](#definitions)
 {% for ref, definition in swagger_data.definitions | dictsort %}
+{% if definition %}
   * {{ make_ref(ref) }}
+{% endif %}
 {% endfor %}
 
 
+## Description
 
 {{ swagger_data.info.description }}
 
+
+## Information
 
 {% if swagger_data.schemes | length > 1 %}
 **Schemes**:

@@ -1,7 +1,7 @@
 # coding: utf-8
 
 from .db import *
-from .Signal import ResourceSignal
+from .Signal import ResourceSignal, Signal
 from .utils.date import TzDate, utcnow
 from .utils.ObjectPath import evaluate
 from .scheduler import *
@@ -13,11 +13,18 @@ import logging
 
 @namespace('resources', True)
 @meta(icon='mdi-plus')
-class ResourceCreated(ResourceSignal):
+class ResourceCreated(Signal):
     """
     is emitted each time a resource is created
     """
-    pass
+    def __init__(self, resource):
+        super(ResourceCreated, self).__init__()
+        self.resource = resource
+
+    def toFlowMessage(self):
+        msg = self.__dict__.copy()
+        msg['resource'] = self.resource.id
+        return msg
 
 
 @namespace('resources', True)

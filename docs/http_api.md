@@ -2,7 +2,7 @@
 
 # EThing HTTP API
 
-**Version**: 0.1.2
+**Version**: unknown
 
 ## Table of Contents
 
@@ -11,24 +11,21 @@
 * [Authorization](#authorization)
 * [Basic authentication](#basic-authentication)
 * [API key](#api-key)
-* [Scopes](#scopes)
 * [Partial response](#partial-response)
 * [Filter resource or table data](#filter-resource-or-table-data)
+* [Scopes](#scopes)
 * [Paths](#path)
-  * [POST /api/devices](#post-apidevices)
   * [GET /api/devices/{id}/call/{operationId}](#get-apidevicesidcalloperationid)
   * [POST /api/devices/{id}/call/{operationId}](#post-apidevicesidcalloperationid)
-  * [POST /api/files](#post-apifiles)
   * [GET /api/files/{id}](#get-apifilesid)
   * [PUT /api/files/{id}](#put-apifilesid)
-  * [POST /api/notification](#post-apinotification)
   * [GET /api/resources](#get-apiresources)
+  * [POST /api/resources](#post-apiresources)
   * [DELETE /api/resources/{id}](#delete-apiresourcesid)
   * [GET /api/resources/{id}](#get-apiresourcesid)
   * [PATCH /api/resources/{id}](#patch-apiresourcesid)
   * [GET /api/settings](#get-apisettings)
   * [PATCH /api/settings](#patch-apisettings)
-  * [POST /api/tables](#post-apitables)
   * [GET /api/tables/{id}](#get-apitablesid)
   * [POST /api/tables/{id}](#post-apitablesid)
   * [PUT /api/tables/{id}](#put-apitablesid)
@@ -37,12 +34,13 @@
   * [GET /api/tables/{id}/statistics](#get-apitablesidstatistics)
 * [Definitions](#definitions)
   * [Error](#error)
-  * [interfaces](#interfaces)
   * [resources](#resources)
+
+## Description
 
 The eThing project is an 'Internet of Things' application. Store and retrieve data from devices using HTTP requests.
 
-Access to your resources (file, table, device ...) through HTTP requests.
+Access to your resources (files, tables, devices ...) through HTTP requests.
 
 -------------
 
@@ -53,7 +51,7 @@ There are different types of resources. A resource can either be :
  - file : use this kind of objects to store text data or binary data (image, ...)
  - table : tables are used to store a collection of related data. Table consists of fields and rows.
  - device : this resource describes a device.
- - app : this resource is used to store a HTML/JavaScript script. Use it to handle your data/devices (for instance, you can create an interface to communicate with your device).
+ - flow : this resource describes a flow.
 
 ### Error messages
 
@@ -67,6 +65,8 @@ When the API returns error messages, it does so in JSON format. For example, an 
 ```
 
 The code value correspond to the HTTP status code of the response.
+
+If the server was launched in debug mode, more information is provided.
 
 ### Authorization
 
@@ -84,9 +84,7 @@ curl -u username:password ...
 
 #### API key
 
-Every device or app has an API key. API keys are listed on developer page [http://localhost:8000/client/developer.html](http://localhost:8000/client/developer.html).
-
-API calls authenticated with API key are made on behalf of the Application or Device that own this it ! The permissions can be modified in the resource settings.
+API keys can be generated through the [web interface](http://localhost:8000/#/settings).
 
 Send the following header below on every request :
 
@@ -108,33 +106,6 @@ You can also simply pass the key as a URL query parameter when making Web servic
 curl http://localhost:8000/api/resources?api_key=<YOUR_API_KEY>
 ```
 
-### Scopes
-
-Scopes let you specify exactly what type of data access your application or device needs.
-
-| Scope          | Description                                                          |
-|----------------|----------------------------------------------------------------------|
-| resource:read  | read the content of any resource                                     |
-| resource:write | create resources of any kind and modify the content of any resource  |
-| resource:admin | modify resource properties, delete resource and access to apikeys    |
-| file:read      | read the content of any file                                         |
-| file:write     | create files and modify the content of any file                      |
-| table:read     | read the content of any table                                        |
-| table:write    | create tables and modify the content of any table                    |
-| table:append   | append data to any existing table                                    |
-| app:read       | execute apps                                                         |
-| app:write      | create and edit apps                                                 |
-| app:execute    | execute apps                                                         |
-| device:read    | send GET request to any device                                       |
-| device:write   | send POST,PUT,PATCH,DELETE request to any device                     |
-| notification   | send notification                                                    |
-| settings:read  | read the settings                                                    |
-| settings:write | modify the settings                                                  |
-| rule:read      | read rules attributes                                                |
-| rule:write     | create rules                                                         |
-| rule:execute   | execute rules                                                        |
-| rule:admin     | delete rules                                                         |
-
 ### Partial response
 
 By default, the server sends back the full representation of a resource after processing requests.
@@ -151,93 +122,48 @@ This request will return the meta-data representation containing only the specif
 
 ### Filter resource or table data
 
-You can search or filter resources or table's rows using a search query combining one or more search clauses. Each search clause is made up of three parts.
-
- - Field : in case of resource filtering, it corresponds to the attribute of the resource that is searched (e.g. 'name'). In case of table's rows filtering, it corresponds to the column's name.
- - Operator : test that is performed on the data to provide a match.
- - Value : The content of the field that is tested.
-
-Combine clauses with the conjunctions and or or.
-
-The available fields for resource filtering :
-
- - 'type'
- - 'name'
- - 'mime'
- - 'id'
- - 'location'
- - 'createdDate'
- - 'modifiedDate'
- - 'createdBy'
- - 'description'
- - 'length' : only available for Table resources
- - 'size' : only available for File resources
- - 'hasThumbnail' : only available for File resources
- - 'hasIcon' : only available for App resources
- - 'battery' : only available for Device resources
- - 'lastSeenDate' : only available for Device resources
-
-The available operators :
-
- - '==' : equal to ... This operator is compatible with any types of value.
- - '!=' : not equal to ... This operator is compatible with any types of value.
- - 'is' : is of type ... This operator is compatible with any types of value.
- - '>' : greater than ... This operator is only compatible with numbers or dates.
- - '<' : less than ... This operator is only compatible with numbers or dates.
- - '>=' : greater than or equal to ... This operator is only compatible with numbers.
- - '<=' : less than or equal to ... This operator is only compatible with numbers.
- - '^=' : start with ... This operator is only compatible with strings.
- - '$=' : end with ... This operator is only compatible with strings.
- - '*=' : contain ... This operator is only compatible with strings.
- - '~=' : contain the word ... This operator is only compatible with strings.
-
-Value types :
-
- - String : surround with single quotes ' or double quotes.
- - Number : either integer numbers or floating numbers.
- - Boolean : true or false.
- - Date : *RFC 3339* format,  e.g., *2015-03-24T12:00:00+02:00*. Also accept the formats accepted by the [dateparser library](https://github.com/scrapinghub/dateparser).
-
-Constants :
-
- - 'me' : available only when using API key authentication method. It corresponds to the current Device or App.
+You can search or filter resources or table's rows using a search query based on [ObjectPath query language](http://objectpath.org).
 
 Examples:
 
-All examples on this page show the unencoded q parameter, where name == 'foobar' is encoded as name+%3d%3d+%27foobar%27.
-Client libraries handle this encoding automatically.
-
 Search for resources with the name "foobar"
 
-`name == 'foobar'`
+`$.name is 'foobar'`
 
 Search for plain text files
 
-`mime == 'text/plain'`
+`$.mime is 'text/plain'`
 
 Search for tables resources only
 
-`type == 'Table'`
+`$.type is 'resources/Table'`
 
 Search for non empty files or tables
 
-`size > 0 OR length > 0`
+`$.size > 0 or $.length > 0`
 
-Search for resources with the name starting with "foo"
+Search for resources modified after Mars 4th 2018
 
-`name ^= 'foobar'`
+`$.modifiedDate > '2018-03-04T00:00:00+01:00'`
 
-Search for tables with the extension 'db' or files with the extension 'csv'
+### Scopes
 
-`( type == 'Table' AND name $= '.db' ) OR ( type == 'File' AND name $= '.csv' )`
+Scopes let you specify exactly what type of data access an API key needs.
 
-Search for resources modified after Mars 4th 2016
+| Scope          | Description                                                          |
+|----------------|----------------------------------------------------------------------|
+|   resource:read|                                      read the content of any resource|
+|  resource:write|        create resources of any kind or update the resource's metadata|
+|       file:read|                                          read the content of any file|
+|      file:write|                                        modify the content of any file|
+|      table:read|                                         read the content of any table|
+|     table:write|                                       modify the content of any table|
+|  device:execute|                                              execute a device command|
+|   settings:read|                                                     read the settings|
+|  settings:write|                                                   modify the settings|
+|     flow:inject|                                                inject data into flows|
 
-`modifiedDate > '2016-03-04T00:00:00+01:00'`
-
-Search for resources created by the current authenticated Device or App
-
-`createdBy > me`
+## Information
 
 **Scheme**: http
 
@@ -246,32 +172,6 @@ Search for resources created by the current authenticated Device or App
 **Produces**: application/json
 
 ## Paths
-
-### POST /api/devices
-
-Creates a new device.
-
-#### Request body:
-
-##### Description:
-
-  The metadata of the device to be created.
-
-  example:
-
-  ```json
-  {
-     "name": "mydevice.txt",
-     "location": "room 1",
-     "scope": "resource:read notification",
-  }
-  ```
-
-##### Data:
-[Device](#device)
-
-#### Responses:
-  - 200: The device was successfully created
 
 ### GET /api/devices/{id}/call/{operationId}
 
@@ -302,107 +202,6 @@ Execute an operation identified by operationId. The parameters can either be pas
 
 #### Responses:
   - 200: The response of the device.
-
-### POST /api/files
-
-Creates a new file.
-
-There are 2 ways to pass directly the content of the file on the same request :
-
- - pass the content as a base-64 encoded ASCII string through the key 'content' of the metadata object.
-
- example:
-
-```json
-{
-   "name": "myfile.txt",
-   "content": "SGVsbG8gd29ybGQgIQ==" // 'Hello world !' in base-64
-}
-```
-
- - multipart/related request: transfers the content along with metadata that describes it. *The metadata part must come first*.
-
- example:
-
-```
-POST /ething/api/files HTTP/1.1
-Host: <YOUR_HOST>
-Content-Type: multipart/related; boundary=foo_bar_baz
-
---foo_bar_baz
-Content-Type: application/json; charset=UTF-8
-
-{
-  "name": "image.jpg"
-}
-
---foo_bar_baz
-Content-Type: image/jpeg
-
-<JPEG DATA>
---foo_bar_baz--
-```
-
-#### cURL example
-
-The next command will create a new file 'myfile.txt'.
-
-```bash
-curl
-    -H 'X-API-KEY: <YOUR_API_KEY>'
-    -H "Content-Type: application/json"
-    -X POST
-    -d '{"name":"myfile.txt"}'
-    http://localhost:8000/api/files
-```
-
-If the command was successful, a response containing the meta data of the created file will be given back.
-You will find in it the id of that file.
-This id is a unique string identifying this file and is necessary to make any operation on it.
-
-```json
-{
-  "id":"73c66-4",
-  "name":"myfile.txt",
-  "data":null,
-  "description":null,
-  "expireAfter":null,
-  "type":"File",
-  "createdBy":{
-   "id":"56a7B-5",
-   "type":"Device"
-  },
-  "createdDate":"2016-01-27T07:46:43+00:00",
-  "modifiedDate":"2016-02-13T10:34:31+00:00",
-  "mime":"text/plain",
-  "size":0,
-  "location":null,
-  "hasThumbnail":false,
-  "isText": true
-}
-```
-
-#### Request body:
-
-##### Description:
-
-  the metadata of the file to be created
-
-  example:
-
-  ```json
-  {
-     "name": "myfile.txt",
-     "description": "an optional description"
-  }
-  ```
-
-##### Data:
-[File](#file)
-
-#### Responses:
-  - 200: The file was successfully created
-    [File](#file)
 
 ### GET /api/files/{id}
 
@@ -457,28 +256,6 @@ curl
   - 200: The file's metadata
     [File](#file)
 
-### POST /api/notification
-
-Send a notification to the registered email addresses (cf. settings).
-
-#### Request body:
-
-##### Description:
-  the data of the notification to be sent
-
-##### Data:
-*(object)*
-  - **body** *(string)*: the content of the notification
-  - **subject** *(string)*: the subject of the notification (default to 'notification')
-
-##### Data:
-*(object)*
-  - **body** *(string)*
-  - **subject** *(string)*
-
-#### Responses:
-  - 200: The notification was successfully sent
-
 ### GET /api/resources
 
 Lists the resources.
@@ -490,15 +267,42 @@ curl -H 'X-API-KEY: <YOUR_API_KEY>' http://localhost:8000/api/resources
 ```
 
 #### Query Params:
-- **sort** [string]: The key on which to do the sorting, by default the sort is made by modifiedDate descending. To make the sort descending, prepend the field name by minus "-". For instance, "-createdDate" will sort by createdDate descending.
 - **q** [string]: Query string for searching resources.
 - **limit** [integer]: Limits the number of resources returned.
 - **skip** [integer]: Skips a number of resources.
+- **sort** [string]: The key on which to do the sorting, by default the sort is made by modifiedDate descending. To make the sort descending, prepend the field name by minus "-". For instance, "-createdDate" will sort by createdDate descending.
 
 #### Responses:
   - 200: A list of resources
     *Array*
     items: [Resource](#resource)
+
+### POST /api/resources
+
+Creates a new resource.
+
+#### Request body:
+
+##### Description:
+
+  The metadata of the resource to be created.
+
+  example:
+
+  ```json
+  {
+     "type": "resources/SSH",
+     "name": "mydevice",
+     "location": "room 1",
+     "host": "192.168.1.25"
+  }
+  ```
+
+##### Data:
+[Resource](#resource)
+
+#### Responses:
+  - 200: The resource was successfully created
 
 ### DELETE /api/resources/{id}
 
@@ -583,85 +387,6 @@ update your settings.
   - 200: settings successfully updated
     *(object)*
 
-### POST /api/tables
-
-Creates a new table.
-
-You may want to pass directly the content of the table in the same request. To do so, just pass the data through the key 'content' of the metadata object;
-
-example:
-
-```json
-{
-   "name": "foobar.db",
-   "content": [
-        {
-            "temperature": 12.5,
-            "pressure": 101325
-        }
-   ]
-}
-```
-
-#### cURL example
-
-The next command will create a new table 'mytable.db'.
-
-```bash
-curl
-    -H 'X-API-KEY: <YOUR_API_KEY>'
-    -H "Content-Type: application/json"
-    -X POST
-    -d '{"name":"mytable.db"}'
-    http://localhost:8000/api/tables
-```
-
-If the command was successful, a response containing the meta data of the created table will be given back.
-You will find in it the id of that table.
-This id is a unique string identifying this table and is necessary to make any operation on it.
-
-```json
-{
-  "id":"56_df0f",
-  "name":"mytable.db",
-  "data":null,
-  "description":null,
-  "maxLength":null,
-  "expireAfter":null,
-  "type":"Table",
-  "createdBy":null,
-  "createdDate":"2016-02-12T14:49:30+00:00",
-  "modifiedDate":"2016-02-15T13:03:20+00:00",
-  "length":421,
-  "keys":{
-     "temp1":421,
-     "temp2":421
-  },
-  "location":null
-}
-```
-
-#### Request body:
-
-##### Description:
-
-  The metadata of the table to be created.
-
-  example:
-
-  ```json
-  {
-      "name":"mytable.db"
-  }
-  ```
-
-##### Data:
-[Table](#table)
-
-#### Responses:
-  - 200: The table was successfully created
-    [Table](#table)
-
 ### GET /api/tables/{id}
 
 Retrieves the content of a table.
@@ -687,12 +412,12 @@ curl -H 'X-API-KEY: <YOUR_API_KEY>' http://localhost:8000/api/tables/<TABLE_ID>?
 - **id** [string]: An id representing a Resource.
 
 #### Query Params:
-- **sort** [string]: the key on which to do the sorting, by default the sort is made by date ascending. To make the sort descending, prepend the field name by minus "-". For instance, "-date" will sort by date descending.
-- **fmt** [string]: the output format (default to JSON) : json,json_pretty,csv,csv_no_header.
-- **datefmt** [string]: the format of the date field (default to RFC3339) : timestamp,timestamp_ms,rfc3339.
-- **q** [string]: Query string for filtering results.
-- **length** [integer]: Maximum number of rows to return. If not set, returns until the end.
 - **start** [integer]: Position of the first rows to return. If start is negative, the position will start from the end. (default to 0).
+- **length** [integer]: Maximum number of rows to return. If not set, returns until the end.
+- **sort** [string]: the key on which to do the sorting, by default the sort is made by date ascending. To make the sort descending, prepend the field name by minus "-". For instance, "-date" will sort by date descending.
+- **q** [string]: Query string for filtering results.
+- **datefmt** [string]: the format of the date field (default to RFC3339) : timestamp,timestamp_ms,rfc3339.
+- **fmt** [string]: the output format (default to JSON) : json,json_pretty,csv,csv_no_header.
 
 #### Responses:
   - 200: The records of this table
@@ -751,8 +476,8 @@ Set the content of a table. The new data will erase the previous one.
 - **id** [string]: An id representing a Resource.
 
 #### Query Params:
-- **skip_error** [boolean]: Whether to skip data on error or not.
 - **invalid_field** [string]: The behaviour to adopt when an invalid field name appears.
+- **skip_error** [boolean]: Whether to skip data on error or not.
 
 #### Request body:
 
@@ -817,9 +542,9 @@ Update records in a table
 - **id** [string]: An id representing a Resource.
 
 #### Query Params:
-- **upsert** [boolean]: If true and no records was found, the data will be added to the table as a new record.
 - **q** [string]: A query that select the rows to update.
 - **invalid_field** [string]: The behaviour to adopt when an invalid field name appears.
+- **upsert** [boolean]: If true and no records was found, the data will be added to the table as a new record.
 
 #### Responses:
   - 200: The records was successfully updated
@@ -833,8 +558,8 @@ Compute statistics of a column (=key)
 - **id** [string]: An id representing a Resource.
 
 #### Query Params:
-- **key** [string]: the name of the key. Statistics can only be computed for a single key.
 - **q** [string]: A query string to select the rows used for the statistics computation.
+- **key** [string]: the name of the key. Statistics can only be computed for a single key.
 
 #### Responses:
   - 200: The records was successfully updated
@@ -849,14 +574,24 @@ An object describing an error
 
 #### PROPERTIES
 
-  - **code** *(integer)* *(readonly)*: The HTTP response status code
-  - **message** *(string)* *(readonly)*: A description of the error
-
-### interfaces
-
-#### Interface
+  - **code** *(integer)*: The HTTP response status code
+  - **message** *(string)*: A description of the error
 
 ### resources
+
+#### Device
+
+##### INHERITED
+
+[#/resources/Resource](##resourcesresource)
+
+##### PROPERTIES
+
+  - **battery** *(default=null)*: The battery level of this device (must be between 0 (empty) and 100 (full) , or null if the device has no battery information).
+  - **connected** *(boolean)* *(default=true)*: Set to true when this device is connected.
+  - **error** *(default=null)*: Any error concerning this device.
+  - **lastSeenDate** *(default=null)*: The last time this device was reached or made a request.
+  - **location** *(string)* *(default="")*: The location of this device.
 
 #### File
 
@@ -866,11 +601,10 @@ An object describing an error
 
 ##### PROPERTIES
 
-  - **contentModifiedDate** *(string)* *(readonly)*: Last time the content of this file was modified (formatted RFC 3339 timestamp).
-  - **expireAfter** *(default=null)*: The amount of time (in seconds) after which this resource will be removed.
-  - **isText** *(readonly)*: True if this file has text based content.
-  - **mime** *(readonly)*: The MIME type of the file (automatically detected from the content).
-  - **size** *(readonly)*: The size of this resource in bytes
+  - **contentModifiedDate** *(string)* *(default="2019-03-01T14:45:18.793517+01:00")*: Last time the content of this file was modified (formatted RFC 3339 timestamp).
+  - **hasThumbnail**
+  - **mime** *(default="text/plain")*: The MIME type of the file (automatically detected from the content or file extension).
+  - **size** *(default=0)*: The size of this resource in bytes
 
 #### Flow
 
@@ -880,40 +614,33 @@ An object describing an error
 
 ##### PROPERTIES
 
-  - **flow** *(object)* *(default={"connections": [], "nodes": []})*: An object describing a flow.
-    - **connections** *(array)*
-      - additionalProperties: False
+  - **connections** *(array)* *(default=[])*: A list of connections
+    - additionalProperties: False
 
-      - properties: OrderedDict([('src', {'items': {'minLength': 1, 'type': 'string'}, 'maxItems': 2, 'type': 'array', 'minItems': 2}), ('dest', {'items': {'minLength': 1, 'type': 'string'}, 'maxItems': 2, 'type': 'array', 'minItems': 2})])
+    - properties: OrderedDict([('src', {'type': 'array', 'items': {'type': 'string', 'minLength': 1}, 'minItems': 2, 'maxItems': 2}), ('dest', {'type': 'array', 'items': {'type': 'string', 'minLength': 1}, 'minItems': 2, 'maxItems': 2})])
 
-      - required: ['src', 'dest']
+    - required: ['src', 'dest']
 
-      - type: object
+    - type: object
 
-    - **nodes** *(array)*
-      - [#/nodes/Node](##nodesnode)
-
-      - inputs: None
-
-      - outputs: None
+  - **nodes** *(array)* *(default=[])*: The list of nodes.
+    - [#/nodes/Node](##nodesnode)
 
 #### Resource
-
-The base representation of a resource object
 
 ##### PROPERTIES
 
   - **createdBy** *(default=null)*: The id of the resource responsible of the creation of this resource, or null.
-  - **createdDate** *(string)* *(readonly)*: Create time for this resource
+  - **createdDate** *(string)* *(default="2019-03-01T14:45:18.562652+01:00")*: Create time for this resource
   - **data** *(object)* *(default={})*: A collection of arbitrary key-value pairs.
 
   - **description** *(string)* *(default="")*: A description of this resource.
-  - **extends** *(readonly)*: An array of classes this resource is based on.
-  - **id** *(readonly)*: The id of the resource
-  - **modifiedDate** *(string)* *(readonly)*: Last time this resource was modified
+  - **extends**: An array of classes this resource is based on.
+  - **id** *(string)* *(default="C7ropPi")*: The id of the resource
+  - **modifiedDate** *(string)* *(default="2019-03-01T14:45:18.791515+01:00")*: Last time this resource was modified
   - **name**\* *(string)*: The name of the resource
   - **public** *(default=false)*: False: this resource is not publicly accessible. 'readonly': this resource is accessible for reading by anyone. 'readwrite': this resource is accessible for reading and writing by anyone.
-  - **type** *(readonly)*: The type of the resource
+  - **type** *(string)* *(default="resources/Resource")*: The type of the resource
 
 #### Table
 
@@ -923,10 +650,9 @@ The base representation of a resource object
 
 ##### PROPERTIES
 
-  - **contentModifiedDate** *(string)* *(readonly)*: Last time the content of this table was modified.
-  - **expireAfter** *(default=null)*: The amount of time (in seconds) after which a records will be automatically removed. Set it to null or 0 to disable this feature.
-  - **keys** *(object)* *(readonly)*: A key/value object where the keys correspond to the fields available in this table, and the corresponding value is the number of rows where the field is set. __The default keys ('id' and 'date' are not listed)__
+  - **contentModifiedDate** *(string)* *(default="2019-03-01T14:45:18.793517+01:00")*: Last time the content of this table was modified.
+  - **keys** *(object)* *(default={})*: A key/value object where the keys correspond to the fields available in this table, and the corresponding value is the number of rows where the field is set. __The default keys ('id' and 'date' are not listed)__
 
-  - **length** *(readonly)*: The number of records in the table
+  - **length** *(default=0)*: The number of records in the table
   - **maxLength** *(default=5000)*: The maximum of records allowed in this table. When this number is reached, the oldest records will be removed to insert the new ones (first in, first out). Set it to null or 0 to disable this feature.
 

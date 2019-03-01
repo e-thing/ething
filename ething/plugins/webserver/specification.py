@@ -3,6 +3,7 @@
 # used to build the HTTP API documentation
 from __future__ import print_function
 from future.utils import string_types
+from .Scope import Scope
 import apispec
 from ething.core.version import __version__
 from ething.core.Resource import Resource
@@ -11,8 +12,10 @@ import json
 import jinja2
 from codecs import open
 
-
-from apispec.ext.flask import path_from_view
+try:
+    from apispec.ext.flask import path_from_view
+except ImportError:
+    raise Exception('only work with apispec version=0.38.0')
 
 
 from pkg_resources import parse_version
@@ -94,12 +97,32 @@ def argument_to_param(argument, rule, override=None):
 
 # --------------
 
-def generate(app, core, specification='stdout', documentation=None):
+def scopes_docs():
+    s = """
+### Scopes
 
+Scopes let you specify exactly what type of data access an API key needs.
+
+| Scope          | Description                                                          |
+|----------------|----------------------------------------------------------------------|
+"""
+
+    for scope_name in Scope.list:
+        desc = Scope.list[scope_name].get('description', '')
+        s += '|%16s|%70s|\n' % (scope_name, desc)
+
+    return s
+
+
+def generate(app, specification='stdout', documentation=None):
+
+    core = app.core
     description = ''
 
     with open(readme_file, 'r') as content_file:
         description = content_file.read()
+
+    description += '\n\n' + scopes_docs()
 
     spec = apispec.APISpec(
         title='EThing HTTP API',
@@ -342,18 +365,3 @@ def get_headers(input):
 
     return headers
 
-
-if __name__ == "__main__":
-    from .server import FlaskApp
-    from ething.core.core import Core
-    import logging
-
-    core = Core(clear_db=True, database=':memory:')
-
-    app = FlaskApp(core)
-
-    docpath = os.path.abspath(os.path.join(
-        os.path.dirname(__file__), '../../doc'))
-
-    generate(app, core, specification=os.path.join(
-        docpath, 'openapi.json'), documentation=os.path.join(docpath, 'http_api.md'))

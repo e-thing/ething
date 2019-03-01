@@ -5,7 +5,7 @@ from requests import Request, Session
 
 
 @meta(icon='mdi-earth', label="HTTP request", category="function")
-@attr('body', type=Descriptor(('text', 'msg', 'flow', 'glob', 'env')), default={'type':'text', 'value':''}, description="The body part.")
+@attr('body', type=Descriptor(('text', 'template', 'msg', 'flow', 'glob', 'env')), default={'type':'text', 'value':''}, description="The body part.")
 @attr('method', type=Enum(['GET', 'POST', 'PUT', 'DELETE', 'PATCH']), default='GET', description="The HTTP method.")
 @attr('url', type=Descriptor(('string', 'msg', 'flow', 'glob', 'env')), description="The HTTP URL.")
 class HttpRequest(Node):

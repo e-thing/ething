@@ -15,7 +15,7 @@ class Mail(Plugin):
 
 
 @meta(icon='mdi-email', category="notification")
-@attr('message', type=Descriptor(('text', 'msg', 'flow', 'glob', 'env')), description="The message of the notification")
+@attr('message', type=Descriptor(('text', 'template', 'msg', 'flow', 'glob', 'env')), description="The message of the notification")
 @attr('subject', type=Descriptor(('string', 'msg', 'flow', 'glob', 'env')), description="The subject of the notification")
 @attr('to', type=Descriptor(('string', 'msg', 'flow', 'glob', 'env')), description="Recipient email address")
 class SendEmail(Node):

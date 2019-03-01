@@ -3,7 +3,7 @@
 from flask import Flask, Response, request, g
 from flask_cors import CORS
 from flask_compress import Compress
-from .socketio import SocketIO
+from .socket_io import SocketIO
 from werkzeug.exceptions import HTTPException
 from werkzeug.http import unquote_etag
 from .auth import install_auth

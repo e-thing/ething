@@ -2,10 +2,11 @@
 import argparse
 import os
 
+
 def main():
 
     parser = argparse.ArgumentParser(
-        description='Generate EThing documentations.')
+        description='Generate EThing Webserver API documentations.')
 
     parser.add_argument('-o', '--output-dir', type=str, metavar="OUTPUT_DIRECTORY", help='the directory where the documentations will be genearated')
 
@@ -21,21 +22,15 @@ def main():
         print('output directory: %s' % output_dir)
 
         from ething.core import Core
-        from ething.plugins.webserver.server import WebServer
+        from ething.plugins.webserver.server import FlaskApp
         from ething.plugins.webserver.specification import generate
 
-        core = Core()
+        app = FlaskApp(Core())
 
-        # import the webserver plugin
-        webserver = core.use(WebServer)
-
-        generate(webserver.app, core, specification=os.path.join(output_dir, 'openapi.json'), documentation=os.path.join(output_dir, 'http_api.md'))
+        generate(app, specification=os.path.join(output_dir, 'openapi.json'), documentation=os.path.join(output_dir, 'http_api.md'))
 
     else:
         raise Exception('the directory does not exist %s' % output_dir)
-
-
-
 
 
 if __name__ == "__main__":

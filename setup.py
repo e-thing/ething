@@ -33,6 +33,7 @@ requires = [
     "gevent",
     "jsonpath-rw", # flow
     "objectpath",
+    "Jinja2",
 
     # --db
     #"pymongo==3.5.1",
@@ -101,8 +102,7 @@ setup(
     extras_require={
         "dev": [
             "pytest",  # unit test
-            "apispec==0.38.0",  # http api
-            "Jinja2",  # http api
+            "apispec==0.38.0"  # http api
         ]
     },
 
