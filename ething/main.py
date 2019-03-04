@@ -235,11 +235,17 @@ def main():
         parser.add_argument('--stop', action='store_true',
                             help='stop any running instance and exit')
 
+    parser.add_argument('--debug', action='store_true',
+                        help='activate the debug mode')
+
     parser.add_argument('--clear', action='store_true',
                         help='clear all the database and the configuration')
 
     parser.add_argument('--log-level', type=str,
                         help='set the log level')
+
+    parser.add_argument('--server-port', type=int, default=8000,
+                        help='the port number the webserver is listening to')
 
     args = parser.parse_args()
 
@@ -289,13 +295,13 @@ def main():
     if loglevel:
         loglevel = getattr(logging, loglevel.upper(), None)
 
-    core = Core(clear_db=bool(args.clear), log_level=loglevel)
+    core = Core(clear_db=bool(args.clear), log_level=loglevel, debug=args.debug)
 
     print_info(core, core.log.info)
 
     # import builtin plugins here !
     from .plugins import install_builtin_plugins
-    install_builtin_plugins(core)
+    install_builtin_plugins(core, webserver={'port': args.server_port})
 
     # import plugins
     from .core.plugin import find_plugins

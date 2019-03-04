@@ -35,20 +35,17 @@ from collections import OrderedDict
     'password': String(allow_empty=False, password=True),
     'localonly': Boolean()
 }), default={
-        'username': 'ething',
-        'password': 'admin',
-        'localonly': False
-    })
-@attr('debug', type=Boolean(), default=True)
-@attr('port', type=Integer(min=1, max=65535), default=8000)
+    'username': 'ething',
+    'password': 'admin',
+    'localonly': False
+})
 class WebServer(Plugin):
 
-    def load(self):
+    def load(self, port=8000):
 
         config = {
             'auth': self.auth,
-            'debug': self.debug,
-            'port': self.port
+            'port': port
         }
 
         self.app = FlaskApp(self.core, config=config, logger=self.log, root_path=root_path)
@@ -74,7 +71,6 @@ class FlaskApp(Flask):
                 'localonly': False,
                 'no_auth_for_localhost': True
             },
-            'debug': False,
             'port': 8000,
             'session': {
                 'expiration': 86400,  # in seconds, the time after which a session is expired
@@ -91,7 +87,7 @@ class FlaskApp(Flask):
             self.log = logger
 
         # debug
-        self.debug = bool(self.conf.get('debug', False))
+        self.debug = core.debug
         if self.debug:
             self.log.info('webserver: debug mode enabled')
 

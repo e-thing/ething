@@ -79,7 +79,7 @@ class Plugin(Entity):
     def on_config_change(self, dirty_attributes):
         pass
 
-    def load(self):
+    def load(self, **options):
         pass
 
     def setup(self):
@@ -159,8 +159,8 @@ def get_package_info(mod):
 
 def install_func_to_plugin(install_func, name=None):
 
-    def load(self):
-        return install_func(self.core)
+    def load(self, **options):
+        return install_func(self.core, **options)
 
     if name is None:
         name = generate_plugin_name('AnonymousPlugin')

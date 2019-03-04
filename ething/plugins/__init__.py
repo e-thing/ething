@@ -17,7 +17,7 @@ def find_builtin_plugins():
     return plugins
 
 
-def install_builtin_plugins(core):
+def install_builtin_plugins(core, **options):
 
     for module_name in find_builtin_plugins():
         try:
@@ -25,4 +25,4 @@ def install_builtin_plugins(core):
         except:
             core.log.exception('unable to import %s' % module_name)
         else:
-            core.use(mod)
+            core.use(mod, **options.get(module_name, {}))

@@ -196,7 +196,7 @@ class Flow(object):
         # find starting nodes:
         starting_nodes = []
         for node in self._nodes:
-            if len(self.get_input_endpoints(node)) == 0:
+            if not node.INPUTS or len(node.INPUTS) == 0:
                 starting_nodes.append(node)
 
         self._logger.debug("starting_nodes=%s" % starting_nodes)

@@ -69,6 +69,9 @@ class Core(object):
         self.plugins = list()
         self.debug = debug
 
+        if log_level is None and debug:
+            log_level = logging.DEBUG
+
         self._init_logger(log_level)
 
         self.signalDispatcher = SignalDispatcher()
@@ -100,7 +103,7 @@ class Core(object):
             log_level = logging.INFO
         self.log.setLevel(log_level)
 
-    def use(self, something):
+    def use(self, something, **options):
         plugin_cls = search_plugin_cls(something)
         plugin_name = plugin_cls.get_name()
 
@@ -112,7 +115,7 @@ class Core(object):
         # instanciate:
         try:
             plugin = plugin_cls(self)
-            plugin.load()
+            plugin.load(**options)
         except:
             self.log.exception('plugin %s: unable to load' % plugin_name)
         else:

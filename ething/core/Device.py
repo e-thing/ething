@@ -52,7 +52,7 @@ class ExecuteDevice(ResourceNode):
         if device is None:
             raise Exception("the device has been removed")
 
-        res = device.interface.call(self.method, **self.args)
+        res = getattr(device, self.method)(**self.args)
 
         self.emit({
             'payload': res
