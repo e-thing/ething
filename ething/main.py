@@ -196,24 +196,6 @@ def remove_logger():
         h.close()
 
 
-def destroy():
-    if 'core' in globals():
-        try:
-            core.destroy()
-        except:
-            core.log.exception("exception in core.destroy()")
-
-    try:
-        remove_logger()
-    except Exception as e:
-        print("exception in remove_logger(): %s" % str(e))
-
-
-def exit(status=None):
-    destroy()
-    sys.exit(status)
-
-
 def main():
 
     global PID_FILE, core
@@ -295,9 +277,9 @@ def main():
     if loglevel:
         loglevel = getattr(logging, loglevel.upper(), None)
 
-    core = Core(clear_db=bool(args.clear), log_level=loglevel, debug=args.debug)
+    core = Core(clear_db=bool(args.clear), log_level=loglevel, debug=args.debug, logger=log)
 
-    print_info(core, core.log.info)
+    print_info(core, log.info)
 
     # import builtin plugins here !
     from .plugins import install_builtin_plugins
@@ -308,14 +290,11 @@ def main():
     for module_name in find_plugins():
         core.use(module_name)
 
-    core.init()
-
     exit_code = 0
 
     def stop(signum, frame):
-        core.log.warning('signal received %d' % signum)
-        if core.running:
-            core.stop()
+        log.warning('signal received %d' % signum)
+        core.stop()
 
     signal.signal(signal.SIGINT, stop)
     signal.signal(signal.SIGTERM, stop)
@@ -328,45 +307,43 @@ def main():
         core.run()
 
     except KeyboardInterrupt:
-        core.log.warning("killed ething from Terminal")
+        log.warning("killed ething from Terminal")
 
     except OSError as e:
 
         if e.errno == errno.EACCES or e.errno == errno.EPERM:
-            core.log.exception(
+            log.exception(
                 "Permission denied: you may need to execute this program with sudo")
             exit_code = 3
         elif e.errno == errno.EINTR:
-            core.log.warning("interrupted")
+            log.warning("interrupted")
             exit_code = 1
         else:
-            core.log.exception("unexpected error")
+            log.exception("unexpected error")
             exit_code = 2
 
     except:
-        core.log.exception("unexpected error")
+        log.exception("unexpected error")
         exit_code = 2
 
     finally:
-        destroy()
+        core.stop()
+
+        try:
+            core.destroy()
+        except:
+            log.exception("exception in core.destroy()")
+
+        try:
+            remove_logger()
+        except Exception as e:
+            print("exception in remove_logger(): %s" % str(e))
 
         if PID_FILE:
             try:
                 deletePidFile()
             except Exception as e:
                 print("exception in deletePidFile(): %s" % str(e))
-
-    if getattr(core, 'restart_flag', False):
-        print("restarting...")
-        python = sys.executable
-
-        script=sys.argv[0]
-        args = sys.argv[1:]
-
-        if not os.path.isfile(script):
-            script = 'ething'
-
-        os.execl(python, python, script, *args)
 
     sys.exit(exit_code)
 

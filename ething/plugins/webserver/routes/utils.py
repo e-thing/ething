@@ -21,23 +21,6 @@ _meta = None
 
 def install(core, app, auth, **kwargs):
 
-    @app.route('/api/utils/restart')
-    @auth.required()
-    def restart():
-        core.restart()
-        return '', 204
-
-    @app.route('/api/utils/reset')
-    @auth.required()
-    def reset():
-
-        def clear_db(core):
-            core.db.clear()
-
-        core.restart(clear_db)
-        return '', 204
-
-
     @app.route('/api/utils/serial_ports_list')
     @auth.required()
     def serial_ports_list():

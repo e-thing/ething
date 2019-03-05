@@ -326,7 +326,53 @@ class Manager(object):
 
 
 class Process(object):
-    def __init__(self, name=None, loop=None, target=None, args=(), kwargs=None, terminate=None, parent=None, manager=None, log=None, id=None):
+    """
+
+    Process is similar to Thread: it represents an activity that is run in a separate thread of control.
+
+
+    Example:
+        ```
+        def long_running_process():
+            while True:
+                process_something()
+
+        # create a new process :
+        proc = Process(target=long_running_process)
+
+        # the process will automatically be launched by the manager :
+        core.process_manager.attach(proc)
+
+        # to stop the process, simply do:
+        proc.stop()
+
+        # iterative process:
+        def loop_process():
+            process_something()
+
+        # loop_process will be called every seconds
+        proc = Process(loop=loop_process, loop_interval=1)
+        ```
+
+    NOTE: you may override the setup()/main()/end() methods instead of using the target or loop arguments.
+
+    """
+    def __init__(self, name=None, loop=None, loop_interval=None, target=None, args=(), kwargs=None, terminate=None, parent=None, manager=None, log=None, id=None):
+        """
+        Create a new process.
+
+        :param name: The name of the process.
+        :param loop: loop is the callable object to be invoked indefinitely by the run() method. Use either target or loop but not both.
+        :param loop_interval: the number of seconds to wait between 2 successive loop call. Default to None (no wait).
+        :param target: target is the callable object to be invoked by the run() method. Use either target or loop but not both.
+        :param args: args is the argument tuple for the target or loop invocation. Defaults to ().
+        :param kwargs: kwargs is a dictionary of keyword arguments for the target or loop invocation. Defaults to {}.
+        :param terminate: a callable that is invoked on stop()
+        :param parent: if a process is provided, this process will be automatically killed when the parent stop.
+        :param manager: a manager to bind this process to. If not provided, this process must be attach manually to a manager.
+        :param log: a specific logger
+        :param id: a specific id. Must be id. If not provided, an id will be auto generated.
+        """
         self._id = id or ShortId.generate()
         self._name = name or ('process_%s' % self._id)
 
@@ -336,6 +382,7 @@ class Process(object):
             kwargs = {}
 
         self._loop = proxy_method(loop)
+        self._loop_interval = loop_interval
         self._target = proxy_method(target)
         self._args = args
         self._kwargs = kwargs
@@ -385,16 +432,34 @@ class Process(object):
         return '<%s id=%s name=%s>' % (type(self).__name__, self.id, self.name)
 
     def start(self):
+        """
+        Start the process. Normally, this method should not be used. The manager will do it for you.
+        :return:
+        """
         return self._manager.p_start(self)
 
     def stop(self, *args, **kwargs):
+        """
+        Stop the process.
+        :param block: Wait until the process terminates. Default to True.
+        :param timeout: Kill the process after the timeout occurs.
+        :return:
+        """
         return self._manager.p_stop(self, *args, **kwargs)
 
     def wait(self, *args, **kwargs):
+        """
+        wait until the process has stopped.
+        :param timeout: Wait until the timeout occurs. Default wait indefinitely.
+        :return:
+        """
         return self._manager.p_wait(self, *args, **kwargs)
 
     def run(self):
-
+        """
+        Do not override this method but main() instead.
+        :return:
+        """
         try:
             self.setup()
         except Exception:
@@ -411,31 +476,58 @@ class Process(object):
             self.log.exception('Exception in process "%s" in end()' % self.name)
 
     def terminate(self):
+        """
+        is called on stop().
+        :return:
+        """
         if self._terminate is not None:
             self._terminate()
 
     def main(self):
+        """
+        Invoke the target or loop callable. To be override if necessary.
+        :return:
+        """
         if self._loop is not None:
             while self.is_running:
                 if self._loop(*self._args, **self._kwargs) is False:
                     self.stop()
                     break
+                if self._loop_interval is not None:
+                    time.sleep(self._loop_interval)
         else:
             if self._target:
                 self._target(*self._args, **self._kwargs)
 
     def setup(self):
+        """
+        To be override if necessary.
+        :return:
+        """
         pass
 
     def end(self):
+        """
+        To be override if necessary.
+        :return:
+        """
         pass
 
     def restart(self, timeout=None):
+        """
+        restart the process.
+        :param timeout: the timeout when stopping the process before killing it !
+        :return:
+        """
         self.stop(timeout=timeout)
         self.start()
 
     def destroy(self, timeout=None):
-        """free memory"""
+        """
+        stop this process if it was started and free up memory
+        :param timeout: the timeout when stopping the process before killing it !
+        :return:
+        """
         try:
             self._manager.detach(self, timeout=timeout)
         finally:

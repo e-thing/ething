@@ -9,6 +9,17 @@ import time
 @namespace('signals')
 @abstract
 class Signal(with_metaclass(MetaReg, Mapping)):
+    """
+    Base class of any signal.
+
+    To register a new signal, simply override this class :
+    ```
+    class MySignal(Signal):
+        def __init__(self, some_attribute):
+            super(MySignal, self).__init__()
+            self.some_attribute = some_attribute
+    ```
+    """
     def __init__(self):
         self._type = type(self).__name__
         self._ts = time.time()
@@ -32,8 +43,20 @@ class Signal(with_metaclass(MetaReg, Mapping)):
     def toFlowMessage(self):
         return self.__dict__
 
+
 @abstract
 class ResourceSignal(Signal):
+    """
+    Any signal emitted by a resource must override this class.
+
+    To register a new signal, simply override this class :
+    ```
+    class MySignal(ResourceSignal):
+        def __init__(self, resource, some_attribute):
+            super(MySignal, self).__init__(resource)
+            self.some_attribute = some_attribute
+    ```
+    """
     def __init__(self, resource):
         super(ResourceSignal, self).__init__()
         self.resource = resource

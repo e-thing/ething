@@ -112,7 +112,31 @@ class RDict(Dict):
 @uid(description="The id of the resource")
 @db(table='resources')
 @namespace('resources')
+@meta(description='')
 class Resource(Entity):
+    """
+    The Resource class is the base class of any "EThing object".
+    It can be a Device, a File, a Table ...
+
+
+    # to register a new Resource, simply override the Resource class :
+
+    @attr('foo', type=String(allow_empty=False), default='bar', description="foo attribute") # use the `attr` decorator to declare some specific attributes.
+    class Foo(Resource):
+        pass
+
+
+    # to instanciate a new Foo resource:
+    core.create(Foo, {
+        'name': 'john',
+        'foo': 'BAR' # you can override the default here
+    }) # returns a new Foo instance
+
+    Note: you could also write it :
+    core.create('resources/foo", {...})
+
+
+    """
 
     def __init__(self, data=None, context=None):
 
@@ -161,6 +185,11 @@ class Resource(Entity):
         return self._log
 
     def isTypeof(self, typename):
+        """
+        returns True if this instance derive from `typename`
+        :param typename: a Resource class, a Resource instance  or a type (eg: 'resources/Device')
+        :return: boolean
+        """
         if isinstance(typename, Resource):
             typename = get_definition_name(type(typename))
         elif inspect.isclass(typename) and issubclass(typename, Resource):
@@ -168,10 +197,33 @@ class Resource(Entity):
         return typename in self.extends
 
     def dispatchSignal(self, signal, *args, **kwargs):
+        """
+        Dispatch a signal emitted by this resource.
+
+        Note: be sure that the signal was previously binded to the current class using the `@throw` decorator:
+        ```
+        class MySignal(Signal):
+            pass
+
+        @throw(Signal)
+        class Foo(Resource):
+            def bar(self):
+            self.dispatchSignal(MySignal())
+        ```
+
+        :param signal: Either a signal instance or a string representing a signal type.
+        :param args: Only used if a string was provided as signal. Any extra arguments to pass when instantiate the signal.
+        :param kwargs: Only used if a string was provided as signal. Any extra arguments to pass when instantiate the signal.
+        :return:
+        """
         self.core.dispatchSignal(signal, *args, **kwargs)
 
     def children(self, filter=None):
-
+        """
+        List all the children of this resource. Relationship is done through the `createdBy` attribute.
+        :param filter: a callable to filter the returned children set
+        :return:
+        """
         def _filter (r):
             if r.createdBy == self:
                 if filter:
@@ -182,7 +234,11 @@ class Resource(Entity):
         return self.core.find(_filter)
 
     def remove(self, removeChildren=False):
-
+        """
+        Remove this instance.
+        :param removeChildren: If True, remove also all the children. Default to False.
+        :return:
+        """
         children = self.children()
 
         self.core.scheduler.unbind(self)
@@ -262,6 +318,14 @@ class Resource(Entity):
         pass
 
     def store(self, table_name, data, name = None, table_length = 5000):
+        """
+        Store data in a table that is linked to this resource.
+        :param table_name: the table name
+        :param data: the data to store (dict, string, number, boolean)
+        :param name: the name of the column (not used if the data is a dict)
+        :param table_length: max length of the table. Default to 5000.
+        :return: Table instance.
+        """
         try:
             table = self.core.findOne(
                 lambda r: r.createdBy == self and r.name == table_name and r.isTypeof('resources/Table'))
@@ -284,10 +348,17 @@ class Resource(Entity):
                     }
 
                 table.insert(data)
+
+                return table
         except Exception as e:
-            self.log.exception('history error for %s' % table_name)
+            self.log.exception('table store error for %s' % table_name)
 
     def match(self, expression):
+        """
+        return True if the current resource matches the given expression
+        :param expression: a ObjectPath expression
+        :return:
+        """
         return bool(evaluate(expression, toJson(self)))
 
     def _process_bind(self):
@@ -297,7 +368,7 @@ class Resource(Entity):
          - a method:
            def __process__(self): return MyProcess(...)
          - a Process subclass:
-           __process__ = MyProcess # will be instanciated with a single argument corresponding to the current resource
+           __process__ = MyProcess # will be instantiated with a single argument corresponding to the current resource
          - an array of Process subclass:
            __process__ = [MyProcess0, MyProcess1, ...]
         """

@@ -21,7 +21,7 @@ class SignalDispatcher(object):
     def queue(self, signal):
         self._queue.put(signal)
 
-    def process(self, timeout = 0):
+    def process(self, timeout=0):
         block = bool(timeout != 0)
         t0 = time.time()
         while timeout >= 0:

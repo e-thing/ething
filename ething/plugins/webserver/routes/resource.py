@@ -7,11 +7,6 @@ from ething.core.reg import update
 
 def install(core, app, auth, **kwargs):
 
-    @app.route('/api/usage', methods=['GET'])
-    @auth.required()
-    def usage():
-        return app.jsonify(core.usage())
-
     resources_args = {
         'q': fields.Str(missing=None, description='Query string for searching resources'),
         'limit': fields.Int(validate=validate.Range(min=0), description='Limits the number of resources returned'),

@@ -4,7 +4,7 @@ from future.utils import string_types
 from queue import Queue, Empty
 from .reg import *
 from .utils import object_sort, ShortId
-from collections import OrderedDict, MutableMapping
+from collections import OrderedDict, MutableMapping, Iterable
 import copy
 from time import time
 import inspect
@@ -58,6 +58,132 @@ class Dummy_Driver(Driver_Base):
 
 
 class Db(object):
+    """
+    ```
+    db = Db(Dummy_Driver())
+
+
+    ## Table manipulation
+
+    # the table will be automatically created if it does not exist.
+    table = db['my_table'] # returns a Table instance
+
+    # insert a new document
+    table.insert({
+        'id': 45, # mandatory, must be unique, can either be a string or a number
+        'foo': 'bar'
+    })
+
+    # check if a document exists
+    45 in table
+
+    # return a document by its id
+    table[45]
+
+    # update a document
+    table[45] = {
+        'foo': 'BAR'
+    }
+
+    # or
+    table.update({
+        'id': 45,
+        'foo': 'BAR'
+    })
+
+    # table length
+    table.length # == 1
+
+    # select documents
+    table.select(sort='-foo', filter=lambda d: 'foo' in d)
+
+    # delete a document by its id
+    del table[45]
+
+    # clear the table
+    table.clear()
+
+
+    ## Store
+
+    # use the db.store instance for saving and retrieving data from a key-value store.
+
+    store = db.store
+
+    # add a new entry or update an existing one
+    store['foo'] = 'bar'
+
+    # check if an entry exists
+    'foo' in store
+
+    # delete an entry
+    del store['foo']
+
+    # loop over all entries
+    for key in store:
+        print(key, store[key]
+
+
+    ## File system
+
+    # use the db.fs instance for storing and retrieving files
+
+    fs = db.fs
+
+    # create a new file
+    file = fs.create('foo.txt') # return a File instance
+
+    # some usefull attributes
+    file.size # == 0
+    file.filename # == 'foo.txt'
+
+    # write some binary data
+    file.write(b'hello world')
+
+    # read data
+    file.read() # return as binary string
+
+    # remove the file
+    fs.remove(file)
+
+    # list all files
+    fs.list() # return a list of File
+
+    # iteratate over files
+    for file in fs:
+        print(file.filename)
+
+
+    ## Object system
+
+    # use the db.os instance for storing and retrieving entities (see reg.py).
+
+    # first define a new entity class
+    @attr('name', type="string") # register some attribute
+    @uid() # register a 'id' attribute with an unique id generated for each instance
+    @db(database=db) # the Foo entities are automatically saved in the db database
+    class Foo:
+        pass
+
+    # create a new Foo entity
+    foo = db_create(Foo, {
+        'name': 'bar'
+    }) # returns a Foo instance
+
+    # read attributes
+    foo.name # == 'bar'
+
+    # modify attributes
+    foo.name = 'BAR' # the modifications are automatically saved in the database
+
+    # list all Foo entities
+    db_find(Foo) # returns a list of Foo instance
+
+    # remove an entity
+    remove(foo)
+
+    ```
+    """
     def __init__(self, driver, auto_commit=False, cache_delay=3600, auto_connect=True):
         self._driver = driver
         self._auto_commit = auto_commit
@@ -253,9 +379,7 @@ class Table(MutableMapping):
         return self.get_doc(doc_id)
 
     def __setitem__(self, doc_id, doc):
-        if doc_id != doc['id']:
-            raise KeyError()
-        self.update(doc)
+        self.update(doc, doc_id)
 
     def __delitem__(self, doc_id):
         self.delete(doc_id)
@@ -321,10 +445,11 @@ class Table(MutableMapping):
 
         return doc
 
-    def update(self, doc):
+    def update(self, doc, doc_id=None):
         self._lazy_load()
 
-        doc_id = doc['id']
+        if doc_id is None:
+            doc_id = doc['id']
 
         if doc_id in self._data:
             # update
@@ -355,7 +480,7 @@ class Table(MutableMapping):
         self._db.commit()
 
 
-class FS(object):
+class FS(Iterable):
     def __init__(self, db):
         self._db = db
         self._driver = self._db._driver
@@ -405,6 +530,9 @@ class FS(object):
           file.write(content)
         
         return file
+
+    def __iter__(self):
+        return iter(self._files.values())
 
     def __getitem__(self, file_id):
         return self.get(file_id)

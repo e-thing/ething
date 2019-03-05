@@ -15,8 +15,23 @@ _LOGGER = logging.getLogger('ething.scheduler')
 
 class Task(object):
 
-    def __init__(self, scheduler, target, args=(), kwargs=None, name=None, instance=None, condition=None, allow_multiple=False, **params):
+    """
+    Represent a Task.
+    """
 
+    def __init__(self, scheduler, target, args=(), kwargs=None, name=None, instance=None, condition=None, allow_multiple=False, **params):
+        """
+        Task should not be instantiated manually but through a Scheduler.
+
+        :param scheduler: the scheduler this task is bind to.
+        :param target: target is the callable object to be invoked.
+        :param args: args is the argument tuple for the target invocation. Defaults to ().
+        :param kwargs: kwargs is a dictionary of keyword arguments for the target invocation. Defaults to {}.
+        :param name: the task name.
+        :param instance: the instance this task is bind to. Default is None.
+        :param condition: an optional callable to test if the task can be executed or not.
+        :param allow_multiple: If True, this task can be executed multiple time simultaneously. Default to False: if the previous invocation is not terminated, the current invocation is skipped.
+        """
         if not callable(target):
             raise Exception('target must be callable')
 
@@ -237,6 +252,11 @@ def _deco(callback, p):
 
 
 class Scheduler(object):
+    """
+
+    The scheduler will run registered tasks at certain time or at regular interval.
+
+    """
 
     def __init__(self):
         super(Scheduler, self).__init__()
@@ -245,6 +265,14 @@ class Scheduler(object):
         self.log = _LOGGER
 
     def tick(self, callback=None, args=(), kwargs=None, **params):
+        """
+        Run a callable every tick (ie: each time process() is called).
+        :param callback: If not provided, act as a decorator.
+        :param args: args is the argument tuple for the callback invocation. Defaults to ().
+        :param kwargs: kwargs is a dictionary of keyword arguments for the callback invocation. Defaults to {}.
+        :param params: More optional parameters. See Task class.
+        :return: Task instance
+        """
         def p(f):
             with self.r_lock:
                 task = TickTask(self, f, args=args, kwargs=kwargs, **params)
@@ -254,6 +282,16 @@ class Scheduler(object):
         return _deco(callback, p)
 
     def setInterval(self, interval, callback=None, start_in_sec=0, args=(), kwargs=None, **params):
+        """
+        Run a callable at regular interval.
+        :param interval: The amount of seconds between 2 successive calls.
+        :param callback: If not provided, act as a decorator.
+        :param start_in_sec: Delay the first call. Default to 0.
+        :param args: args is the argument tuple for the callback invocation. Defaults to ().
+        :param kwargs: kwargs is a dictionary of keyword arguments for the callback invocation. Defaults to {}.
+        :param params: More optional parameters. See Task class.
+        :return: Task instance
+        """
         def p(f):
             with self.r_lock:
                 task = IntervalTask(interval, self, f, args=args, kwargs=kwargs, start_in_sec=start_in_sec, **params)
@@ -263,6 +301,15 @@ class Scheduler(object):
         return _deco(callback, p)
 
     def delay(self, delay, callback=None, args=(), kwargs=None, **params):
+        """
+        Run a callable once after a certain delay.
+        :param delay: The delay in seconds
+        :param callback: If not provided, act as a decorator.
+        :param args: args is the argument tuple for the callback invocation. Defaults to ().
+        :param kwargs: kwargs is a dictionary of keyword arguments for the callback invocation. Defaults to {}.
+        :param params: More optional parameters. See Task class.
+        :return: Task instance
+        """
         def p(f):
             with self.r_lock:
                 task = DelayTask(delay, self, f, args=args, kwargs=kwargs, **params)
@@ -272,6 +319,16 @@ class Scheduler(object):
         return _deco(callback, p)
 
     def at(self, hour='*', min=0, callback=None, args=(), kwargs=None, **params):
+        """
+        Run a callable at a certain time of a the day.
+        :param hour: The hour or '*' for every hour. Default to '*'.
+        :param min: The minute or '*' for every minute. Default to 0.
+        :param callback: If not provided, act as a decorator.
+        :param args: args is the argument tuple for the callback invocation. Defaults to ().
+        :param kwargs: kwargs is a dictionary of keyword arguments for the callback invocation. Defaults to {}.
+        :param params: More optional parameters. See Task class.
+        :return: Task instance
+        """
         def p(f):
             with self.r_lock:
                 task = AtTask(self, f, hour=hour, min=min, args=args, kwargs=kwargs, **params)
@@ -286,6 +343,35 @@ class Scheduler(object):
                 return task
 
     def bind_instance(self, instance):
+        """
+        Bind an instance.
+
+        Example:
+        ```
+        from ething.core.scheduler import *
+
+        class Foo:
+
+            @setInterval(interval=30)
+            def task1(self):
+                # this method will be invoked every 30 seconds
+                pass
+
+            @at(12, 30)
+            def task2(self):
+                # this method will be invoked every day at 12h30.
+                pass
+
+
+        foo = Foo()
+
+        scheduler = Scheduler()
+        scheduler.bind_instance(foo)
+        ```
+
+        :param instance: an instance with some methods decorated with setInterval, at, delay or tick
+        :return:
+        """
         for name, func in inspect.getmembers(instance, inspect.ismethod):
             if hasattr(func, '_scheduler'):
                 scheduler_func_name, args, kwargs = getattr(func, '_scheduler')
@@ -296,6 +382,11 @@ class Scheduler(object):
                     _LOGGER.exception('unable to create instance task')
 
     def unbind(self, task):
+        """
+        Unregister a task, callback or instance.
+        :param task:
+        :return:
+        """
         with self.r_lock:
             if isinstance(task, Task):
                 if task in self.tasks:
@@ -324,6 +415,10 @@ class Scheduler(object):
                 self.unbind(task)
 
     def clear(self):
+        """
+        Remove all registered tasks.
+        :return:
+        """
         with self.r_lock:
             self.tasks.clear()
 

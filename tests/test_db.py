@@ -22,6 +22,11 @@ def test_db_fs(core):
 
     file = fs.create('toto', version='1.0.0')
 
+    assert fs.exists(file.id)
+
+    assert file.size == 0
+    assert file.filename == 'toto'
+
     assert file['size'] == 0
     assert file['version'] == '1.0.0'
 
@@ -147,7 +152,7 @@ def test_db_entity(core):
             self.save_cnt = 0
             self.watch_map = {}
 
-        def __instanciate__(cls, data, context):
+        def __instantiate__(cls, data, context):
             return cls(data['name'], data['nickname'])
 
         def __watch__(self, attr, val, old_val):

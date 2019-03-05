@@ -19,6 +19,7 @@ import logging
 import pytz
 import time
 import inspect
+import threading
 
 
 class _CoreScheduler(Scheduler):
@@ -47,6 +48,20 @@ def after_init(f):
 
 
 class Core(object):
+    """
+
+    # instantiate a new Core instance
+    core = Core()
+
+    # load any plugins here
+    import my_plugin
+    core.use(my_plugin)
+
+    # run the server
+    core.run()
+
+    """
+
     __instances = []
 
     @staticmethod
@@ -59,27 +74,34 @@ class Core(object):
                 if instance.name == name:
                     return instance
 
-    def __init__(self, name=None, debug=False, log_level=None, database=None, clear_db=False, **config):
+    def __init__(self, name=None, debug=False, log_level=None, database=None, clear_db=False, logger=None, commit_interval=None, garbage_collector_period=None, **config):
         self._initialized = False
 
         patch_all(self)
 
-        self.running = False
+        self._running = threading.Event()
+        self._stop = threading.Event()
+        self._stopped = threading.Event()
+
         self.name = name
         self.plugins = list()
         self.debug = debug
 
-        if log_level is None and debug:
-            log_level = logging.DEBUG
+        if log_level is None:
+            log_level = logging.DEBUG if debug else logging.INFO
 
-        self._init_logger(log_level)
+        self.log = logger or logging.getLogger('ething')
+        self.log.setLevel(log_level)
 
         self.signalDispatcher = SignalDispatcher()
         self.process_manager = ProcessManager(start=False)
         self.scheduler = _CoreScheduler(self)
 
+        self.process_manager.attach(Process(name="scheduler", loop=self.scheduler.process, loop_interval=1))
+        self.process_manager.attach(Process(name="signalDispatcher", loop=self.signalDispatcher.process, args=(1,)))
+
         # load db
-        self._init_database(database, clear_db=clear_db)
+        self._init_database(database, clear_db=clear_db, commit_interval=commit_interval, garbage_collector_period=garbage_collector_period)
 
         self.config = Config(self)
 
@@ -93,17 +115,24 @@ class Core(object):
             self.use(p_cls)
 
     @property
+    def running(self):
+        return self._running.isSet()
+
+    @property
     def local_tz (self):
         local_tz = self.config.timezone
         return pytz.timezone(local_tz)
 
-    def _init_logger(self, log_level=None):
-        self.log = logging.getLogger('ething')
-        if log_level is None:
-            log_level = logging.INFO
-        self.log.setLevel(log_level)
-
     def use(self, something, **options):
+        """
+        Load a plugin.
+        :param something: A plugin. Either a Plugin class, a module or an install function.
+        :param options: Some paramaters to pass to the plugin.load(...) method.
+        :return: The plugin instance.
+        """
+        if self._initialized:
+            raise Exception('unable to use this plugin: the core is already initialized')
+
         plugin_cls = search_plugin_cls(something)
         plugin_name = plugin_cls.get_name()
 
@@ -166,27 +195,32 @@ class Core(object):
             garbage_collector_period = 300
         self.scheduler.setInterval(garbage_collector_period, self.db.run_garbage_collector, condition=lambda _: self.db.connected)
 
-    def stop(self, callback = None):
-        self.log.info("stopping ...")
-        self.running = False
-        self._plugins_call('stop')
-        self.process_manager.stop(timeout=2)
+    def stop(self, block=False):
+        """
+        Stop the core instance.
+        :param block: If provided and True, will block until the core instance has really stopped, which can take some time.
+        :return:
+        """
+        if self._stop.is_set():
+            # already stopped
+            return
 
-        if callback is not None:
-            try:
-                callback(self)
-            except:
-                self.log.exception('stop callback exception')
+        self.log.info("stopping ...")
+        self._stop.set()
+
+        if block:
+            self._stopped.wait()
 
     @property
     def version(self):
         return __version__
 
     def destroy(self):
-
-        self.log.info("cleaning for exit")
-
-        self.running = False
+        """
+        Free up the memory.
+        :return:
+        """
+        self.log.debug("cleaning for exit...")
 
         self._plugins_call('unload')
 
@@ -199,11 +233,11 @@ class Core(object):
 
         self._initialized = False
 
-    def restart(self, callback = None):
-        self.stop(callback)
-        self.restart_flag = True
-
     def init(self):
+        """
+        Initialize the core instance. For testing purpose only. The run() method automatically call this method.
+        :return:
+        """
         if not self._initialized:
             self._initialized = True
 
@@ -215,7 +249,15 @@ class Core(object):
             # setup plugins
             self._plugins_call('setup')
 
-    def start(self):
+    def run(self):
+        """
+        Run the core instance. Block until the stop() method is called.
+        Raise an exception if the core is already running.
+        :return:
+        """
+        if self.running:
+            raise Exception('already running')
+
         self.init()
 
         if self.debug and not getattr(self, '_gevent_dbg_installed', False):
@@ -236,22 +278,24 @@ class Core(object):
 
             events.subscribers.append(event_handler)
 
-        self.running = True
+        self.log.info('core started')
+
+        self._running.set()
+        self._stop.clear()
+        self._stopped.clear()
         self._plugins_call('start')
         self.process_manager.start()
 
-    def loop(self, timeout=1):
-        self.signalDispatcher.process(timeout)
-        self.scheduler.process()
+        # wait for stop...
+        self._stop.wait()
 
-    def loop_forever(self):
-        while self.running:
-            self.loop(1)
+        self._plugins_call('stop')
+        self.process_manager.stop(timeout=2)
 
-    def run(self):
-        self.start()
-        self.loop_forever()
-        self.stop()
+        self.log.info('core stopped')
+
+        self._running.clear()
+        self._stopped.set()
 
     #
     # Resources
@@ -259,6 +303,14 @@ class Core(object):
 
     @after_init
     def find(self, query=None, limit=None, skip=None, sort=None):
+        """
+        Return resources.
+        :param query: Either a string representing an ObjectPath query expression, or a predicate. If a list of queries is given, returns only resources that match all the queries.
+        :param limit: specify the maximum number of returned resources.
+        :param skip: The number of resources to skip in the results set.
+        :param sort: Specifies the order of the returned resources. Must be a string representing a resource attribute. If preceded by '-', the sort will be descending order.
+        :return: A list of resources
+        """
 
         if query is not None:
 
@@ -293,17 +345,33 @@ class Core(object):
 
     @after_init
     def findOne(self, query=None):
+        """
+        Returns only a single resource that optionnaly match a query.
+        :param query: Same as find()
+        :return: a resource
+        """
         r = self.find(query, 1)
         return r[0] if len(r) > 0 else None
 
     @after_init
     def get(self, id):
+        """
+        Returns a resource with a given id.
+        :param id: a resource id
+        :return: a resource
+        """
         if not isinstance(id, string_types):
             raise ValueError('id must be a string')
         return self.db.os.get(Resource, id)
 
     @after_init
     def create(self, cls, attributes):
+        """
+        Create a new resource.
+        :param cls: Either a string representing a resource type or a resource class.
+        :param attributes: A dict containing all the attributes
+        :return: a resource
+        """
         if isinstance(cls, string_types):
             cls_name = cls
             cls = get_registered_class(cls_name)
@@ -312,28 +380,33 @@ class Core(object):
         attributes['type'] = get_definition_name(cls)
         return self.db.os.create(Resource, attributes)
 
-    def usage(self):
-        return {
-            'used': self.db.get_usage()
-        }
-
     def dispatchSignal(self, signal, *args, **kwargs):
-
+        """
+        Dispatch a signal.
+        :param signal: Either a signal instance or a string representing a signal type.
+        :param args: Only used if a string was provided as signal. Any extra arguments to pass when instantiate the signal.
+        :param kwargs: Only used if a string was provided as signal. Any extra arguments to pass when instantiate the signal.
+        :return:
+        """
         if isinstance(signal, string_types):
             try:
-                cls = get_registered_class('signals/' + signal)
+                if not signal.startswith('signals/'):
+                    signal = 'signals/' + signal
+                cls = get_registered_class(signal)
                 if not cls:
-                    return
+                    raise Exception('unknown signal %s' % signal)
                 signal = cls(*args, **kwargs)
             except:
-                self.log.exception('signal instanciate error')
+                self.log.exception('signal instantiate error')
 
         self.signalDispatcher.queue(signal)
 
-        # if hasattr(self, "signalManager"):
-        #     self.signalManager.dispatch(signal)
-
     def get_plugin(self, name):
+        """
+        Find a plugin by its name.
+        :param name: the name of the plugin.
+        :return: A plugin instance.
+        """
         for p in self.plugins:
             if p.name == name:
                 return p

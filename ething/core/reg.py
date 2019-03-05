@@ -1463,8 +1463,8 @@ def create(cls, data=None, context=None, data_src=None):
   
   d = _set(cls, data, context, True, data_src)
 
-  if hasattr(cls, '__instanciate__'):
-    instance = cls.__instanciate__(cls, d, context)
+  if hasattr(cls, '__instantiate__'):
+    instance = cls.__instantiate__(cls, d, context)
   else:
     instance = cls()
   
@@ -1668,7 +1668,7 @@ class Entity(with_metaclass(MetaReg, object)):
         # call parent constructor
         super(Entity, self).__init__()
     
-    def __instanciate__(cls, data, context):
+    def __instantiate__(cls, data, context):
       return cls(data, context)
     
     def __getattr__( self, name):

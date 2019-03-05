@@ -21,9 +21,3 @@ def test_core(core):
 
     assert len(core.find()) == before_count + count
 
-    usage = core.usage()
-
-    print(usage)
-
-    assert usage.get('used') >= 0
-
