@@ -50,15 +50,18 @@ def after_init(f):
 class Core(object):
     """
 
-    # instantiate a new Core instance
-    core = Core()
+    instantiate a new Core instance::
 
-    # load any plugins here
-    import my_plugin
-    core.use(my_plugin)
+        core = Core()
 
-    # run the server
-    core.run()
+    load any plugins here::
+
+        import my_plugin
+        core.use(my_plugin)
+
+    run the server::
+
+        core.run()
 
     """
 
@@ -126,6 +129,7 @@ class Core(object):
     def use(self, something, **options):
         """
         Load a plugin.
+
         :param something: A plugin. Either a Plugin class, a module or an install function.
         :param options: Some paramaters to pass to the plugin.load(...) method.
         :return: The plugin instance.
@@ -198,6 +202,7 @@ class Core(object):
     def stop(self, block=False):
         """
         Stop the core instance.
+
         :param block: If provided and True, will block until the core instance has really stopped, which can take some time.
         :return:
         """
@@ -218,6 +223,7 @@ class Core(object):
     def destroy(self):
         """
         Free up the memory.
+
         :return:
         """
         self.log.debug("cleaning for exit...")
@@ -236,6 +242,7 @@ class Core(object):
     def init(self):
         """
         Initialize the core instance. For testing purpose only. The run() method automatically call this method.
+
         :return:
         """
         if not self._initialized:
@@ -253,6 +260,7 @@ class Core(object):
         """
         Run the core instance. Block until the stop() method is called.
         Raise an exception if the core is already running.
+
         :return:
         """
         if self.running:
@@ -305,6 +313,7 @@ class Core(object):
     def find(self, query=None, limit=None, skip=None, sort=None):
         """
         Return resources.
+
         :param query: Either a string representing an ObjectPath query expression, or a predicate. If a list of queries is given, returns only resources that match all the queries.
         :param limit: specify the maximum number of returned resources.
         :param skip: The number of resources to skip in the results set.
@@ -347,6 +356,7 @@ class Core(object):
     def findOne(self, query=None):
         """
         Returns only a single resource that optionnaly match a query.
+
         :param query: Same as find()
         :return: a resource
         """
@@ -357,6 +367,7 @@ class Core(object):
     def get(self, id):
         """
         Returns a resource with a given id.
+
         :param id: a resource id
         :return: a resource
         """
@@ -368,6 +379,7 @@ class Core(object):
     def create(self, cls, attributes):
         """
         Create a new resource.
+
         :param cls: Either a string representing a resource type or a resource class.
         :param attributes: A dict containing all the attributes
         :return: a resource
@@ -383,6 +395,7 @@ class Core(object):
     def dispatchSignal(self, signal, *args, **kwargs):
         """
         Dispatch a signal.
+
         :param signal: Either a signal instance or a string representing a signal type.
         :param args: Only used if a string was provided as signal. Any extra arguments to pass when instantiate the signal.
         :param kwargs: Only used if a string was provided as signal. Any extra arguments to pass when instantiate the signal.
@@ -404,6 +417,7 @@ class Core(object):
     def get_plugin(self, name):
         """
         Find a plugin by its name.
+
         :param name: the name of the plugin.
         :return: A plugin instance.
         """

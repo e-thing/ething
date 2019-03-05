@@ -102,7 +102,9 @@ setup(
     extras_require={
         "dev": [
             "pytest",  # unit test
-            "apispec==0.38.0"  # http api
+            "apispec==0.38.0",  # http api
+            "Sphinx", # documentation generator
+            "m2r", # documentation generator
         ]
     },
 
