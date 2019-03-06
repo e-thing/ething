@@ -77,3 +77,19 @@ def test_file_encoding(core):
     assert f.read(encoding='utf8') == content
 
     assert f.size == len(content.encode('utf8'))
+
+
+def test_file_append(core):
+    content1 = b'hello'
+    content2 = b' world'
+
+    f = core.create('resources/File', {
+        'name': 'file1.txt'
+    })
+
+    assert isinstance(f, File)
+
+    f.write(content1)
+    f.write(content2, append=True)
+
+    assert f.read() == (content1+content2)

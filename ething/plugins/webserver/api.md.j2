@@ -258,6 +258,7 @@ items: {{ render_schema(schema["items"], indent + 2) }}
     {% for response_code, response_data in method_data.responses | dictsort %}
   - {{ response_code }}: {{ response_data.description }}
       {% if "schema" in response_data %}
+
 {{ render_schema(response_data.schema) | indent(4,True) }}
       {% endif %}
     {% endfor %}

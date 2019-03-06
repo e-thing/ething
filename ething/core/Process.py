@@ -331,8 +331,8 @@ class Process(object):
     Process is similar to Thread: it represents an activity that is run in a separate thread of control.
 
 
-    Example:
-        ```
+    Example::
+
         def long_running_process():
             while True:
                 process_something()
@@ -352,14 +352,13 @@ class Process(object):
 
         # loop_process will be called every seconds
         proc = Process(loop=loop_process, loop_interval=1)
-        ```
 
-    NOTE: you may override the setup()/main()/end() methods instead of using the target or loop arguments.
+
+    .. note:: you may override the setup()/main()/end() methods instead of using the target or loop arguments.
 
     """
     def __init__(self, name=None, loop=None, loop_interval=None, target=None, args=(), kwargs=None, terminate=None, parent=None, manager=None, log=None, id=None):
         """
-        Create a new process.
 
         :param name: The name of the process.
         :param loop: loop is the callable object to be invoked indefinitely by the run() method. Use either target or loop but not both.
@@ -368,7 +367,7 @@ class Process(object):
         :param args: args is the argument tuple for the target or loop invocation. Defaults to ().
         :param kwargs: kwargs is a dictionary of keyword arguments for the target or loop invocation. Defaults to {}.
         :param terminate: a callable that is invoked on stop()
-        :param parent: if a process is provided, this process will be automatically killed when the parent stop.
+        :param parent: if a process is provided, all child processes will be automatically killed when the parent process stop.
         :param manager: a manager to bind this process to. If not provided, this process must be attach manually to a manager.
         :param log: a specific logger
         :param id: a specific id. Must be id. If not provided, an id will be auto generated.
@@ -434,31 +433,30 @@ class Process(object):
     def start(self):
         """
         Start the process. Normally, this method should not be used. The manager will do it for you.
-        :return:
+
         """
         return self._manager.p_start(self)
 
     def stop(self, *args, **kwargs):
         """
         Stop the process.
+
         :param block: Wait until the process terminates. Default to True.
         :param timeout: Kill the process after the timeout occurs.
-        :return:
         """
         return self._manager.p_stop(self, *args, **kwargs)
 
     def wait(self, *args, **kwargs):
         """
         wait until the process has stopped.
+
         :param timeout: Wait until the timeout occurs. Default wait indefinitely.
-        :return:
         """
         return self._manager.p_wait(self, *args, **kwargs)
 
     def run(self):
         """
         Do not override this method but main() instead.
-        :return:
         """
         try:
             self.setup()
@@ -478,7 +476,6 @@ class Process(object):
     def terminate(self):
         """
         is called on stop().
-        :return:
         """
         if self._terminate is not None:
             self._terminate()
@@ -486,7 +483,6 @@ class Process(object):
     def main(self):
         """
         Invoke the target or loop callable. To be override if necessary.
-        :return:
         """
         if self._loop is not None:
             while self.is_running:
@@ -502,22 +498,20 @@ class Process(object):
     def setup(self):
         """
         To be override if necessary.
-        :return:
         """
         pass
 
     def end(self):
         """
         To be override if necessary.
-        :return:
         """
         pass
 
     def restart(self, timeout=None):
         """
         restart the process.
+
         :param timeout: the timeout when stopping the process before killing it !
-        :return:
         """
         self.stop(timeout=timeout)
         self.start()
@@ -525,8 +519,8 @@ class Process(object):
     def destroy(self, timeout=None):
         """
         stop this process if it was started and free up memory
+
         :param timeout: the timeout when stopping the process before killing it !
-        :return:
         """
         try:
             self._manager.detach(self, timeout=timeout)

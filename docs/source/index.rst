@@ -5,26 +5,16 @@
 
 
 Welcome to EThing's documentation!
-*********************************
+**********************************
 
-
-Readme File
-===========
-
-.. mdinclude:: ../../README.md
-
-
-Documentation for the Code
-**************************
 .. toctree::
    :maxdepth: 2
    :caption: Contents:
 
-
-EThing core
-=====================
-.. automodule:: ething.core.core
-   :members:
+   overview
+   tutorial
+   code
+   http_api
 
 
 Indices and tables

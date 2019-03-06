@@ -73,26 +73,30 @@ class Device(Resource):
     The base class of any device (Switch, light, sensor, controller, ...).
 
 
-    # to register a new Device, simply override the Device class :
+    To register a new Device, simply override the Device class ::
 
-    @meta(icon='mdi-play', category='foo') # optional, for icons naming convention, see https://quasar-framework.org/components/icons.html
-    @attr('sensor_value', type=Number(), default=0, mode=READ_ONLY, history=True, force_watch=True, description="sensor value") # use the `attr` decorator to declare some specific attributes. If history is True, the values are stored in a table. If force_watch is False or not set, only values that differs from the previous one are stored.
-    class Foo(Device):
+        # optional, for icons naming convention, see https://quasar-framework.org/components/icons.html
+        @meta(icon='mdi-play', category='foo')
+        # use the `attr` decorator to declare some specific attributes. If history is True, the values are stored in a table. If force_watch is False or not set, only values that differs from the previous one are stored.
+        @attr('sensor_value', type=Number(), default=0, mode=READ_ONLY, history=True, force_watch=True, description="sensor value")
+        class Foo(Device):
 
-        # (optional) bind some method to the core.scheduler
-        @setInterval(30)
-        def read(self):
-            # this method will be called every 30 seconds during all the lifetime of this instance.
-            this.sensor_value = self._read_value_from_the_sensor()
+            # (optional) bind some method to the core.scheduler
+            @setInterval(30)
+            def read(self):
+                # this method will be called every 30 seconds during all the lifetime of this instance.
+                this.sensor_value = self._read_value_from_the_sensor()
 
-        @method # register this method
-        def do_something(self):
-            pass
+            @method # register this method
+            def do_something(self):
+                pass
 
 
-    Note: the registered attributes (using `@attr`) and methods (using `@method`) will be automatically available in the web interface.
+    .. note::
+        The registered attributes (using `@attr`) and methods (using `@method`) will be automatically available in the web interface.
 
-    Note: For generic device (sensor, switch, camera, ...) see the interfaces module which list all generic devices.
+    .. note::
+        For generic device (sensor, switch, camera, ...) see the interfaces module which list all generic devices.
 
     """
 

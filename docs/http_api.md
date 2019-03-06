@@ -220,6 +220,7 @@ curl -H 'X-API-KEY: <YOUR_API_KEY>' http://localhost:8000/api/files/<FILE_ID>
 
 #### Responses:
   - 200: The content of this file
+
     *(file)*
 
 ### PUT /api/files/{id}
@@ -254,6 +255,7 @@ curl
 
 #### Responses:
   - 200: The file's metadata
+
     [File](#file)
 
 ### GET /api/resources
@@ -274,6 +276,7 @@ curl -H 'X-API-KEY: <YOUR_API_KEY>' http://localhost:8000/api/resources
 
 #### Responses:
   - 200: A list of resources
+
     *Array*
     items: [Resource](#resource)
 
@@ -326,6 +329,7 @@ Returns the meta-data of a resource in JSON.
 
 #### Responses:
   - 200: resource object
+
     [Resource](#resource)
 
 ### PATCH /api/resources/{id}
@@ -361,6 +365,7 @@ Clear a description :
 
 #### Responses:
   - 200: resource successfully updated
+
     [Resource](#resource)
 
 ### GET /api/settings
@@ -369,6 +374,7 @@ Returns the settings
 
 #### Responses:
   - 200: The settings
+
     *(object)*
 
 ### PATCH /api/settings
@@ -385,6 +391,7 @@ update your settings.
 
 #### Responses:
   - 200: settings successfully updated
+
     *(object)*
 
 ### GET /api/tables/{id}
@@ -421,6 +428,7 @@ curl -H 'X-API-KEY: <YOUR_API_KEY>' http://localhost:8000/api/tables/<TABLE_ID>?
 
 #### Responses:
   - 200: The records of this table
+
     *Array*
     items: *(object)*
       record's object. Every record has at least the 'id' and 'date' keys.
@@ -466,6 +474,7 @@ Insert a new record in a table
 
 #### Responses:
   - 200: The record was successfully inserted. The table metadata is returned.
+
     [Table](#table)
 
 ### PUT /api/tables/{id}
@@ -518,6 +527,7 @@ items: *(object)*
 
 #### Responses:
   - 200: The content was successfully set. The table metadata is returned.
+
     [Table](#table)
 
 ### POST /api/tables/{id}/remove
@@ -532,6 +542,7 @@ Remove one or more records in a table
 
 #### Responses:
   - 200: The records was successfully deleted
+
     [Table](#table)
 
 ### POST /api/tables/{id}/replace
@@ -548,6 +559,7 @@ Update records in a table
 
 #### Responses:
   - 200: The records was successfully updated
+
     [Table](#table)
 
 ### GET /api/tables/{id}/statistics
@@ -563,6 +575,7 @@ Compute statistics of a column (=key)
 
 #### Responses:
   - 200: The records was successfully updated
+
     *(object)*
     The statistics object.
 
@@ -581,6 +594,32 @@ An object describing an error
 
 #### Device
 
+The base class of any device (Switch, light, sensor, controller, ...).
+
+    To register a new Device, simply override the Device class ::
+
+        # optional, for icons naming convention, see https://quasar-framework.org/components/icons.html
+        @meta(icon='mdi-play', category='foo')
+        # use the `attr` decorator to declare some specific attributes. If history is True, the values are stored in a table. If force_watch is False or not set, only values that differs from the previous one are stored.
+        @attr('sensor_value', type=Number(), default=0, mode=READ_ONLY, history=True, force_watch=True, description="sensor value")
+        class Foo(Device):
+
+            # (optional) bind some method to the core.scheduler
+            @setInterval(30)
+            def read(self):
+                # this method will be called every 30 seconds during all the lifetime of this instance.
+                this.sensor_value = self._read_value_from_the_sensor()
+
+            @method # register this method
+            def do_something(self):
+                pass
+
+    .. note::
+        The registered attributes (using `@attr`) and methods (using `@method`) will be automatically available in the web interface.
+
+    .. note::
+        For generic device (sensor, switch, camera, ...) see the interfaces module which list all generic devices.
+
 ##### INHERITED
 
 [#/resources/Resource](##resourcesresource)
@@ -595,18 +634,36 @@ An object describing an error
 
 #### File
 
+The File resource is used to store data.
+
+    Example::
+
+        f = core.create('resources/File', {
+            'name': 'foo.txt'
+        })
+
+        f.write('bar', encoding='utf8')
+
+        f.read(encoding='utf8') # = 'bar'
+
+.. attribute:: hasThumbnail
+
+    Return True if this file has a thumbnail.
+
 ##### INHERITED
 
 [#/resources/Resource](##resourcesresource)
 
 ##### PROPERTIES
 
-  - **contentModifiedDate** *(string)* *(default="2019-03-01T14:45:18.793517+01:00")*: Last time the content of this file was modified (formatted RFC 3339 timestamp).
-  - **hasThumbnail**
+  - **contentModifiedDate** *(string)* *(default="2019-03-06T17:12:02.817624+01:00")*: Last time the content of this file was modified (formatted RFC 3339 timestamp).
+  - **hasThumbnail**: Return True if this file has a thumbnail.
   - **mime** *(default="text/plain")*: The MIME type of the file (automatically detected from the content or file extension).
   - **size** *(default=0)*: The size of this resource in bytes
 
 #### Flow
+
+The Flow resource represent workflow composed of nodes linked together.
 
 ##### INHERITED
 
@@ -631,18 +688,30 @@ An object describing an error
 ##### PROPERTIES
 
   - **createdBy** *(default=null)*: The id of the resource responsible of the creation of this resource, or null.
-  - **createdDate** *(string)* *(default="2019-03-01T14:45:18.562652+01:00")*: Create time for this resource
+  - **createdDate** *(string)* *(default="2019-03-06T17:12:02.600755+01:00")*: Create time for this resource
   - **data** *(object)* *(default={})*: A collection of arbitrary key-value pairs.
 
   - **description** *(string)* *(default="")*: A description of this resource.
   - **extends**: An array of classes this resource is based on.
-  - **id** *(string)* *(default="C7ropPi")*: The id of the resource
-  - **modifiedDate** *(string)* *(default="2019-03-01T14:45:18.791515+01:00")*: Last time this resource was modified
+  - **id** *(string)* *(default="0zgB2qB")*: The id of the resource
+  - **modifiedDate** *(string)* *(default="2019-03-06T17:12:02.816627+01:00")*: Last time this resource was modified
   - **name**\* *(string)*: The name of the resource
   - **public** *(default=false)*: False: this resource is not publicly accessible. 'readonly': this resource is accessible for reading by anyone. 'readwrite': this resource is accessible for reading and writing by anyone.
   - **type** *(string)* *(default="resources/Resource")*: The type of the resource
 
 #### Table
+
+The Table resource is used to store time series.
+
+    Example::
+
+        t = core.create('resources/Table', {
+            'name': 'foo'
+        })
+
+        t.insert({
+            'foo': 'bar'
+        })
 
 ##### INHERITED
 
@@ -650,8 +719,8 @@ An object describing an error
 
 ##### PROPERTIES
 
-  - **contentModifiedDate** *(string)* *(default="2019-03-01T14:45:18.793517+01:00")*: Last time the content of this table was modified.
-  - **keys** *(object)* *(default={})*: A key/value object where the keys correspond to the fields available in this table, and the corresponding value is the number of rows where the field is set. __The default keys ('id' and 'date' are not listed)__
+  - **contentModifiedDate** *(string)* *(default="2019-03-06T17:12:02.817624+01:00")*: Last time the content of this table was modified.
+  - **keys** *(object)* *(default={})*: A key/value object where the keys correspond to the fields available in this table, and the corresponding value is the number of rows where the field is set. The default keys ('id' and 'date' are not listed)
 
   - **length** *(default=0)*: The number of records in the table
   - **maxLength** *(default=5000)*: The maximum of records allowed in this table. When this number is reached, the oldest records will be removed to insert the new ones (first in, first out). Set it to null or 0 to disable this feature.

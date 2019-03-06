@@ -78,6 +78,21 @@ class Core(object):
                     return instance
 
     def __init__(self, name=None, debug=False, log_level=None, database=None, clear_db=False, logger=None, commit_interval=None, garbage_collector_period=None, **config):
+        """
+
+        :param name: the name of the core instance. Default to None.
+        :param debug: If True, run the instance in debug mode.
+        :param log_level: Any level from the logging module. Default to ``logging.INFO``
+        :param clear_db: If True, the database will be cleared.
+        :param logger: A logger instance. By default, a new logger instance will be created.
+
+        .. attribute:: db
+
+            link to the database instance.
+
+            :type: :class:`ething.core.db.Db`
+
+        """
         self._initialized = False
 
         patch_all(self)
@@ -119,6 +134,7 @@ class Core(object):
 
     @property
     def running(self):
+        """True if this instance is running"""
         return self._running.isSet()
 
     @property
@@ -204,7 +220,6 @@ class Core(object):
         Stop the core instance.
 
         :param block: If provided and True, will block until the core instance has really stopped, which can take some time.
-        :return:
         """
         if self._stop.is_set():
             # already stopped
@@ -224,7 +239,6 @@ class Core(object):
         """
         Free up the memory.
 
-        :return:
         """
         self.log.debug("cleaning for exit...")
 
@@ -243,7 +257,6 @@ class Core(object):
         """
         Initialize the core instance. For testing purpose only. The run() method automatically call this method.
 
-        :return:
         """
         if not self._initialized:
             self._initialized = True
@@ -261,7 +274,6 @@ class Core(object):
         Run the core instance. Block until the stop() method is called.
         Raise an exception if the core is already running.
 
-        :return:
         """
         if self.running:
             raise Exception('already running')
@@ -399,7 +411,6 @@ class Core(object):
         :param signal: Either a signal instance or a string representing a signal type.
         :param args: Only used if a string was provided as signal. Any extra arguments to pass when instantiate the signal.
         :param kwargs: Only used if a string was provided as signal. Any extra arguments to pass when instantiate the signal.
-        :return:
         """
         if isinstance(signal, string_types):
             try:

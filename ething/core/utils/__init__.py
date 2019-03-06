@@ -85,7 +85,6 @@ def dict_merge(dct, merge_dct):
     ``dct``.
     :param dct: dict onto which the merge is executed
     :param merge_dct: dct merged into dct
-    :return: None
     """
     for k in merge_dct:
         if (k in dct and isinstance(dct[k], dict)

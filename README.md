@@ -14,12 +14,7 @@ This project was developped on a Raspberry Pi but should work on any computer wi
 ## Overview
 
 
-#### Access your data anywhere
-
-A web interface is provided to browse, view and edit your data, to manage and communicate with your devices at `http://localhost:8000`..
-
-
-#### Hardware
+### Hardware
 
 Compatible devices/protocols :
 
@@ -34,34 +29,23 @@ Compatible devices/protocols :
 - SSH
 - [Zigate](//zigate.fr) (coming soon...)
 
-
-#### Node-RED
-
-Compatible with [Node-RED](//nodered.org). 
-See [ething-node-red repository](//github.com/e-thing/ething-node-red).
-
-#### Flow editor
+### Flow editor
 
 Create flow to execute custom tasks when an event occurs and under certains conditions.
 
 
-#### APIs
+### Node-RED
 
-Many APIs are provided to communicate with the e-Thing server :
-
-- [HTTP API](https://github.com/e-thing/ething/blob/master/doc/http_api.md)
-- [Javascript API](https://github.com/e-thing/ething-js)
-
-Use these APIs to create your own device !
+Compatible with [Node-RED](//nodered.org). 
+See [ething-node-red repository](//github.com/e-thing/ething-node-red).
 
 
-## Running Ething
 
-### Requirements
+## Requirements
 
- - Python 2.7 or >= 3.4
+ - Python >= 3.4 (Python 2.7 should also work)
 
-### Installation
+## Installation
 
 ```bash
 git clone https://github.com/e-thing/ething
@@ -70,7 +54,7 @@ python setup.py install
 ```
 
 
-### Launch
+## Run
 
 ```bash
 ething [--daemon]
@@ -78,6 +62,19 @@ ething [--daemon]
 
 The --daemon argument will start the process as a daemon.
 
-The web interface is available at `http://localhost:8000`. The default login is `ething` and the default password is `admin`.
 The log file and the database are stored in `~/.ething` (on windows: `C:\Users\<username>\.ething`).
 
+
+## Web interface
+
+Access your data anywhere. A web interface is provided to browse, view and edit your data, to manage and communicate with your devices.
+
+The web interface is available at `http://localhost:8000`. The default login is `ething` and the default password is `admin`.
+
+To change the port:
+
+```bash
+ething --server-port=4000
+```
+
+To change the login and password, go under the settings page of the web interface.

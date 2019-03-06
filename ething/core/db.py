@@ -59,130 +59,130 @@ class Dummy_Driver(Driver_Base):
 
 class Db(object):
     """
-    ```
-    db = Db(Dummy_Driver())
+    Example::
+
+        db = Db(Dummy_Driver())
 
 
-    ## Table manipulation
+        ## Table manipulation
 
-    # the table will be automatically created if it does not exist.
-    table = db['my_table'] # returns a Table instance
+        # the table will be automatically created if it does not exist.
+        table = db['my_table'] # returns a Table instance
 
-    # insert a new document
-    table.insert({
-        'id': 45, # mandatory, must be unique, can either be a string or a number
-        'foo': 'bar'
-    })
+        # insert a new document
+        table.insert({
+            'id': 45, # mandatory, must be unique, can either be a string or a number
+            'foo': 'bar'
+        })
 
-    # check if a document exists
-    45 in table
+        # check if a document exists
+        45 in table
 
-    # return a document by its id
-    table[45]
+        # return a document by its id
+        table[45]
 
-    # update a document
-    table[45] = {
-        'foo': 'BAR'
-    }
+        # update a document
+        table[45] = {
+            'foo': 'BAR'
+        }
 
-    # or
-    table.update({
-        'id': 45,
-        'foo': 'BAR'
-    })
+        # or
+        table.update({
+            'id': 45,
+            'foo': 'BAR'
+        })
 
-    # table length
-    table.length # == 1
+        # table length
+        table.length # == 1
 
-    # select documents
-    table.select(sort='-foo', filter=lambda d: 'foo' in d)
+        # select documents
+        table.select(sort='-foo', filter=lambda d: 'foo' in d)
 
-    # delete a document by its id
-    del table[45]
+        # delete a document by its id
+        del table[45]
 
-    # clear the table
-    table.clear()
-
-
-    ## Store
-
-    # use the db.store instance for saving and retrieving data from a key-value store.
-
-    store = db.store
-
-    # add a new entry or update an existing one
-    store['foo'] = 'bar'
-
-    # check if an entry exists
-    'foo' in store
-
-    # delete an entry
-    del store['foo']
-
-    # loop over all entries
-    for key in store:
-        print(key, store[key]
+        # clear the table
+        table.clear()
 
 
-    ## File system
+        ## Store
 
-    # use the db.fs instance for storing and retrieving files
+        # use the db.store instance for saving and retrieving data from a key-value store.
 
-    fs = db.fs
+        store = db.store
 
-    # create a new file
-    file = fs.create('foo.txt') # return a File instance
+        # add a new entry or update an existing one
+        store['foo'] = 'bar'
 
-    # some usefull attributes
-    file.size # == 0
-    file.filename # == 'foo.txt'
+        # check if an entry exists
+        'foo' in store
 
-    # write some binary data
-    file.write(b'hello world')
+        # delete an entry
+        del store['foo']
 
-    # read data
-    file.read() # return as binary string
-
-    # remove the file
-    fs.remove(file)
-
-    # list all files
-    fs.list() # return a list of File
-
-    # iteratate over files
-    for file in fs:
-        print(file.filename)
+        # loop over all entries
+        for key in store:
+            print(key, store[key]
 
 
-    ## Object system
+        ## File system
 
-    # use the db.os instance for storing and retrieving entities (see reg.py).
+        # use the db.fs instance for storing and retrieving files
 
-    # first define a new entity class
-    @attr('name', type="string") # register some attribute
-    @uid() # register a 'id' attribute with an unique id generated for each instance
-    @db(database=db) # the Foo entities are automatically saved in the db database
-    class Foo:
-        pass
+        fs = db.fs
 
-    # create a new Foo entity
-    foo = db_create(Foo, {
-        'name': 'bar'
-    }) # returns a Foo instance
+        # create a new file
+        file = fs.create('foo.txt') # return a File instance
 
-    # read attributes
-    foo.name # == 'bar'
+        # some usefull attributes
+        file.size # == 0
+        file.filename # == 'foo.txt'
 
-    # modify attributes
-    foo.name = 'BAR' # the modifications are automatically saved in the database
+        # write some binary data
+        file.write(b'hello world')
 
-    # list all Foo entities
-    db_find(Foo) # returns a list of Foo instance
+        # read data
+        file.read() # return as binary string
 
-    # remove an entity
-    remove(foo)
+        # remove the file
+        fs.remove(file)
 
-    ```
+        # list all files
+        fs.list() # return a list of File
+
+        # iteratate over files
+        for file in fs:
+            print(file.filename)
+
+
+        ## Object system
+
+        # use the db.os instance for storing and retrieving entities (see reg.py).
+
+        # first define a new entity class
+        @attr('name', type="string") # register some attribute
+        @uid() # register a 'id' attribute with an unique id generated for each instance
+        @db(database=db) # the Foo entities are automatically saved in the db database
+        class Foo:
+            pass
+
+        # create a new Foo entity
+        foo = db_create(Foo, {
+            'name': 'bar'
+        }) # returns a Foo instance
+
+        # read attributes
+        foo.name # == 'bar'
+
+        # modify attributes
+        foo.name = 'BAR' # the modifications are automatically saved in the database
+
+        # list all Foo entities
+        db_find(Foo) # returns a list of Foo instance
+
+        # remove an entity
+        remove(foo)
+
     """
     def __init__(self, driver, auto_commit=False, cache_delay=3600, auto_connect=True):
         self._driver = driver

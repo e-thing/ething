@@ -484,11 +484,28 @@ class Attribute (RegItemBase):
     
     def __init__(self, name, cls=None, props=None):
       super(Attribute, self).__init__(name, props)
-      self._cls = cls
+      self.cls = cls
 
     @property
     def cls (self):
-      return self._cls
+      return getattr(self, '_cls', None)
+
+    @cls.setter
+    def cls(self, value):
+        if value is None:
+            return
+
+        if hasattr(self, '_cls'):
+            raise Exception('cls attribute already set')
+        self._cls = value
+        # add the attribute to the class docstring
+        if self.get('mode') != PRIVATE:
+            docstr = "\n\n.. attribute:: %s\n" % self.name
+            description = self.get('description')
+            if description:
+                docstr += "\n    %s\n" % description
+            value.__doc__ = (value.__doc__ or '') + docstr
+
     
     def __get_raw__(self, obj, objtype, context=None):
       if obj is None:
@@ -628,6 +645,7 @@ class ComputedAttr(Attribute):
     if props is None:
       props = {}
     props.setdefault('mode', READ_ONLY)
+    props.setdefault('description', func.__doc__)
     super(ComputedAttr, self).__init__(name, cls, props)
     self._func = func
   
@@ -1140,7 +1158,7 @@ class MetaReg(ABCMeta):
           member = dct.get(name)
           if isinstance(member, ComputedAttr):
             if member.cls is None:
-              member._cls = cls
+              member.cls = cls
 
       # signals:
       extended_signals = []

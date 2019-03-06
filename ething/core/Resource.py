@@ -116,25 +116,28 @@ class RDict(Dict):
 class Resource(Entity):
     """
     The Resource class is the base class of any "EThing object".
+
     It can be a Device, a File, a Table ...
 
+    To register a new Resource, simply override the Resource class ::
 
-    # to register a new Resource, simply override the Resource class :
+        # use the @attr decorator to declare some specific attributes.
+        @attr('foo', type=String(allow_empty=False), default='bar', description="foo attribute")
+        class Foo(Resource):
+            pass
 
-    @attr('foo', type=String(allow_empty=False), default='bar', description="foo attribute") # use the `attr` decorator to declare some specific attributes.
-    class Foo(Resource):
-        pass
+
+    To instanciate a new Foo resource::
+
+        core.create(Foo, {
+            'name': 'john',
+            'foo': 'BAR' # you can override the default here
+        }) # returns a new Foo instance
 
 
-    # to instanciate a new Foo resource:
-    core.create(Foo, {
-        'name': 'john',
-        'foo': 'BAR' # you can override the default here
-    }) # returns a new Foo instance
+    or you could also write it ::
 
-    Note: you could also write it :
-    core.create('resources/foo", {...})
-
+        core.create('resources/foo", {...})
 
     """
 
@@ -186,8 +189,9 @@ class Resource(Entity):
 
     def isTypeof(self, typename):
         """
-        returns True if this instance derive from `typename`
-        :param typename: a Resource class, a Resource instance  or a type (eg: 'resources/Device')
+        returns True if this instance derive from ``typename``
+
+        :param typename: a :class:`Resource` class, a :class:`Resource` instance  or a type (eg: 'resources/Device')
         :return: boolean
         """
         if isinstance(typename, Resource):
@@ -200,29 +204,28 @@ class Resource(Entity):
         """
         Dispatch a signal emitted by this resource.
 
-        Note: be sure that the signal was previously binded to the current class using the `@throw` decorator:
-        ```
-        class MySignal(Signal):
-            pass
+        Be sure that the signal was previously binded to the current class using the ``@throw`` decorator::
 
-        @throw(Signal)
-        class Foo(Resource):
-            def bar(self):
-            self.dispatchSignal(MySignal())
-        ```
+            class MySignal(Signal):
+                pass
+
+            @throw(Signal)
+            class Foo(Resource):
+                def bar(self):
+                self.dispatchSignal(MySignal())
 
         :param signal: Either a signal instance or a string representing a signal type.
         :param args: Only used if a string was provided as signal. Any extra arguments to pass when instantiate the signal.
         :param kwargs: Only used if a string was provided as signal. Any extra arguments to pass when instantiate the signal.
-        :return:
         """
         self.core.dispatchSignal(signal, *args, **kwargs)
 
     def children(self, filter=None):
         """
-        List all the children of this resource. Relationship is done through the `createdBy` attribute.
+        List all the children of this resource. Relationship is done through the :class:`Resource.createdBy` attribute.
+
         :param filter: a callable to filter the returned children set
-        :return:
+        :return: a list of :class:`Resource`
         """
         def _filter (r):
             if r.createdBy == self:
@@ -236,8 +239,8 @@ class Resource(Entity):
     def remove(self, removeChildren=False):
         """
         Remove this instance.
+
         :param removeChildren: If True, remove also all the children. Default to False.
-        :return:
         """
         children = self.children()
 
@@ -320,11 +323,12 @@ class Resource(Entity):
     def store(self, table_name, data, name = None, table_length = 5000):
         """
         Store data in a table that is linked to this resource.
+
         :param table_name: the table name
         :param data: the data to store (dict, string, number, boolean)
         :param name: the name of the column (not used if the data is a dict)
         :param table_length: max length of the table. Default to 5000.
-        :return: Table instance.
+        :return: :class:`ething.core.Table.Table` instance.
         """
         try:
             table = self.core.findOne(
@@ -356,8 +360,9 @@ class Resource(Entity):
     def match(self, expression):
         """
         return True if the current resource matches the given expression
+
         :param expression: a ObjectPath expression
-        :return:
+        :return: boolean
         """
         return bool(evaluate(expression, toJson(self)))
 
@@ -403,4 +408,5 @@ class Resource(Entity):
         # stop & destroy any processes binded to this resource
         for p in self.core.process_manager.find(parent=self):
             p.destroy(timeout=2)
+
 

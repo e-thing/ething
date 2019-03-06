@@ -18,6 +18,30 @@ def generate_plugin_name(suffix):
 @abstract
 @namespace('plugins')
 class Plugin(Entity):
+    """
+    To create a new plugin, just override this class.
+
+    Example::
+
+        @attr('some_option')
+        class MyPlugin(Plugin):
+
+            def setup(self):
+                # access the option:
+                self.some_option
+
+                # access the core instance
+                self.core
+
+
+        # bind the plugin to a specific core instance :
+        core.use(MyPlugin)
+
+        # or register it globally :
+        register_plugin(MyPlugin)
+
+    """
+
     _REGISTER_ = False
 
     # if this plugin come from a package, this attribute will contain his name
@@ -31,6 +55,15 @@ class Plugin(Entity):
         return getattr(cls, 'PACKAGE', {}).get('name', cls.__name__)
 
     def __init__(self, core):
+        """
+
+        .. attribute:: core
+
+            link to the core instance.
+
+            :type: :class:`ething.core.Core`
+
+        """
         # get the config from the core db
         config = core.db.store.get('config.%s' % self.name, None)
 
@@ -50,10 +83,12 @@ class Plugin(Entity):
 
     @property
     def name(self):
+        """the name of this plugin"""
         return self.get_name()
 
     @property
     def log(self):
+        """the logger of this plugin. Every plugin has his own logger."""
         return self._log
 
     @classmethod
@@ -77,21 +112,45 @@ class Plugin(Entity):
         return str(self)
 
     def on_config_change(self, dirty_attributes):
+        """
+        Is called each time an attribute changed.
+
+        :param dirty_attributes: The names of the attributes that changed.
+        """
         pass
 
     def load(self, **options):
+        """
+        Is called right after this plugin was instanciated.
+
+        Extra options might be passed this way::
+
+            core.use(MyPlugin, foo='bar')
+        """
         pass
 
     def setup(self):
+        """
+        Is called once the core instance is initialized (ie by calling core.init() or core.start() )
+        """
         pass
 
     def start(self):
+        """
+        Is called once the core has been started.
+        """
         pass
 
     def stop(self):
+        """
+        Is called once the core has been stopped.
+        """
         pass
 
     def unload(self):
+        """
+        Is called once the core has been destroyed. Used to free up the memory.
+        """
         pass
 
 
@@ -243,6 +302,11 @@ _registered_plugins_cls = set()
 
 
 def register_plugin(something):
+    """
+    Register the given plugin globally (ie: will be available in any :class:`ething.core.Core` instance).
+
+    :param something: a plugin, module or install function.
+    """
     plugin_cls = search_plugin_cls(something)
     _registered_plugins_cls.add(plugin_cls)
 

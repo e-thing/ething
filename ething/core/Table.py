@@ -61,9 +61,22 @@ class AppendData(ResourceNode):
 @throw(TableDataAdded)
 @attr('maxLength', type=Nullable(Integer(min=1)), default=5000, description="The maximum of records allowed in this table. When this number is reached, the oldest records will be removed to insert the new ones (first in, first out). Set it to null or 0 to disable this feature.")
 @attr('length', default=0, mode=READ_ONLY, description="The number of records in the table")
-@attr('keys', type=Dict(), default={}, mode=READ_ONLY, description="A key/value object where the keys correspond to the fields available in this table, and the corresponding value is the number of rows where the field is set. __The default keys ('id' and 'date' are not listed)__")
+@attr('keys', type=Dict(), default={}, mode=READ_ONLY, description="A key/value object where the keys correspond to the fields available in this table, and the corresponding value is the number of rows where the field is set. The default keys ('id' and 'date' are not listed)")
 @attr('contentModifiedDate', type=TzDate(), default=lambda _: utcnow(), mode=READ_ONLY, description="Last time the content of this table was modified.")
 class Table(Resource):
+    """
+    The Table resource is used to store time series.
+
+    Example::
+
+        t = core.create('resources/Table', {
+            'name': 'foo'
+        })
+
+        t.insert({
+            'foo': 'bar'
+        })
+    """
 
     FIELD_VALID_CHAR = 'a-zA-Z0-9_\-'
     VALIDATE_FIELD = '^['+FIELD_VALID_CHAR+']{1,64}$'
@@ -75,6 +88,7 @@ class Table(Resource):
 
     TIMESTAMP = 0
     TIMESTAMP_MS = 1
+    ISO = 2
 
     # return an object
     def docSerialize(self, doc, date_format=None):
@@ -85,10 +99,12 @@ class Table(Resource):
                 doc['date'] = int(time.mktime(dt.timetuple()))
             elif date_format == Table.TIMESTAMP_MS:
                 doc['date'] = int(time.mktime(dt.timetuple())) * 1000
-            else:
+            elif date_format == Table.ISO:
                 if dt.tzinfo is None:
                     dt = dt.replace(tzinfo=pytz.utc)
                 doc['date'] = dt.astimezone(self.core.local_tz).isoformat()
+            else:
+                pass
 
         return doc
 
@@ -109,6 +125,9 @@ class Table(Resource):
         super(Table, self).remove(removeChildren)
 
     def clear(self):
+        """
+        Clear all the data.
+        """
         with self:
             # remove all the data from this table
             self.table.clear()
@@ -185,9 +204,13 @@ class Table(Resource):
         with self:
             self._update_meta(reset = True)
 
-
-    # return the number of document removed
     def remove_rows(self, row_ids):
+        """
+        Remove multiple rows.
+
+        :param row_ids: an array or row id
+        :return: the number of document removed
+        """
         with self:
             removed_rows = []
             for row_id in row_ids:
@@ -198,6 +221,12 @@ class Table(Resource):
             return len(removed_rows)
 
     def remove_row(self, row_id):
+        """
+        Remove a single row.
+
+        :param row_id: a row id
+        :return: True if the row has been removed
+        """
         return self.remove_rows([row_id]) > 0
 
     def sanitizeData(self, dataArray, invalidFields=INVALID_FIELD_RENAME, skipError=True):
@@ -292,6 +321,12 @@ class Table(Resource):
         return length
 
     def insert(self, data, invalidFields=INVALID_FIELD_RENAME):
+        """
+        Insert single row.
+
+        :param data: row's data.
+        :return: the inserted row. Or False if an error occurs.
+        """
         if data:
             with self:
 
@@ -348,6 +383,12 @@ class Table(Resource):
         return True
 
     def getRow(self, id):
+        """
+        Fetch a single row.
+
+        :param id: row's id
+        :return: a row or False if the row was not found
+        """
         return self.docSerialize(self.table[id])
 
     def replaceRowById(self, row_id, data, invalidFields=INVALID_FIELD_RENAME):
@@ -390,25 +431,28 @@ class Table(Resource):
         return False
 
     def select(self, start=0, length=None, fields=None, sort=None, query=None, date_format=None):
-        # If start is non-negative, the returned selection will start at the start'th position in the table, counting from zero.
-        # If start is negative, the returned selection will start at the start'th position from the end of the table.
-        # If length is given and is positive, the selection returned will contain at most length lines beginning from start.
-        # If length is omitted, the selection starting from start until the end of the table will be returned.
-        # length >= 0
+        """
+        Return rows.
+
+        :param start: If start is non-negative, the returned selection will start at the start'th position in the table, counting from zero. If start is negative, the returned selection will start at the start'th position from the end of the table.
+        :param length: If length is given and is positive, the selection returned will contain at most length lines beginning from start. If length is omitted, the selection starting from start until the end of the table will be returned.
+        :param fields: Array of string. Only those fields will be returned.
+        :param sort: Either a string (prepended by '-' if you want the sort to be in descending order) or a tupple (<field>, ascending: True|False). eg: ``('date', True)`` or '-date'.
+        :param query: An ObjectPath query filter.
+        :param date_format: "timestamp" or "timestamp_ms" or "rfc3339" or None(default). The format of the date field.
+        :return: Array of row
+        """
         if sort is None:
             # always sort by date
-            sort = [('date', True)]
+            sort = ('date', True)
 
         if isinstance(sort, string_types):
-            parts = sort.split(',')
-            sort = []
-            for p in parts:
-                m = re.search('^([+-]?)(.+)$', p)
-                if m is not None:
-                    sortField = m.group(2)
-                    sortAsc = bool(m.group(1) != '-')
-                    sort.append((sortField, sortAsc))
-            if not sort:
+            m = re.search('^([+-]?)(.+)$', sort)
+            if m is not None:
+                sortField = m.group(2)
+                sortAsc = bool(m.group(1) != '-')
+                sort = (sortField, sortAsc)
+            else:
                 sort = None
 
         # define the start point and the length of the returning set
@@ -421,12 +465,17 @@ class Table(Resource):
 
         if isinstance(date_format, string_types):
             date_format = date_format.lower()
-            if date_format == "timestamp":
-                date_format = Table.TIMESTAMP
-            elif date_format == "timestamp_ms":
-                date_format = Table.TIMESTAMP_MS
-            else:
-                date_format = None
+
+        if date_format == "timestamp":
+            date_format = Table.TIMESTAMP
+        elif date_format == "timestamp_ms":
+            date_format = Table.TIMESTAMP_MS
+        elif date_format == "rfc3339":
+            date_format = Table.ISO
+        elif date_format is None:
+            pass
+        else:
+            raise Exception('invalid date_format "%s"' % date_format)
 
         # retrieve all the data
         rows = self.table.select()
@@ -439,8 +488,8 @@ class Table(Resource):
             rows = [row for row in rows if _filter(row)]
 
         if sort:
-            sort_attr = sort[0][0]
-            asc = sort[0][1]
+            sort_attr = sort[0]
+            asc = sort[1] if len(sort)>1 else True
             rows = object_sort(rows, key=lambda doc: doc.get(sort_attr, None), reverse=not asc)
 
         if start or length:

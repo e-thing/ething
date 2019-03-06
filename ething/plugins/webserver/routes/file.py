@@ -87,10 +87,7 @@ def install(core, app, auth, **kwargs):
 
             content = request.data
 
-            if args['append']:
-                r.append(content)
-            else:
-                r.write(content)
+            r.write(content, append=bool(args['append']))
 
             return app.jsonify(r)
 

@@ -196,14 +196,16 @@ class Descriptor(OneOf):
 
 
 @namespace('nodes')
-@attr('y', type=Number(), default=0)
-@attr('x', type=Number(), default=0)
-@attr('name', type=String(allow_empty=False))
-@attr('color', type=Color(), default='#eeeeee')
+@attr('y', type=Number(), default=0, description='y component of the node position')
+@attr('x', type=Number(), default=0, description='x component of the node position')
+@attr('name', type=String(allow_empty=False), description='the name of the node')
+@attr('color', type=Color(), default='#eeeeee', description='the color of the node')
 @discriminate(key='type')
-@attr('id', mode=READ_ONLY, type=String(allow_empty=False))
+@attr('id', mode=READ_ONLY, type=String(allow_empty=False), description='the id of the node')
 class Node(Entity, NodeBase):
-
+    """
+    The base element of a flow.
+    """
     INPUTS = None
     OUTPUTS = None
 
@@ -225,8 +227,11 @@ class Node(Entity, NodeBase):
         return schema
 
 
-@attr('resource', type=ResourceType())
+@attr('resource', type=ResourceType(), description='the resource bind to this node')
 class ResourceNode(Node):
+    """
+    A node bind to a :class:`ething.core.Resource.Resource` instance.
+    """
     pass
 
 
@@ -280,12 +285,17 @@ connection_type = Dict(
 @attr('nodes', type=Array(item_type=Node), default=[], description="The list of nodes.")
 @attr('connections', type=Array(item_type=connection_type), default=[], description="A list of connections")
 class Flow(Resource, FlowBase):
-
+    """
+    The Flow resource represent workflow composed of nodes linked together.
+    """
     def __init__(self, value=None, context=None):
         Resource.__init__(self, value, context)
         FlowBase.__init__(self, logger=self.log)
 
     def deploy(self):
+        """
+        Deploy the flow.
+        """
         self._processes["flow.%s" % self.id].restart()
 
     def __process__(self):
@@ -294,6 +304,12 @@ class Flow(Resource, FlowBase):
         return p
 
     def inject(self, node, data=None):
+        """
+        Inject data into the flow.
+
+        :param node: a :class:`Node` instance or a node id
+        :param data: The optional data to inject
+        """
         if isinstance(node, string_types):
             node_id = node
             node = self.get_node(node_id)

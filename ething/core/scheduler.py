@@ -267,6 +267,7 @@ class Scheduler(object):
     def tick(self, callback=None, args=(), kwargs=None, **params):
         """
         Run a callable every tick (ie: each time process() is called).
+
         :param callback: If not provided, act as a decorator.
         :param args: args is the argument tuple for the callback invocation. Defaults to ().
         :param kwargs: kwargs is a dictionary of keyword arguments for the callback invocation. Defaults to {}.
@@ -284,6 +285,7 @@ class Scheduler(object):
     def setInterval(self, interval, callback=None, start_in_sec=0, args=(), kwargs=None, **params):
         """
         Run a callable at regular interval.
+
         :param interval: The amount of seconds between 2 successive calls.
         :param callback: If not provided, act as a decorator.
         :param start_in_sec: Delay the first call. Default to 0.
@@ -303,6 +305,7 @@ class Scheduler(object):
     def delay(self, delay, callback=None, args=(), kwargs=None, **params):
         """
         Run a callable once after a certain delay.
+
         :param delay: The delay in seconds
         :param callback: If not provided, act as a decorator.
         :param args: args is the argument tuple for the callback invocation. Defaults to ().
@@ -321,6 +324,7 @@ class Scheduler(object):
     def at(self, hour='*', min=0, callback=None, args=(), kwargs=None, **params):
         """
         Run a callable at a certain time of a the day.
+
         :param hour: The hour or '*' for every hour. Default to '*'.
         :param min: The minute or '*' for every minute. Default to 0.
         :param callback: If not provided, act as a decorator.
@@ -346,31 +350,29 @@ class Scheduler(object):
         """
         Bind an instance.
 
-        Example:
-        ```
-        from ething.core.scheduler import *
+        Example::
 
-        class Foo:
+            from ething.core.scheduler import *
 
-            @setInterval(interval=30)
-            def task1(self):
-                # this method will be invoked every 30 seconds
-                pass
+            class Foo:
 
-            @at(12, 30)
-            def task2(self):
-                # this method will be invoked every day at 12h30.
-                pass
+                @setInterval(interval=30)
+                def task1(self):
+                    # this method will be invoked every 30 seconds
+                    pass
+
+                @at(12, 30)
+                def task2(self):
+                    # this method will be invoked every day at 12h30.
+                    pass
 
 
-        foo = Foo()
+            foo = Foo()
 
-        scheduler = Scheduler()
-        scheduler.bind_instance(foo)
-        ```
+            scheduler = Scheduler()
+            scheduler.bind_instance(foo)
 
         :param instance: an instance with some methods decorated with setInterval, at, delay or tick
-        :return:
         """
         for name, func in inspect.getmembers(instance, inspect.ismethod):
             if hasattr(func, '_scheduler'):
@@ -384,8 +386,8 @@ class Scheduler(object):
     def unbind(self, task):
         """
         Unregister a task, callback or instance.
+
         :param task:
-        :return:
         """
         with self.r_lock:
             if isinstance(task, Task):
@@ -417,7 +419,6 @@ class Scheduler(object):
     def clear(self):
         """
         Remove all registered tasks.
-        :return:
         """
         with self.r_lock:
             self.tasks.clear()

@@ -33,9 +33,23 @@ class FileDataModified(ResourceSignal):
 @attr('mime', default='text/plain', mode=READ_ONLY, description="The MIME type of the file (automatically detected from the content or file extension).")
 @attr('contentModifiedDate', type=TzDate(), default=lambda _: utcnow(), mode=READ_ONLY, description="Last time the content of this file was modified (formatted RFC 3339 timestamp).")
 class File(Resource):
+    """
+    The File resource is used to store data.
+
+    Example::
+
+        f = core.create('resources/File', {
+            'name': 'foo.txt'
+        })
+
+        f.write('bar', encoding='utf8')
+
+        f.read(encoding='utf8') # = 'bar'
+    """
 
     @attr('hasThumbnail')
     def hasThumbnail(self):
+        """Return True if this file has a thumbnail."""
         return bool(self.thumb)
 
     def remove(self, removeChildren=False):
@@ -56,6 +70,12 @@ class File(Resource):
             self._updateMeta(File.META_MIME)
 
     def read(self, encoding=None):
+        """
+        Return the content of this file.
+
+        :param encoding: If encoding is set, the binary content will be decoded. Else (default), a binary string will be returned.
+        :return: the content of the file.
+        """
         if self.content is not None:
             contents = self.core.db.fs[self.content].read()
         else:
@@ -69,13 +89,22 @@ class File(Resource):
 
         return contents
 
-    def write(self, bytes, encoding=None):
+    def write(self, bytes, encoding=None, append=False):
+        """
+        Write a content into the file.
 
+        :param bytes: The content. Either a binary string or a text string (Thus the encoding parameter is mandatory).
+        :param encoding: The encoding of the content. Mandatory if the bytes parameter is not a binary string.
+        :param append: If True, the content will be appended.
+        """
         with self:
             if isinstance(bytes, text_type):
                 if encoding is None:
                     raise Exception('No encoding specified')
                 bytes = bytes.encode(encoding)
+
+            if append:
+                bytes = self.read() + bytes
 
             # remove that file if it exists
             if self.content is not None:
@@ -83,10 +112,9 @@ class File(Resource):
             self.content = None
             self.size = 0
 
-            if bytes:
-                f = self.core.db.fs.create('File/%s/content' % self.id, bytes, parent=self.id)
-                self.content = f.id
-                self.size = f.size
+            f = self.core.db.fs.create('File/%s/content' % self.id, bytes, parent=self.id)
+            self.content = f.id
+            self.size = f.size
 
             self.contentModifiedDate = utcnow()
 
@@ -94,18 +122,6 @@ class File(Resource):
 
         # generate an event
         self.dispatchSignal(FileDataModified(self))
-
-        return True
-
-    def append(self, bytes, encoding=None):
-        if isinstance(bytes, text_type):
-            if encoding is None:
-                raise Exception('No encoding specified')
-            bytes = bytes.encode(encoding)
-
-        d = self.read()
-        d += bytes
-        return self.write(d)
 
     # update meta information : mimeType and thumbnail
     META_MIME = 1
