@@ -16,7 +16,7 @@ here = os.path.abspath(os.path.dirname(__file__))
 with open(os.path.join(here, 'README.md'), encoding='utf-8') as f:
     long_description = f.read()
 
-requires = [
+install_requires = [
     # --core
     "future",
     "python-dateutil",
@@ -62,12 +62,23 @@ requires = [
 ]
 
 if os.name != "nt":
-    requires.append("bluepy")
+    install_requires.append("bluepy")
+
+extras_require = {
+    "docs": [
+        'sphinx',
+        'm2r',
+        "apispec==0.38.0",  # http api
+    ],
+    "dev": [
+        "pytest",  # unit test
+    ]
+}
 
 setup(
     name=NAME,
 
-    version='0.1.2',
+    version='0.1.3',
 
     description='A home automation project',
 
@@ -97,16 +108,9 @@ setup(
 
     include_package_data=True,
 
-    install_requires=requires,
+    install_requires=install_requires,
 
-    extras_require={
-        "dev": [
-            "pytest",  # unit test
-            "apispec==0.38.0",  # http api
-            "Sphinx", # documentation generator
-            "m2r", # documentation generator
-        ]
-    },
+    extras_require=extras_require,
 
     entry_points={
         'console_scripts': [

@@ -1,6 +1,6 @@
 
 e-Thing
-=====
+=======
 
 
 ![e-Thing diagram](https://cloud.githubusercontent.com/assets/17341216/17180858/1fce5e54-541e-11e6-8e0a-09cc853e4e93.png)
