@@ -9,6 +9,8 @@ Access remotely to your data and control your devices from anywhere.
 
 This project was developped on a Raspberry Pi but should work on any computer with Python installed.
 
+The full documentation can be found at http://ething.readthedocs.io .
+
 
 ## Overview
 
