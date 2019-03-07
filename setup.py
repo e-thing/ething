@@ -40,7 +40,7 @@ install_requires = [
     #"unqlite",
 
     # --webserver
-    "Flask",
+    "Flask>=1.0.2",
     "flask-cors",
     "flask-compress",
     "flask_socketio",
