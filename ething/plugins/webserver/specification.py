@@ -109,7 +109,7 @@ Scopes let you specify exactly what type of data access an API key needs.
 
     for scope_name in Scope.list:
         desc = Scope.list[scope_name].get('description', '')
-        s += '|%16s|%70s|\n' % (scope_name, desc)
+        s += '|%16s|%70s|\n' % ("`%s`" % scope_name, desc)
 
     return s
 
@@ -338,6 +338,7 @@ def generate(app, specification='stdout', documentation=None):
     env = jinja2.Environment(
         extensions=["jinja2.ext.do"], trim_blocks=True, lstrip_blocks=True)
     env.filters['get_headers'] = get_headers
+    env.filters['make_id'] = make_id
     template = env.from_string(
         open(template_file, 'r', encoding="utf8").read())
 
@@ -365,3 +366,12 @@ def get_headers(input):
 
     return headers
 
+
+def make_id(str):
+    """
+    Convert `string` into an identifier and return it.
+    """
+    str = str.lower()
+    str = re.sub('[^-a-zA-Z]+', '-', str)
+    str = re.sub('^-|-$', '', str)
+    return str

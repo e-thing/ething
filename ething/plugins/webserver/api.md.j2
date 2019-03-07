@@ -1,3 +1,5 @@
+# {{ swagger_data.info.title }}
+
 {% macro render_schema(schema, indent = 0) %}
   {% if "$ref" in schema %}
 {{ render_ref(schema["$ref"]) }}
@@ -15,10 +17,8 @@
 items: {{ render_schema(schema["items"], indent + 2) }}
       {% endif %}
     {% elif schema["type"] == "object" %}
-*(object)*
-      {% if schema.description %}
-{{ schema.description | indent(indent, True) }}
-      {% endif %}
+*(object)* {% if schema.description %}{{ schema.description | indent(indent, True) }}
+{% endif %}
       {% if "properties" in schema %}
         {% for property, property_data in schema["properties"] | dictsort %}
   - **{{ property }}** {{ render_schema(property_data, indent + 2) }}
@@ -115,11 +115,8 @@ items: {{ render_schema(schema["items"], indent + 2) }}
 
 {% macro render_ref(ref) %}{{ make_ref(ref.replace("#/definitions/", "")) }}{% endmacro %}
 
-{% macro make_ref(ref) %}[{{ref}}](#{{ ref.replace('/','').replace('{','').replace('}','').replace(' ','-').lower() }}){% endmacro %}
+{% macro make_ref(ref) %}[{{ref}}](#{{ ref | make_id }}){% endmacro %}
 
-
-
-# {{ swagger_data.info.title }}
 
 **Version**: {{ swagger_data.info.version }}
 
@@ -131,7 +128,7 @@ items: {{ render_schema(schema["items"], indent + 2) }}
 {% for h in swagger_data.info.description | get_headers %}
 * {{ make_ref(h) }}
 {% endfor %}
-* [Paths](#path)
+* [Paths](#paths)
 {% for path, methods in swagger_data.paths | dictsort %}
   {% for method, method_data in methods | dictsort %}
 {% set endpoint = method | upper + " " + path %}
@@ -245,7 +242,7 @@ items: {{ render_schema(schema["items"], indent + 2) }}
 
   {% if "description" in param %}
 ##### Description:
-{{ param.description | indent(2, True) }}
+{{ param.description }}
   {% endif %}
 
 ##### Data:

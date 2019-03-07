@@ -1,8 +1,6 @@
-
-
 # EThing HTTP API
 
-**Version**: unknown
+**Version**: 0.1.3
 
 ## Table of Contents
 
@@ -14,24 +12,24 @@
 * [Partial response](#partial-response)
 * [Filter resource or table data](#filter-resource-or-table-data)
 * [Scopes](#scopes)
-* [Paths](#path)
-  * [GET /api/devices/{id}/call/{operationId}](#get-apidevicesidcalloperationid)
-  * [POST /api/devices/{id}/call/{operationId}](#post-apidevicesidcalloperationid)
-  * [GET /api/files/{id}](#get-apifilesid)
-  * [PUT /api/files/{id}](#put-apifilesid)
-  * [GET /api/resources](#get-apiresources)
-  * [POST /api/resources](#post-apiresources)
-  * [DELETE /api/resources/{id}](#delete-apiresourcesid)
-  * [GET /api/resources/{id}](#get-apiresourcesid)
-  * [PATCH /api/resources/{id}](#patch-apiresourcesid)
-  * [GET /api/settings](#get-apisettings)
-  * [PATCH /api/settings](#patch-apisettings)
-  * [GET /api/tables/{id}](#get-apitablesid)
-  * [POST /api/tables/{id}](#post-apitablesid)
-  * [PUT /api/tables/{id}](#put-apitablesid)
-  * [POST /api/tables/{id}/remove](#post-apitablesidremove)
-  * [POST /api/tables/{id}/replace](#post-apitablesidreplace)
-  * [GET /api/tables/{id}/statistics](#get-apitablesidstatistics)
+* [Paths](#paths)
+  * [GET /api/devices/{id}/call/{operationId}](#get-api-devices-id-call-operationid)
+  * [POST /api/devices/{id}/call/{operationId}](#post-api-devices-id-call-operationid)
+  * [GET /api/files/{id}](#get-api-files-id)
+  * [PUT /api/files/{id}](#put-api-files-id)
+  * [GET /api/resources](#get-api-resources)
+  * [POST /api/resources](#post-api-resources)
+  * [DELETE /api/resources/{id}](#delete-api-resources-id)
+  * [GET /api/resources/{id}](#get-api-resources-id)
+  * [PATCH /api/resources/{id}](#patch-api-resources-id)
+  * [GET /api/settings](#get-api-settings)
+  * [PATCH /api/settings](#patch-api-settings)
+  * [GET /api/tables/{id}](#get-api-tables-id)
+  * [POST /api/tables/{id}](#post-api-tables-id)
+  * [PUT /api/tables/{id}](#put-api-tables-id)
+  * [POST /api/tables/{id}/remove](#post-api-tables-id-remove)
+  * [POST /api/tables/{id}/replace](#post-api-tables-id-replace)
+  * [GET /api/tables/{id}/statistics](#get-api-tables-id-statistics)
 * [Definitions](#definitions)
   * [Error](#error)
   * [resources](#resources)
@@ -57,7 +55,7 @@ There are different types of resources. A resource can either be :
 
 When the API returns error messages, it does so in JSON format. For example, an error might look like this:
 
-```json
+```js
 {
   "message": "The resource does not exist",
   "code" : 404
@@ -88,7 +86,7 @@ API keys can be generated through the [web interface](http://localhost:8000/#/se
 
 Send the following header below on every request :
 
-```
+```http
 GET /ething/api/resources HTTP/1.1
 Host: localhost:8000
 X-API-KEY: <YOUR_API_KEY>
@@ -152,16 +150,16 @@ Scopes let you specify exactly what type of data access an API key needs.
 
 | Scope          | Description                                                          |
 |----------------|----------------------------------------------------------------------|
-|   resource:read|                                      read the content of any resource|
-|  resource:write|        create resources of any kind or update the resource's metadata|
-|       file:read|                                          read the content of any file|
-|      file:write|                                        modify the content of any file|
-|      table:read|                                         read the content of any table|
-|     table:write|                                       modify the content of any table|
-|  device:execute|                                              execute a device command|
-|   settings:read|                                                     read the settings|
-|  settings:write|                                                   modify the settings|
-|     flow:inject|                                                inject data into flows|
+| `resource:read`|                                      read the content of any resource|
+|`resource:write`|        create resources of any kind or update the resource's metadata|
+|     `file:read`|                                          read the content of any file|
+|    `file:write`|                                        modify the content of any file|
+|    `table:read`|                                         read the content of any table|
+|   `table:write`|                                       modify the content of any table|
+|`device:execute`|                                              execute a device command|
+| `settings:read`|                                                     read the settings|
+|`settings:write`|                                                   modify the settings|
+|   `flow:inject`|                                                inject data into flows|
 
 ## Information
 
@@ -195,10 +193,10 @@ Execute an operation identified by operationId. The parameters can either be pas
 #### Request body:
 
 ##### Description:
-  required parameters for this operation.
+required parameters for this operation.
 
 ##### Data:
-*(object)*
+*(object)* 
 
 #### Responses:
   - 200: The response of the device.
@@ -248,7 +246,7 @@ curl
 #### Request body:
 
 ##### Description:
-  The new content. Could be of any type.
+The new content. Could be of any type.
 
 ##### Data:
 *(string)*
@@ -288,18 +286,18 @@ Creates a new resource.
 
 ##### Description:
 
-  The metadata of the resource to be created.
+The metadata of the resource to be created.
 
-  example:
+example:
 
-  ```json
-  {
-     "type": "resources/SSH",
-     "name": "mydevice",
-     "location": "room 1",
-     "host": "192.168.1.25"
-  }
-  ```
+```json
+{
+   "type": "resources/SSH",
+   "name": "mydevice",
+   "location": "room 1",
+   "host": "192.168.1.25"
+}
+```
 
 ##### Data:
 [Resource](#resource)
@@ -358,7 +356,7 @@ Clear a description :
 #### Request body:
 
 ##### Description:
-  the attributes to modify
+the attributes to modify
 
 ##### Data:
 [Resource](#resource)
@@ -375,7 +373,7 @@ Returns the settings
 #### Responses:
   - 200: The settings
 
-    *(object)*
+    *(object)* 
 
 ### PATCH /api/settings
 
@@ -384,15 +382,15 @@ update your settings.
 #### Request body:
 
 ##### Description:
-  the attributes to modify
+the attributes to modify
 
 ##### Data:
-*(object)*
+*(object)* 
 
 #### Responses:
   - 200: settings successfully updated
 
-    *(object)*
+    *(object)* 
 
 ### GET /api/tables/{id}
 
@@ -430,8 +428,7 @@ curl -H 'X-API-KEY: <YOUR_API_KEY>' http://localhost:8000/api/tables/<TABLE_ID>?
   - 200: The records of this table
 
     *Array*
-    items: *(object)*
-      record's object. Every record has at least the 'id' and 'date' keys.
+    items: *(object)*   record's object. Every record has at least the 'id' and 'date' keys.
       - **date** *(string)*: the create date of this record
       - **id** *(string)*: an unique id to identify a record
 
@@ -448,29 +445,29 @@ Insert a new record in a table
 #### Request body:
 
 ##### Description:
-  The record to be inserted.
+The record to be inserted.
 
-  The data must be sent in a JSON formatted object :
+The data must be sent in a JSON formatted object :
 
-  ```json
-  {
-      "<KEY>":<VALUE>
-  }
-  ```
+```json
+{
+    "<KEY>": "<VALUE>"
+}
+```
 
-  cURL example :
+cURL example :
 
-  ```bash
-  curl
-      -H 'X-API-KEY: <YOUR_API_KEY>'
-      -H "Content-Type: application/json"
-      -X POST
-      -d '{"temperature":15.2, "comment":"outdoor"}'
-      http://localhost:8000/api/tables/<TABLE_ID>
-  ```
+```bash
+curl
+    -H 'X-API-KEY: <YOUR_API_KEY>'
+    -H "Content-Type: application/json"
+    -X POST
+    -d '{"temperature":15.2, "comment":"outdoor"}'
+    http://localhost:8000/api/tables/<TABLE_ID>
+```
 
 ##### Data:
-*(object)*
+*(object)* 
 
 #### Responses:
   - 200: The record was successfully inserted. The table metadata is returned.
@@ -491,39 +488,39 @@ Set the content of a table. The new data will erase the previous one.
 #### Request body:
 
 ##### Description:
-  The content to be inserted as an array of object.
+The content to be inserted as an array of object.
 
-  The data must be sent in a JSON formatted object :
+The data must be sent in a JSON formatted object :
 
-  ```json
-  [{
-      "<KEY>":<VALUE>
-  }]
-  ```
+```json
+[{
+    "<KEY>": "<VALUE>"
+}]
+```
 
-  example:
+example:
 
-  ```json
-  [
-      {
-        "date": "2016-02-06T15:03:07+01:00",
-        "temperature": 12.5,
-        "pressure": 101325
-      },
-      {
-        "date": "2016-02-06T16:03:07+01:00",
-        "temperature": 13.5,
-        "pressure": 101212
-      }
-  ]
-  ```
+```json
+[
+    {
+      "date": "2016-02-06T15:03:07+01:00",
+      "temperature": 12.5,
+      "pressure": 101325
+    },
+    {
+      "date": "2016-02-06T16:03:07+01:00",
+      "temperature": 13.5,
+      "pressure": 101212
+    }
+]
+```
 
-  If the 'date' field is not present, the current date will be set automatically.
-  If an 'id' field is present, it will be automatically be resetted to a new value.
+If the 'date' field is not present, the current date will be set automatically.
+If an 'id' field is present, it will be automatically be resetted to a new value.
 
 ##### Data:
 *Array*
-items: *(object)*
+items: *(object)* 
 
 #### Responses:
   - 200: The content was successfully set. The table metadata is returned.
@@ -576,8 +573,7 @@ Compute statistics of a column (=key)
 #### Responses:
   - 200: The records was successfully updated
 
-    *(object)*
-    The statistics object.
+    *(object)* The statistics object.
 
 ## Definitions
 
@@ -596,33 +592,9 @@ An object describing an error
 
 The base class of any device (Switch, light, sensor, controller, ...).
 
-    To register a new Device, simply override the Device class ::
-
-        # optional, for icons naming convention, see https://quasar-framework.org/components/icons.html
-        @meta(icon='mdi-play', category='foo')
-        # use the `attr` decorator to declare some specific attributes. If history is True, the values are stored in a table. If force_watch is False or not set, only values that differs from the previous one are stored.
-        @attr('sensor_value', type=Number(), default=0, mode=READ_ONLY, history=True, force_watch=True, description="sensor value")
-        class Foo(Device):
-
-            # (optional) bind some method to the core.scheduler
-            @setInterval(30)
-            def read(self):
-                # this method will be called every 30 seconds during all the lifetime of this instance.
-                this.sensor_value = self._read_value_from_the_sensor()
-
-            @method # register this method
-            def do_something(self):
-                pass
-
-    .. note::
-        The registered attributes (using `@attr`) and methods (using `@method`) will be automatically available in the web interface.
-
-    .. note::
-        For generic device (sensor, switch, camera, ...) see the interfaces module which list all generic devices.
-
 ##### INHERITED
 
-[#/resources/Resource](##resourcesresource)
+[#/resources/Resource](#resources-resource)
 
 ##### PROPERTIES
 
@@ -636,27 +608,13 @@ The base class of any device (Switch, light, sensor, controller, ...).
 
 The File resource is used to store data.
 
-    Example::
-
-        f = core.create('resources/File', {
-            'name': 'foo.txt'
-        })
-
-        f.write('bar', encoding='utf8')
-
-        f.read(encoding='utf8') # = 'bar'
-
-.. attribute:: hasThumbnail
-
-    Return True if this file has a thumbnail.
-
 ##### INHERITED
 
-[#/resources/Resource](##resourcesresource)
+[#/resources/Resource](#resources-resource)
 
 ##### PROPERTIES
 
-  - **contentModifiedDate** *(string)* *(default="2019-03-06T17:12:02.817624+01:00")*: Last time the content of this file was modified (formatted RFC 3339 timestamp).
+  - **contentModifiedDate** *(string)* *(default="2019-03-07T17:09:02.139213+01:00")*: Last time the content of this file was modified (formatted RFC 3339 timestamp).
   - **hasThumbnail**: Return True if this file has a thumbnail.
   - **mime** *(default="text/plain")*: The MIME type of the file (automatically detected from the content or file extension).
   - **size** *(default=0)*: The size of this resource in bytes
@@ -667,7 +625,7 @@ The Flow resource represent workflow composed of nodes linked together.
 
 ##### INHERITED
 
-[#/resources/Resource](##resourcesresource)
+[#/resources/Resource](#resources-resource)
 
 ##### PROPERTIES
 
@@ -681,20 +639,20 @@ The Flow resource represent workflow composed of nodes linked together.
     - type: object
 
   - **nodes** *(array)* *(default=[])*: The list of nodes.
-    - [#/nodes/Node](##nodesnode)
+    - [#/nodes/Node](#nodes-node)
 
 #### Resource
 
 ##### PROPERTIES
 
   - **createdBy** *(default=null)*: The id of the resource responsible of the creation of this resource, or null.
-  - **createdDate** *(string)* *(default="2019-03-06T17:12:02.600755+01:00")*: Create time for this resource
+  - **createdDate** *(string)* *(default="2019-03-07T17:09:00.195171+01:00")*: Create time for this resource
   - **data** *(object)* *(default={})*: A collection of arbitrary key-value pairs.
 
   - **description** *(string)* *(default="")*: A description of this resource.
   - **extends**: An array of classes this resource is based on.
-  - **id** *(string)* *(default="0zgB2qB")*: The id of the resource
-  - **modifiedDate** *(string)* *(default="2019-03-06T17:12:02.816627+01:00")*: Last time this resource was modified
+  - **id** *(string)* *(default="MOSzjd0")*: The id of the resource
+  - **modifiedDate** *(string)* *(default="2019-03-07T17:09:02.138213+01:00")*: Last time this resource was modified
   - **name**\* *(string)*: The name of the resource
   - **public** *(default=false)*: False: this resource is not publicly accessible. 'readonly': this resource is accessible for reading by anyone. 'readwrite': this resource is accessible for reading and writing by anyone.
   - **type** *(string)* *(default="resources/Resource")*: The type of the resource
@@ -703,23 +661,13 @@ The Flow resource represent workflow composed of nodes linked together.
 
 The Table resource is used to store time series.
 
-    Example::
-
-        t = core.create('resources/Table', {
-            'name': 'foo'
-        })
-
-        t.insert({
-            'foo': 'bar'
-        })
-
 ##### INHERITED
 
-[#/resources/Resource](##resourcesresource)
+[#/resources/Resource](#resources-resource)
 
 ##### PROPERTIES
 
-  - **contentModifiedDate** *(string)* *(default="2019-03-06T17:12:02.817624+01:00")*: Last time the content of this table was modified.
+  - **contentModifiedDate** *(string)* *(default="2019-03-07T17:09:02.139213+01:00")*: Last time the content of this table was modified.
   - **keys** *(object)* *(default={})*: A key/value object where the keys correspond to the fields available in this table, and the corresponding value is the number of rows where the field is set. The default keys ('id' and 'date' are not listed)
 
   - **length** *(default=0)*: The number of records in the table

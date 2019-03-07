@@ -63,6 +63,32 @@ def getmembers(obj, predicate=None):
     return results
 
 
+def extract_from_docstring(docstr):
+    if not docstr:
+        return
+
+    l = 0
+    l_valid = 0
+    b_only_blank = True
+
+    lines = docstr.splitlines()
+    for line in lines:
+        line = line.strip()
+        if line == '':
+            l_valid = l
+        elif re.search('^\s*[a-zA-Z0-9]', line) and not re.search(':[-a-zA-Z0-9]*:', line):
+            b_only_blank = False
+        else:
+            break
+        l += 1
+    else:
+        l_valid = l
+
+    lines = lines[0:l_valid]
+
+    if lines and not b_only_blank:
+        return "\n".join(lines)
+
 
 #
 # Meta
@@ -645,7 +671,7 @@ class ComputedAttr(Attribute):
     if props is None:
       props = {}
     props.setdefault('mode', READ_ONLY)
-    props.setdefault('description', func.__doc__)
+    props.setdefault('description', extract_from_docstring(func.__doc__))
     super(ComputedAttr, self).__init__(name, cls, props)
     self._func = func
   
@@ -1019,7 +1045,7 @@ class Method(RegItemBase):
           func = getattr(func, '__func__')
 
         name = func.__name__
-        description = func.__doc__ or ''
+        description = extract_from_docstring(func.__doc__) or ''
 
         description = description.strip()
 
@@ -1182,7 +1208,7 @@ class MetaReg(ABCMeta):
       inherited_meta.update({
           'signals': extended_signals,
           'abstract': False,
-          'description': cls.__doc__,
+          'description': extract_from_docstring(cls.__doc__),
           'label': format_label(cls.__name__)
       })
 
@@ -1761,7 +1787,6 @@ def dbg(obj):
     print('---------------data-----------------')
     dbg_data(obj)
     print('------------------------------------')
-
 
 
 

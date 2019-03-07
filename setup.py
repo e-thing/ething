@@ -64,15 +64,19 @@ install_requires = [
 if os.name != "nt":
     install_requires.append("bluepy")
 
+tests_require = [
+    "pytest",  # unit test
+]
+
+docs_require = [
+    'sphinx',
+    'm2r',
+    "apispec==0.38.0",  # http api
+]
+
 extras_require = {
-    "docs": [
-        'sphinx',
-        'm2r',
-        "apispec==0.38.0",  # http api
-    ],
-    "dev": [
-        "pytest",  # unit test
-    ]
+    "docs": docs_require,
+    "tests": tests_require
 }
 
 setup(
@@ -111,6 +115,10 @@ setup(
     install_requires=install_requires,
 
     extras_require=extras_require,
+
+    # tests : cf. https://docs.pytest.org/en/latest/goodpractices.html
+    setup_requires=["pytest-runner"],
+    tests_require=tests_require,
 
     entry_points={
         'console_scripts': [

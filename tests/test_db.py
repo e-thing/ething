@@ -14,7 +14,6 @@ def test_db_store(core):
 
     del store['foo']
     assert 'foo' not in store
-    assert list(store.keys()) == []
 
 
 def test_db_fs(core):

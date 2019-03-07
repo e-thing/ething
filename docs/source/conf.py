@@ -191,3 +191,6 @@ intersphinx_mapping = {'https://docs.python.org/': None}
 autoclass_content = 'both'
 autodoc_member_order = 'bysource'
 
+
+# -- Options for m2r -----------------------------------------------------
+m2r_anonymous_references = True

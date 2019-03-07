@@ -90,7 +90,7 @@ def install(core, app, auth, **kwargs):
 
                 ```json
                 [{
-                    "<KEY>":<VALUE>
+                    "<KEY>": "<VALUE>"
                 }]
                 ```
 
@@ -139,7 +139,7 @@ def install(core, app, auth, **kwargs):
 
                 ```json
                 {
-                    "<KEY>":<VALUE>
+                    "<KEY>": "<VALUE>"
                 }
                 ```
 

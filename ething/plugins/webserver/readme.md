@@ -21,7 +21,7 @@ There are different types of resources. A resource can either be :
 
 When the API returns error messages, it does so in JSON format. For example, an error might look like this:
 
-```json
+```js
 {
   "message": "The resource does not exist",
   "code" : 404
@@ -55,7 +55,7 @@ API keys can be generated through the [web interface](http://localhost:8000/#/se
 
 Send the following header below on every request :
 
-```
+```http
 GET /ething/api/resources HTTP/1.1
 Host: localhost:8000
 X-API-KEY: <YOUR_API_KEY>
