@@ -1,6 +1,17 @@
 e-Thing
 =======
 
+[![Build Status](https://travis-ci.org/e-thing/ething.svg?branch=master)](https://travis-ci.org/e-thing/ething)
+[![Maintenance](https://img.shields.io/badge/Maintained%3F-yes-green.svg)](https://github.com/e-thing/ething/graphs/commit-activity)
+[![made-with-python](https://img.shields.io/badge/Made%20with-Python-1f425f.svg)](https://www.python.org/)
+[![Documentation Status](https://readthedocs.org/projects/ansicolortags/badge/?version=latest)](http://ething.readthedocs.io/)
+
+
+
+
+
+
+
 
 ![e-Thing diagram](https://cloud.githubusercontent.com/assets/17341216/17180858/1fce5e54-541e-11e6-8e0a-09cc853e4e93.png)
 

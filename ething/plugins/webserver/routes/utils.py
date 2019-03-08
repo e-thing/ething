@@ -65,7 +65,7 @@ def install(core, app, auth, **kwargs):
     }
 
     @app.route('/api/utils/read_log')
-    @use_args(read_log_args)
+    @use_args(read_log_args, locations=('query',))
     @auth.required()
     def read_log(args):
         logfilename = None

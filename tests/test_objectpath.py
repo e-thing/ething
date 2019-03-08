@@ -18,6 +18,20 @@ def test_objectpath():
 
     assert res == True
 
+def test_unicode():
+
+    obj = {
+        'name': 'rémi'
+    }
+
+    expr = u"$.name is 'rémi'"
+
+    tree = objectpath.Tree(obj)
+
+    res = tree.execute(expr)
+
+    assert res == True
+
 
 
 

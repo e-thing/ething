@@ -41,6 +41,7 @@ class RFLinkGenericSensor(RFLinkNode):
             '_REGISTER_': False
         })
 
+    @classmethod
     def __instantiate__(cls, data, context):
         dyn_cls = cls.create_dynamic_class(data.get('interfaces', []))
         return dyn_cls(data, context)

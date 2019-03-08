@@ -39,9 +39,9 @@ def test_table_create(core):
 
 def test_table_unicode(core):
     data = [{
-        "name": u"jean-claude"
+        "name": "jean-claude"
     }, {
-        "name": u"rémi"
+        "name": "rémi"
     }]
 
     f = core.create('resources/Table', {
@@ -62,6 +62,7 @@ def test_table_unicode(core):
 
     assert f.select(start=-1)[0].get("name") == data[-1].get("name")
 
+    assert len(f.select(query=u'$.name is "jean-claude"')) == 1
     assert len(f.select(query=u'$.name is "rémi"')) == 1
 
 

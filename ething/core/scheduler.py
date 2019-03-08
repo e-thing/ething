@@ -421,7 +421,7 @@ class Scheduler(object):
         Remove all registered tasks.
         """
         with self.r_lock:
-            self.tasks.clear()
+            del self.tasks[:]
 
     def execute(self, task):
         task.target(*task.args, **task.kwargs)

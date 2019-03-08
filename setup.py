@@ -66,6 +66,7 @@ if os.name != "nt":
 
 tests_require = [
     "pytest",  # unit test
+    "pytest-cov",
 ]
 
 docs_require = [
@@ -104,6 +105,7 @@ setup(
         'Programming Language :: Python :: 3.4',
         'Programming Language :: Python :: 3.5',
         'Programming Language :: Python :: 3.6',
+        'Programming Language :: Python :: 3.7',
     ],
 
     keywords='home automation ething iot mysensors rflink zigate',

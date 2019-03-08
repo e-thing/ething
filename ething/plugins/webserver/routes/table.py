@@ -28,7 +28,7 @@ def install(core, app, auth, **kwargs):
     }
 
     @app.route('/api/tables/<id>', methods=['GET', 'PUT', 'POST'])
-    @use_multi_args(GET=table_get_args, PUT=(table_put_args, ('query',)), POST=(table_post_args, ('query',)))
+    @use_multi_args(GET=(table_get_args, ('query',)), PUT=(table_put_args, ('query',)), POST=(table_post_args, ('query',)))
     @auth.required(GET='resource:read table:read', PUT='resource:write table:write', POST='resource:write table:write')
     def table(args, id):
         """
@@ -308,7 +308,7 @@ def install(core, app, auth, **kwargs):
 
     @app.route('/api/tables/<id>/statistics')
     @auth.required('resource:read table:read')
-    @use_args(table_statistics_args)
+    @use_args(table_statistics_args, locations=('query',))
     def table_statistics(args, id):
         """
         ---

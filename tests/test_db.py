@@ -151,6 +151,7 @@ def test_db_entity(core):
             self.save_cnt = 0
             self.watch_map = {}
 
+        @classmethod
         def __instantiate__(cls, data, context):
             return cls(data['name'], data['nickname'])
 

@@ -101,8 +101,8 @@ class Flow(object):
             raise Exception('cannot edit flow while running')
         for node in self._nodes:
             node._flow = None
-        self._nodes.clear()
-        self._connections.clear()
+        del self._nodes[:]
+        del self._connections[:]
 
     def get_node(self, node_id):
         for node in self._nodes:

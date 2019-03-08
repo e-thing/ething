@@ -15,7 +15,7 @@ def install(core, app, auth, **kwargs):
     }
 
     @app.route('/api/resources', methods=['GET'])
-    @use_args(resources_args)
+    @use_args(resources_args, locations=("querystring",))
     @auth.required('resource:read')
     def resources_get(args):
         """list the resources
@@ -138,7 +138,7 @@ def install(core, app, auth, **kwargs):
 
 
     resource_delete_args = {
-        'children': fields.Bool(missing=False)
+        'children': fields.Bool(missing=False, location='query')
     }
 
     @app.route('/api/resources/<id>', methods=['GET', 'DELETE', 'PATCH'])

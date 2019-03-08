@@ -209,23 +209,14 @@ def test_node_Exec(core):
     outputs = run_test_node('nodes/Exec', attr={
         'command': {
             'type': 'string',
-            'value': 'ping -n 1 www.google.fr'
+            'value': 'echo foobar'
         }
     }, core=core, default=msg)
 
-    assert outputs[-1][0] == 'default'
-    assert outputs[-1][1]['payload']['code'] == 0
-
-    outputs = run_test_node('nodes/Exec', attr={
-        'command': {
-            'type': 'string',
-            'value': 'ping -n 4 www.google.fr'
-        },
-        'output': 'spawn'
-    }, core=core, default=msg)
-
-    assert outputs[-1][0] == 'default'
-    assert outputs[-1][1]['payload']['code'] == 0
+    assert outputs[0][0] == 'stdout'
+    assert outputs[0][1]['payload'].decode('utf8').strip() == 'foobar'
+    assert outputs[1][0] == 'default'
+    assert outputs[1][1]['payload']['code'] == 0
 
 
 def test_node_Http_request(core):

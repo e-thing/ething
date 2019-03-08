@@ -221,6 +221,7 @@ class Node(Entity, NodeBase):
     def log(self):
         return self._logger
 
+    @classmethod
     def __schema__(cls, schema, context = None):
         schema['inputs'] = cls.INPUTS
         schema['outputs'] = cls.OUTPUTS

@@ -530,7 +530,11 @@ class Attribute (RegItemBase):
             description = self.get('description')
             if description:
                 docstr += "\n    %s\n" % description
-            value.__doc__ = (value.__doc__ or '') + docstr
+            try:
+                value.__doc__ = (value.__doc__ or '') + docstr
+            except AttributeError:
+                # on python 2 : AttributeError: attribute '__doc__' of 'type' objects is not writable
+                pass
 
     
     def __get_raw__(self, obj, objtype, context=None):
@@ -1349,7 +1353,7 @@ def build_schema(cls, root=False, **kwargs):
           schema['methods'][method.name] = method.toSchema(**kwargs)
 
   if hasattr(cls, '__schema__'):
-      schema = cls.__schema__(cls, schema, context=kwargs)
+      schema = cls.__schema__(schema, context=kwargs)
 
   if not flatted:
     all_of = []
@@ -1508,7 +1512,7 @@ def create(cls, data=None, context=None, data_src=None):
   d = _set(cls, data, context, True, data_src)
 
   if hasattr(cls, '__instantiate__'):
-    instance = cls.__instantiate__(cls, d, context)
+    instance = cls.__instantiate__(d, context)
   else:
     instance = cls()
   
@@ -1711,7 +1715,8 @@ class Entity(with_metaclass(MetaReg, object)):
         
         # call parent constructor
         super(Entity, self).__init__()
-    
+
+    @classmethod
     def __instantiate__(cls, data, context):
       return cls(data, context)
     
