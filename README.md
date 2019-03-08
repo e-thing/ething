@@ -2,10 +2,10 @@ e-Thing
 =======
 
 [![Build Status](https://travis-ci.org/e-thing/ething.svg?branch=master)](https://travis-ci.org/e-thing/ething)
+[![Coverage Status](https://coveralls.io/repos/github/e-thing/ething/badge.svg?branch=master)](https://coveralls.io/github/e-thing/ething?branch=master)
 [![Maintenance](https://img.shields.io/badge/Maintained%3F-yes-green.svg)](https://github.com/e-thing/ething/graphs/commit-activity)
-[![made-with-python](https://img.shields.io/badge/Made%20with-Python-1f425f.svg)](https://www.python.org/)
 [![Documentation Status](https://readthedocs.org/projects/ansicolortags/badge/?version=latest)](http://ething.readthedocs.io/)
-
+[![made-with-python](https://img.shields.io/badge/Made%20with-Python-1f425f.svg)](https://www.python.org/)
 
 
 
