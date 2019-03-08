@@ -65,8 +65,9 @@ if os.name != "nt":
     install_requires.append("bluepy")
 
 tests_require = [
-    "pytest",  # unit test
+    "pytest>=3.6",  # unit test
     "pytest-cov",
+    "coveralls",
 ]
 
 docs_require = [
