@@ -1,7 +1,7 @@
 # coding: utf-8
 from ething.core.Device import *
 import paramiko
-from ething.plugins.ping import pingable
+from ething.core.utils.ping import pingable
 from ething.core.plugin import Plugin
 from ething.core.Process import Process
 import socket

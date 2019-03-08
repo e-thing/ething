@@ -282,10 +282,12 @@ def main():
     print_info(core, log.info)
 
     # import builtin plugins here !
+    log.info('search for builtin plugins...')
     from .plugins import install_builtin_plugins
     install_builtin_plugins(core, webserver={'port': args.server_port})
 
     # import plugins
+    log.info('search for installed plugins...')
     from .core.plugin import find_plugins
     for module_name in find_plugins():
         core.use(module_name)

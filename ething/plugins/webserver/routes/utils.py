@@ -7,7 +7,6 @@ import os
 import random
 import string
 from collections import OrderedDict
-from io import open
 
 from ething.core.reg import build_schema_definitions, Entity, build_schema
 
@@ -59,37 +58,6 @@ def install(core, app, auth, **kwargs):
         from ething.core.utils.bluetooth import list_bluetooth_interfaces
         return app.jsonify(list_bluetooth_interfaces(), indent=4)
 
-    read_log_args = {
-        'line': fields.Int(validate=validate.Range(min=0), missing=50),
-        'filter': fields.Str(missing=None, description='a filter the log results'),
-    }
-
-    @app.route('/api/utils/read_log')
-    @use_args(read_log_args, locations=('query',))
-    @auth.required()
-    def read_log(args):
-        logfilename = None
-        lines = []
-        linenb = args['line']
-        filter = args['filter'] or None
-
-        for h in core.log.handlers:
-            try:
-                logfilename = h.baseFilename
-                break
-            except:
-                pass
-
-        if logfilename:
-            with open(logfilename, encoding='utf8') as f:
-                lines = f.readlines()
-                if filter:
-                    lines = [l for l in lines if filter in l]
-                if linenb:
-                    lines = lines[-linenb:]
-
-        return app.jsonify(lines)
-
     #
     # META
     #
@@ -120,11 +88,3 @@ def install(core, app, auth, **kwargs):
                 return Response(status=304)
 
         return app.set_etag(app.jsonify(_meta), definitions_etag)
-
-    @app.route('/api/process')
-    @auth.required()
-    def list_processes():
-        return app.jsonify(core.process_manager)
-
-    #if hasattr(app, 'socketio'):
-    #    todo

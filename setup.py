@@ -35,10 +35,6 @@ install_requires = [
     "objectpath",
     "Jinja2",
 
-    # --db
-    #"pymongo==3.5.1",
-    #"unqlite",
-
     # --webserver
     "Flask>=1.0.2",
     "flask-cors",

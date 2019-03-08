@@ -240,7 +240,7 @@ class Core(object):
         Free up the memory.
 
         """
-        self.log.debug("cleaning for exit...")
+        self.log.info("cleaning for exit...")
 
         self._plugins_call('unload')
 
@@ -260,6 +260,8 @@ class Core(object):
         """
         if not self._initialized:
             self._initialized = True
+
+            self.log.info("initializing...")
 
             generate_event_nodes()
 
