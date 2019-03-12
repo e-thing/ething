@@ -3,7 +3,7 @@
 # used to build the HTTP API documentation
 from __future__ import print_function
 from future.utils import string_types
-from .Scope import Scope
+from .Scope import list as scope_list
 import apispec
 from ething.core.version import __version__
 from ething.core.Resource import Resource
@@ -107,8 +107,8 @@ Scopes let you specify exactly what type of data access an API key needs.
 |----------------|----------------------------------------------------------------------|
 """
 
-    for scope_name in Scope.list:
-        desc = Scope.list[scope_name].get('description', '')
+    for scope_name in scope_list:
+        desc = scope_list[scope_name].get('description', '')
         s += '|%16s|%70s|\n' % ("`%s`" % scope_name, desc)
 
     return s

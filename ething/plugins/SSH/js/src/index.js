@@ -6,6 +6,11 @@ require('./shell.js')
 EThingUI.extend('resources/SSH', {
     icon: 'mdi-console',
 
-    mainComponent: MainComponent,
+    widgets: {
+        'main': {
+            in: 'devicePage',
+            component: MainComponent
+        }
+    },
 
 })

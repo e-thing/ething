@@ -10,11 +10,11 @@
 
         widgets: {
             'sensors': {
-              metadata: {
-                  label: 'sensor values',
+              schema: {
+                  title: 'sensor values',
                   description: 'show all the sensors values',
               },
-              extends: EThingUI.widgets.WGenericSensor
+              component: 'WGenericSensor'
             }
         }
 

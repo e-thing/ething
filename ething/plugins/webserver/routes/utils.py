@@ -10,7 +10,7 @@ from collections import OrderedDict
 
 from ething.core.reg import build_schema_definitions, Entity, build_schema
 
-from ..Scope import Scope
+from ..Scope import list as scope_list
 
 from ething.core.utils import get_info
 
@@ -70,21 +70,28 @@ def install(core, app, auth, **kwargs):
         global _meta
 
         if _meta is None:
-            _meta = {
-                "definitions": build_schema_definitions(skip=(Entity, ), core=core),
-                "scopes": Scope.list,
-                "info": get_info(core),
-                "plugins": OrderedDict(),
-            }
-
-            for plugin in core.plugins:
-                _meta['plugins'][plugin.name] = {
-                    'js_index': plugin.is_js_index_valid(),
-                    'package': plugin.PACKAGE,
-                    'schema': build_schema(plugin)
-                }
+            _meta = build_schema_definitions(skip=(Entity, ), core=core)
         else:
             if app.etag_match(definitions_etag):
                 return Response(status=304)
 
         return app.set_etag(app.jsonify(_meta), definitions_etag)
+
+    @app.route('/api/utils/info')
+    @auth.required()
+    def info():
+
+        resp = {
+            "scopes": scope_list,
+            "info": get_info(core),
+            "plugins": OrderedDict(),
+        }
+
+        for plugin in core.plugins:
+            resp['plugins'][plugin.name] = {
+                'js_index': plugin.is_js_index_valid(),
+                'package': plugin.PACKAGE,
+                'schema': build_schema(plugin)
+            }
+
+        return app.jsonify(resp)

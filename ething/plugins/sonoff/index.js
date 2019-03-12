@@ -5,9 +5,6 @@
         title: 'Sonoff (http)',
 
         properties: {
-            secure: {
-                _disabled: true
-            },
             host: {
               format: 'host'
             }

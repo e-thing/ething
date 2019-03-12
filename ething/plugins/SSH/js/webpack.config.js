@@ -51,10 +51,6 @@ module.exports = {
   },
   plugins: [
     new VueLoaderPlugin(),
-    new webpack.DllReferencePlugin({
-        context: ".",
-        manifest: require("./node_modules/ething-quasar-dll/dist/vendor-manifest.json")
-    }),
     new BundleAnalyzerPlugin()
   ],
   externals: {

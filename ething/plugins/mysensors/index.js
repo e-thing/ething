@@ -9,8 +9,8 @@
       'S_DIMMER': {},
       'S_COVER': {},
       'S_TEMP': {},
-      'S_HUM': { icon: 'mdi-water-percent', widgets: [{type: 'WDeviceKnob', options: { fn: 'getHumidity', unit: '%'}}, {type: 'WDeviceLabel', options: { fn: 'getHumidity', unit: '%'}}] },
-      'S_BARO': { widgets: [{type: 'WDeviceLabel', options: { fn: 'getPressure', unit: 'Pa'}}] },
+      'S_HUM': { icon: 'mdi-water-percent' },
+      'S_BARO': {},
       'S_WIND': { icon: 'mdi-weather-windy' },
       'S_RAIN': { icon: 'mdi-weather-rainy' },
       'S_UV': { icon: 'mdi-weather-sunny' },
@@ -23,7 +23,9 @@
       'S_ARDUINO_REPEATER_NODE': { icon: 'mdi-repeat' },
       'S_LOCK': { icon: 'mdi-lock' },
       'S_IR': {},
-      'S_WATER': { icon: 'mdi-water', widgets: [{type: 'WDeviceLabel', options: { fn: 'getVolume', unit: 'L'}}] },
+      'S_WATER': {
+        icon: 'mdi-water',
+      },
       'S_AIR_QUALITY': {},
       'S_CUSTOM': {},
       'S_DUST': {},
@@ -90,11 +92,11 @@
 
         widgets: {
             'sensors': {
-              metadata: {
-                  label: 'sensor values',
+              schema: {
+                  title: 'sensor values',
                   description: 'show all the sensors values',
               },
-              extends: EThingUI.widgets.WGenericSensor
+              component: 'WGenericSensor'
             }
         }
     })

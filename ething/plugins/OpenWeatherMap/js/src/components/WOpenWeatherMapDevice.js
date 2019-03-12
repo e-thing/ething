@@ -10,12 +10,6 @@ export default {
 
     extends: WDeviceMultiLabel,
 
-    metadata: {
-        label: 'default widget',
-        description: 'display the current weather informations',
-        minHeight: 250
-    },
-
     props: {
 
         items: {

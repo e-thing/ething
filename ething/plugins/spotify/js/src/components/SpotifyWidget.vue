@@ -79,13 +79,6 @@ export default {
         WLayout: EThingUI.widgets.WLayout
     },
 
-    metadata: {
-        label: 'Spotify widget',
-        description: 'play music on your device',
-        minHeight: 250,
-        minWidth: 500
-    },
-
     data () {
         return {
           spotify: new Spotify(),

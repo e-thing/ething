@@ -9,10 +9,21 @@ EThingUI.extend('resources/SpotifyAccount', {
 
     icon: 'mdi-spotify',
 
-    mainComponent: MainComponent,
-
     widgets: {
-      'spotify': SpotifyWidget
+      'spotify': {
+        in: ['devicePage', 'dashboard'],
+        component: SpotifyWidget,
+        schema: {
+            title: 'Spotify widget',
+            description: 'play music on your device',
+        },
+        minHeight: 250,
+        minWidth: 500
+      },
+      'main': {
+        in: 'devicePage',
+        component: MainComponent
+      }
     }
 
 })

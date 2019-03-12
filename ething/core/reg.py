@@ -1387,8 +1387,6 @@ def build_schema_definitions(**kwargs):
 
   definitions = OrderedDict()
 
-  definitions['interfaces'] = OrderedDict()
-
   subclass = kwargs.get('subclass')
   skip = kwargs.get('skip') or ()
 

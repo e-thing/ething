@@ -93,23 +93,6 @@ export default {
         WLayout: EThingUI.widgets.WLayout
     },
 
-    metadata: {
-        label: 'OpenWeatherMap forecast widget',
-        description: 'display weather forecast',
-        minHeight: 120,
-        options: {
-            properties: {
-                location: {
-                    type: 'string',
-                    minLength: 1
-                },
-                mode: {
-                    enum: ['now', '24h', '5d']
-                }
-            }
-        }
-    },
-
     props: {
         location: String,
         mode: {
