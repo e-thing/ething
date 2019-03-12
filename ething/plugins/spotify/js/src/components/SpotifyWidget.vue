@@ -73,10 +73,10 @@ function pad(n, width, z) {
 export default {
     name: 'WSpotify',
 
-    extends: EThingUI.widgets.WResource,
+    extends: EThingUI.components.widgets.WResource,
 
     components: {
-        WLayout: EThingUI.widgets.WLayout
+        WLayout: EThingUI.components.widgets.WLayout
     },
 
     data () {

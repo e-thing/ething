@@ -87,10 +87,10 @@ function windDirection (deg) {
 export default {
     name: 'WOpenWeatherMapForecast',
 
-    extends: EThingUI.widgets.WWidget,
+    extends: EThingUI.components.widgets.WWidget,
 
     components: {
-        WLayout: EThingUI.widgets.WLayout
+        WLayout: EThingUI.components.widgets.WLayout
     },
 
     props: {

@@ -2,7 +2,7 @@
 import EThingUI from 'ething-quasar-core'
 import { iconPath, iconExt, weatherMap } from '../openweathermap'
 
-const WDeviceMultiLabel = EThingUI.widgets.WDeviceMultiLabel
+const WDeviceMultiLabel = EThingUI.components.widgets.WDeviceMultiLabel
 
 
 export default {
