@@ -59,7 +59,7 @@
 
 <script>
 
-import EThingUI from 'ething-quasar-core'
+import EThingUI from 'ething-ui'
 var Spotify = require('spotify-web-api-js');
 
 

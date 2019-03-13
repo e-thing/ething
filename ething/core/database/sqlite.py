@@ -6,6 +6,7 @@ import threading #from ..utils.lock import SecureLock # todo
 from ..green import make_it_green
 import os
 import json
+import pickle
 import datetime
 import pytz
 import time
@@ -132,7 +133,7 @@ class SQLiteDriver(Driver_Base):
             _rows = c.fetchall()
             c.close()
 
-        return [json.loads(row[0], cls=Decoder) for row in _rows]
+        return [pickle.loads(row[0]) for row in _rows]
 
     def list_tables(self):
         with self._lock:
@@ -162,17 +163,17 @@ class SQLiteDriver(Driver_Base):
         if cmd.name == 'update':
             c.execute(
                 "UPDATE '%s' SET data = ?, date = ? WHERE id = ?" % cmd.table_name,
-                (json.dumps(cmd.doc, cls=Encoder), to_timestamp(cmd.doc.get('date')), cmd.doc_id))
+                (pickle.dumps(cmd.doc), to_timestamp(cmd.doc.get('date')), cmd.doc_id))
 
         elif cmd.name == 'insert':
             c.execute("INSERT INTO '%s' (id, date, data) VALUES (?, ?, ?)" % cmd.table_name,
-                      (cmd.doc_id, to_timestamp(cmd.doc.get('date')), json.dumps(cmd.doc, cls=Encoder)))
+                      (cmd.doc_id, to_timestamp(cmd.doc.get('date')), pickle.dumps(cmd.doc)))
 
         elif cmd.name == 'delete':
             c.execute("DELETE FROM '%s' WHERE id = ?" % cmd.table_name, (cmd.doc_id,))
 
         elif cmd.name == 'create':
-            c.execute("CREATE TABLE '%s' (id char(7), date integer, data json)" % (cmd.table_name,))
+            c.execute("CREATE TABLE '%s' (id char(7), date integer, data text)" % (cmd.table_name,))
 
         elif cmd.name == 'drop':
             c.execute("DROP TABLE '%s'" % (cmd.table_name,))

@@ -1,5 +1,5 @@
 
-import EThingUI from 'ething-quasar-core'
+import EThingUI from 'ething-ui'
 import { iconPath, iconExt, weatherMap } from '../openweathermap'
 
 const WDeviceMultiLabel = EThingUI.components.widgets.WDeviceMultiLabel

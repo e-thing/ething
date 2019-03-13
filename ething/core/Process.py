@@ -15,6 +15,7 @@ class Runner(with_metaclass(ABCMeta, object)):
     def __init__(self, manager, process):
         self._manager = manager
         self._start_t = None
+        self._run_t = None
         self._stop_t = None
         self._cnt = 0
         self._running_evt = threading.Event()
@@ -79,6 +80,7 @@ class Runner(with_metaclass(ABCMeta, object)):
         self._process = process
         self._exception = None
         self._start_t = time.time()
+        self._run_t = None
         self._stop_t = 0
         self._cnt += 1
         self._stop_evt.clear()
@@ -117,13 +119,16 @@ class Runner(with_metaclass(ABCMeta, object)):
         raise NotImplementedError()
 
     def _started(self):
-        pass
+        self._run_t = time.time()
 
     def _end(self):
         if self._process is not None:
             self._running_evt.clear()
             self._stop_t = time.time()
-            self.log.debug('Process "%s" stopped after %f sec' % (self._process, self._stop_t - self._start_t))
+            duration = -1.
+            if self._run_t is not None:
+                duration = self._stop_t - self._run_t
+            self.log.debug('Process "%s" stopped after %f sec' % (self._process, duration))
 
             # kill any children processes left
             children = self._manager.find(filter=lambda p: p.parent is self._process)

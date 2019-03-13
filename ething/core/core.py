@@ -111,6 +111,9 @@ class Core(object):
         self.log = logger or logging.getLogger('ething')
         self.log.setLevel(log_level)
 
+        if debug:
+            self.log.info('debug mode enabled')
+
         self.signalDispatcher = SignalDispatcher()
         self.process_manager = ProcessManager(start=False)
         self.scheduler = _CoreScheduler(self)

@@ -345,7 +345,8 @@ class Table(MutableMapping):
         self._db = db
         self._driver = self._db._driver
         self._name = name
-        self._data = OrderedDict() if empty else None
+        self._loaded = bool(empty)
+        self._data = OrderedDict()
         self._activity = time() if empty else None
 
     def __repr__(self):
@@ -364,7 +365,7 @@ class Table(MutableMapping):
 
     @property
     def loaded(self):
-        return self._data is not None
+        return self._loaded
 
     @property
     def length(self):
@@ -385,31 +386,35 @@ class Table(MutableMapping):
         self.delete(doc_id)
 
     def __len__(self):
-        self._lazy_load()
-        return len(self._data)
+        return self.length
 
     def __iter__(self):
         self._lazy_load()
         return iter(self._data)
 
     def _load(self):
+        self._db.commit() # force to commit any cached changes
         table_data = self._driver.load_table_data(self.name)
 
         # Note : table_data must be ordered by inserting date !
 
-        self._data = OrderedDict()
+        self._loaded = True
+
+        cached = list(self._data)
 
         for doc in table_data:
             doc_id = doc.get('id')
-            self._data[doc_id] = doc
+            if doc_id not in cached:
+                self._data[doc_id] = doc
 
     def _lazy_load(self):
         self._activity = time()
-        if self._data is None:
+        if not self._loaded:
             self._load()
 
     def _free(self):
-        self._data = None
+        self._loaded = False
+        self._data.clear()
         self._activity = None
 
     def select(self, sort=None, filter_fn=None, start=0, length=None):
@@ -431,8 +436,6 @@ class Table(MutableMapping):
         return [copy.deepcopy(doc) for doc in data]
 
     def insert(self, doc):
-        self._lazy_load()
-
         doc = copy.deepcopy(doc)
         doc_id = doc['id']
 
@@ -471,13 +474,13 @@ class Table(MutableMapping):
         self._commit()
 
     def clear(self):
-        self._data = OrderedDict()
+        self._data.clear()
         self._db._add_cmd(Clear_Command(self.name))
         self._commit()
 
     def _commit(self):
         self._activity = time()
-        self._db.commit()
+        self._db._commit()
 
 
 class FS(Iterable):
@@ -574,7 +577,7 @@ class FS(Iterable):
         self.__table = None
 
     def _commit(self):
-        self._db.commit()
+        self._db._commit()
 
 
 class File(object):
@@ -627,6 +630,7 @@ class File(object):
     def _lazy_load(self):
         self._activity = time()
         if self._data is None:
+            self._db.commit()  # force to commit any cached changes
             self._data = self._driver.get_file_content(self.id)
 
     def _free(self):
@@ -648,7 +652,7 @@ class File(object):
 
     def _commit(self):
         self._activity = time()
-        self._db.commit()
+        self._db._commit()
 
 
 

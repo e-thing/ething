@@ -54,7 +54,7 @@ module.exports = {
     new BundleAnalyzerPlugin()
   ],
   externals: {
-    'ething-quasar-core': 'EThingUI',
+    'ething-ui': 'EThingUI',
     'ething-js': 'EThing'
   }
 }

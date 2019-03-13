@@ -1,7 +1,7 @@
 
 import MainComponent from './components/Main'
 import SpotifyWidget from './components/SpotifyWidget'
-import EThingUI from 'ething-quasar-core'
+import EThingUI from 'ething-ui'
 
 
 

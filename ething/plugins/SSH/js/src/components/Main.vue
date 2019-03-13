@@ -17,7 +17,7 @@
 
 <script>
 
-import EThingUI from 'ething-quasar-core'
+import EThingUI from 'ething-ui'
 import {InteractiveShell} from '../shell'
 import { Terminal } from 'xterm'
 import 'xterm/dist/xterm.css'

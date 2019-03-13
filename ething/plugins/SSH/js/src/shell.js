@@ -1,4 +1,4 @@
-import EThingUI from 'ething-quasar-core'
+import EThingUI from 'ething-ui'
 import EThing from 'ething-js'
 
 function guidGenerator() {

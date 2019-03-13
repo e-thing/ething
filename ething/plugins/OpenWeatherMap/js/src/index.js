@@ -1,6 +1,6 @@
 import WOpenWeatherMapDevice from './components/WOpenWeatherMapDevice'
 import WOpenWeatherMapForecast from './components/WOpenWeatherMapForecast'
-import EThingUI from 'ething-quasar-core'
+import EThingUI from 'ething-ui'
 
 
 console.log('loading plugin OpenWeatherMap...')
@@ -38,7 +38,8 @@ EThingUI.extend('resources/OpenWeatherMapDevice', {
                 title: 'default widget',
                 description: 'display the current weather informations',
             },
-            minHeight: 250
+            minHeight: 250,
+            zIndex: 100
         }
 
     }

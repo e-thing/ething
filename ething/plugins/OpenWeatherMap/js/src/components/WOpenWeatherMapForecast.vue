@@ -28,7 +28,7 @@
 
 <script>
 
-import EThingUI from 'ething-quasar-core'
+import EThingUI from 'ething-ui'
 import { getWeather, getWeatherForecast, iconPath, iconExt } from '../openweathermap'
 
 

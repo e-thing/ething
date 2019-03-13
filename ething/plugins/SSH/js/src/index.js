@@ -1,6 +1,6 @@
 
 import MainComponent from './components/Main'
-import EThingUI from 'ething-quasar-core'
+import EThingUI from 'ething-ui'
 require('./shell.js')
 
 EThingUI.extend('resources/SSH', {

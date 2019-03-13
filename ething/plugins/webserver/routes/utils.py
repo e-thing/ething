@@ -15,9 +15,6 @@ from ..Scope import list as scope_list
 from ething.core.utils import get_info
 
 
-_meta = None
-
-
 def install(core, app, auth, **kwargs):
 
     @app.route('/api/utils/serial_ports_list')
@@ -62,20 +59,18 @@ def install(core, app, auth, **kwargs):
     # META
     #
 
+    # load it only one time, definitions should not change during runtime
     definitions_etag = ''.join(random.choice(string.ascii_uppercase + string.digits) for _ in range(16))
 
     @app.route('/api/utils/definitions')
     @auth.required()
     def definitions():
-        global _meta
+        if app.etag_match(definitions_etag):
+            return Response(status=304)
 
-        if _meta is None:
-            _meta = build_schema_definitions(skip=(Entity, ), core=core)
-        else:
-            if app.etag_match(definitions_etag):
-                return Response(status=304)
+        meta = build_schema_definitions(skip=(Entity, ), core=core)
 
-        return app.set_etag(app.jsonify(_meta), definitions_etag)
+        return app.set_etag(app.jsonify(meta), definitions_etag)
 
     @app.route('/api/utils/info')
     @auth.required()
