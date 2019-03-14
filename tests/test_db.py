@@ -115,6 +115,24 @@ def test_db_table(core):
     assert not core.db.table_exists('foobar')
 
 
+def test_db_table_length(core):
+    db = core.db
+
+    table = db.table_create('tata')
+
+    def init_table(t):
+        for i in range(10):
+            t.insert({
+                'id': i
+            })
+
+    init_table(table)
+
+    table.free()
+
+    assert table.length == 10
+
+
 def test_db_os(core):
     os = core.db.os
 

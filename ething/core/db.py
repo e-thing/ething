@@ -26,6 +26,10 @@ class Driver_Base(object):
     def load_table_data(self, table_name):
         raise NotImplementedError()
 
+    def get_table_length(self, table_name):
+        # if it returns None, the length will be calculated by another way
+        return None
+
     def list_tables(self):
         raise NotImplementedError()
 
@@ -282,7 +286,7 @@ class Db(object):
                 table = self._tables[i]
                 self._add_cmd(Drop_Command(table_name))
                 del self._tables[i]
-                table._free()
+                table.free()
                 break
         else:
             if not silent:
@@ -317,7 +321,7 @@ class Db(object):
         for table in self._tables:
             if table.loaded:
                 if now - table.activity > self._cache_delay:
-                    table._free()
+                    table.free()
 
         if self._fs is not None:
             self._fs.run_garbage_collector()
@@ -346,6 +350,7 @@ class Table(MutableMapping):
         self._driver = self._db._driver
         self._name = name
         self._loaded = bool(empty)
+        self._cached_length = None
         self._data = OrderedDict()
         self._activity = time() if empty else None
 
@@ -369,8 +374,23 @@ class Table(MutableMapping):
 
     @property
     def length(self):
-        self._lazy_load()
-        return len(self._data)
+        if self._loaded:
+            return len(self._data)
+
+        if self._cached_length is not None:
+            return self._cached_length
+
+        # get the length from the driver
+        self._db.commit()  # force to commit any cached changes
+        l = self._driver.get_table_length(self.name)
+        if l is None:
+            # fall back to the hard way !
+            self._lazy_load()
+            l = len(self._data)
+
+        self._cached_length = l
+
+        return l
 
     def get_doc(self, doc_id):
         self._lazy_load()
@@ -412,8 +432,9 @@ class Table(MutableMapping):
         if not self._loaded:
             self._load()
 
-    def _free(self):
+    def free(self):
         self._loaded = False
+        self._cached_length = None
         self._data.clear()
         self._activity = None
 
@@ -479,6 +500,7 @@ class Table(MutableMapping):
         self._commit()
 
     def _commit(self):
+        self._cached_length = None # not valid anymore
         self._activity = time()
         self._db._commit()
 
@@ -558,7 +580,7 @@ class FS(Iterable):
         if file_id in self._files:
             file = self._files[file_id]
             del self._files[file_id]
-            file._free()
+            file.free()
         self._db._add_cmd(FS_Delete_Command(file_id))
         self._commit()
 
@@ -569,7 +591,7 @@ class FS(Iterable):
             file = self._files[file_id]
             if file.loaded:
                 if now - file.activity > self._db._cache_delay:
-                    file._free()
+                    file.free()
 
     def clear(self):
         for file_id in map(lambda f: f.id, self.list()):
@@ -633,7 +655,7 @@ class File(object):
             self._db.commit()  # force to commit any cached changes
             self._data = self._driver.get_file_content(self.id)
 
-    def _free(self):
+    def free(self):
         self._data = None
         self._activity = None
 

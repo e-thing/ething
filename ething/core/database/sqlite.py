@@ -135,6 +135,15 @@ class SQLiteDriver(Driver_Base):
 
         return [pickle.loads(row[0]) for row in _rows]
 
+    def get_table_length(self, table_name):
+        with self._lock:
+            c = self.db.cursor()
+            c.execute("SELECT COUNT(1) FROM '%s'" % (table_name,))
+            data = c.fetchone()
+            l = data[0]
+            c.close()
+        return l
+
     def list_tables(self):
         with self._lock:
             c = self.db.cursor()
