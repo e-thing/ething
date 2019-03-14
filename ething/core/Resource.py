@@ -99,6 +99,20 @@ class RDict(Dict):
         return j
 
 
+def _import_process(instance, p):
+    if isinstance(p, Process):
+        # process instance
+        return p
+    elif issubclass(p, Process):
+        # Process subclass
+        return p(instance)
+    elif callable(p):
+        # create a process
+        return Process(target=p)
+    else:
+        raise Exception('not a process')
+
+
 @abstract
 @throw(ResourceCreated, ResourceDeleted, ResourceUpdated)
 @attr('public', type=Enum([False, 'readonly', 'readwrite']), default=False, description="False: this resource is not publicly accessible. 'readonly': this resource is accessible for reading by anyone. 'readwrite': this resource is accessible for reading and writing by anyone.")
@@ -384,15 +398,16 @@ class Resource(Entity):
 
             if callable(pa):
                 pres = pa()
-                if isinstance(pres, Process):
-                    processes.append(pres)
-                elif isinstance(pres, Sequence):
-                    processes += pres
-            elif issubclass(pa, Process):
-                processes.append(pa(self))
+                if isinstance(pres, Sequence):
+                    for p in pres:
+                        processes.append(_import_process(self, p))
+                else:
+                    processes.append(_import_process(self, pres))
             elif isinstance(pa, Sequence):
                 for ppa in pa:
-                    processes.append(ppa(self))
+                    processes.append(_import_process(self, ppa))
+            else:
+                processes.append(_import_process(self, pa))
 
         # keep references to this process during the lifetime of this resource
         self._processes = dict()

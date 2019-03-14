@@ -85,6 +85,11 @@ class Runner(with_metaclass(ABCMeta, object)):
         self._cnt += 1
         self._stop_evt.clear()
         self._running_evt.set()
+
+        # clear result
+        self._process.result = None
+        self._process.exception = None
+
         self.launch()
 
     def stop(self, block=True, timeout=None):
@@ -222,21 +227,19 @@ class Manager(object):
         if not isinstance(process, Process):
             raise Exception('not a process instance')
 
-        if process.id in self:
-            # already in the list
-            return
+        if process.id not in self:
 
-        if process.manager is not None and process.manager is not self:
-            raise Exception('this process is already attached to a manager')
+            if process.manager is not None and process.manager is not self:
+                raise Exception('this process is already attached to a manager')
 
-        process.manager = self
+            process.manager = self
 
-        self._map[process.id] = self._runner_cls(self, process)
+            self._map[process.id] = self._runner_cls(self, process)
 
-        if auto_start:
-            # automatically start
-            if not process.is_running:
-                process.start()
+            if auto_start:
+                # automatically start
+                if not process.is_running:
+                    process.start()
 
         return process
 
@@ -269,16 +272,23 @@ class Manager(object):
             r.stop()
         self._map.clear()
 
-    def p_start(self, process):
-        p = self._get(process)
+    def p_start(self, process, block=False, timeout=None):
+        try:
+            p = self._get(process)
+        except IndexError:
+            self.attach(process, auto_start=False)
+            p = self._get(process)
 
         if p.is_running:
             raise Exception('Process "%s" already running' % p)
 
-        if not self._started:
-            return
+        if self._started:
+            p.start()
 
-        return p.start()
+        if block:
+            p.wait(timeout)
+
+        return process
 
     def p_stop(self, process, *args, **kwargs):
         p = self._get(process)
@@ -392,6 +402,9 @@ class Process(object):
         self._kwargs = kwargs
         self._terminate = proxy_method(terminate)
 
+        self.result = None
+        self.exception = None
+
         self._log = log or logging.getLogger("ething.%s" % self._name)
 
         self.manager = manager
@@ -465,18 +478,22 @@ class Process(object):
         """
         try:
             self.setup()
-        except Exception:
+        except Exception as e:
             self.log.exception('Exception in process "%s" in setup()' % self.name)
+            self.exception = e
         else:
             try:
-                self.main()
-            except Exception:
+                self.result = self.main()
+            except Exception as e:
                 self.log.exception('Exception in process "%s" in main()' % self.name)
+                self.exception = e
 
         try:
             self.end()
-        except Exception:
+        except Exception as e:
             self.log.exception('Exception in process "%s" in end()' % self.name)
+            if self.exception is None:
+                self.exception = e
 
     def terminate(self):
         """
@@ -498,7 +515,7 @@ class Process(object):
                     time.sleep(self._loop_interval)
         else:
             if self._target:
-                self._target(*self._args, **self._kwargs)
+                return self._target(*self._args, **self._kwargs)
 
     def setup(self):
         """
