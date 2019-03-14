@@ -29,7 +29,7 @@ export default {
                 },{
                     label: 'weather',
                     attr: 'weather',
-                    done () {
+                    update () {
                         for (var i in weatherMap) {
                             if (this.value === weatherMap[i].description) {
                                 if (weatherMap[i].icon) {

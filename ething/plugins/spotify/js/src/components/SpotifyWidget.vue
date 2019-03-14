@@ -1,5 +1,5 @@
 <template>
-    <w-layout noFooter :title="r.basename()">
+    <w-layout noFooter :title="resource.basename()">
 
 
       <div class="fit column justify-center items-stretch">
@@ -106,7 +106,7 @@ export default {
     computed: {
 
         accessToken () {
-          return this.r.attr('access_token')
+          return this.resource.attr('access_token')
         },
 
         playlistOptions () {
