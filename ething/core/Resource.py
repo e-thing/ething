@@ -281,7 +281,7 @@ class Resource(Entity):
                 child.createdBy = None
 
     def __db_remove__(self):
-        self.log.debug("Resource deleted : %s" % str(self))
+        self.log.info("Resource deleted : %s" % str(self))
         self.core.dispatchSignal(ResourceDeleted(self))
 
     def __db_save__(self, insert):
@@ -289,7 +289,7 @@ class Resource(Entity):
             if getattr(self, '__destroyed__', False):
                 raise Exception('this object was previously destroyed')
             self.core.dispatchSignal(ResourceCreated(self))
-            self.log.debug("Resource created : %s" % str(self))
+            self.log.info("Resource created : %s" % str(self))
             return
 
         self.modifiedDate = utcnow()  # update the modification time
