@@ -1,6 +1,6 @@
 # coding: utf-8
 
-from .utils import ShortId
+from .utils import ShortId, getmembers
 import inspect
 import time
 import datetime
@@ -374,7 +374,7 @@ class Scheduler(object):
 
         :param instance: an instance with some methods decorated with setInterval, at, delay or tick
         """
-        for name, func in inspect.getmembers(instance, inspect.ismethod):
+        for name, func in getmembers(instance, inspect.ismethod):
             if hasattr(func, '_scheduler'):
                 scheduler_func_name, args, kwargs = getattr(func, '_scheduler')
                 kwargs['instance'] = instance
