@@ -7,4 +7,11 @@ from ..Interface import *
 
 @interface
 class RGBWLight (RGBLight, Dimmable):
-    pass
+
+    def setState(self, state):
+        self.setLevel(100 if state else 0)
+
+    def setLevel(self, level):
+        self.level = level
+        self.state = level > 0
+

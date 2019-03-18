@@ -109,6 +109,7 @@ class Device(Resource):
     def __watch__(self, attr, value, old_value):
         if attr == 'connected' and value:
             self.lastSeenDate = utcnow()
+        super(Device, self).__watch__(attr, value, old_value)
 
     def on_attr_update(self, attr, new_value, old_value):
         super(Device, self).on_attr_update(attr, new_value, old_value)

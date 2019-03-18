@@ -8,4 +8,8 @@ from ..Interface import interface
 class DimmableLight(Light, Dimmable):
 
     def setState(self, state):
-        self.setLevel((self.level or 100) if state else 0)
+        self.setLevel(100 if state else 0)
+
+    def setLevel(self, level):
+        self.level = level
+        self.state = level > 0

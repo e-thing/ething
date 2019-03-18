@@ -68,6 +68,7 @@ class File(Resource):
     def __watch__(self, attr, value, old_value):
         if attr.name == 'name':
             self._updateMeta(File.META_MIME)
+        super(File, self).__watch__(attr, value, old_value)
 
     def read(self, encoding=None):
         """
