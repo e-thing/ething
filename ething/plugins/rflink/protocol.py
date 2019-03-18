@@ -23,7 +23,7 @@ class RFLinkProtocol(LineReader):
     def connection_made(self):
         super(RFLinkProtocol, self).connection_made()
         self._responseListeners = []
-        self.gateway.setConnectState(True)
+        self.gateway.connected = True
 
         self.core.scheduler.setInterval(1, self.check_response_timeout)
         self.core.scheduler.setInterval(60, self.check_disconnect)
@@ -85,7 +85,7 @@ class RFLinkProtocol(LineReader):
 
                 if device:
                     with device:
-                        device.setConnectState(True)
+                        device.connected = True
                         device._handle_incoming_data(protocol, data)
 
         else:
@@ -165,7 +165,7 @@ class RFLinkProtocol(LineReader):
         self.core.scheduler.unbind(self.check_response_timeout)
         self.core.scheduler.unbind(self.check_disconnect)
 
-        self.gateway.setConnectState(False)
+        self.gateway.connected = False
 
         for responseListener in self._responseListeners:
             responseListener.reject('disconnected')
@@ -196,7 +196,7 @@ class RFLinkProtocol(LineReader):
         
         for device in devices:
             if device.lastSeenDate and now - device.lastSeenDate > datetime.timedelta(seconds=1800):
-                device.setConnectState(False)
+                device.connected = False
     
 
 

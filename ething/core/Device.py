@@ -62,9 +62,9 @@ class ExecuteDevice(ResourceNode):
 @abstract
 @throw(BatteryLevelChanged, DeviceConnected, DeviceDisconnected)
 # 0-100 : the battery level, if None it means that no battery information is provided
-@attr('battery', type=Nullable(Number(min=0, max=100)), default=None, description="The battery level of this device (must be between 0 (empty) and 100 (full) , or null if the device has no battery information).")
+@attr('battery', type=Nullable(Number(min=0, max=100)), mode=READ_ONLY, default=None, description="The battery level of this device (must be between 0 (empty) and 100 (full) , or null if the device has no battery information).")
 @attr('location', type=String(), default='', description="The location of this device.")
-@attr('connected', type=Boolean(), default=True, description="Set to true when this device is connected.")
+@attr('connected', type=Boolean(), default=True, mode=READ_ONLY, force_watch=True, description="Set to true when this device is connected.")
 @attr('lastSeenDate', type=Nullable(TzDate()), mode=READ_ONLY, default=None, description="The last time this device was reached or made a request.")
 @attr('error', type=Nullable(String()), mode=READ_ONLY, default=None, description="Any error concerning this device.")
 class Device(Resource):
@@ -106,16 +106,9 @@ class Device(Resource):
     BATTERY_HALF = 50
     BATTERY_FULL = 100
 
-    def setConnectState(self, connected):
-
-        with self:
-            connected = bool(connected)
-
-            if connected:
-                self.lastSeenDate = utcnow()
-
-            if self.connected != connected:
-                self.connected = connected
+    def __watch__(self, attr, value, old_value):
+        if attr == 'connected' and value:
+            self.lastSeenDate = utcnow()
 
     def on_attr_update(self, attr, new_value, old_value):
         super(Device, self).on_attr_update(attr, new_value, old_value)

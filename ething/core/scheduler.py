@@ -374,14 +374,13 @@ class Scheduler(object):
 
         :param instance: an instance with some methods decorated with setInterval, at, delay or tick
         """
-        for name, func in getmembers(instance, inspect.ismethod):
-            if hasattr(func, '_scheduler'):
-                scheduler_func_name, args, kwargs = getattr(func, '_scheduler')
-                kwargs['instance'] = instance
-                try:
-                    getattr(self, scheduler_func_name)(*args, callback=getattr(instance, name), **kwargs)
-                except:
-                    _LOGGER.exception('unable to create instance task')
+        for name, func in getmembers(instance, lambda x: hasattr(x, '_scheduler')):
+            scheduler_func_name, args, kwargs = getattr(func, '_scheduler')
+            kwargs['instance'] = instance
+            try:
+                getattr(self, scheduler_func_name)(*args, callback=getattr(instance, name), **kwargs)
+            except:
+                _LOGGER.exception('unable to create instance task')
 
     def unbind(self, task):
         """

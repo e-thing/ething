@@ -55,7 +55,7 @@ def pingable(attr='host', interval=PING_DEFAULT_INTERVAL):
                 self.log.debug('ping %s, online=%s' % (host, online))
 
             with self:
-                self.setConnectState(online)
+                self.connected = online
 
             return online
 

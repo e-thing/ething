@@ -63,9 +63,9 @@ if bluepy_imported:
                         scanner.clear()
                         scanner.start()
                         scanner.process(5)
-                        gateway.setConnectState(True)
+                        gateway.connected = True
                     except Exception:
-                        gateway.setConnectState(False)
+                        gateway.connected  = False
                         self.log.exception("BLEA: scan exception")
                     finally:
                         try:

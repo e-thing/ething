@@ -101,9 +101,12 @@ def getmembers(obj, predicate=None):
     """Return all members of an object as (name, value) pairs sorted by name.
     Optionally, only return members that satisfy a given predicate."""
     if inspect.isclass(obj):
-        mro = (obj,) + obj.__mro__
+        cls = obj
     else:
-        mro = ()
+        cls = type(obj)
+
+    mro = (obj,) + cls.__mro__
+
     results = []
     processed = set()
     names = dir(obj)
@@ -118,9 +121,7 @@ def getmembers(obj, predicate=None):
     except AttributeError:
         pass
     for key in names:
-        # First try to get the value via getattr.  Some descriptors don't
-        # like calling their __get__ (see bug #1785), so fall back to
-        # looking in the __dict__.
+        # directly looking in the __dict__.
         for base in mro:
             if key in base.__dict__:
                 value = base.__dict__[key]

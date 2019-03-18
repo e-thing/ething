@@ -101,7 +101,7 @@ class MihomeProtocol(Protocol):
                 #
                 if device:
                     with device:
-                        device.setConnectState(True)
+                        device.connected = True
                         device._processData(response)
 
                 if '_ack' in cmd:
@@ -186,7 +186,7 @@ class MihomeProtocol(Protocol):
         
         for device in devices:
             if device.lastSeenDate and now - device.lastSeenDate > datetime.timedelta(seconds=self.ACTIVITY_TIMEOUT):
-                device.setConnectState(False)
+                device.connected = False
 
     def search(self):
         self.log.debug('search...')
