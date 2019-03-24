@@ -32,7 +32,7 @@ def writePidFile():
     deletePidFile()
     pid = os.getpid()
     old_umask = os.umask(0o133)
-    f = open(PID_FILE, "wb", encoding='utf8')
+    f = open(PID_FILE, "w", encoding='utf8')
     f.write(str(pid))
     f.close()
     os.umask(old_umask)
@@ -44,7 +44,7 @@ def deletePidFile():
 def checkPidFile():
     """ return pid as int or 0"""
     if os.path.isfile(PID_FILE):
-        f = open(PID_FILE, "rb", encoding='utf8')
+        f = open(PID_FILE, "r", encoding='utf8')
         pid = f.read().strip()
         f.close()
         if pid:
