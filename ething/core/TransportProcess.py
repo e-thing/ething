@@ -131,16 +131,16 @@ class UdpTransport(Transport):
 
         self.sock.bind(("0.0.0.0", self.port))
 
-        mreq = struct.pack("4sl", socket.inet_aton(
+        mreq = struct.pack("=4sl", socket.inet_aton(
             self.host), socket.INADDR_ANY)
         self.sock.setsockopt(socket.IPPROTO_IP, socket.IP_MULTICAST_TTL, 32)
         self.sock.setsockopt(socket.IPPROTO_IP, socket.IP_MULTICAST_LOOP, 1)
         self.sock.setsockopt(socket.SOL_SOCKET, socket.SO_RCVBUF, 4096)
         # allow multiple processes to bind to the same address
-        self.sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        # self.sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         # join multicast group and bind to port
         self.sock.setsockopt(socket.IPPROTO_IP, socket.IP_ADD_MEMBERSHIP, mreq)
-        self.sock.settimeout(1)
+        self.sock.settimeout(2)
 
         super(UdpTransport, self).open()
 
@@ -365,8 +365,8 @@ class ThreadedTransport(Transport):
 
         return data
 
-    def write(self, data):
-        return self._transport.write(data)
+    def write(self, *args, **kwargs):
+        return self._transport.write(*args, **kwargs)
 
     def close(self):
         if self._thread:

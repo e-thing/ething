@@ -137,8 +137,9 @@ class MihomeProtocol(Protocol):
 
             try:
                 self.transport.write(json.dumps(command).encode("utf-8"), (ip, port))
-            except:
-                result.reject('send error')
+            except Exception as e:
+                self.log.exception('send error')
+                result.reject('send error: %s' % str(e))
             else:
                 if ack:
                     self._responseListeners.append(result)

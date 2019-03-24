@@ -52,7 +52,7 @@ class MihomeGateway(MihomeBase, RGBWLight, LightSensor):
 
         self._write({
             "rgb": hrgb
-        }, done = lambda _, device : setattr(device, 'level', level))
+        }, done = lambda _, device : super(MihomeGateway, self).setLevel(level))
 
     def setColor(self, color):
 
@@ -62,7 +62,7 @@ class MihomeGateway(MihomeBase, RGBWLight, LightSensor):
 
         self._write({
             "rgb": hrgb
-        }, done=lambda _, device: setattr(device, 'color', color))
+        }, done=lambda _, device: super(MihomeGateway, self).setColor(color))
 
     @method.arg('music', enum=musicMap)
     @method.arg('volume', minimum=0, maximum=100)

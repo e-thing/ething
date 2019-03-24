@@ -20,10 +20,14 @@ class Controller(TransportProcess):
     def __init__(self, core):
         super(Controller, self).__init__(
             'mihome',
-            transport=ThreadedTransport(UdpTransport(
+            transport=UdpTransport(
                 host=MULTICAST_ADDRESS,
                 port=MULTICAST_PORT
-            ), core.process_manager, 'mihome.read'),
+            ),
+            #transport=ThreadedTransport(UdpTransport(
+            #    host=MULTICAST_ADDRESS,
+            #    port=MULTICAST_PORT
+            #), core.process_manager, 'mihome.read'),
 
             protocol=MihomeProtocol(core),
             id='mihome'
