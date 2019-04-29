@@ -135,13 +135,4 @@ def install_auth(app):
 
     auth = Auth(app, app.conf)
 
-    if app.conf['auth']['localonly']:
-        @app.before_request
-        def check_local_only():
-
-            ip = IPAddress(request.remote_addr)
-
-            if not (ip.is_private() or ip.is_loopback()):
-                raise ServerException('not allowed', 403)
-
     return auth

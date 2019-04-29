@@ -1,17 +1,16 @@
 (function(global){
 
     EThingUI.extend('resources/BleaGateway', {
-
         title: 'Bluetooth Gateway',
-
         icon: 'bluetooth',
+    })
 
+    EThingUI.extend('resources/BleaDevice', {
+        disableCreation: true,
     })
 
     EThingUI.extend('resources/Miflora', {
-
         icon: 'mdi-flower',
-
         widgets: {
             'sensors': {
               in: 'dashboard',
@@ -24,7 +23,6 @@
               component: 'WGenericSensor'
             }
         }
-
     })
 
 })(this);

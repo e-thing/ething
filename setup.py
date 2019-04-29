@@ -20,7 +20,7 @@ install_requires = [
     # --core
     "future",
     "python-dateutil",
-    "pillow", # used for thumbnail
+    # "pillow", # used for thumbnail, optional
     "shortid",
     "python-magic",
     "pyserial",

@@ -33,11 +33,9 @@ from collections import OrderedDict
 @attr('auth', type=Dict(mapping={
     'username': String(allow_empty=False),
     'password': String(allow_empty=False, password=True),
-    'localonly': Boolean()
 }), default={
     'username': 'ething',
     'password': 'admin',
-    'localonly': False
 })
 class WebServer(Plugin):
 
@@ -68,7 +66,6 @@ class FlaskApp(Flask):
             'auth': {
                 'username': 'ething',
                 'password': 'admin',
-                'localonly': False,
                 'no_auth_for_localhost': True
             },
             'port': 8000,
