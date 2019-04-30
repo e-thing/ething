@@ -18,7 +18,7 @@ DESC="EThing daemon"
 NAME=ething
 PIDFILE=/var/run/$NAME.pid
 DAEMON=/usr/local/bin/$NAME
-DAEMON_ARGS="-d -p ${PIDFILE}"
+DAEMON_ARGS="--log-level INFO"
 SCRIPTNAME=/etc/init.d/$NAME
 
 # Exit if the package is not installed
@@ -41,7 +41,7 @@ SCRIPTNAME=/etc/init.d/$NAME
 do_start()
 {
 	log_daemon_msg "Starting system $NAME daemon"
-    start-stop-daemon --start --pidfile $PIDFILE --startas $DAEMON -- $DAEMON_ARGS
+    start-stop-daemon --start --background --pidfile $PIDFILE --make-pidfile --startas $DAEMON -- $DAEMON_ARGS
     log_end_msg $?
 }
 
@@ -51,7 +51,7 @@ do_start()
 do_stop()
 {
 	log_daemon_msg "Stopping system $NAME daemon"
-    start-stop-daemon --stop --pidfile $PIDFILE --retry 30
+    start-stop-daemon --stop --pidfile $PIDFILE --remove-pidfile --retry 30
     log_end_msg $?
 }
 
