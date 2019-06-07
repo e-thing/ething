@@ -321,6 +321,7 @@ class TransportProcess(Process):
                 t_end = time.time() + self.reconnect_delay
                 while self.is_running and time.time() < t_end:
                     time.sleep(0.5)
+                self.log.debug('reconnecting...')
 
 
 class QueueProtocol(Protocol):
