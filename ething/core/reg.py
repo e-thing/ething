@@ -1682,7 +1682,7 @@ class Entity(with_metaclass(MetaReg, object)):
       context = self.__reg__.context
       if name in context:
         return context[name]
-      raise AttributeError('no attribute %s' % name)
+      raise AttributeError('object %s has no attribute %s' % (self, name))
 
     def __transaction_start__(self):
         pass

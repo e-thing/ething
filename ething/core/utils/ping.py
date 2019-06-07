@@ -59,7 +59,7 @@ def pingable(attr='host', interval=PING_DEFAULT_INTERVAL):
 
             return online
 
-        setattr(cls, 'ping', _ping)
+        setattr(cls, '_ping', _ping)
         return cls
 
     return d
