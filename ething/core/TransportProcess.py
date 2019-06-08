@@ -312,7 +312,11 @@ class TransportProcess(Process):
             
             self.is_open = False
 
-            self.protocol.connection_lost(error)
+            try:
+                self.protocol.connection_lost(error)
+            except Exception as e:
+                self.log.exception('exception in protocol.connection_lost()')
+
             
             if not self.reconnect:
                 break

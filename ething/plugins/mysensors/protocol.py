@@ -208,7 +208,7 @@ class MySensorsProtocol(LineReader):
                                     node.libVersion = message.value
                             else:
                                 if sensor:
-                                    sensor.description = message.value
+                                    sensor.description = str(message.value)
 
                         elif message.messageType == SET:
 

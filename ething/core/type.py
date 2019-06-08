@@ -163,7 +163,7 @@ class Number(Basetype):
         raise ValueError('value < %s' % str(self.min))
     if self.max is not None:
       if value > self.max:
-        raise ValueError('value > %s' % str(self.max))
+        raise ValueError('value %s > %s' % (str(value), str(self.max)))
   
   def toSchema(self, context = None):
     schema = super(Number, self).toSchema(context)
