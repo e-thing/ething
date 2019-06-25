@@ -1,11 +1,13 @@
 # coding: utf-8
 import zigate
 from zigate import dispatcher
+from zigate.core import DeviceEncoder
 from future.utils import string_types
 from ething.core.Device import Device
 from ething.core.reg import *
 from ething.core.Process import Process
 from .devices import zigate_device_classes
+import json
 
 
 @abstract
@@ -61,6 +63,9 @@ class ZigateBaseGateway(Device):
 
         if 'device' in kwargs:
             dz_instance = kwargs.get('device')
+
+            if signal == zigate.ZIGATE_DEVICE_ADDED or signal == zigate.ZIGATE_DEVICE_UPDATED:
+                self.log.info(json.dumps(dz_instance.to_json(properties=True), indent=4, sort_keys=True, cls=DeviceEncoder))
 
             children = self.children(lambda r: r.ieee == dz_instance.ieee)
             if children:

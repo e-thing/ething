@@ -3,6 +3,7 @@ import zigate
 from ething.core import Device
 from ething.core.reg import *
 from ething.core.interfaces import *
+from colour import Color
 
 
 zigate_device_classes = set()
@@ -48,7 +49,7 @@ class ZigateBaseDevice(with_metaclass(ZigateDeviceMetaClass, Device)):
         self.connected = True
 
         if signal == zigate.ZIGATE_ATTRIBUTE_UPDATED or signal == zigate.ZIGATE_ATTRIBUTE_ADDED:
-            attribute = kwargs.get('attribute')
+            attribute = kwargs.get('attribute') # {'endpoint': 1, 'cluster': 1026, 'addr': 'abcd', 'attribute': 0, 'name': 'temperature', 'value': 13.58, 'unit': '°C', 'type': <class 'float'>, 'data': 1358}
             name = attribute.get('name')
             value = attribute.get('value')
             self.log.debug('zigate: attribute changed: %s', attribute)
@@ -168,3 +169,63 @@ class ZMihomeButton(ZigateBaseDevice, Button):
                 else:
                     self.click(type='%d click' % value)
 
+
+class ZDimmableLight(ZigateBaseDevice, DimmableLight):
+    """
+    Mihome dimmable light.
+    """
+
+    @classmethod
+    def isvalid(cls, gateway, zigate_device_instante):
+        return False # todo !
+
+    def setLevel(self, level):
+        if not self.zdevice.action_move_level_onoff(zigate.ON if level > 0 else zigate.OFF, level):
+            # command status is bad !
+            raise Exception('unable to reach the device')
+
+    def processAttr(self, name, value, attribute):
+        if name == 'onoff':
+            self.state = value
+        elif name == 'current_level':
+            self.level = value
+
+
+class ZRGBWLight(ZigateBaseDevice, RGBWLight):
+    """
+    Mihome color light.
+    """
+
+    @classmethod
+    def isvalid(cls, gateway, zigate_device_instante):
+        return False # todo !
+
+    def setLevel(self, level):
+        if not self.zdevice.action_move_level_onoff(zigate.ON if level > 0 else zigate.OFF, level):
+            # command status is bad !
+            raise Exception('unable to reach the device')
+
+    def setColor(self, color):
+        if not self.zdevice.action_move_hue_hex(color):
+            # command status is bad !
+            raise Exception('unable to reach the device')
+
+        # or depending of the device
+        #if not self.zdevice.action_move_colour_hex(color):
+        #    # command status is bad !
+        #    raise Exception('unable to reach the device')
+
+
+    def processAttr(self, name, value, attribute):
+        if name == 'onoff':
+            self.state = value
+        elif name == 'current_level':
+            self.level = value
+        elif name == 'current_hue':
+            c = Color(self.color)
+            c.set_hue(value / 360.)
+            self.color = c.get_hex_l()
+        elif name == 'current_saturation':
+            c = Color(self.color)
+            c.set_saturation(value / 100.)
+            self.color = c.get_hex_l()
