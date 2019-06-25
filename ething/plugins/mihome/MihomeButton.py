@@ -10,6 +10,10 @@ class MihomeButton(MihomeDevice, Button):
     Mihome button.
     """
 
+    @classmethod
+    def isvalid(cls, gateway, model):
+        return model in ['switch', 'sensor_switch', 'sensor_switch.aq2', 'sensor_switch.aq3', 'remote.b1acn01']
+
     def processAttr(self, name, value):
 
         if name == 'status' or name == 'button_0':

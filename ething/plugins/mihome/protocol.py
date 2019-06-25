@@ -2,6 +2,7 @@
 from ething.core.TransportProcess import Protocol
 from ething.core.utils.date import utcnow
 from .helpers import *
+from .MihomeDevice import mihome_device_classes
 import time
 import datetime
 
@@ -78,14 +79,15 @@ class MihomeProtocol(Protocol):
                                 'createdBy': gateway.id,
                             })
 
-                            if model == 'sensor_ht' or model == 'weather.v1':
-                                device = self.core.create('resources/MihomeSensorHT', attributes)
-                            elif model in ['magnet', 'sensor_magnet', 'sensor_magnet.aq2']:
-                                device = self.core.create('resources/MihomeMagnet', attributes)
-                            elif model in ['switch', 'sensor_switch', 'sensor_switch.aq2', 'sensor_switch.aq3', 'remote.b1acn01']:
-                                device = self.core.create('resources/MihomeButton', attributes)
+                            for cls in mihome_device_classes:
+                                try:
+                                    if cls.isvalid(gateway, model):
+                                        device = self.core.create(cls, attributes)
+                                        break
+                                except:
+                                    self.log.exception('mihome cls create exception')
                             else:
-                                self.log.warning("Mihome: unknown model %s" % (model,))
+                                self.log.warning('unable to create the device: no associated class found for model: %s' % model)
 
                         else:
                             self.log.warning(

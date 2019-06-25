@@ -10,6 +10,10 @@ class MihomeSensorHT(MihomeDevice, Thermometer, HumiditySensor, PressureSensor):
     Mihome temperature/humidity/pressure Sensor Device class.
     """
 
+    @classmethod
+    def isvalid(cls, gateway, model):
+        return model in ['sensor_ht', 'weather.v1']
+
     def processAttr(self, name, value):
 
         if name == 'temperature':

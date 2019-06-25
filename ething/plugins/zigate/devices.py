@@ -2,7 +2,7 @@
 import zigate
 from ething.core import Device
 from ething.core.reg import *
-from ething.core.interfaces import Thermometer, HumiditySensor, PressureSensor
+from ething.core.interfaces import *
 
 
 zigate_device_classes = set()
@@ -47,6 +47,16 @@ class ZigateBaseDevice(with_metaclass(ZigateDeviceMetaClass, Device)):
 
         self.connected = True
 
+        if signal == zigate.ZIGATE_ATTRIBUTE_UPDATED or signal == zigate.ZIGATE_ATTRIBUTE_ADDED:
+            attribute = kwargs.get('attribute')
+            name = attribute.get('name')
+            value = attribute.get('value')
+            self.log.debug('zigate: attribute changed: %s', attribute)
+            self.processAttr(name, value, attribute)
+
+    def processAttr(self, name, value, attribute):
+        pass
+
     @classmethod
     def create_device(cls, gateway, zigate_device_instante):
         return gateway.core.create(cls, {
@@ -62,7 +72,7 @@ class ZigateBaseDevice(with_metaclass(ZigateDeviceMetaClass, Device)):
         return False
 
 
-class ZMihomeSensorHT(ZigateBaseDevice, Thermometer, HumiditySensor, PressureSensor):
+class ZMihomeWeather(ZigateBaseDevice, Thermometer, HumiditySensor, PressureSensor):
     """
     Mihome temperature/humidity/pressure Sensor Device class.
     """
@@ -71,21 +81,90 @@ class ZMihomeSensorHT(ZigateBaseDevice, Thermometer, HumiditySensor, PressureSen
     def isvalid(cls, gateway, zigate_device_instante):
         return zigate_device_instante.get_property_value('type') == 'lumi.weather'
 
-    def process_signal(self, signal, kwargs):
+    def processAttr(self, name, value, attribute):
+        if name == 'temperature':
+            self.temperature = value
+        elif name == 'humidity':
+            self.humidity = value
+        elif name == 'pressure':  # mbar
+            self.pressure = value * 100.
 
-        super(ZMihomeSensorHT, self).process_signal(signal, kwargs)
 
-        if signal == zigate.ZIGATE_ATTRIBUTE_UPDATED or signal == zigate.ZIGATE_ATTRIBUTE_ADDED:
-            attribute = kwargs.get('attribute')
-            name = attribute.get('name')
-            value = attribute.get('value')
+class ZMihomeSensorHT(ZigateBaseDevice, Thermometer, HumiditySensor):
+    """
+    Mihome temperature/humidity Sensor Device class.
+    """
 
-            if name == 'temperature':
-                self.temperature = value
-            elif name == 'humidity':
-                self.humidity = value
-            elif name == 'pressure':  # mbar
-                self.pressure = value * 100.
-            elif name == 'battery': # volt
-                self.battery = min(100. * value / 3.3, 100)
+    @classmethod
+    def isvalid(cls, gateway, zigate_device_instante):
+        return zigate_device_instante.get_property_value('type') == 'lumi.sensor_ht'
+
+    def processAttr(self, name, value, attribute):
+        if name == 'temperature':
+            self.temperature = value
+        elif name == 'humidity':
+            self.humidity = value
+
+
+class ZMihomeMagnet(ZigateBaseDevice, DoorSensor):
+    """
+    Mihome door Sensor.
+    """
+
+    @classmethod
+    def isvalid(cls, gateway, zigate_device_instante):
+        return zigate_device_instante.get_property_value('type') in ['lumi.sensor_magnet', 'lumi.sensor_magnet.aq2']
+
+    def processAttr(self, name, value, attribute):
+        if name == 'onoff':
+            self.state = value
+
+
+class ZMihomeSwitch(ZigateBaseDevice, Switch):
+    """
+    Mihome button.
+    """
+
+    @classmethod
+    def isvalid(cls, gateway, zigate_device_instante):
+        return zigate_device_instante.get_property_value('type') in ['lumi.ctrl_ln1', 'lumi.sensor_86sw1']
+
+    def processAttr(self, name, value, attribute):
+        if name == 'onoff':
+            self.state = value
+
+
+class ZMihomeButton(ZigateBaseDevice, Button):
+    """
+    Mihome button.
+    """
+
+    @classmethod
+    def isvalid(cls, gateway, zigate_device_instante):
+        return zigate_device_instante.get_property_value('type') in ['lumi.sensor_switch', 'lumi.sensor_switch.aq2', 'lumi.sensor_switch.aq3', 'lumi.remote.b1acn01', 'lumi.remote.b286acn01']
+
+    def processAttr(self, name, value, attribute):
+        if name == 'onoff':
+            if value:
+                # cf. https://zigate.fr/produits-xiaomi-compatibles-zigate/compatible/bouton/
+                self.click(type='single')
+        elif name == 'multiclick':
+            if isinstance(value, string_types):
+                if value == 'Click':
+                    self.click(type='single')
+                elif value == 'Double Click':
+                    self.click(type='double')
+                elif value == 'Long Click':
+                    self.click(type='long_click')
+                elif value == 'Shake':
+                    self.click(type='shake')
+                else:
+                    self.click(type=value)
+            else: # int
+                if value == 1:
+                    self.click(type='single')
+                elif value == 2:
+                    self.click(type='double')
+                else:
+                    self.click(type='%d click' % value)
 

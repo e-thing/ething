@@ -79,7 +79,7 @@ class ZigateBaseGateway(Device):
             except:
                 self.log.exception('zigate cls create exception')
 
-        self.log.warning('unable to create the device: no associated class found')
+        self.log.warning('unable to create the device: no associated class found for %s', dz_instance)
 
     @method
     def start_pairing_mode(self):

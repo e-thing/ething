@@ -6,12 +6,29 @@ from ething.core.reg import *
 import json
 
 
+mihome_device_classes = set()
+
+
+class MihomeDeviceMetaClass(MetaReg):
+    def __new__(meta, name, bases, dct):
+        cls = MetaReg.__new__(meta, name, bases, dct)
+
+        if not is_abstract(cls):
+            mihome_device_classes.add(cls)
+
+        return cls
+
+
 @abstract
 @attr('voltage', type=Number(), mode=READ_ONLY, default=0, description = 'the voltage of the battery if any')
-class MihomeDevice(MihomeBase):
+class MihomeDevice(with_metaclass(MihomeDeviceMetaClass, MihomeBase)):
     """
     Mihome Device base class
     """
+
+    @classmethod
+    def isvalid(cls, gateway, model):
+        return False
 
     def _get_gateway(self):
         return self.createdBy
