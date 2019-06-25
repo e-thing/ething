@@ -39,11 +39,11 @@ Compatible devices/protocols :
 - MiHome
 - bluetooth low energy devices
 - SSH
-- [Zigate](//zigate.fr) (coming soon...)
+- [Zigate](//zigate.fr)
 
 ### Flow editor
 
-Create flow to execute custom tasks when an event occurs and under certains conditions.
+Create flows to execute custom tasks when an event occurs and under certains conditions.
 
 
 ### Node-RED
@@ -69,10 +69,8 @@ python setup.py install
 ## Run
 
 ```bash
-ething [--daemon]
+ething
 ```
-
-The --daemon argument will start the process as a daemon.
 
 The log file and the database are stored in `~/.ething` (on windows: `C:\Users\<username>\.ething`).
 

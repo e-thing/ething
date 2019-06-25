@@ -67,6 +67,7 @@ class ExecuteDevice(ResourceNode):
 @attr('connected', type=Boolean(), default=True, mode=READ_ONLY, force_watch=True, description="Set to true when this device is connected.")
 @attr('lastSeenDate', type=Nullable(TzDate()), mode=READ_ONLY, default=None, description="The last time this device was reached or made a request.")
 @attr('error', type=Nullable(String()), mode=READ_ONLY, default=None, description="Any error concerning this device.")
+@meta(description='')
 class Device(Resource):
 
     """

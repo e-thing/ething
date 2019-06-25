@@ -26,6 +26,9 @@ class RFLinkController(TransportProcess):
 @attr('build', default=None, mode=READ_ONLY, description="The build number of the RFLink library used.")
 @attr('inclusion', default=False, type=Boolean(),  description="If true, new devices will be automatically created.")
 class RFLinkGateway(Device):
+    """
+    See http://www.rflink.nl
+    """
 
     def __process__(self):
         self.controller = self.__controller__(self)

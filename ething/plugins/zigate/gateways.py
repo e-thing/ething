@@ -9,6 +9,10 @@ from .devices import zigate_device_classes
 
 
 @abstract
+@meta(description='''
+![ZiGate Logo](https://i2.wp.com/zigate.fr/wp-content/uploads/2017/10/cropped-ZiGate_black2-1.png?fit=198%2C100&ssl=1)
+See for more details : https://zigate.fr
+''', icon='mdi-alpha-z-box')
 class ZigateBaseGateway(Device):
 
     RESET_ATTR = list(),
