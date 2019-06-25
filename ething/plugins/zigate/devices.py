@@ -166,7 +166,7 @@ class ZMihomeButton(ZigateBaseDevice, Button):
                     self.click(type='single')
                 elif value == 2:
                     self.click(type='double')
-                else:
+                elif value > 2:
                     self.click(type='%d click' % value)
 
 

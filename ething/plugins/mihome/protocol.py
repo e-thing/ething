@@ -188,7 +188,7 @@ class MihomeProtocol(Protocol):
         now = utcnow()
         
         for device in devices:
-            if device.lastSeenDate and now - device.lastSeenDate > datetime.timedelta(seconds=self.ACTIVITY_TIMEOUT):
+            if device.connected and device.lastSeenDate and now - device.lastSeenDate > datetime.timedelta(seconds=self.ACTIVITY_TIMEOUT):
                 device.connected = False
 
     def search(self):

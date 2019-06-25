@@ -60,8 +60,8 @@ dispatcher.connect(z_callback, zigate.ZIGATE_DEVICE_NEED_DISCOVERY)
 channel = 0
 port = None # if None, first device will be selected
 
-z = FakeZiGate(auto_start=False, auto_save=False, path=None)
-#z = zigate.connect(port=port, auto_start=False, auto_save=False, path=None) # Leave None to auto-discover the port
+#z = FakeZiGate(auto_start=False, auto_save=False, path=None)
+z = zigate.connect(port=port, auto_start=False, auto_save=False, path=None) # Leave None to auto-discover the port
 
 z.startup(channel)
 
