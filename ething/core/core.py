@@ -13,6 +13,7 @@ from .utils.ObjectPath import generate_filter, patch_all
 from .Resource import Resource
 from .Process import Process, Manager as ProcessManager
 from .flow import generate_event_nodes
+from .env import USER_DIR
 from functools import wraps
 import collections
 import logging
@@ -110,6 +111,8 @@ class Core(object):
 
         self.log = logger or logging.getLogger('ething')
         self.log.setLevel(log_level)
+
+        self.log.info('USER_DIR = %s', USER_DIR)
 
         if debug:
             self.log.info('debug mode enabled')

@@ -16,16 +16,20 @@ def test_extends(core):
 def test_attr_changed(core):
 
     attr_changed = set()
+    attr_changed2 = set()
 
     @attr('cccaa', type=String(), default='', force_watch=True)
+    @attr('cccab', type=String(), default='b')
     class CCCA(Resource):
 
         def on_attr_update(self, attr, new_value, old_value):
             super(CCCA, self).on_attr_update(attr, new_value, old_value)
 
+            attr_changed.add(attr)
+
             if attr == 'cccaa':
                 print('cccaa changed', new_value)
-                attr_changed.add(attr)
+                attr_changed2.add(attr)
 
 
     @attr('cccba', type=String(), default='', force_watch=True)
@@ -36,7 +40,7 @@ def test_attr_changed(core):
 
             if attr == 'cccba':
                 print('cccba changed', new_value)
-                attr_changed.add(attr)
+                attr_changed2.add(attr)
 
 
     @attr('taca', type=String(), default='', force_watch=True)
@@ -46,19 +50,21 @@ def test_attr_changed(core):
 
             if attr == 'taca':
                 print('taca changed', new_value)
-                attr_changed.add(attr)
+                attr_changed2.add(attr)
 
 
     tac = core.create(TAC, {
-        'name': 'toto'
+        'name': 'toto',
     })
 
     with tac:
         tac.taca = 'v'
         tac.cccaa = 'w'
+        tac.cccab = 'b'
         tac.cccba = 'w'
 
-    assert attr_changed == set(['taca', 'cccaa', 'cccba'])
+    assert attr_changed == set(['taca', 'cccaa', 'cccba', 'modifiedDate'])
+    assert attr_changed2 == set(['taca', 'cccaa', 'cccba'])
 
 
 

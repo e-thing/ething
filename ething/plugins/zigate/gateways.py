@@ -6,8 +6,14 @@ from future.utils import string_types
 from ething.core.Device import Device
 from ething.core.reg import *
 from ething.core.Process import Process
+from ething.core.env import USER_DIR
+from ething.core import scheduler
 from .devices import zigate_device_classes
 import json
+import os
+
+
+PERSISTENT_FILE = os.path.abspath(os.path.join(USER_DIR, 'zigate.json'))
 
 
 @abstract
@@ -15,26 +21,38 @@ import json
 ![ZiGate Logo](https://i2.wp.com/zigate.fr/wp-content/uploads/2017/10/cropped-ZiGate_black2-1.png?fit=198%2C100&ssl=1)
 See for more details : https://zigate.fr
 ''', icon='mdi-alpha-z-box')
+@attr('ieee', type=String(), default='', mode = READ_ONLY, description="The ieee address of the gateway")
+@attr('addr', type=String(), default='', mode = READ_ONLY, description="The network address of the gateway")
+@attr('version', type=String(), default='', mode = READ_ONLY, description="The version of the gateway")
+@attr('channel', type=Integer(), default=0, mode = READ_ONLY, description="The channel used by the zigbee network")
 class ZigateBaseGateway(Device):
 
     RESET_ATTR = list(),
 
-    def __process__(self):
-        self.controller = Process(target=self._controller_main, terminate=self._controller_end, name='zigate.%s' % self.id)
-        return self.controller
-
     def on_update(self, dirty_keys):
         for attr in self.RESET_ATTR:
             if attr in dirty_keys:
-                self.controller.restart()
+                self._controller_start()
                 break
+
+    @property
+    def persistent_file(self):
+        return os.path.abspath(os.path.join(USER_DIR, 'zigate_%s.json' % self.id))
 
     def _connect(self, **kwargs):
         raise NotImplementedError()
 
-    def _controller_main(self):
-        gconf = {'auto_start':False, 'auto_save':False, 'path':None}
-        channel = 0
+    @scheduler.setInterval(30, name="zigate.save_state")
+    def save_state(self):
+        if hasattr(self, 'z') and self.z:
+            self.log.debug('save_state')
+            self.z.save_state()
+
+    @scheduler.delay(0, name="zigate.init")
+    def _controller_start(self):
+        self._controller_end() # just in case...
+
+        gconf = {'auto_start':False, 'auto_save':False, 'path':self.persistent_file}
 
         self.z = z = self._connect(**gconf)
 
@@ -48,24 +66,34 @@ class ZigateBaseGateway(Device):
         dispatcher.connect(self._controller_callback, signal=zigate.ZIGATE_DEVICE_NEED_DISCOVERY, sender=z)
 
         # start
-        self.log.debug('zigate startup on channel %d', channel)
-        z.startup(channel)
+        self.log.debug('zigate startup')
+        z.startup()
 
-        self.log.info('zigate version: %s', z.get_version_text())
+        self.version = z.get_version_text()
+        self.log.info('zigate version: %s', self.version)
+
+        self.addr = z.addr
+        self.ieee = z.ieee
+        self.channel = z.channel
 
     def _controller_end(self):
-        self.z.close()
-        self.z = None
+        if hasattr(self, 'z') and self.z:
+            self.log.info('zigate close')
+            self.z.save_state()
+            self.z.close()
+            dispatcher.disconnect(self._controller_callback, sender=self.z)
+            self.z = None
 
     def _controller_callback(self, sender, signal, **kwargs):
 
-        self.log.debug('signal received: %s', signal)
+        self.log.debug('signal received: %s %s', signal, kwargs)
 
         if 'device' in kwargs:
             dz_instance = kwargs.get('device')
 
-            if signal == zigate.ZIGATE_DEVICE_ADDED or signal == zigate.ZIGATE_DEVICE_UPDATED:
-                self.log.info(json.dumps(dz_instance.to_json(properties=True), indent=4, sort_keys=True, cls=DeviceEncoder))
+            if signal == zigate.ZIGATE_DEVICE_ADDED:
+                # wait for the discovery process to complete
+                self.core.scheduler.delay(5., callback=lambda: self.log.info(json.dumps(dz_instance.to_json(properties=True), indent=4, sort_keys=True, cls=DeviceEncoder)))
 
             children = self.children(lambda r: r.ieee == dz_instance.ieee)
             if children:

@@ -36,23 +36,26 @@ class ZigateBaseDevice(with_metaclass(ZigateDeviceMetaClass, Device)):
     def process_signal(self, signal, kwargs):
         if signal == zigate.ZIGATE_DEVICE_ADDRESS_CHANGED:
             self.addr = kwargs.get('new_addr')
+        elif signal == zigate.ZIGATE_DEVICE_NEED_DISCOVERY:
+            self.error = 'need discovery'
 
-        device = kwargs.get('device')
+        zdevice = kwargs.get('device')
 
-        self.lqi = device.lqi_percent
+        self.lqi = zdevice.lqi_percent
 
-        if device.info.get('power_type', 0) == 1:
+        if zdevice.info.get('power_type', 0) == 1:
             self.battery = None # plugged
         else:
-            self.battery = device.battery_percent
+            self.battery = zdevice.battery_percent
 
-        self.connected = True
+        connected = not zdevice.missing
+        if connected != self.connected:
+            self.connected = connected
 
         if signal == zigate.ZIGATE_ATTRIBUTE_UPDATED or signal == zigate.ZIGATE_ATTRIBUTE_ADDED:
             attribute = kwargs.get('attribute') # {'endpoint': 1, 'cluster': 1026, 'addr': 'abcd', 'attribute': 0, 'name': 'temperature', 'value': 13.58, 'unit': '°C', 'type': <class 'float'>, 'data': 1358}
             name = attribute.get('name')
             value = attribute.get('value')
-            self.log.debug('zigate: attribute changed: %s', attribute)
             self.processAttr(name, value, attribute)
 
     def processAttr(self, name, value, attribute):

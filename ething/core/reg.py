@@ -549,7 +549,7 @@ class Attribute (RegItemBase):
       if not init:
         # detect change !
         if self.get('force_watch') or not (type(val)==type(old_val) and val==old_val): # val is not old_val:
-          #print('__set_raw__', val, old_val, type(val), type(old_val), val is not old_val, val != old_val)
+          # print('__set_raw__', val, old_val, type(val), type(old_val), val is not old_val, val != old_val)
           reg.set_dirty(attr=self)
           self.__watch__(obj, val, old_val, context)
     
@@ -1415,8 +1415,15 @@ def _set_base(cls, data=None, context=None, init=False):
       name = attribute.name
       if name in data:
         d[attribute] = attribute.__set_pre__(data[name], context)
-      elif attribute.required and init:
-        raise AttributeError('[%s] attribute "%s" is not set' % (cls.__name__, name))
+      else:
+        if init:
+          if attribute.required:
+            raise AttributeError('[%s] attribute "%s" is not set' % (cls.__name__, name))
+          else:
+            d[attribute] = attribute._make_default(cls, context=context)
+            #d[attribute] = attribute.__set_pre__(attribute.make_default(cls), context)
+      #elif attribute.required and init:
+      #  raise AttributeError('[%s] attribute "%s" is not set' % (cls.__name__, name))
 
   return InternalData(d, context)
 
