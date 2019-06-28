@@ -352,6 +352,7 @@ class ZigateGenericSmartPlugDevice(ZigateGenericRelayDevice):
         return device_id ==  0x0051
 
 @dynamic
+@meta(icon='mdi-access-point')
 class ZigateGenericSensorDevice(ZigateBaseDevice):
 
     @classmethod
