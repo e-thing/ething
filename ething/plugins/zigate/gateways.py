@@ -15,6 +15,8 @@ import os
 
 PERSISTENT_FILE = os.path.abspath(os.path.join(USER_DIR, 'zigate.json'))
 
+black_listed_devices = list()
+
 
 @abstract
 @meta(description='''
@@ -95,28 +97,68 @@ class ZigateBaseGateway(Device):
                 # wait for the discovery process to complete
                 self.core.scheduler.delay(5., callback=lambda: self.log.info(json.dumps(dz_instance.to_json(properties=True), indent=4, sort_keys=True, cls=DeviceEncoder)))
 
-            children = self.children(lambda r: r.ieee == dz_instance.ieee)
-            if children:
-                device = children[0]
-            else:
-                # new device
-                device = self._create_device(dz_instance)
+            devices = self.children(lambda r: r.ieee == dz_instance.ieee)
+            if not devices:
+                # new devices
+                devices = self._create_devices(dz_instance)
 
-            if device:
-                with device:
-                    device.process_signal(signal, kwargs)
+            if devices:
+                for device in devices:
+                    with device:
+                        device.process_signal(signal, kwargs)
 
-    def _create_device(self, dz_instance):
+    def _create_devices(self, dz_instance):
+
+        ieee = dz_instance.ieee
+
+        if ieee in black_listed_devices:
+            return
+
         self.log.info('new device: %s', dz_instance.info)
+        devices = []
 
         for cls in zigate_device_classes:
-            try:
-                if cls.isvalid(self, dz_instance):
-                    return cls.create_device(self, dz_instance)
-            except:
-                self.log.exception('zigate cls create exception')
+            if hasattr(cls, 'isvalid'):
+                try:
+                    r = cls.isvalid(self, dz_instance) # returns either True/False or a class or a list of class
+                    if r:
+                        if r is True:
+                            r = cls
+                        if not isinstance(r, list):
+                            r = [r]
+                        for c in r:
+                            try:
+                                d = c.create_device(self, dz_instance)
+                                devices.append(d)
+                            except:
+                                self.log.exception('zigate cls create exception for class %s', c)
+                        return devices
+                except:
+                    self.log.exception('zigate cls isvalid exception for class %s', cls)
 
-        self.log.warning('unable to create the device: no associated class found for %s', dz_instance)
+        # search by endpoints
+        for ep in dz_instance.endpoints:
+            for cls in zigate_device_classes:
+                if hasattr(cls, 'isvalid_ep'):
+                    try:
+                        r = cls.isvalid_ep(self, dz_instance, ep)  # returns either True/False or a class
+                        if r:
+                            if r is True:
+                                r = cls
+                            try:
+                                d = r.create_device(self, dz_instance, ep)
+                                devices.append(d)
+                                break
+                            except:
+                                self.log.exception('zigate cls create exception for class %s', r)
+                    except:
+                        self.log.exception('zigate cls isvalid exception for class %s', cls)
+
+        if devices:
+            return devices
+
+        black_listed_devices.append(ieee)
+        self.log.warning('unable to create any device for %s', dz_instance)
 
     @method
     def start_pairing_mode(self):

@@ -133,15 +133,19 @@ def discriminate(key='type', codec=None, **extra):
 def _discriminate_cls(cls, data):
     key = get_meta(cls, 'discriminate_key')
     if key is None:
+        # no discrimination, classic way
         return cls
+
+    base_cls = get_meta(cls, 'discriminate_cls', cls)
+    if base_cls is not cls and issubclass(cls, base_cls) and not is_abstract(cls):
+        # no need to discriminate here
+        # fall back to the given class
+        return cls
+
     codec = get_meta(cls, 'discriminate_codec')
     try:
         s = data[key]
     except KeyError:
-        base_cls = get_meta(cls, 'discriminate_cls')
-        if base_cls is not cls and issubclass(cls, base_cls) and not is_abstract(cls):
-            # fall back to the given class
-            return cls
         raise Exception('the attribute "%s" is mandatory' % key)
     else:
         _cls = codec[1](s)
@@ -1487,6 +1491,35 @@ def create(cls, data=None, context=None, data_src=None):
   d.set_to(instance)
 
   return instance
+
+
+def dynamic(cls):
+    cls = abstract(cls)
+    cls = attr('_bases', mode=PRIVATE, default=lambda cls_: [get_definition_name(c) for c in list(cls_.__bases__)[1:]])(cls)
+
+    def _create_dynamic_class(*bases):
+        bases_ = [cls]
+
+        for base in bases:
+            if isinstance(base, string_types):
+                base = get_registered_class(base)
+            bases_.append(base)
+
+        return type(cls.__name__, tuple(bases_), {
+            '_REGISTER_': False
+        })
+
+    def _instantiate(cls_, data, context):
+        if cls_ is cls:
+            dyn_cls = _create_dynamic_class(*data.get('_bases', []))
+            return dyn_cls(data, context)
+        else:
+            return cls_(data, context)
+
+    setattr(cls, 'create_dynamic_class', staticmethod(_create_dynamic_class))
+    setattr(cls, '__instantiate__', classmethod(_instantiate))
+
+    return cls
 
 
 def update(obj, data, data_src=None):

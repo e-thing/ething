@@ -410,7 +410,7 @@ class Core(object):
             if cls is None:
                 raise Exception('the type "%s" is unknown' % cls_name)
         attributes['type'] = get_definition_name(cls)
-        return self.db.os.create(Resource, attributes)
+        return self.db.os.create(cls, attributes)
 
     def dispatchSignal(self, signal, *args, **kwargs):
         """

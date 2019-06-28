@@ -87,6 +87,11 @@ class ResourceType(DBLink):
             schema['$must_throw'] = get_definition_name(self.must_throw)
         return schema
 
+    def get(self, value, context=None):
+        try:
+            return super(ResourceType, self).get(value, context)
+        except ValueError:
+            return None
 
 class RDict(Dict):
     def toJson(self, value, context=None):
@@ -122,7 +127,7 @@ def _import_process(instance, p):
 @attr('modifiedDate', type=TzDate(), default=lambda _: utcnow(), mode=READ_ONLY, description="Last time this resource was modified")
 @attr('createdDate', type=TzDate(), default=lambda _: utcnow(), mode=READ_ONLY, description="Create time for this resource")
 @attr('name', type=String(allow_empty=False, regex='^[a-zA-Z0-9 !#$%&\'()+,\-.;=@^_`{    ]+(\\/[a-zA-Z0-9 !#$%&\'()+,\-.;=@^_`{    ]+)*$'), description="The name of the resource")
-@discriminate(description="The type of the resource")
+@discriminate('type', description="The type of the resource")
 @uid(description="The id of the resource")
 @db(table='resources')
 @namespace('resources')

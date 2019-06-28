@@ -806,7 +806,7 @@ class OS(object):
     return self._get_os(obj).remove(obj)
   
   def create(self, cls, data=None):
-    return self._get_os(cls).create(data)
+    return self._get_os(cls).create(cls, data)
   
   def commit(self):
     self._dirty = False
@@ -821,6 +821,7 @@ class OS(object):
 class OS_item(object):
 
   def __init__(self, cls, os):
+    cls = get_meta(cls, 'db_cls', cls)
     self._os = os
     self._db = os._db
     self._cls = cls
@@ -845,8 +846,8 @@ class OS_item(object):
   def update_context(self, c):
       self._context.update(c)
 
-  def create(self, data=None):
-    obj = create(self._cls, data, self.context)
+  def create(self, cls, data=None):
+    obj = create(cls, data, self.context)
     self.save(obj)
     return obj
   
@@ -959,6 +960,7 @@ class OS_item(object):
   
 def db(table=None, id_key=None, database=None):
   def d(cls):
+    set_meta(cls, 'db_cls', cls)
     if table is not None: set_meta(cls, 'table', table)
     if id_key is not None: set_meta(cls, 'id_key', id_key)
     if database is not None: set_meta(cls, 'database', database)
