@@ -1522,6 +1522,10 @@ def dynamic(cls):
     return cls
 
 
+def create_dynamic_class(cls, *bases):
+    return cls.create_dynamic_class(*bases)
+
+
 def update(obj, data, data_src=None):
   cls = type(obj)
   context = get_context(obj)

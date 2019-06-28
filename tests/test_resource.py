@@ -67,5 +67,43 @@ def test_attr_changed(core):
     assert attr_changed2 == set(['taca', 'cccaa', 'cccba'])
 
 
+def test_dynamic(core):
+
+    @attr('cccaa', type=String(), default='')
+    class TDCCCA(Resource):
+        pass
+
+    @attr('cccba', type=String(), default='')
+    class TDCCCB(Resource):
+        pass
+
+    @attr('taca', type=String(), default='')
+    @dynamic
+    class TDTAC(Resource):
+        pass
+
+
+    c = create_dynamic_class(TDTAC, TDCCCA, TDCCCB)
+
+    assert issubclass(c, TDTAC)
+    assert issubclass(c, TDCCCA)
+    assert issubclass(c, TDCCCB)
+
+    ist = core.create(c, {
+        'name': 'toto',
+    })
+
+    assert isinstance(ist, TDTAC)
+    assert isinstance(ist, TDCCCA)
+    assert isinstance(ist, TDCCCB)
+
+    s = serialize(ist)
+
+    ist2 = unserialize(Resource, s, context={'core': core})
+
+    assert isinstance(ist, TDTAC)
+    assert isinstance(ist, TDCCCA)
+    assert isinstance(ist, TDCCCB)
+
 
 

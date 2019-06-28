@@ -138,8 +138,7 @@ class RFLinkProtocol(LineReader):
             interfaces.append('interfaces/PressureSensor')
 
         if len(interfaces) > 0:
-            attributes['interfaces'] = interfaces
-            return self.core.create(RFLinkGenericSensor, attributes)
+            return self.core.create(RFLinkGenericSensor.create_dynamic_class(*interfaces), attributes)
 
 
     # $message message to send

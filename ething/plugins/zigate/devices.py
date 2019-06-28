@@ -375,7 +375,7 @@ class ZigateGenericSensorDevice(ZigateBaseDevice):
             interfaces.append(OccupencySensor)
 
         if interfaces:
-            return cls.create_dynamic_class(*interfaces)
+            return create_dynamic_class(cls, *interfaces)
 
     def processAttr(self, name, value, attribute):
         if name == 'temperature' and self.isTypeof(Thermometer):
