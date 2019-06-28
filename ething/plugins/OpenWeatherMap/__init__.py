@@ -4,7 +4,7 @@ from ething.core.plugin import *
 from ething.core import scheduler
 from ething.core.Device import *
 from ething.core.interfaces import Thermometer, PressureSensor, HumiditySensor, Anemometer
-from ething.core.interfaces.sensor import SensorValueChanged
+from ething.core.interfaces.sensor import sensor_attr
 import requests
 import json
 
@@ -38,15 +38,9 @@ class OpenWeatherMapPlugin(Plugin):
 
 
 
-@attr('weather', type=String(), mode=READ_ONLY, default='', history = True, force_watch = True, description='a string descibing the current weather')
+@sensor_attr('weather', type=String(), default='', description='a string descibing the current weather')
 @attr('location', type=String(allow_empty=False), default=NO_VALUE, description='a city\'s name. See https://openweathermap.org/find')
 class OpenWeatherMapDevice(Thermometer, PressureSensor, HumiditySensor, Anemometer):
-
-    def on_attr_update(self, attr, new_value, old_value):
-        super(OpenWeatherMapDevice, self).on_attr_update(attr, new_value, old_value)
-
-        if attr == 'weather':
-            self.dispatchSignal(SensorValueChanged(self, attr, new_value, old_value))
 
     @scheduler.setInterval(REFRESH_INTERVAL)
     def refresh(self):

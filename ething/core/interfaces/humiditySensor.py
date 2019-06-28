@@ -1,15 +1,10 @@
 # coding: utf-8
 
-from .sensor import Sensor, SensorValueChanged
+from .sensor import Sensor, sensor_attr
 from ..Interface import *
 
 
 @interface
-@attr('humidity', type = Number(min = 0, max = 100), default = 0, mode = READ_ONLY, history = True, force_watch = True, description = "the humidity measured by the sensor in percent.")
+@sensor_attr('humidity', type = Number(min = 0, max = 100), default = 0, description = "the humidity measured by the sensor in percent.")
 class HumiditySensor(Sensor):
-
-    def on_attr_update(self, attr, new_value, old_value):
-        super(HumiditySensor, self).on_attr_update(attr, new_value, old_value)
-
-        if attr == 'humidity':
-            self.dispatchSignal(SensorValueChanged(self, attr, new_value, old_value))
+    pass
