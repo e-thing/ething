@@ -195,16 +195,26 @@ class YeelightAdvertisementProtocol(Protocol):
         if not device:
             self.log.debug('new device : id = %s, model = %s' % (id, model))
 
+            support = dev_info.get('support', '').split()
+
             attributes = {
                 'dev_id': id,
                 'model': model,
                 'fw_ver': dev_info.get('fw_ver'),
                 'name': dev_info.get('name', '').strip() or model,
-                'host': dev_info.get('ip')
+                'host': dev_info.get('ip'),
+                '_support': support,
             }
 
             if model == "color":
                 device = self.core.create('resources/YeelightBulbRGBW', attributes)
+            elif model == "mono":
+                device = self.core.create('resources/YeelightBulbMono', attributes)
+            else:
+                if ('set_hsv' in support) or ('set_rgb' in support):
+                    device = self.core.create('resources/YeelightBulbRGBW', attributes)
+                elif 'set_bright' in support:
+                    device = self.core.create('resources/YeelightBulbMono', attributes)
 
             if not device:
                 self.log.warning('unable to create the device : id = %s, model = %s' % (id, model))
@@ -214,6 +224,7 @@ class YeelightAdvertisementProtocol(Protocol):
                 device.connected = True
                 device._update(dev_info)
 
+        return device
 
 
 

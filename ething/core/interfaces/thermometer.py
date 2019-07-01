@@ -5,6 +5,6 @@ from ..Interface import *
 
 
 @interface
-@sensor_attr('temperature', type = Number(), default = 0, description = u"the temperature of the sensor")
+@sensor_attr('temperature', type = Number(), default = 0, description = u"the temperature of the sensor", unit="°C", icon="mdi-thermometer")
 class Thermometer(Sensor):
     pass

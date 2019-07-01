@@ -10,7 +10,6 @@ from .dimmable import Dimmable
 from .dimmableRelay import DimmableRelay
 from .light import Light
 from .dimmableLight import DimmableLight
-from .rgbLight import RGBLight
 from .rgbwLight import RGBWLight
 
 from .sensor import Sensor

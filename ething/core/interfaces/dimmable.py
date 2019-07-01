@@ -5,7 +5,7 @@ from ..Device import Device
 
 
 @interface
-@attr('level', type = Number(min=0, max=100), default = 0, mode = READ_ONLY, history = True, description = "the level of this dimmable switch")
+@attr('level', type = Number(min=0, max=100), default = 0, mode = READ_ONLY, description = "the level of this dimmable switch")
 class Dimmable(Device):
 
     @method.arg('level', type=Range(0, 100))

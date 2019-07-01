@@ -10,7 +10,6 @@ from .MySensorsHumiditySensor import MySensorsHumiditySensor
 from .MySensorsPressureSensor import MySensorsPressureSensor
 from .MySensorsBinary import MySensorsBinary
 from .MySensorsGenericSensor import MySensorsGenericSensor
-from .MySensorsRGB import MySensorsRGB
 from .MySensorsRGBW import MySensorsRGBW
 from .MySensorsDimmer import MySensorsDimmer
 

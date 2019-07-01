@@ -135,10 +135,7 @@ class MySensorsProtocol(LineReader):
         elif sensorType == S_DIMMER:
             sensor = self.core.create('resources/MySensorsDimmer', attributes)
 
-        elif sensorType == S_RGB_LIGHT:
-            sensor = self.core.create('resources/MySensorsRGB', attributes)
-
-        elif sensorType == S_RGBW_LIGHT:
+        elif sensorType == S_RGBW_LIGHT or sensorType == S_RGB_LIGHT:
             sensor = self.core.create('resources/MySensorsRGBW', attributes)
 
         else:

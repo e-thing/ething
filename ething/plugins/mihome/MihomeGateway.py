@@ -4,7 +4,7 @@ from ething.core.reg import *
 from ething.core.interfaces import RGBWLight, LightSensor
 from .MihomeBase import MihomeBase
 import json
-
+import colorsys
 
 
 musicMap = ["Police siren", "Police siren 2", "Accident tone", "Missle countdown", "Ghost", "Sniper", "War", "Air Strike", "Barking dogs", "Doorbell ring tone", "Knock on door",
@@ -30,8 +30,11 @@ class MihomeGateway(MihomeBase, RGBWLight, LightSensor):
             if 'rgb' in data:
                 rgb = data['rgb'] & 0xffffff
                 brightness = data['rgb'] >> 24
-
-                self.color = '#' + format(rgb, '06X')
+                h = format(rgb, '06X')
+                rgb = tuple(int(h[i:i + 2], 16) / 255 for i in (0, 2, 4))
+                hue, sat, _ = colorsys.rgb_to_hsv(*rgb)
+                self.hue = hue * 360.
+                self.saturation = sat * 100.
                 self.level = int(brightness)
 
             if 'illumination' in data:
@@ -46,23 +49,22 @@ class MihomeGateway(MihomeBase, RGBWLight, LightSensor):
             self.controller.send({"cmd": "get_id_list", 'sid': self.sid}, ip=self.ip, done = read)
 
     def setLevel(self, level):
-
-        hrgb = int(self.color[1:], 16)
+        r, g, b = colorsys.hsv_to_rgb(self.hue / 360., self.saturation / 100., 1.)
+        hrgb = int('%02X%02X%02X' % (int(r * 255), int(g * 255), int(b * 255)), 16)
         hrgb = hrgb | (level << 24)
 
         self._write({
             "rgb": hrgb
         }, done = lambda _, device : super(MihomeGateway, self).setLevel(level))
 
-    def setColor(self, color):
-
-        hrgb = int(color.replace('#', '').replace('0x', ''), 16)
-
+    def setColor(self, hue, saturation):
+        r, g, b = colorsys.hsv_to_rgb(hue/360., saturation/100., 1.)
+        hrgb = int('%02X%02X%02X' % (int(r * 255), int(g * 255), int(b * 255)), 16)
         hrgb = hrgb | (self.level << 24)
 
         self._write({
             "rgb": hrgb
-        }, done=lambda _, device: super(MihomeGateway, self).setColor(color))
+        }, done=lambda _, device: super(MihomeGateway, self).setColor(hue, saturation))
 
     @method.arg('music', enum=musicMap)
     @method.arg('volume', minimum=0, maximum=100)

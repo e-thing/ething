@@ -1,5 +1,6 @@
 # coding: utf-8
 from .YeelightBulbRGBW import YeelightBulbRGBW
+from .YeelightBulbMono import YeelightBulbMono
 
 from ething.core.plugin import Plugin
 from ething.core.TransportProcess import TransportProcess, UdpTransport

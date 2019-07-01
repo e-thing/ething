@@ -3,7 +3,6 @@ import zigate
 from ething.core import Device
 from ething.core.reg import *
 from ething.core.interfaces import *
-from colour import Color
 
 
 zigate_device_classes = list()
@@ -251,16 +250,12 @@ class ZigateGenericColourDimmableLightDevice(ZigateBaseDevice, RGBWLight):
     def processAttr(self, name, value, attribute):
         if name == 'onoff':
             self.state = value
-        elif name == 'current_level':
+        elif name == 'current_level': # [0-100]
             self.level = value
-        elif name == 'current_hue':
-            c = Color(self.color)
-            c.set_hue(value / 360.)
-            self.color = c.get_hex_l()
-        elif name == 'current_saturation':
-            c = Color(self.color)
-            c.set_saturation(value / 100.)
-            self.color = c.get_hex_l()
+        elif name == 'current_hue': # [0-360]
+            self.hue = value
+        elif name == 'current_saturation': # [0-100]
+            self.saturation = value
 
     def setLevel(self, level):
         onoff = zigate.ON if level > 0 else zigate.OFF
@@ -275,13 +270,13 @@ class ZigateGenericColourDimmableLightDevice(ZigateBaseDevice, RGBWLight):
             # command status is bad !
             raise Exception('unable to reach the device')
 
-    def setColor(self, color):
+    def setColor(self, hue, saturation):
         ep = self.endpoint
 
         if ep is None:
-            res = self.zdevice.action_move_hue_hex(color)
+            res = self.zdevice.action_move_hue_saturation(hue, saturation)
         else:
-            res = self.z.action_move_hue_hex(self.addr, ep, color)
+            res = self.z.action_move_hue_saturation(self.addr, ep, hue, saturation)
 
         if not res:
             # command status is bad !

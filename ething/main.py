@@ -111,7 +111,10 @@ def main():
     log.info('search for installed plugins...')
     from .core.plugin import find_plugins
     for module_name in find_plugins():
-        core.use(module_name)
+        try:
+            core.use(module_name)
+        except:
+            core.log.exception('unable to import %s' % module_name)
 
     exit_code = 0
 
