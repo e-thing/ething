@@ -5,6 +5,7 @@ from ..Interface import *
 
 
 @interface
+@meta(icon='mdi-door')
 @sensor_attr('state', type = Boolean(), default = False, force_watch = False, description = u"the state of the door. True if open.")
 class DoorSensor(Sensor):
     pass

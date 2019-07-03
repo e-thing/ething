@@ -34,10 +34,8 @@ EThingUI.extend('resources/OpenWeatherMapDevice', {
         'default': {
             in: ['devicePage', 'dashboard'],
             component: WOpenWeatherMapDevice,
-            schema: {
-                title: 'default widget',
-                description: 'display the current weather informations',
-            },
+            title: 'weather informations',
+            description: 'display the current weather informations',
             minHeight: 250,
             zIndex: 100
         }

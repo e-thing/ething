@@ -5,6 +5,7 @@ from ..Interface import *
 
 
 @interface
-@sensor_attr('moisture', type = Number(), default = 0, description = "the moisture level measured by this sensor.")
+@meta(icon='mdi-water-percent')
+@sensor_attr('moisture', type = Number(min = 0, max = 100), default = 0, description = "the moisture level measured by this sensor.")
 class MoistureSensor(Sensor):
     pass

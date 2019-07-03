@@ -13,10 +13,8 @@ EThingUI.extend('resources/SpotifyAccount', {
       'spotify': {
         in: ['devicePage', 'dashboard'],
         component: SpotifyWidget,
-        schema: {
-            title: 'Spotify widget',
-            description: 'play music on your device',
-        },
+        title: 'Spotify widget',
+        description: 'play music on your device',
         minHeight: 250,
         minWidth: 500
       },

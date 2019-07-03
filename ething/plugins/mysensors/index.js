@@ -92,10 +92,8 @@
 
         widgets: {
             'sensors': {
-              schema: {
-                  title: 'sensor values',
-                  description: 'show all the sensors values',
-              },
+              title: 'sensor values',
+              description: 'show all the sensors values',
               component: 'WGenericSensor'
             }
         }
