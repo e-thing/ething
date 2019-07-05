@@ -291,6 +291,8 @@ class Core(object):
         if self.debug and not getattr(self, '_gevent_dbg_installed', False):
             from gevent import events, config
 
+            self.log.warning('install gevent debugger')
+
             setattr(self, '_gevent_dbg_installed', True)
 
             config.max_blocking_time = 1.0
@@ -298,11 +300,7 @@ class Core(object):
 
             def event_handler(event):
                 if isinstance(event, events.EventLoopBlocked):
-                    print('DBG: %s' % event)
-                    # print(event.greenlet)
-                    # print('****')
-                    # print(event.info)
-                    # print(event.blocking_time)
+                    self.log.warning('DBG: %s', event)
 
             events.subscribers.append(event_handler)
 

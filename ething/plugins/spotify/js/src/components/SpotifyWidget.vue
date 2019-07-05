@@ -1,6 +1,4 @@
 <template>
-    <w-layout noFooter :title="resource.basename()">
-
 
       <div class="fit column justify-center items-stretch">
         <div class="col-auto overflow-hidden q-ma-md">
@@ -54,7 +52,6 @@
         </div>
       </div>
 
-    </w-layout>
 </template>
 
 <script>
@@ -74,10 +71,6 @@ export default {
     name: 'WSpotify',
 
     extends: EThingUI.components.widgets.WResource,
-
-    components: {
-        WLayout: EThingUI.components.widgets.WLayout
-    },
 
     data () {
         return {

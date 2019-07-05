@@ -5,18 +5,64 @@ from .date import parse, utcfromtimestamp
 from ..type import String
 
 
+
+class MTree(objectpath.Tree):
+
+    def __init__(self, expr, cfg=None):
+        super(MTree, self).__init__(None, cfg)
+        self.c_expr = self.optimize(objectpath.parse(expr, self.D))
+
+    def compile(self, expr):
+        return self.c_expr
+
+    def execute(self, obj):
+        self.data = obj
+        return super(MTree, self).execute('')
+
+    def optimize(self, c_expr):
+        # try to optimize static op
+
+        def check(node):
+            if isinstance(node, tuple):
+                node_op = node[0]
+                if node_op == 'fn' and node[1] == 'dateTime' and len(node)==3 and isinstance(node[2], string_types):
+                    return objectpath.timeutils.dateTime(node[2:])
+
+                node = tuple([check(n) for n in node])
+
+            return node
+
+        c_expr = check(c_expr)
+
+        return c_expr
+
+
+
 def generate_filter(expr, converter=None):
     if converter is None:
         converter = lambda x:x
 
+    tree = MTree(expr)
+
     def _filter(obj):
         try:
-            tree = objectpath.Tree(converter(obj))
-            return bool(tree.execute(expr))
+            return bool(tree.execute(converter(obj)))
         except:
             return False
     return _filter
 
+
+# def generate_filter(expr, converter=None):
+#     if converter is None:
+#         converter = lambda x:x
+#
+#     def _filter(obj):
+#         try:
+#             tree = objectpath.Tree(converter(obj))
+#             return bool(tree.execute(expr))
+#         except:
+#             return False
+#     return _filter
 
 def evaluate(expr, data):
     return generate_filter(expr)(data)
@@ -28,14 +74,19 @@ dateTime_orig = objectpath.timeutils.dateTime
 def patch_dateTime(core):
 
     def patched_dateTime(arg):
-
-        if isinstance(arg, string_types):
-            return parse(arg, core.local_tz)
-        elif isinstance(arg, integer_types):
+        # must return an offset aware datetime
+        if isinstance(arg[0], string_types):
+            dt = parse(arg[0], core.config.timezone)
+        elif isinstance(arg[0], integer_types):
             # timestamp
-            return utcfromtimestamp(arg)
+            dt = utcfromtimestamp(arg[0])
+        else:
+            dt = dateTime_orig(arg)
 
-        return dateTime_orig(arg)
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=core.local_tz)
+
+        return dt
 
     objectpath.timeutils.dateTime = patched_dateTime
 

@@ -1,29 +1,26 @@
 <template>
-    <w-layout noFooter :title="city">
-        <div class="overflow-hidden">
-            <div class="row gutter-xs">
-                <div v-for="item in items" class="col text-center">
-                    <div class="date text-faded" v-if="mode!=='now'">
-                        <small>
-                            <template v-if="mode==='5d'">
-                                {{ item.weekday }}
-                            </template>
-                            <template v-else>
-                                {{ item.date.getHours() }}h
-                            </template>
-                        </small>
-                    </div>
-                    <img :src="item.iconUrl"/>
-                    <div>
-                        <span class="temperature text-faded">{{ rounded(mode==='5d' ? item.maxTemperature : item.temperature) }}°C</span>
-                        <span class="humidity text-blue q-ml-xs">{{ rounded(item.humidity) }}%</span>
-                    </div>
-                    <div class="pressure text-faded" v-if="item.pressure">{{ rounded(item.pressure) }} Pa</div>
-                    <div class="wind text-faded" v-if="item.windSpeed"><template v-if="item.windDirection">{{ item.windDirection }}</template> {{ rounded(item.windSpeed) }} m/s</div>
+    <div class="column fit justify-center">
+        <div class="col-auto text-center">{{ city }} </div>
+        <div class="col-auto row">
+            <div v-for="item in items" class="col text-center">
+                <div class="date text-faded" v-if="mode!=='now'">
+                    <small>
+                        <template v-if="mode==='5d'">
+                            {{ item.weekday }}
+                        </template>
+                        <template v-else>
+                            {{ item.date.getHours() }}h
+                        </template>
+                    </small>
                 </div>
+                <img :src="item.iconUrl"/>
+                <div class="temperature text-faded text-no-wrap">{{ rounded(mode==='5d' ? item.maxTemperature : item.temperature) }}<small class="text-light">°C</small></div>
+                <div class="humidity text-faded text-no-wrap">{{ rounded(item.humidity) }}<small class="text-light">%</small></div>
+                <div class="pressure text-faded text-no-wrap" v-if="item.pressure">{{ rounded(item.pressure) }}<small class="text-light">Pa</small></div>
+                <div class="wind text-faded text-no-wrap" v-if="item.windSpeed"><template v-if="item.windDirection">{{ item.windDirection }}</template> {{ rounded(item.windSpeed) }}<small class="text-light">m/s</small></div>
             </div>
         </div>
-    </w-layout>
+    </div>
 </template>
 
 <script>
@@ -88,10 +85,6 @@ export default {
     name: 'WOpenWeatherMapForecast',
 
     extends: EThingUI.components.widgets.WWidget,
-
-    components: {
-        WLayout: EThingUI.components.widgets.WLayout
-    },
 
     props: {
         location: String,
