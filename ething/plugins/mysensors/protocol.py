@@ -114,32 +114,19 @@ class MySensorsProtocol(LineReader):
     def createSensor(self, node, sensorId, sensorType):
 
         attributes = {
-            'name':  sensorTypeToName(sensorType) or ('%s/sensor-%d' % (node.name, sensorId)),
             'sensorId': sensorId,
             'sensorType': sensorTypeStr(sensorType),
             'createdBy': node.id
         }
 
-        if sensorType == S_TEMP:
-            sensor = self.core.create('resources/MySensorsThermometer', attributes)
+        sensor = None
 
-        elif sensorType == S_HUM:
-            sensor = self.core.create('resources/MySensorsHumiditySensor', attributes)
+        for cls in mysensors_sensor_classes:
+            S = getattr(cls, 'S', None)
 
-        elif sensorType == S_BARO:
-            sensor = self.core.create('resources/MySensorsPressureSensor', attributes)
-
-        elif sensorType == S_BINARY or sensorType == S_SPRINKLER:
-            sensor = self.core.create('resources/MySensorsBinary', attributes)
-
-        elif sensorType == S_DIMMER:
-            sensor = self.core.create('resources/MySensorsDimmer', attributes)
-
-        elif sensorType == S_RGBW_LIGHT or sensorType == S_RGB_LIGHT:
-            sensor = self.core.create('resources/MySensorsRGBW', attributes)
-
-        else:
-            sensor = self.core.create('resources/MySensorsGenericSensor', attributes)
+            if (isinstance(S, (list, tuple)) and sensorType in S) or sensorType == S:
+                sensor = self.core.create(cls, attributes)
+                break
 
         if not sensor:
             raise Exception("fail to create the sensor nodeId=%d sensorId=%d sensorType=%s" % (
@@ -235,12 +222,24 @@ class MySensorsProtocol(LineReader):
                             if sensor:
 
                                 datatype = valueTypeStr(message.subType)
+                                response = None
 
                                 if datatype:
-                                    payload = sensor.data.get('_' + datatype)
-                                    if payload is not None:
-                                        response = Message(
-                                            nodeId, sensorId, SET, message.subType, payload=payload)
+
+                                    try:
+                                        value = sensor._get_data(message.subType)
+                                    except:
+                                        self.log.exception('error in sensor._get_data for sensor %s and datatype=%s' % (sensor, datatype))
+                                        value = None
+
+                                    if value is not None:
+                                        response = Message(nodeId, sensorId, SET, message.subType, value=value)
+                                    else:
+                                        payload = sensor.data.get('_' + datatype)
+                                        if payload is not None:
+                                            response = Message(nodeId, sensorId, SET, message.subType, payload=payload)
+
+                                    if response:
                                         self.send(response)
                                     else:
                                         # no value stored ! No response

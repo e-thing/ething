@@ -20,6 +20,8 @@ from .lightSensor import LightSensor
 from .moistureSensor import MoistureSensor
 from .anemometer import Anemometer
 from .doorSensor import DoorSensor
+from .binarySensor import BinarySensor
+from .genericSensor import GenericSensor
 from .powerMeter import PowerMeter
 from .occupencySensor import OccupencySensor
 

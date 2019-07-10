@@ -1,5 +1,6 @@
 # coding: utf-8
 from future.utils import string_types, integer_types
+from ething.core.reg import MetaReg
 
 
 BROADCAST_ADDRESS = 255
@@ -487,3 +488,16 @@ def valueTypeInt(valueType):
         return valueType
     if isinstance(valueType, string_types) and valueType in valueTypes:
         return valueTypes[valueType][0]
+
+
+mysensors_sensor_classes = list()
+
+
+class MySensorsSensorMetaClass(MetaReg):
+    def __new__(meta, name, bases, dct):
+        cls = MetaReg.__new__(meta, name, bases, dct)
+
+        if getattr(cls, '_REGISTER_', True) is not False and hasattr(cls, 'S'):
+            mysensors_sensor_classes.append(cls)
+
+        return cls

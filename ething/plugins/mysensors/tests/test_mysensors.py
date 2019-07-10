@@ -30,7 +30,7 @@ def test_mysensors_thermometer(core):
 
     assert gateway
 
-    d = core.create('resources/MySensorsThermometer', {
+    d = core.create('resources/MySensorsTemp', {
         'name': 'foobar',
         'sensorId': 4,
         'sensorType': MySensors.S_TEMP,
