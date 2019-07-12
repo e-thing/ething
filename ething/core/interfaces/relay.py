@@ -5,6 +5,7 @@ from ..Interface import *
 
 
 @interface
+@meta(icon='mdi-toggle-switch')
 class Relay(Switch):
 
     @method.arg('state', type=Boolean())

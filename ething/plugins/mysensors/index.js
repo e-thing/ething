@@ -88,16 +88,5 @@
 
     })
 
-    EThingUI.extend('resources/MySensorsGenericSensor', {
-
-        widgets: {
-            'sensors': {
-              title: 'sensor values',
-              description: 'show all the sensors values',
-              component: 'WGenericSensor'
-            }
-        }
-    })
-
 
 })(this);

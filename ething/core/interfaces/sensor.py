@@ -37,6 +37,7 @@ def sensor_attr(*args, **kwargs):
 
 @interface
 @throw(SensorValueChanged)
+@meta(icon='mdi-access-point')
 class Sensor(Device):
 
     def __init__(self, data=None, context=None):

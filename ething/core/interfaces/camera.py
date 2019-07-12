@@ -6,6 +6,7 @@ from ..utils.mime import content_to_ext
 
 
 @interface
+@meta(icon='photo_camera')
 class Camera(Device):
     
     @method.return_type('image/*')

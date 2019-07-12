@@ -17,6 +17,7 @@ class StateChanged(ResourceSignal):
 
 @interface
 @throw(StateChanged)
+@meta(icon='mdi-toggle-switch')
 @attr('state', type = Boolean(), default = False, mode = READ_ONLY, history = True, force_watch = True, description = "the state of the device")
 class Switch(Device):
 

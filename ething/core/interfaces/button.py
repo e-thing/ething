@@ -12,6 +12,7 @@ class ButtonClicked(ResourceSignal):
 
 
 @interface
+@meta(icon='mdi-radiobox-marked')
 @throw(ButtonClicked)
 class Button(Device):
 
