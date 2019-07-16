@@ -31,15 +31,15 @@ class MySensorsSensor (with_metaclass(MySensorsSensorMetaClass, Device)):
     def controller(self):
         return self.gateway.controller
 
-    @method.arg('type', type=Integer(min=0, max=4))
-    @method.arg('subtype', type=Integer(min=0, max=255))
-    @method.arg('payload', type=String(maxLength=25))
+    @method.arg('type', type=Integer(min=0, max=4), required=True)
+    @method.arg('subtype', type=Integer(min=0, max=255), required=True)
+    @method.arg('payload', type=String(maxLength=25), default="")
     @method.return_type('application/json')
-    def send(self, type, subtype, payload=''):
+    def send(self, type, subtype, payload=None, **kwargs):
         """
         send a message.
         """
-        return self.node.send(self.sensorId, type, subtype, payload)
+        return self.node.send(self.sensorId, type, subtype, payload, **kwargs)
 
     def _set_data(self, datatype, value):
         """
@@ -117,7 +117,7 @@ class MySensorsBinary (MySensorsSensor, Relay):
             return self.state
 
     def setState(self, state):
-        self.send(SET, V_STATUS, state, done = lambda _: setattr(self, 'state', state))
+        self.send(SET, V_STATUS, value=state, done = lambda _: setattr(self, 'state', state))
 
 # S_DIMMER;4;Dimmable device of some kind;V_STATUS (on/off), V_PERCENTAGE (dimmer level 0-100), V_WATT
 
@@ -138,10 +138,10 @@ class MySensorsDimmer (MySensorsSensor, DimmableRelay):
             return self.state
 
     def setState(self, state):
-        self.send(SET, V_STATUS, state, done = lambda _: setattr(self, 'state', state))
+        self.send(SET, V_STATUS, value=state, done = lambda _: setattr(self, 'state', state))
 
     def setLevel(self, level):
-        self.send(SET, V_PERCENTAGE, level, done=lambda _: setattr(self, 'level', level))
+        self.send(SET, V_PERCENTAGE, value=level, done=lambda _: setattr(self, 'level', level))
 
 
 # S_COVER;5;Window covers or shades;V_UP, V_DOWN, V_STOP, V_PERCENTAGE
@@ -410,7 +410,7 @@ class MySensorsRGBW (MySensorsSensor, RGBWLight):
             self.level = value
 
     def setState(self, state):
-        self.send(SET, V_STATUS, state, done = lambda _: setattr(self, 'state', state))
+        self.send(SET, V_STATUS, value=state, done = lambda _: setattr(self, 'state', state))
 
     def setColor(self, hue, saturation):
 
@@ -421,18 +421,18 @@ class MySensorsRGBW (MySensorsSensor, RGBWLight):
 
         if sensorTypeInt(self.sensorType) == S_RGB_LIGHT:
             color = hsv_to_hex(hue / 360., saturation / 100., self.level / 100.)
-            self.send(SET, V_RGB, color, done=cb)
+            self.send(SET, V_RGB, value=color, done=cb)
         else:
             color = hsv_to_hex(hue / 360., saturation / 100., 1.)
-            self.send(SET, V_RGBW, (color, self.level), done=cb)
+            self.send(SET, V_RGBW, value=(color, self.level), done=cb)
 
     def setLevel(self, level):
         if sensorTypeInt(self.sensorType) == S_RGB_LIGHT:
             color = hsv_to_hex(self.hue / 360., self.saturation / 100., level / 100.)
-            self.send(SET, V_RGB, color, done=lambda _: setattr(self, 'level', level))
+            self.send(SET, V_RGB, value=color, done=lambda _: setattr(self, 'level', level))
         else:
             color = hsv_to_hex(self.hue / 360., self.saturation / 100., 1.)
-            self.send(SET, V_RGBW, (color, level), done=lambda _: setattr(self, 'level', level))
+            self.send(SET, V_RGBW, value=(color, level), done=lambda _: setattr(self, 'level', level))
 
 
 # S_COLOR_SENSOR;28;Color sensor;V_RGB
@@ -492,7 +492,7 @@ class MySensorsSprinkler (MySensorsSensor, Relay):
             return self.state
 
     def setState(self, state):
-        self.send(SET, V_STATUS, state, done = lambda _: setattr(self, 'state', state))
+        self.send(SET, V_STATUS, value=state, done = lambda _: setattr(self, 'state', state))
 
 # S_WATER_LEAK;32;Water leak sensor;V_TRIPPED, V_ARMED
 

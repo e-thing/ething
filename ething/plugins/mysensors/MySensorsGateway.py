@@ -79,9 +79,9 @@ class MySensorsGateway(Device):
         """
         send a message.
         """
-        message = Message(nodeId, sensorId, type, subtype, value = payload, ack = kwargs.get('ack', True))
+        message = Message(nodeId, sensorId, type, subtype, value=kwargs.get('value'), payload=payload, ack=kwargs.get('ack', True))
 
-        result = self.controller.send(message, **kwargs)
+        result = self.controller.send(message, smartSleep=kwargs.get('smartSleep'), done=kwargs.get('done'), err=kwargs.get('err'), response=kwargs.get('response'))
 
         result.wait()
 

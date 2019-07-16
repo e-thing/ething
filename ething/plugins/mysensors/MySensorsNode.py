@@ -69,16 +69,18 @@ class MySensorsNode(Device):
         """
         return self.controller.update_firmware(self, firmware)
 
-    @method.arg('sensorId', type='integer', minimum=0, maximum=255)
-    @method.arg('type', type='integer', minimum=0, maximum=4)
-    @method.arg('subtype', type='integer', minimum=0, maximum=255)
-    @method.arg('payload', type='string', maxLength=25)
+    @method.arg('sensorId', type=Integer(min=0, max=255), required=True)
+    @method.arg('type', type=Integer(min=0, max=4), required=True)
+    @method.arg('subtype', type=Integer(min=0, max=255), required=True)
+    @method.arg('payload', type=String(maxLength=25), default="")
     @method.return_type('application/json')
-    def send(self, sensorId, type, subtype, payload=''):
+    def send(self, sensorId, type, subtype, payload=None, **kwargs):
         """
         send a message.
         """
-        return self.gateway.send(self.nodeId, sensorId, type, subtype, payload, smartSleep = self.smartSleep, ack = self.ackEnabled)
+        kwargs.setdefault('smartSleep', self.smartSleep)
+        kwargs.setdefault('ack', self.ackEnabled)
+        return self.gateway.send(self.nodeId, sensorId, type, subtype, payload, *kwargs)
 
     @method
     def reboot(self):
