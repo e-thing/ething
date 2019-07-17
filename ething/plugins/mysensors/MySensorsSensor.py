@@ -31,10 +31,6 @@ class MySensorsSensor (with_metaclass(MySensorsSensorMetaClass, Device)):
     def controller(self):
         return self.gateway.controller
 
-    @method.arg('type', type=Integer(min=0, max=4), required=True)
-    @method.arg('subtype', type=Integer(min=0, max=255), required=True)
-    @method.arg('payload', type=String(maxLength=25), default="")
-    @method.return_type('application/json')
     def send(self, type, subtype, payload=None, **kwargs):
         """
         send a message.

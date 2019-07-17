@@ -69,19 +69,27 @@ class MySensorsGateway(Device):
         # remove the resource
         super(MySensorsGateway, self).remove(removeChildren)
 
-    @method.arg('nodeId', type=Integer(min=0, max=255), required=True)
-    @method.arg('sensorId', type=Integer(min=0, max=255), required=True)
-    @method.arg('type', type=Integer(min=0, max=4), required=True)
-    @method.arg('subtype', type=Integer(min=0, max=255), required=True)
-    @method.arg('payload', type=String(maxLength=25), default="")
-    @method.return_type('application/json')
-    def send(self, nodeId, sensorId=None, type=None, subtype=None, payload=None, **kwargs):
+    def send(self, nodeId, sensorId, type, subtype, payload=None, value=None, ack=True, smartSleep=None, done=None, err=None, response=None):
         """
-        send a message.
-        """
-        message = Message(nodeId, sensorId, type, subtype, value=kwargs.get('value'), payload=payload, ack=kwargs.get('ack', True))
+        send a message and wait for the response.
+        note: not all request has a response !
 
-        result = self.controller.send(message, smartSleep=kwargs.get('smartSleep'), done=kwargs.get('done'), err=kwargs.get('err'), response=kwargs.get('response'))
+        :param nodeId: node id
+        :param sensorId: sensor id
+        :param type: message type
+        :param subtype: message subtype
+        :param payload: raw payload (string or binary)
+        :param value: value. (It will be converted into a raw payload according to the message type and subtype)
+        :param ack: whether ack is enabled (default) or not
+        :param smartSleep: whether smartSleep is enabled or not.
+        :param done: callback when the transaction is completed.
+        :param err: callback when the transaction has failed.
+        :param response: whether the transaction await for a response or not.
+        :return:
+        """
+        message = Message(nodeId, sensorId, type, subtype, value=value, payload=payload, ack=ack)
+
+        result = self.controller.send(message, smartSleep=smartSleep, done=done, err=err, response=response)
 
         result.wait()
 
@@ -90,11 +98,21 @@ class MySensorsGateway(Device):
 
         return result
 
-    # send a message and wait for the response.
-    # note: not all request has a response !
+
+    @method.arg('nodeId', type=Integer(min=0, max=255), required=True)
+    @method.arg('sensorId', type=Integer(min=0, max=255), required=True)
+    @method.arg('type', type=Integer(min=0, max=4), required=True)
+    @method.arg('subtype', type=Integer(min=0, max=255), required=True)
+    @method.arg('payload', type=String(maxLength=25), default="")
+    @method.return_type('application/json')
+    def send_raw(self, nodeId, sensorId, type, subtype, payload=None):
+        """
+        send a message.
+        """
+        return self.send(nodeId, sensorId, type, subtype, payload)
 
     @method.return_type('string')
-    def getVersion(self):
+    def get_version(self):
         """
         request gateway version.
         """

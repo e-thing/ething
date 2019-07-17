@@ -69,11 +69,6 @@ class MySensorsNode(Device):
         """
         return self.controller.update_firmware(self, firmware)
 
-    @method.arg('sensorId', type=Integer(min=0, max=255), required=True)
-    @method.arg('type', type=Integer(min=0, max=4), required=True)
-    @method.arg('subtype', type=Integer(min=0, max=255), required=True)
-    @method.arg('payload', type=String(maxLength=25), default="")
-    @method.return_type('application/json')
     def send(self, sensorId, type, subtype, payload=None, **kwargs):
         """
         send a message.
