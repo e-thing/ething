@@ -383,7 +383,7 @@ class Process(object):
         :param kwargs: kwargs is a dictionary of keyword arguments for the target or loop invocation. Defaults to {}.
         :param terminate: a callable that is invoked on stop()
         :param parent: if a process is provided, all child processes will be automatically killed when the parent process stop.
-        :param manager: a manager to bind this process to. If not provided, this process must be attach manually to a manager.
+        :param manager: a manager to bind this process to. If not provided, this process must be attached manually to a manager.
         :param log: a specific logger
         :param id: a specific id. Must be id. If not provided, an id will be auto generated.
         """

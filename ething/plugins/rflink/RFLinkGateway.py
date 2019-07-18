@@ -7,6 +7,7 @@ from .protocol import RFLinkProtocol
 
 
 class RFLinkController(TransportProcess):
+    RESET_ATTR = list()
 
     def __init__(self, gateway, transport):
         super(RFLinkController, self).__init__(

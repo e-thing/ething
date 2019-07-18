@@ -75,7 +75,7 @@ class MySensorsNode(Device):
         """
         kwargs.setdefault('smartSleep', self.smartSleep)
         kwargs.setdefault('ack', self.ackEnabled)
-        return self.gateway.send(self.nodeId, sensorId, type, subtype, payload, *kwargs)
+        return self.gateway.send(self.nodeId, sensorId, type, subtype, payload, **kwargs)
 
     @method
     def reboot(self):

@@ -21,14 +21,7 @@ class Message(object):
         if value is not None:
             self.value = value
         elif payload is not None:
-
-            if isinstance(payload, text_type):
-                payload = payload.encode('utf8')
-
-            if isinstance(payload, binary_type):
-                self.payload = payload
-            else:
-                raise Exception('the payload must be a binary instance, got %s' % type(payload).__name__)
+            self.payload = payload
     
     @property
     def nodeId(self):
@@ -205,3 +198,22 @@ class Message(object):
             self.payload = b'1' if value else b'0'
         else:
             self.payload = str(value).encode('utf8')
+
+    @property
+    def payload(self):
+        return self._payload
+
+    @payload.setter
+    def payload(self, data):
+
+        if data is None:
+            self._payload = b''
+        elif isinstance(data, text_type):
+            self._payload = data.encode('utf8')
+        elif isinstance(data, binary_type):
+            self._payload = data
+        else:
+            raise Exception('the payload must be a binary instance, got %s' % type(data).__name__)
+
+    def copy(self):
+        return type(self).parse(self.raw())

@@ -10,6 +10,7 @@ from ething.core.TransportProcess import TransportProcess
 
 
 class MySensorsController(TransportProcess):
+    RESET_ATTR = list()
 
     def __init__(self, gateway, transport):
 
@@ -69,7 +70,7 @@ class MySensorsGateway(Device):
         # remove the resource
         super(MySensorsGateway, self).remove(removeChildren)
 
-    def send(self, nodeId, sensorId, type, subtype, payload=None, value=None, ack=True, smartSleep=None, done=None, err=None, response=None):
+    def send(self, nodeId, sensorId, type, subtype, payload=None, value=None, ack=None, smartSleep=None, done=None, err=None, response=None):
         """
         send a message and wait for the response.
         note: not all request has a response !
@@ -87,6 +88,10 @@ class MySensorsGateway(Device):
         :param response: whether the transaction await for a response or not.
         :return:
         """
+
+        if ack is None:
+            ack = False if nodeId == GATEWAY_ADDRESS else True
+
         message = Message(nodeId, sensorId, type, subtype, value=value, payload=payload, ack=ack)
 
         result = self.controller.send(message, smartSleep=smartSleep, done=done, err=err, response=response)

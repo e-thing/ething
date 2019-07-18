@@ -100,7 +100,7 @@ class MySensorsProtocol(LineReader):
 
         node = self.core.create('resources/MySensorsNode', {
             'nodeId': nodeId,
-            'name': '%s/node-%d' % (gateway.name, nodeId),
+            'name': 'node-%d' % (nodeId, ),
             'createdBy': gateway.id
         })
 
@@ -111,13 +111,16 @@ class MySensorsProtocol(LineReader):
 
         return node
 
-    def createSensor(self, node, sensorId, sensorType):
+    def createSensor(self, node, sensorId, sensorType, name=None):
 
         attributes = {
             'sensorId': sensorId,
             'sensorType': sensorTypeStr(sensorType),
             'createdBy': node.id
         }
+
+        if name:
+            attributes['name'] = name
 
         sensor = None
 
@@ -152,6 +155,7 @@ class MySensorsProtocol(LineReader):
             sensorId = message.childSensorId
             node = None
             sensor = None
+            node_err = False
 
             # automatically create unknown node and sensor
             if nodeId > 0 and nodeId != BROADCAST_ADDRESS:
@@ -163,9 +167,11 @@ class MySensorsProtocol(LineReader):
                 sensor = node.getSensor(sensorId)
                 if not sensor:
                     if message.messageType == PRESENTATION:
-                        sensor = self.createSensor(node, sensorId, message.subType)
+                        sensor = self.createSensor(node, sensorId, message.subType, message.value)
+                        node_err = None
                     else:
                         self.log.warning('unable to create sensor (node=%s sensor=%s), waiting for a presentation packet, restart the node' % (nodeId, sensorId))
+                        node_err = 'restart of the node needed'
 
             if not node:
                 node = NullContextManager()
@@ -176,6 +182,9 @@ class MySensorsProtocol(LineReader):
 
                 if node:
                     node.connected = True
+                    if node_err is not False:
+                        node.error = node_err
+
                 if sensor:
                     sensor.connected = True
 
@@ -254,6 +263,8 @@ class MySensorsProtocol(LineReader):
                             if message.subType == I_GATEWAY_READY:
                                 self.gatewayReady = True
                                 self.log.info("info: gateway ready")
+                                # get the version
+                                self.send(Message(GATEWAY_ADDRESS, INTERNAL_CHILD, INTERNAL, I_VERSION))
 
                             elif message.subType == I_VERSION:
                                 self.gatewayLibVersion = message.value

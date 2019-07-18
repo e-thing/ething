@@ -30,7 +30,7 @@ class Controller(TransportProcess):
 @attr('fw_ver', type=String(), mode=READ_ONLY, description="The firmware version of the device.")
 @attr('model', type=String(), mode=READ_ONLY, description="The model of the device.")
 @attr('dev_id', mode = PRIVATE)
-@attr('host', type=String(allow_empty=False), mode=READ_ONLY, description="The ip address of the device.")
+@attr('host', type=Host(), mode=READ_ONLY, description="The ip address of the device.")
 class YeelightDevice (Light):
 
     def __process__(self):
