@@ -37,7 +37,8 @@ def test_unicode():
 def test_date(core):
 
     obj = {
-        'date': datetime.datetime(2019, 2, 10, 12, 0, 0, tzinfo=core.local_tz) # must be offset aware datetime
+        'date': datetime.datetime(2019, 2, 10, 12, 0, 0, tzinfo=core.local_tz), # must be offset aware datetime
+        'now': datetime.datetime.now(tz=core.local_tz)
     }
 
     expr = "$.date > dateTime('2015-07-04T13:40:04.922Z')"
@@ -52,7 +53,7 @@ def test_date(core):
 
     assert res == False
 
-    expr = "$.date > dateTime('1 month ago')"
+    expr = "$.now > dateTime('1 month ago')"
 
     res = evaluate(expr, obj)
 
