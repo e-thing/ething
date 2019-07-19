@@ -100,7 +100,7 @@ class MySensorsSmoke (MySensorsSensor, BinarySensor):
 
 # S_BINARY;3;Binary device (on/off);V_STATUS, V_WATT
 
-@attr('name', default='binary sensor')
+@attr('name', default='binary device')
 class MySensorsBinary (MySensorsSensor, Relay):
     S = S_BINARY
 

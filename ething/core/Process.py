@@ -57,7 +57,7 @@ class Runner(with_metaclass(ABCMeta, object)):
         return self._stop_t
 
     def run(self):
-        self.log.debug('Process "%s" started' % self._process)
+        # self.log.debug('Process "%s" started' % self._process)
 
         self._started()
 
@@ -133,7 +133,7 @@ class Runner(with_metaclass(ABCMeta, object)):
             duration = -1.
             if self._run_t is not None:
                 duration = self._stop_t - self._run_t
-            self.log.debug('Process "%s" stopped after %f sec' % (self._process, duration))
+            # self.log.debug('Process "%s" stopped after %f sec' % (self._process, duration))
 
             # kill any children processes left
             children = self._manager.find(filter=lambda p: p.parent is self._process)

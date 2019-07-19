@@ -14,7 +14,7 @@ class CronExpr(String):
         return schema
 
 
-@meta(label="cron", icon='mdi-email', category="input")
+@meta(label="cron", icon='mdi-calendar-clock', category="input")
 @attr('expression', label='when', type=CronExpr())
 class CronNode(Node):
     """

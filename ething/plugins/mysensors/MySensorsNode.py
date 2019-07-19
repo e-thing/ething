@@ -11,7 +11,7 @@ from .helpers import *
 @attr('smartSleep', type=Boolean(), default=False, description="SmartSleep feature enabled for this node.")
 @attr('firmware', default=None, mode=READ_ONLY)
 @attr('libVersion', default=None, mode=READ_ONLY, description="The version of the MySensors library used.")
-@attr('ackEnabled', type=Boolean(), default=False, description="If set, every message sent must be acknowledged.")
+@attr('ackEnabled', type=Boolean(), default=True, description="If set, every message sent must be acknowledged.")
 @attr('createdBy', required=True)
 class MySensorsNode(Device):
     """

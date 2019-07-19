@@ -108,7 +108,11 @@ class FlaskApp(Flask):
 
         # socketio
         socketio = SocketIO()
-        socketio.init_app(self, async_mode='gevent', logger=self.debug, engineio_logger=self.debug)
+        socketio.init_app(
+            self, async_mode='gevent',
+            # logger=self.debug,
+            # engineio_logger=self.debug
+        )
         self.socketio = socketio
 
         @socketio.on('connect')
