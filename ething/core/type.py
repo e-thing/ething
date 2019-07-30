@@ -696,14 +696,14 @@ class Array(Type):
     return value
 
   def unserialize(self, data, context = None):
-      return [self.item_type.unserialize(el, context) for el in data]
+      return M_Array(self, [self.item_type.unserialize(el, context) for el in data], context)
 
   def serialize(self, value, context = None):
     return [self.item_type.serialize(el, context) for el in value]
   
   def fromJson(self, data, context = None):
       self.validate(data, context)
-      return [self.item_type.fromJson(el, context) for el in data]
+      return M_Array(self, [self.item_type.fromJson(el, context) for el in data], context)
   
   def toJson(self, value, context = None):
     return [self.item_type.toJson(el, context) for el in value]
@@ -843,7 +843,7 @@ class Dict(Type):
     for key in data:
       item_type = self.get_type_from_key(key)
       j[key] = item_type.unserialize(data.get(key), context)
-    return j
+    return M_Dict(self, j, context) # j
   
   def serialize(self, value, context = None):
     j = {}
@@ -858,7 +858,7 @@ class Dict(Type):
     for key in data:
       item_type = self.get_type_from_key(key)
       j[key] = item_type.fromJson(data.get(key), context)
-    return j
+    return M_Dict(self, j, context) # j
   
   def toJson(self, value, context = None):
     j = {}

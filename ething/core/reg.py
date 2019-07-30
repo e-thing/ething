@@ -1788,7 +1788,7 @@ def dbg_data(obj):
 
     data = reg.data
     for k in data:
-        print("%s:" % k, data[k])
+        print("%s:" % k, data[k], type(data[k]))
 
 
 def dbg(obj):

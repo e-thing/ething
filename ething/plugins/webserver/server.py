@@ -6,6 +6,7 @@ from flask_compress import Compress
 from .socket_io import SocketIO
 from werkzeug.exceptions import HTTPException
 from werkzeug.http import unquote_etag
+from werkzeug.serving import make_ssl_devcert
 from .auth import install_auth
 from .routes import install_routes
 from .client import install as install_clients_manager
@@ -27,6 +28,7 @@ from ething.core.Helpers import filter_obj
 from ething.core.utils import dict_merge
 from ething.core.reg import get_registered_class, fromJson, get_definition_name
 from ething.core.Resource import Resource
+from ething.core.env import USER_DIR
 from collections import OrderedDict
 
 
@@ -73,7 +75,8 @@ class FlaskApp(Flask):
                 'expiration': 86400,  # in seconds, the time after which a session is expired
                 'cookie_name': 'ething_session',
                 'secret': 'taupesecretstring'  # must not be shared
-            }
+            },
+            'ssl': False # if True, install pyopenssl package
         }
 
         dict_merge(self._config, config if config is not None else dict())
@@ -148,6 +151,20 @@ class FlaskApp(Flask):
     def run(self):
         port = self.conf.get('port', 80)
 
+        # ssl context
+        ssl_args = {}
+        ssl_enabled = False
+        if self.conf.get('ssl'):
+            try:
+                ssl_path=os.path.join(USER_DIR, 'ssl')
+                if not ( os.path.exists(ssl_path + '.crt') and os.path.exists(ssl_path + '.key') ):
+                    make_ssl_devcert(ssl_path)
+                ssl_args['keyfile'] = ssl_path + '.key'
+                ssl_args['certfile'] = ssl_path + '.crt'
+                ssl_enabled = True
+            except:
+                self.log.exception('unable to create ssl certificate')
+
         # retrieve current ip:
         current_ip = None
         try:
@@ -158,12 +175,12 @@ class FlaskApp(Flask):
         except:
             pass
 
-        self.log.info("web server started at http://%s:%d" % (current_ip or 'localhost', port))
+        self.log.info("web server started at http%s://%s:%d" % ('s' if ssl_enabled else '', current_ip or 'localhost', port))
         self.log.info("web server root path = %s" % self.root_path)
 
         self.running.set()
 
-        self.socketio.run(self, host='0.0.0.0', port=port, use_reloader=False)
+        self.socketio.run(self, host='0.0.0.0', port=port, use_reloader=False, **ssl_args)
 
     def stop(self):
         self.running.clear()

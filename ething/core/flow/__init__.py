@@ -395,9 +395,9 @@ class Output(Node):
         _msg = inputs['default']
         _data = self.data.get(flow=self.flow, msg=_msg)
 
-        _r = self.flow.resource
+        _r = self.flow
         with _r:
-            _r.data[self.name] = json.dumps(_data)
+            _r.data[self.id] = json.dumps(_data)
 
 
 @abstract

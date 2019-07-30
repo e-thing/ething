@@ -13,6 +13,22 @@ def test_extends(core):
     assert f.extends == ['resources/File', 'resources/Resource']
 
 
+def test_attr_data_changed(core):
+    class CDCCA(Resource):
+        pass
+
+    tac = core.create(CDCCA, {
+        'name': 'toto',
+    })
+
+    with tac:
+        dbg(tac)
+        tac.data['foo'] = 'bar'
+        assert 'data' in list_dirty_attr(tac)
+
+    assert tac.data['foo'] == 'bar'
+
+
 def test_attr_changed(core):
 
     attr_changed = set()

@@ -1,9 +1,9 @@
 import axios from 'axios'
 
-export const OPEN_WEATHER_MAP_WEATHER_URL = 'http://api.openweathermap.org/data/2.5/weather?units=metric';
-export const OPEN_WEATHER_MAP_FORECAST_URL = 'http://api.openweathermap.org/data/2.5/forecast?units=metric';
+export const OPEN_WEATHER_MAP_WEATHER_URL = 'https://api.openweathermap.org/data/2.5/weather?units=metric';
+export const OPEN_WEATHER_MAP_FORECAST_URL = 'https://api.openweathermap.org/data/2.5/forecast?units=metric';
 
-export const iconPath = 'http://openweathermap.org/img/w'
+export const iconPath = 'https://openweathermap.org/img/w'
 export const iconExt = 'png'
 
 export const weatherMap = [

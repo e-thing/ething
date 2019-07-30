@@ -9,7 +9,7 @@ import requests
 import json
 
 
-API_WEATHER_URL = 'http://api.openweathermap.org/data/2.5/weather'
+API_WEATHER_URL = 'https://api.openweathermap.org/data/2.5/weather'
 
 REFRESH_INTERVAL = 300 # in seconds
 
