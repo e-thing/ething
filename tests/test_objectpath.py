@@ -45,19 +45,19 @@ def test_date(core):
 
     res = evaluate(expr, obj)
 
-    assert res == True
+    assert res is True
 
     expr = "$.date > dateTime('2025-07-04T13:40:04.922Z')"
 
     res = evaluate(expr, obj)
 
-    assert res == False
+    assert res is False
 
     expr = "$.now > dateTime('1 month ago')"
 
     res = evaluate(expr, obj)
 
-    assert res == True
+    assert res is True
 
 
 

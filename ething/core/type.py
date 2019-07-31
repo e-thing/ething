@@ -914,8 +914,12 @@ class M_Dict(MutableMapping):
     set_dirty(self)
 
   def __delitem__(self, key):
-    if key not in self._type.optionals:
-      raise ValueError("the key '%s' is mandatory" % key)
+    if self._type.allow_extra:
+      if key in list(self._type.mapping) and key not in self._type.optionals:
+        raise ValueError("the key '%s' is mandatory" % key)
+    else:
+      if key not in self._type.optionals:
+        raise ValueError("the key '%s' is mandatory" % key)
     detach(self, self._store[key])
     del self._store[key]
     set_dirty(self)

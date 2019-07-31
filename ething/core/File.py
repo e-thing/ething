@@ -207,7 +207,7 @@ class File(Resource):
 @attr('append', type=Boolean(), default=False)
 @attr('resource', type=ResourceType(accepted_types=('resources/File',)))
 class FileWrite(ResourceNode):
-    """ Write content to a file """
+    """ Write the payload content to a file """
 
     INPUTS = ['default']
 

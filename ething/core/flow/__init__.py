@@ -309,7 +309,7 @@ class Flow(Resource, FlowBase):
         Inject data into the flow.
 
         :param node: a :class:`Node` instance or a node id
-        :param data: The optional data to inject
+        :param data: The optional data to inject, may also be a message
         """
         if isinstance(node, string_types):
             node_id = node
@@ -385,7 +385,7 @@ def generate_event_nodes():
 
 @abstract
 @meta(icon='mdi-logout', category="output")
-@attr('data', type=Descriptor(('flow', 'glob', 'msg', 'env')), default={'type':'msg','value':'payload'}, description='The data to expose.')
+@attr('data', type=Descriptor(('flow', 'glob', 'msg', 'env', 'template', 'expression')), default={'type':'msg','value':'payload'}, description='The data to expose.')
 class Output(Node):
     """Expose data"""
 
@@ -408,20 +408,23 @@ class Input(Node):
     OUTPUTS = ['default']
 
     def main(self, **inputs):
-
         self._q = Queue()
-
         while True:
-            data = self._q.get()
-            self.emit({'payload': data})
+            payload = self._q.get()
+            self.emit(payload)
 
         self._q = None
 
 
     def inject(self, data):
+        if isinstance(data, Message):
+            payload = data
+        else:
+            payload = {'payload': data}
+
         _q = getattr(self, '_q', None)
         if _q is not None:
-            _q.put(data)
+            _q.put(payload)
 
 
 # import all nodes

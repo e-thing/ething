@@ -25,7 +25,7 @@ else:
 number_types = integer_types + (float, )
 
 
-@meta(icon='mdi-table-row-plus-after', category="storage")
+@meta(icon='mdi-table-row-plus-after')
 class TableDataAdded(ResourceSignal):
     """
     is emitted each time a new value is appended to a table

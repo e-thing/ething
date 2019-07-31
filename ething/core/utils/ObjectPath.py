@@ -46,23 +46,12 @@ def generate_filter(expr, converter=None):
 
     def _filter(obj):
         try:
-            return bool(tree.execute(converter(obj)))
+            res = tree.execute(converter(obj))
+            return res
         except:
-            return False
+            return None
     return _filter
 
-
-# def generate_filter(expr, converter=None):
-#     if converter is None:
-#         converter = lambda x:x
-#
-#     def _filter(obj):
-#         try:
-#             tree = objectpath.Tree(converter(obj))
-#             return bool(tree.execute(expr))
-#         except:
-#             return False
-#     return _filter
 
 def evaluate(expr, data):
     return generate_filter(expr)(data)

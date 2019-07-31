@@ -72,6 +72,9 @@ class Flow(object):
 
         self._connections.append(Connection(src, dest))
 
+    def list_nodes(self):
+        return list(self._nodes)
+
     def add_node(self, node):
         if self._state == RUNNING:
             raise Exception('cannot edit flow while running')
@@ -219,6 +222,7 @@ class Flow(object):
                     self._nodes_data[node.id]['state'] = evt_name
                     self._nodes_data[node.id]['start_ts'] = time.time()
                     self._nodes_data[node.id]['count'] += 1
+                    self._nodes_data[node.id]['error'] = None
 
                 elif evt_name == 'emmited':
                     msg = evt['msg']
@@ -251,7 +255,7 @@ class Flow(object):
                     err = evt['error']
                     self._nodes_data[node.id]['state'] = evt_name
                     self._nodes_data[node.id]['stop_ts'] = time.time()
-                    self._nodes_data[node.id]['error'] = err
+                    self._nodes_data[node.id]['error'] = str(err) if err else None
 
                     if err is not None and node.stop_on_error:
                         self._logger.debug("stop flow on error=%s node=%s" % (err, node))
@@ -261,8 +265,8 @@ class Flow(object):
                     break
 
                 if node is not None:
-                    for d in self._debuggers:
-                        self._send_info(d, node)
+                    for d in self.debuggers:
+                        self._send_debug_info(d, node)
 
                 if self._event.empty() and running_nodes_nb == 0:
                     self._logger.debug("end of the flow")
@@ -281,13 +285,13 @@ class Flow(object):
         self._state = STOPPED
 
     def debug(self, obj, node=None):
-        for d in self._debuggers:
+        for d in self.debuggers:
             try:
                 d.debug(obj, node=node)
             except:
                 self._logger.exception('debugger exception')
 
-    def _send_info(self, debugger, node):
+    def _send_debug_info(self, debugger, node):
         if node.id not in self._nodes_data:
             return
         try:
@@ -298,7 +302,7 @@ class Flow(object):
     def attach_debugger(self, debugger):
         self._debuggers.add(debugger)
         for node in self._nodes:
-            self._send_info(debugger, node)
+            self._send_debug_info(debugger, node)
 
     def dettach_debugger(self, debugger):
         if debugger in self._debuggers:
@@ -315,6 +319,9 @@ class Flow(object):
                 handler(err, node)
             except:
                 self._logger.exception('error handler exception')
+
+    def handle_start(self, node=None):
+        pass
 
     def on_error(self, handler):
         self._error_handlers.append(handler)
@@ -431,6 +438,7 @@ class Node(with_metaclass(ABCMeta, object)):
     def _main(self, input_msgs, pid):
         self._logger.debug('node started pid=%s input_msgs=%s' % (pid, input_msgs))
         self._emitted = False
+        self.handle_start()
         err = None
         try:
             self.main(**input_msgs)
@@ -463,6 +471,9 @@ class Node(with_metaclass(ABCMeta, object)):
 
     def handle_error(self, err):
         self._flow.handle_error(err, node=self)
+
+    def handle_start(self):
+        self._flow.handle_start(node=self)
 
 
 class Event(object):

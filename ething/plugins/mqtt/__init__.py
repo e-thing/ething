@@ -3,6 +3,7 @@
 import paho.mqtt.client as mqttClient
 import paho.mqtt.publish as publish
 from ething.core.flow import *
+import json
 
 
 @meta(icon='mdi-signal-variant', category="input")
@@ -40,7 +41,7 @@ class MqttSubscribe(Node):
 
 @meta(icon='mdi-send', category="output")
 @attr('qos', type=Enum([0,1,2]), default=0, description="the qos to use when publishing.")
-@attr('payload', type=String(), default='', description="the payload to be published. If an empty string is given, a zero length payload will be published.")
+@attr('payload', type=Descriptor(('msg', 'flow', 'glob', 'string', 'number', 'boolean', 'timestamp', 'env', 'template', 'expression')), default={'type':'msg','value':'payload'}, description='the payload to be published. If an empty string is given, a zero length payload will be published.')
 @attr('password', type=String(), default='', description="password for the client. Leave empty to disable authentication.")
 @attr('username', type=String(), default='', description="username for the client. Leave empty to disable authentication.")
 @attr('port', type=Integer(min=0, max=65535), default=1883, description="the port to connect to the broker on.")
@@ -52,6 +53,8 @@ class MqttPublish(Node):
     INPUTS = ['default']
 
     def main(self, **inputs):
+        _msg = inputs['default']
+        _payload = self.payload.get(flow=self.flow, msg=_msg)
 
         auth = None
 
@@ -63,7 +66,10 @@ class MqttPublish(Node):
 
         self.log.debug("publish: topic=%s hostname=%s port=%s" % (self.topic, self.hostname, self.port))
 
-        publish.single(self.topic, self.payload, hostname=self.hostname, port=self.port, qos=self.qos, auth=auth)
+        if not isinstance(_payload, string_types):
+            _payload = json.dumps(_payload)
+
+        publish.single(self.topic, _payload, hostname=self.hostname, port=self.port, qos=self.qos, auth=auth)
 
 
 
