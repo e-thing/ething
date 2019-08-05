@@ -4,6 +4,6 @@ from .relay import Relay, interface, meta
 
 
 @interface
-@meta(icon='lightbulb outline')
+@meta(icon='mdi-lightbulb-outline')
 class Light (Relay):
     pass

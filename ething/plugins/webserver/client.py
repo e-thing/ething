@@ -68,6 +68,9 @@ class Client(Entity):
         for sid in self.__sio:
             self.app.socketio.emit('notification', data, room=sid, namespace='/notifications')
 
+    def remove(self):
+        remove(self)
+    
     def __db_save__(self, insert):
         self.modifiedDate = utcnow()  # update the modification time
 
