@@ -16,7 +16,7 @@ class SmtpMail(object):
 
     def __init__(self, host, port, user, password):
         self.host = host
-        self.port = port
+        self.port = port or 465
         self.user = user
         self.password = password
 
@@ -64,8 +64,15 @@ class SmtpMail(object):
 
                 msg.attach(part)
 
-        server = smtplib.SMTP(self.host, self.port)
-        server.starttls()
+        if self.port == 465:
+            # tls
+            server = smtplib.SMTP_SSL(self.host, self.port)
+            server.ehlo()
+        else:
+            server = smtplib.SMTP(self.host, self.port)
+            server.ehlo()
+            server.starttls()
+
         server.login(self.user, self.password)
         text = msg.as_string()
         server.sendmail(self.user, to, text)

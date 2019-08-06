@@ -4,6 +4,10 @@ import os
 from subprocess import check_output
 import sys
 import re
+import logging
+
+
+_LOGGER = logging.getLogger('ething')
 
 
 def list_bluetooth_interfaces():
@@ -54,9 +58,9 @@ def list_bluetooth_interfaces():
                                         interfaces[-1]['manufacturer'] = manufacturer
 
 
-        except Exception as e:
-            pass
-
+        except:
+            _LOGGER.exception('error in hciconfig')
+    
     return interfaces
 
 

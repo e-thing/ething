@@ -285,6 +285,7 @@ connection_type = Dict(
 
 @attr('nodes', type=Array(item_type=Node), default=[], description="The list of nodes.")
 @attr('connections', type=Array(item_type=connection_type), default=[], description="A list of connections")
+@attr('enabled', type=Boolean(), default=True, description="Wether or not this flow is enabled")
 class Flow(Resource, FlowBase):
     """
     The Flow resource represent workflow composed of nodes linked together.
@@ -303,6 +304,15 @@ class Flow(Resource, FlowBase):
         p = Process(id="flow.%s" % self.id, target=self.run, terminate=self.stop)
         self._process = weak_ref(p)
         return p
+
+    def on_attr_update(self, attr, new_value, old_value):
+        super(Flow, self).on_attr_update(attr, new_value, old_value)
+
+        if attr == 'enabled':
+            if new_value:
+                self._processes["flow.%s" % self.id].restart()
+            else:
+                self._processes["flow.%s" % self.id].stop(block=False)
 
     def inject(self, node, data=None):
         """
@@ -323,6 +333,8 @@ class Flow(Resource, FlowBase):
             raise Exception('node %s is not an input' % node)
 
     def run(self):
+        if not self.enabled: return
+
         self.clear()
 
         # rebuild the flow
