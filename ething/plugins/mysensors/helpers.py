@@ -501,3 +501,31 @@ class MySensorsSensorMetaClass(MetaReg):
             mysensors_sensor_classes.append(cls)
 
         return cls
+
+
+def check_mysgw(host='localhost', port=5000):
+    import socket
+
+    version = None
+
+    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    sock.connect((host, port))
+    sock.settimeout(1)
+
+    sock.send(b'0;255;3;0;2;;\r\n')
+
+    try:
+        data = sock.recv(1024)  # return as bytes
+    except socket.timeout:
+        pass
+    else:
+        if data:
+            message = data.decode('utf8')
+            parts = message.split(';')
+            if len(parts) == 6:
+                version = parts[5]
+
+    sock.close()
+
+    return version
+
