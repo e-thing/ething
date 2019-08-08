@@ -21,7 +21,7 @@ class ZigateDeviceMetaClass(MetaReg):
 @abstract
 @meta(icon='mdi-alpha-z-box')
 @attr('lqi', type=Number(), default=0, mode = READ_ONLY, description="percentage of link quality indicator")
-@attr('endpoint', type=Nullable(Integer()), mode = READ_ONLY, description="If set, this device is only bind to a single endpoint")
+@attr('endpoint', type=Nullable(Integer()), mode = READ_ONLY, default=None, description="If set, this device is only bind to a single endpoint")
 @attr('ieee', type=String(allow_empty=False), mode = READ_ONLY, description="The ieee address of the device")
 @attr('addr', type=String(), default='', mode = READ_ONLY, description="The network address of the device")
 @attr('typename', type=String(), default='', mode = READ_ONLY, description="The type name of the device")
