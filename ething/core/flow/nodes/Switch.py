@@ -31,7 +31,7 @@ filter_type = OneOf([
     ('rising_edge', None, 'rising edge'),
     ('falling_edge', None, 'falling edge'),
     ('expression', ObjectPathExp()),
-])
+], **dict((('$inline', True), )))
 
 @meta(icon='mdi-filter', category="condition")
 @attr('last', mode=PRIVATE, default=None) # holds the last value

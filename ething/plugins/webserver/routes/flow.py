@@ -20,8 +20,6 @@ class SocketIoDebugger (Debugger):
 
         data = {
             'node': node.id if node is not None else None,
-            'flow_id': self.flow_id,
-            'ts': time.time()
         }
 
         if isinstance(obj, Exception):
@@ -32,21 +30,28 @@ class SocketIoDebugger (Debugger):
             }
             data['exception'] = True
 
-        data['data'] = self.app.toJson(obj)
+        data['data'] = obj
 
-        self.app.socketio.emit('dbg_data', data, namespace='/flow', room=self.client_id)
+        self.send('flow_dbg', **data)
 
     def info(self, node, info):
 
         data = {
             'node': node.id,
-            'flow_id': self.flow_id,
-            'ts': time.time()
+            'data': info
         }
 
-        data['data'] = self.app.toJson(info)
+        self.send('flow_info', **data)
 
-        self.app.socketio.emit('dbg_info', data, namespace='/flow', room=self.client_id)
+    def send(self, evt, **data):
+        pkt = {
+            'flow_id': self.flow_id,
+            'ts': time.time(),
+            'event': evt,
+            'payload': self.app.toJson(data)
+        }
+
+        self.app.socketio.emit('dbg_evt', pkt, namespace='/flow', room=self.client_id)
 
     def destroy(self):
         self.flow.dettach_debugger(self)

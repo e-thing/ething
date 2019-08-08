@@ -205,6 +205,9 @@ class Flow(object):
         self._logger.debug("starting_nodes=%s" % starting_nodes)
 
         if starting_nodes:
+
+            self.send('flow_started')
+
             for node in starting_nodes:
                 node.run()
 
@@ -275,7 +278,11 @@ class Flow(object):
             # stop/kill any remaining running nodes
             for node in self._nodes:
                 node.stop()
+
+            self.send('flow_stopped')
+
         else:
+            self.send('flow_warn', msg='empty flow')
             self._logger.warning("empty flow")
 
         tf = time.time()
@@ -288,6 +295,13 @@ class Flow(object):
         for d in self.debuggers:
             try:
                 d.debug(obj, node=node)
+            except:
+                self._logger.exception('debugger exception')
+
+    def send(self, evt, **data):
+        for d in self.debuggers:
+            try:
+                d.send(evt, **data)
             except:
                 self._logger.exception('debugger exception')
 
@@ -463,7 +477,7 @@ class Node(with_metaclass(ABCMeta, object)):
             del self._t[pid]
 
     def debug(self, obj):
-        self._logger.debug(str(obj))
+        # self._logger.debug(str(obj))
         self._flow.debug(obj, node=self)
 
     def toJson(self):
@@ -550,6 +564,9 @@ class Debugger(object):
         pass
 
     def info(self, node, info):
+        pass
+
+    def send(self, evt, **data):
         pass
 
     def __repr__(self):

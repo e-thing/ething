@@ -3,6 +3,8 @@ from future.utils import string_types, integer_types
 from ething.core.reg import MetaReg
 
 
+DEFAULT_ETH_PORT = 5003
+
 BROADCAST_ADDRESS = 255
 GATEWAY_ADDRESS = 0
 INTERNAL_CHILD = 255  # 0xFF
@@ -503,29 +505,34 @@ class MySensorsSensorMetaClass(MetaReg):
         return cls
 
 
-def check_mysgw(host='localhost', port=5000):
+def check_mysgw(host='localhost', port=DEFAULT_ETH_PORT):
     import socket
 
     version = None
 
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    sock.connect((host, port))
-    sock.settimeout(1)
-
-    sock.send(b'0;255;3;0;2;;\r\n')
 
     try:
-        data = sock.recv(1024)  # return as bytes
-    except socket.timeout:
+        sock.connect((host, port))
+    except ConnectionError:
         pass
     else:
-        if data:
-            message = data.decode('utf8')
-            parts = message.split(';')
-            if len(parts) == 6:
-                version = parts[5]
+        sock.settimeout(1)
 
-    sock.close()
+        sock.send(b'0;255;3;0;2;;\r\n')
+
+        try:
+            data = sock.recv(1024)  # return as bytes
+        except socket.timeout:
+            pass
+        else:
+            if data:
+                message = data.decode('utf8')
+                parts = message.split(';')
+                if len(parts) == 6:
+                    version = parts[5]
+
+        sock.close()
 
     return version
 

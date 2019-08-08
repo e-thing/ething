@@ -11,7 +11,12 @@ from ..Interface import *
 class RGBWLight (Light, Dimmable):
 
     def setState(self, state):
-        self.setLevel(100 if state else 0)
+        if not state:
+            if self.level > 0:
+                setattr(self, '_level', self.level)  # cache
+            self.setLevel(0)
+        else:
+            self.setLevel(getattr(self, '_level', 100))
 
     def setLevel(self, level):
         """

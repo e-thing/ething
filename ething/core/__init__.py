@@ -9,3 +9,7 @@ from . import flow
 from .Device import Device
 from .File import File
 from .Table import Table
+from .Group import Group
+
+from .plugin import Plugin
+

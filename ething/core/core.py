@@ -23,6 +23,10 @@ import inspect
 import threading
 
 
+DEFAULT_COMMIT_INTERVAL = 5
+DEFAULT_GARBAGE_COLLECTOR_PERIOD = 300
+
+
 class _CoreScheduler(Scheduler):
     def __init__(self, core):
         super(_CoreScheduler, self).__init__()
@@ -86,6 +90,8 @@ class Core(object):
         :param log_level: Any level from the logging module. Default to ``logging.INFO``
         :param clear_db: If True, the database will be cleared.
         :param logger: A logger instance. By default, a new logger instance will be created.
+        :param commit_interval: The interval the database will be synchronized. Default to 5sec.
+        :param garbage_collector_period: The period after which the database cache will be remove. Default to 300sec.
 
         .. attribute:: db
 
@@ -211,14 +217,14 @@ class Core(object):
             self.db.store['VERSION'] = self.version
 
         if not self.db.auto_commit:
-            # commit every secondes
+            # commit every x secondes
             if commit_interval is None:
-                commit_interval = 1
+                commit_interval = DEFAULT_COMMIT_INTERVAL
             self.scheduler.setInterval(commit_interval, self.db.commit, condition=lambda _: self.db.connected and self.db.need_commit())
 
         # run garbage collector regularly
         if garbage_collector_period is None:
-            garbage_collector_period = 300
+            garbage_collector_period = DEFAULT_GARBAGE_COLLECTOR_PERIOD
         self.scheduler.setInterval(garbage_collector_period, self.db.run_garbage_collector, condition=lambda _: self.db.connected)
 
     def stop(self, block=False):

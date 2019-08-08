@@ -699,14 +699,16 @@ class Array(Type):
       return M_Array(self, [self.item_type.unserialize(el, context) for el in data], context)
 
   def serialize(self, value, context = None):
-    return [self.item_type.serialize(el, context) for el in value]
+    # value is a M_Array
+    return [self.item_type.serialize(el, context) for el in value._list]
   
   def fromJson(self, data, context = None):
       self.validate(data, context)
       return M_Array(self, [self.item_type.fromJson(el, context) for el in data], context)
   
   def toJson(self, value, context = None):
-    return [self.item_type.toJson(el, context) for el in value]
+    # value is a M_Array
+    return [self.item_type.toJson(el, context) for el in value._list]
   
   def toSchema(self, context = None):
     schema = super(Array, self).toSchema(context)
@@ -847,9 +849,9 @@ class Dict(Type):
   
   def serialize(self, value, context = None):
     j = {}
-    for key in value:
+    for key in value._store:
       item_type = self.get_type_from_key(key)
-      j[key] = item_type.serialize(value[key], context)
+      j[key] = item_type.serialize(value._store[key], context)
     return j
   
   def fromJson(self, data, context = None):
@@ -862,9 +864,9 @@ class Dict(Type):
   
   def toJson(self, value, context = None):
     j = {}
-    for key in value:
+    for key in value._store:
       item_type = self.get_type_from_key(key)
-      j[key] = item_type.toJson(value[key], context)
+      j[key] = item_type.toJson(value._store[key], context)
     return j
   
   def toSchema(self, context = None):

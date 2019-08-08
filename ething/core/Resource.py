@@ -57,7 +57,16 @@ class ResourceType(DBLink):
 
     def __init__(self, accepted_types=None, must_throw=None, **attributes):
         super(ResourceType, self).__init__('resources/Resource', **attributes)
-        self.accepted_types = accepted_types
+        self.accepted_types = None
+        if accepted_types:
+            self.accepted_types = list()
+            for t in accepted_types:
+                if inspect.isclass(t):
+                    if issubclass(t, Resource):
+                        t = get_definition_name(t)
+                    else:
+                        raise Exception('not a subclass of Resource : %s' % t)
+                self.accepted_types.append(t)
         self.must_throw = must_throw
         if isinstance(self.must_throw, string_types):
             self.must_throw = get_registered_class(self.must_throw)
@@ -92,6 +101,14 @@ class ResourceType(DBLink):
             return super(ResourceType, self).get(value, context)
         except ValueError:
             return None
+
+
+class ResourceTypeArray (Array):
+
+    def __init__(self, accepted_types=None, must_throw=None, min_len=None, max_len=None, **attributes):
+        attributes.setdefault('$component', 'ething.resource')
+        super(ResourceTypeArray, self).__init__(ResourceType(accepted_types=accepted_types, must_throw=must_throw), min_len=min_len, max_len=max_len, **attributes)
+
 
 class RDict(Dict):
     def toJson(self, value, context=None):

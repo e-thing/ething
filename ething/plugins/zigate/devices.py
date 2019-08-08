@@ -226,6 +226,19 @@ class ZigateGenericDimmableLightDevice(ZigateBaseDevice, DimmableLight):
         elif name == 'current_level':
             self.level = value
 
+    def setState(self, state):
+        onoff = zigate.ON if state else zigate.OFF
+        ep = self.endpoint
+
+        if ep is None:
+            res = self.zdevice.action_onoff(onoff)
+        else:
+            res = self.z.action_onoff(self.addr, ep, onoff)
+
+        if not res:
+            # command status is bad !
+            raise Exception('unable to reach the device')
+
     def setLevel(self, level):
         onoff = zigate.ON if level > 0 else zigate.OFF
         ep = self.endpoint
@@ -256,6 +269,19 @@ class ZigateGenericColourDimmableLightDevice(ZigateBaseDevice, RGBWLight):
             self.hue = value
         elif name == 'current_saturation': # [0-100]
             self.saturation = value
+
+    def setState(self, state):
+        onoff = zigate.ON if state else zigate.OFF
+        ep = self.endpoint
+
+        if ep is None:
+            res = self.zdevice.action_onoff(onoff)
+        else:
+            res = self.z.action_onoff(self.addr, ep, onoff)
+
+        if not res:
+            # command status is bad !
+            raise Exception('unable to reach the device')
 
     def setLevel(self, level):
         onoff = zigate.ON if level > 0 else zigate.OFF

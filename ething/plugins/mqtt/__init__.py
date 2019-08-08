@@ -3,7 +3,97 @@
 import paho.mqtt.client as mqttClient
 import paho.mqtt.publish as publish
 from ething.core.flow import *
+from ething.core.TransportProcess import Transport
 import json
+from queue import Queue, Empty
+
+
+class MqttTransport(Transport):
+
+    def __init__(self, host, topic, port=1883, username=None, password=None, qos=0, connection_timeout=5):
+        super(MqttTransport, self).__init__()
+        self.host = host
+        self.port = port
+        self.topic = topic
+        self.username = username
+        self.password = password
+        self.qos = qos
+        self.connection_timeout = connection_timeout
+        self._q_msg = Queue()
+        self._c = mqttClient.Client()
+
+        if self.username and self.password:
+            self._c.username_pw_set(self.username, self.password)
+
+        self._c.on_message = self.on_message
+        self._c.on_connect = self.on_connect
+        self._c.on_disconnect = self.on_disconnect
+
+    def open(self):
+        self._connected = False
+        self._connect_error = False
+
+        self._c.connect(self.host, port=self.port)
+
+        t0 = time.time()
+        while self._connected is False and self._connect_error is False and (time.time() - t0) < self.connection_timeout:
+            self._c.loop(timeout=0.2, max_packets=1)
+
+        if self._connect_error is not False:
+            raise Exception('mqtt: unable to connect rc=%d' % self._connect_error)
+
+        if not self._connected:
+            raise Exception('mqtt: connect timeout')
+
+        self._c.subscribe(self.topic, self.qos)
+
+        super(MqttTransport, self).open()
+        self.log.info("(mqtt) connected to host=%s port=%d" % (self.host, self.port))
+
+    def on_message(self, client, userdata, msg):
+        # msg.topic
+        # msg.payload
+        self._q_msg.put(msg)
+
+    def on_connect(self, client, userdata, flags, rc):
+        if rc == 0:
+            # success
+            self._connected = True
+        else:
+            # error
+            self._connect_error = rc
+
+    def on_disconnect(self, client, userdata, rc):
+        self._connected = False
+        if rc == 0:
+            # disconnect was called !
+            pass
+        else:
+            # need to reconnect
+            self.process.stop()
+
+    def read(self):
+        try:
+            msg = self._q_msg.get(block=False)
+        except Empty:
+            self._c.loop(timeout=1.0, max_packets=1)
+        else:
+            return msg # msg = dict(topic, payload)
+
+    def write(self, msg):
+        # msg = dict(topic, payload=None, qos=0, retain=False)
+        self._c.publish(msg)
+
+    def close(self):
+        super(MqttTransport, self).close()
+        if self._connected:
+            self._c.disconnect()
+
+            t0 = time.time()
+            while self._connected is True and (time.time() - t0) < self.connection_timeout:
+                self._c.loop(timeout=0.2, max_packets=1)
+
+            self.log.info("(net) closed from host=%s port=%d" % (self.host, self.port))
 
 
 @meta(icon='mdi-signal-variant', category="input")
