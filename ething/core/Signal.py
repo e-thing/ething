@@ -21,7 +21,7 @@ class Signal(with_metaclass(MetaReg, Mapping)):
 
     """
     def __init__(self):
-        self._type = type(self).__name__
+        self._type = get_definition_name(type(self))
         self._ts = time.time()
         self.payload = dict()
 

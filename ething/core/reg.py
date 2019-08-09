@@ -1221,7 +1221,7 @@ class MetaReg(ABCMeta):
 
 def get_definition_name(cls):
   """
-  returns the definition name for the given class or instance (e.g. "#/resources/Resource")
+  returns the definition name for the given class or instance (e.g. "resources/Resource")
   """
   name = cls.__name__
   ns = get_meta(cls, 'namespace')

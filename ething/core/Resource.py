@@ -11,7 +11,6 @@ import inspect
 import logging
 
 
-@namespace('resources', True)
 @meta(icon='mdi-plus')
 class ResourceCreated(Signal):
     """
@@ -27,7 +26,6 @@ class ResourceCreated(Signal):
         return msg
 
 
-@namespace('resources', True)
 @meta(icon='mdi-delete')
 class ResourceDeleted(ResourceSignal):
     """
@@ -36,7 +34,6 @@ class ResourceDeleted(ResourceSignal):
     pass
 
 
-@namespace('resources', True)
 @meta(icon='mdi-update')
 class ResourceUpdated(ResourceSignal):
     """
