@@ -19,7 +19,8 @@ def test_device(core):
     assert d.connected is False
     assert d.lastSeenDate is None
 
-    d.connected = True
+    d.refresh_connect_state(True)
 
+    assert d.connected is True
     assert d.lastSeenDate is not None
 

@@ -4,6 +4,7 @@ from .db import *
 from .Signal import ResourceSignal, Signal
 from .utils.date import TzDate, utcnow
 from .utils.ObjectPath import evaluate
+from .utils import getmembers
 from .scheduler import *
 from .Process import Process
 from collections import Mapping, Sequence
@@ -132,6 +133,12 @@ def _import_process(instance, p):
         raise Exception('not a process')
 
 
+def process(func):
+    # process decorator
+    setattr(func, '_process', True)
+    return func
+
+
 @abstract
 @throw(ResourceCreated, ResourceDeleted, ResourceUpdated)
 @attr('public', type=Enum([False, 'readonly', 'readwrite']), default=False, description="False: this resource is not publicly accessible. 'readonly': this resource is accessible for reading by anyone. 'readwrite': this resource is accessible for reading and writing by anyone.")
@@ -171,6 +178,24 @@ class Resource(Entity):
     or you could also write it ::
 
         core.create('resources/foo", {...})
+
+    If you want to bind asynchronous processing, you could write it ::
+
+        @attr('count', type=Number(), default=0)
+        class Foo(Resource):
+
+            @setInterval(60) # every 60 secondes
+            def async_processing(self):
+                # this method is fired every minute
+                self.count += 1
+
+            @process
+            def daemon_like_async_processing(self):
+                # this method is fired when the instance is created
+                while True:
+                    # ... do some processing here
+                    time.sleep(1) # do not forget to give some time
+
 
     """
 
@@ -402,13 +427,16 @@ class Resource(Entity):
     def _process_bind(self):
         """
         bind processes to this instance
-        look for __process__ attribute which can either be :
-         - a method:
-           def __process__(self): return MyProcess(...)
-         - a Process subclass:
-           __process__ = MyProcess # will be instantiated with a single argument corresponding to the current resource
-         - an array of Process subclass:
-           __process__ = [MyProcess0, MyProcess1, ...]
+        1 - look for __process__ attribute which can either be :
+             - a method:
+               def __process__(self): return MyProcess(...)
+             - a Process subclass:
+               __process__ = MyProcess # will be instantiated with a single argument corresponding to the current resource
+             - an array of Process subclass:
+               __process__ = [MyProcess0, MyProcess1, ...]
+
+        2 - look for any method decorated with @process
+
         """
         processes = []
 
@@ -427,6 +455,10 @@ class Resource(Entity):
                     processes.append(_import_process(self, ppa))
             else:
                 processes.append(_import_process(self, pa))
+
+        # find any @process decorator
+        for name, func in getmembers(self, lambda x: hasattr(x, '_process')):
+            processes.append(Process(name=name, target=getattr(self, name)))
 
         # keep references to this process during the lifetime of this resource
         self._processes = dict()

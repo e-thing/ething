@@ -10,7 +10,6 @@ import datetime
 
 class MihomeProtocol(Protocol):
     RESPONSE_TIMEOUT = 10  # seconds
-    ACTIVITY_TIMEOUT = 3600  # 1 hour
 
     def __init__(self, core):
         super(MihomeProtocol, self).__init__()
@@ -24,7 +23,6 @@ class MihomeProtocol(Protocol):
         self._responseListeners = []
 
         self.core.scheduler.setInterval(1, self.check_timeout, condition=lambda _: len(self._responseListeners)>0)
-        self.core.scheduler.setInterval(60, self.check_disconnect)
 
         self.search()
 
@@ -103,7 +101,7 @@ class MihomeProtocol(Protocol):
                 #
                 if device:
                     with device:
-                        device.connected = True
+                        device.refresh_connect_state(True)
                         device._processData(response)
 
                 if '_ack' in cmd:
@@ -133,7 +131,7 @@ class MihomeProtocol(Protocol):
 
         result = Result(ack, command=command, done=done, err=err)
 
-        if self.process.is_open:
+        if self.transport.is_open:
 
             self.log.debug("command send %s" % str(command))
 
@@ -155,7 +153,6 @@ class MihomeProtocol(Protocol):
     def connection_lost(self, exc):
 
         self.core.scheduler.unbind(self.check_timeout)
-        self.core.scheduler.unbind(self.check_disconnect)
 
         for responseListener in self._responseListeners:
             responseListener.reject('disconnected')
@@ -181,15 +178,6 @@ class MihomeProtocol(Protocol):
                 responseListener.reject('response timeout')
 
             i += 1
-    
-    def check_disconnect(self):
-        devices = self.core.find(lambda r: r.isTypeof('resources/MihomeDevice'))
-        
-        now = utcnow()
-        
-        for device in devices:
-            if device.connected and device.lastSeenDate and now - device.lastSeenDate > datetime.timedelta(seconds=self.ACTIVITY_TIMEOUT):
-                device.connected = False
 
     def search(self):
         self.log.debug('search...')

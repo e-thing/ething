@@ -17,6 +17,9 @@ class RFLinkController(TransportProcess):
         )
         self.gateway = gateway
 
+    def on_open_state_changed(self):
+        self.gateway.refresh_connect_state(self.is_open)
+
     def send(self, *args, **kwargs):
         return self.protocol.send(*args, **kwargs)
 

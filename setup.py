@@ -55,6 +55,9 @@ install_requires = [
 
     # --denon
     "xmltodict",
+
+    # --zigate
+    "zigate",
 ]
 
 if os.name != "nt":

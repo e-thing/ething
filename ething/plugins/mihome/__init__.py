@@ -12,7 +12,7 @@ from .protocol import MihomeProtocol
 class Mihome(Plugin):
 
     def setup(self):
-        self.core.process_manager.attach(Controller(self.core))
+        self.controller = self.core.process_manager.attach(Controller(self.core))
 
 
 class Controller(TransportProcess):
@@ -32,6 +32,11 @@ class Controller(TransportProcess):
             protocol=MihomeProtocol(core),
             id='mihome'
         )
+        self.core = core
+
+    def on_open_state_changed(self):
+        for gateway in self.core.find(lambda r: r.isTypeof(MihomeGateway)):
+            gateway.refresh_connect_state(self.is_open)
 
     def send(self, *args, **kwargs):
         return self.protocol.send(*args, **kwargs)

@@ -70,7 +70,7 @@ class MqttTransport(Transport):
             pass
         else:
             # need to reconnect
-            self.process.stop()
+            self.close()
 
     def read(self):
         try:

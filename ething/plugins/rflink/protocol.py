@@ -23,10 +23,8 @@ class RFLinkProtocol(LineReader):
     def connection_made(self):
         super(RFLinkProtocol, self).connection_made()
         self._responseListeners = []
-        self.gateway.connected = True
 
         self.core.scheduler.setInterval(1, self.check_response_timeout)
-        self.core.scheduler.setInterval(60, self.check_disconnect)
 
     # exemple of messages :
     #     20;00;Nodo RadioFrequencyLink - RFLink Gateway V1.1 - R46;
@@ -85,7 +83,7 @@ class RFLinkProtocol(LineReader):
 
                 if device:
                     with device:
-                        device.connected = True
+                        device.refresh_connect_state(True)
                         device._handle_incoming_data(protocol, data)
 
         else:
@@ -162,9 +160,6 @@ class RFLinkProtocol(LineReader):
     def connection_lost(self, exc):
 
         self.core.scheduler.unbind(self.check_response_timeout)
-        self.core.scheduler.unbind(self.check_disconnect)
-
-        self.gateway.connected = False
 
         for responseListener in self._responseListeners:
             responseListener.reject('disconnected')
@@ -187,15 +182,6 @@ class RFLinkProtocol(LineReader):
                 responseListener.reject('response timeout')
 
             i += 1
-    
-    def check_disconnect(self):
-        devices = self.core.find(lambda r: r.isTypeof('resources/RFLinkNode'))
-        
-        now = utcnow()
-        
-        for device in devices:
-            if device.lastSeenDate and now - device.lastSeenDate > datetime.timedelta(seconds=1800):
-                device.connected = False
     
 
 

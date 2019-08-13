@@ -17,6 +17,7 @@ class MySensorsNode(Device):
     """
     MySensorsNode Device resource representation. This device is normally automatically created by a MySensorsGateway instance.
     """
+    ACTIVITY_TIMEOUT = 1800
 
     @property
     def controller(self):

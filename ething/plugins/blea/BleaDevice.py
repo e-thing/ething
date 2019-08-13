@@ -12,6 +12,8 @@ class BleaDevice(Device):
     """
     BLEA Device resource representation
     """
+
+    ACTIVITY_TIMEOUT = 1800
     
     name = 'unknown'
 
@@ -31,7 +33,7 @@ class BleaDevice(Device):
                 device = core.create(cls, {
                     'name': getattr(cls, 'name', None) or name or 'dev',
                     'mac': mac,
-                    'createdBy': gateway.id
+                    # 'createdBy': gateway.id # deprecated, multiple gateway observing the same device is possible
                 })
                 
                 if device:
@@ -46,6 +48,6 @@ class BleaDevice(Device):
         if device:
             with device:
                 device.rssi = rssi
-                device.connected = True
+                device.refresh_connect_state(True)
         
         return device

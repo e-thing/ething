@@ -30,11 +30,11 @@ class Sonoff_http(Relay):
             data = r.json()
             new_state = True if data.get('POWER') == 'ON' else False
             with self:
-                self.connected = True
+                self.refresh_connect_state(True)
                 if self.state != new_state:
                     self.state = new_state
         except:
-            self.connected = False
+            self.refresh_connect_state(False)
 
     def _make_request(self, method, path='', params = None, body = None, headers = None, **options):
 

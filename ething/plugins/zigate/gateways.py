@@ -2,20 +2,31 @@
 import zigate
 from zigate import dispatcher
 from zigate.core import DeviceEncoder
+from zigate.transport import BaseTransport
 from future.utils import string_types
 from ething.core.Device import Device
 from ething.core.reg import *
 from ething.core.Process import Process
 from ething.core.env import USER_DIR
 from ething.core import scheduler
+from ething.core.TransportProcess import SerialTransport, NetTransport
 from .devices import zigate_device_classes
 import json
 import os
+import logging
+import time
+
+
+LOGGER = logging.getLogger("ething.zigate")
 
 
 PERSISTENT_FILE = os.path.abspath(os.path.join(USER_DIR, 'zigate.json'))
 
 black_listed_devices = list()
+
+
+CONNECTED = 'CONNECTED'
+DISCONNECTED = 'DISCONNECTED'
 
 
 @abstract
@@ -58,7 +69,6 @@ class ZigateBaseGateway(Device):
 
         self.z = z = self._connect(**gconf)
 
-        #dispatcher.connect(self._controller_callback, signal=dispatcher.Any, sender=z)
         dispatcher.connect(self._controller_callback, signal=zigate.ZIGATE_DEVICE_ADDED, sender=z)
         dispatcher.connect(self._controller_callback, signal=zigate.ZIGATE_DEVICE_UPDATED, sender=z)
         dispatcher.connect(self._controller_callback, signal=zigate.ZIGATE_DEVICE_REMOVED, sender=z)
@@ -66,29 +76,42 @@ class ZigateBaseGateway(Device):
         dispatcher.connect(self._controller_callback, signal=zigate.ZIGATE_ATTRIBUTE_ADDED, sender=z)
         dispatcher.connect(self._controller_callback, signal=zigate.ZIGATE_ATTRIBUTE_UPDATED, sender=z)
         dispatcher.connect(self._controller_callback, signal=zigate.ZIGATE_DEVICE_NEED_DISCOVERY, sender=z)
+        dispatcher.connect(self._controller_callback, signal=CONNECTED, sender=z)
+        dispatcher.connect(self._controller_callback, signal=DISCONNECTED, sender=z)
 
         # start
         self.log.debug('zigate startup')
         z.startup()
 
-        self.version = z.get_version_text()
+    def _controller_init(self):
+        self.version = self.z.get_version_text(refresh=True)
         self.log.info('zigate version: %s', self.version)
 
-        self.addr = z.addr
-        self.ieee = z.ieee
-        self.channel = z.channel
+        self.addr = self.z.addr
+        self.ieee = self.z.ieee
+        self.channel = self.z.channel
 
     def _controller_end(self):
         if hasattr(self, 'z') and self.z:
             self.log.info('zigate close')
+            dispatcher.disconnect(self._controller_callback, sender=self.z)
             self.z.save_state()
             self.z.close()
-            dispatcher.disconnect(self._controller_callback, sender=self.z)
             self.z = None
 
     def _controller_callback(self, sender, signal, **kwargs):
 
         self.log.debug('signal received: %s %s', signal, kwargs)
+
+        if signal == DISCONNECTED:
+            self.refresh_connect_state(False)
+            return
+
+        self.refresh_connect_state(True)
+
+        if signal == CONNECTED:
+            self._controller_init()
+            return
 
         if 'device' in kwargs:
             dz_instance = kwargs.get('device')
@@ -177,13 +200,112 @@ class ZigateBaseGateway(Device):
             self.z.stop_permit_join()
 
 
+class WrapperConnection(BaseTransport):
+
+    def __init__(self, zigate_instance, transport):
+        BaseTransport.__init__(self)
+        self._running = False
+        self.zigate_instance = zigate_instance
+        self.gateway = zigate_instance.gateway
+        self.core = zigate_instance.gateway.core
+        self.transport = transport
+        self.log = LOGGER
+        self._is_open = False
+        self.reconnect_delay = 15
+
+        self._process = self.core.process_manager.attach(Process(name="zigate.transport", target=self.main, terminate=self._stop, log=self.log))
+
+    @property
+    def is_connected(self):
+        return self._is_open
+
+    def _stop(self):
+        self._running = False
+
+    def main(self):
+        self._running = True
+
+        while self._running:
+
+            error = None
+
+            try:
+                self.transport.open()
+            except Exception as e:
+                self.log.exception('exception in transport.open()')
+                error = e
+
+            while not error and self._running and self.transport.is_open:
+
+                if not self._is_open:
+                    self._is_open = True
+                    dispatcher.send(CONNECTED, self.zigate_instance)
+
+                try:
+                    # read all that is there or wait for one byte (blocking)
+                    data = self.transport.read()
+                except Exception as e:
+                    # probably some I/O problem such as disconnected USB serial
+                    # adapters -> exit
+                    self.log.exception('exception in transport')
+                    error = e
+                else:
+                    if data:
+                        # make a separated try-except for called used code
+                        try:
+                            self.read_data(data)
+                        except Exception as e:
+                            self.log.exception('exception in protocol.data_received()')
+                            error = e
+
+            self._is_open = False
+            dispatcher.send(DISCONNECTED, self.zigate_instance)
+
+            if self.transport.is_open:
+                try:
+                    self.transport.close()
+                except Exception as e:
+                    self.log.exception('exception in transport.close()')
+
+            t_end = time.time() + self.reconnect_delay
+            while self._running and time.time() < t_end:
+                time.sleep(1.)
+            self.log.debug('reconnecting...')
+
+    def send(self, data):
+        self.transport.write(data)
+
+    def close(self):
+        if self._process:
+            self._process.destroy(timeout=2)
+            self._process = None
+
+
+class ZigateSerial(zigate.ZiGate):
+    def __init__(self, gateway, **kwargs):
+        super(ZigateSerial, self).__init__(gateway.port, **kwargs)
+        self.gateway = gateway
+
+    def setup_connection(self):
+        self.connection = WrapperConnection(self, transport=SerialTransport(self._port, 115200))
+
+
+class ZigateWifi(zigate.ZiGateWiFi):
+    def __init__(self, gateway, **kwargs):
+        super(ZigateWifi, self).__init__(gateway.host, gateway.port, **kwargs)
+        self.gateway = gateway
+
+    def setup_connection(self):
+        self.connection = WrapperConnection(self, transport=NetTransport(self._host, self._port))
+
+
 @attr('port', type=SerialPort(), description="The serial port name.")
 class ZigateSerialGateway(ZigateBaseGateway):
     RESET_ATTR = ['port']
 
     def _connect(self, **kwargs):
         self.log.info('zigate connect on port %s', self.port)
-        return zigate.connect(port=self.port, **kwargs)  # Leave None to auto-discover the port
+        return ZigateSerial(self, **kwargs)
 
 
 @attr('port', type=Integer(min=0, max=65535), default=9999, description="The port number of the gateway. The default port number is 9999.")
@@ -193,7 +315,7 @@ class ZigateWifiGateway(ZigateBaseGateway):
 
     def _connect(self, **kwargs):
         self.log.info('zigate connect on host %s:%s', self.host, self.port)
-        return zigate.connect(host='%s:%s' % (self.host, self.port), **kwargs)
+        return ZigateWifi(self, **kwargs)
 
 
 from zigate.core import FakeZiGate
@@ -204,3 +326,8 @@ class ZigateFakeGateway(ZigateBaseGateway):
     def _connect(self, **kwargs):
         self.log.info('fake zigate connect')
         return FakeZiGate(**kwargs)
+
+    @scheduler.delay(0, name="zigate.init")
+    def _controller_start(self):
+        super(ZigateFakeGateway, self)._controller_start()
+        super(ZigateFakeGateway, self)._controller_init() # no CONNECTED event

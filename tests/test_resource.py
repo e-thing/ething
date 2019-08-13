@@ -1,7 +1,7 @@
 # coding: utf-8
 import pytest
 from ething.core.reg import *
-from ething.core.Resource import Resource
+from ething.core.Resource import *
 from ething.core.File import File
 
 
@@ -120,6 +120,51 @@ def test_dynamic(core):
     assert isinstance(ist, TDTAC)
     assert isinstance(ist, TDCCCA)
     assert isinstance(ist, TDCCCB)
+
+
+def test_async_processing(core):
+
+    glo = {
+        'count': 0,
+        'count2': 0
+    }
+
+    @attr('count2', type=Number(), default=0)
+    @attr('count', type=Number(), default=0)
+    class TAPA(Resource):
+
+        @setInterval(1)
+        def async_processing(self):
+            self.count += 1
+            glo['count'] += 1
+
+        @process
+        def daemon_like_async_processing(self):
+            while True:
+                self.count2 += 1
+                glo['count2'] += 1
+                time.sleep(1)
+
+    instance = core.create(TAPA, {
+        'name': 'toto',
+    })
+
+    time.sleep(3)
+
+    assert instance.count >= 2
+    assert instance.count2 >= 2
+    assert glo['count'] >= 2
+    assert glo['count2'] >= 2
+
+    instance.remove()
+
+    count = glo['count']
+    count2 = glo['count2']
+
+    time.sleep(2)
+
+    assert glo['count'] == count
+    assert glo['count2'] == count2
 
 
 

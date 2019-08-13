@@ -61,7 +61,8 @@ class ExecuteDevice(ResourceNode):
 # 0-100 : the battery level, if None it means that no battery information is provided
 @attr('battery', type=Nullable(Number(min=0, max=100)), mode=READ_ONLY, default=None, description="The battery level of this device (must be between 0 (empty) and 100 (full) , or null if the device has no battery information).")
 @attr('location', type=String(), default='', description="The location of this device.")
-@attr('connected', type=Boolean(), default=True, mode=READ_ONLY, force_watch=True, description="Set to true when this device is connected.")
+#@attr('connected', type=Boolean(), default=True, mode=READ_ONLY, force_watch=True, description="Set to true when this device is connected.")
+@attr('connected', type=Boolean(), default=True, mode=READ_ONLY, description="Set to true when this device is connected.")
 @attr('lastSeenDate', type=Nullable(TzDate()), mode=READ_ONLY, default=None, description="The last time this device was reached or made a request.")
 @attr('error', type=Nullable(String()), mode=READ_ONLY, default=None, description="Any error concerning this device.")
 @meta(description='')
@@ -104,10 +105,13 @@ class Device(Resource):
     BATTERY_HALF = 50
     BATTERY_FULL = 100
 
-    def __watch__(self, attr, value, old_value):
-        if attr == 'connected' and value:
-            self.lastSeenDate = utcnow()
-        super(Device, self).__watch__(attr, value, old_value)
+    ACTIVITY_TIMEOUT = None # number of seconds after which the device is automatically detected as not connected
+
+
+    # def __watch__(self, attr, value, old_value):
+    #     if attr == 'connected' and value:
+    #         self.lastSeenDate = utcnow()
+    #     super(Device, self).__watch__(attr, value, old_value)
 
     def on_attr_update(self, attr, new_value, old_value):
         super(Device, self).on_attr_update(attr, new_value, old_value)
@@ -124,3 +128,18 @@ class Device(Resource):
         elif attr == 'error':
             if new_value is not None:
                 self.log.error(new_value)
+
+    def refresh_connect_state(self, state, propagate=True):
+        with self:
+            self.connected = bool(state)
+            if state:
+                self.lastSeenDate = utcnow()
+
+        if not state and propagate:
+            for dev in self.children(lambda r: r.isTypeof(Device)):
+                dev.refresh_connect_state(state)
+
+
+    def check_activity(self):
+        if self.ACTIVITY_TIMEOUT and self.connected and utcnow() - self.lastSeenDate > datetime.timedelta(seconds=self.ACTIVITY_TIMEOUT):
+            self.refresh_connect_state(False)

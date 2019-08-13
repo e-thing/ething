@@ -20,7 +20,6 @@ class YeelightProtocol(LineReader):
     def connection_made(self):
         super(YeelightProtocol, self).connection_made()
         self._pending_cmds.clear()
-        self.device.connected = True
 
         self.core.scheduler.setInterval(1, self.check_response_timeout)
 
@@ -38,7 +37,7 @@ class YeelightProtocol(LineReader):
 
         with self.device as device:
 
-            device.connected = True
+            device.refresh_connect_state(True)
 
             if "id" in message:
                 # result / response
@@ -105,7 +104,7 @@ class YeelightProtocol(LineReader):
 
         result = yeelight.Result(command, done = done, err = err)
 
-        if self.process.is_open:
+        if self.transport.is_open:
 
             self.log.debug("message send %s" % str(command))
 
@@ -122,8 +121,6 @@ class YeelightProtocol(LineReader):
     def connection_lost(self, exc):
 
         self.core.scheduler.unbind(self.check_response_timeout)
-
-        self.device.connected = False
 
         for id in self._pending_cmds:
             self._pending_cmds[id].reject('disconnected', args = (self.device,))
@@ -221,7 +218,7 @@ class YeelightAdvertisementProtocol(Protocol):
 
         if device:
             with device:
-                device.connected = True
+                device.refresh_connect_state(True)
                 device._update(dev_info)
 
         return device

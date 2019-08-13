@@ -26,6 +26,8 @@ class MihomeDevice(with_metaclass(MihomeDeviceMetaClass, MihomeBase)):
     Mihome Device base class
     """
 
+    ACTIVITY_TIMEOUT = 1800
+
     @classmethod
     def isvalid(cls, gateway, model):
         return False

@@ -90,10 +90,8 @@ class MySensorsProtocol(LineReader):
     def connection_made(self):
         super(MySensorsProtocol, self).connection_made()
         self._pendingMessages = []
-        self.gateway.connected = True
 
         self.core.scheduler.setInterval(1, self.check_timeout)
-        self.core.scheduler.setInterval(60, self.check_disconnect)
 
     def createNode(self, nodeId):
         gateway = self.gateway
@@ -149,7 +147,7 @@ class MySensorsProtocol(LineReader):
 
         with self.gateway as gateway:
 
-            gateway.connected = True
+            gateway.refresh_connect_state(True)
 
             nodeId = message.nodeId
             sensorId = message.childSensorId
@@ -181,12 +179,12 @@ class MySensorsProtocol(LineReader):
             with node, sensor:
 
                 if node:
-                    node.connected = True
+                    node.refresh_connect_state(True)
                     if node_err is not False:
                         node.error = node_err
 
                 if sensor:
-                    sensor.connected = True
+                    sensor.refresh_connect_state(True)
 
                 # is ack ?
                 if message.ack == NO_ACK:
@@ -411,7 +409,7 @@ class MySensorsProtocol(LineReader):
 
         result = Result(self, message, done = done, err = err, smartSleep=smartSleep, response=response)
 
-        if self.process.is_open:
+        if self.transport.is_open:
             result.next()
 
             if result.state != Result.DONE:
@@ -424,9 +422,6 @@ class MySensorsProtocol(LineReader):
     def connection_lost(self, exc):
 
         self.core.scheduler.unbind(self.check_timeout)
-        self.core.scheduler.unbind(self.check_disconnect)
-
-        self.gateway.connected = False
 
         for pendingMessages in self._pendingMessages:
             pendingMessages.reject('disconnected')
@@ -457,17 +452,7 @@ class MySensorsProtocol(LineReader):
                 i -= 1
 
             i += 1
-    
-    def check_disconnect(self):
-        devices = self.core.find(lambda r: r.isTypeof('resources/MySensorsNode'))
-        
-        now = utcnow()
-        
-        for device in devices:
-            if device.lastSeenDate and now - device.lastSeenDate > datetime.timedelta(seconds=1800):
-                device.connected = False
-                for sensor in device.getSensors():
-                    sensor.connected = False
+
 
 
 

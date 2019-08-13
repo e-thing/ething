@@ -55,8 +55,7 @@ class ZigateBaseDevice(with_metaclass(ZigateDeviceMetaClass, Device)):
             self.battery = zdevice.battery_percent
 
         connected = not zdevice.missing
-        if connected != self.connected:
-            self.connected = connected
+        self.refresh_connect_state(connected)
 
         if signal == zigate.ZIGATE_ATTRIBUTE_UPDATED or signal == zigate.ZIGATE_ATTRIBUTE_ADDED:
             attribute = kwargs.get('attribute') # {'endpoint': 1, 'cluster': 1026, 'addr': 'abcd', 'attribute': 0, 'name': 'temperature', 'value': 13.58, 'unit': '°C', 'type': <class 'float'>, 'data': 1358}

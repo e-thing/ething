@@ -29,14 +29,14 @@ class Mijia(BleaDevice, Thermometer, HumiditySensor):
                 self.log.debug('read battery:%s' % (battery))
 
                 with self:
-                    self.connected = True
+                    self.refresh_connect_state(True)
                     self.battery = battery
 
                 connector.wait_for_notification(0x10, self, notification_timeout=5)
 
         except Exception:
             self.log.exception('error in read()')
-            self.connected = False
+            self.refresh_connect_state(False)
 
     def handleNotification(self,handle,data):
         if handle == 0x0e:

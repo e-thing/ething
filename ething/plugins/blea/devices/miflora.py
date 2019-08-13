@@ -37,7 +37,7 @@ class Miflora(BleaDevice, Thermometer, LightSensor, MoistureSensor):
                 self.log.debug('read battery:%s firmware:%s' % (battery, firmware))
 
                 with self:
-                    self.connected = True
+                    self.refresh_connect_state(True)
                     self.firmware = firmware
                     self.battery = battery
 
@@ -47,7 +47,7 @@ class Miflora(BleaDevice, Thermometer, LightSensor, MoistureSensor):
 
         except Exception:
             self.log.exception('error in read()')
-            self.connected = False
+            self.refresh_connect_state(False)
 
     def handleNotification(self,handle,data):
         if handle == 0x35:

@@ -270,6 +270,10 @@ class Core(object):
         Initialize the core instance. For testing purpose only. The run() method automatically call this method.
 
         """
+
+        self._stop.clear()
+        self._stopped.clear()
+
         if not self._initialized:
             self._initialized = True
 
@@ -282,6 +286,15 @@ class Core(object):
 
             # setup plugins
             self._plugins_call('setup')
+
+            # devices activity timeout
+            def devices_activity_check():
+                for d in self.find(lambda r: r.isTypeof('resources/Device')):
+                    d.check_activity()
+
+            self.scheduler.setInterval(60, devices_activity_check)
+
+        self.process_manager.start()
 
     def run(self):
         """
@@ -310,13 +323,9 @@ class Core(object):
 
             events.subscribers.append(event_handler)
 
-        self.log.info('core started')
-
         self._running.set()
-        self._stop.clear()
-        self._stopped.clear()
+        self.log.info('core started')
         self._plugins_call('start')
-        self.process_manager.start()
 
         # wait for stop...
         self._stop.wait()

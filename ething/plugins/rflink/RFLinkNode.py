@@ -9,6 +9,7 @@ from .helpers import *
 @attr('protocol', type=String(allow_empty=False), mode = READ_ONLY, description="The protocol name of the node.")
 @attr('createdBy', required=True)
 class RFLinkNode(Device):
+    ACTIVITY_TIMEOUT = 1800
 
     @property
     def controller(self):

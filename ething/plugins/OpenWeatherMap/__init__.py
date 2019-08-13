@@ -54,35 +54,41 @@ class OpenWeatherMapDevice(Thermometer, PressureSensor, HumiditySensor, Anemomet
             self.error = None
             self.log.debug('fetch weather data')
             r = requests.get(url=API_WEATHER_URL, params=dict(q=location, APPID=appid, units='metric'))
-            r.raise_for_status()
-            data = r.json()
-            if data:
-                with self:
-                    self.connected = True
+            try:
+                r.raise_for_status()
+            except requests.HTTPError as e:
+                self.refresh_connect_state(False)
+                raise e
+            else:
+                data = r.json()
+                if data:
+                    with self:
+                        self.refresh_connect_state(True)
 
-                    self.log.debug('data read: %s' % (json.dumps(data)))
+                        self.log.debug('data read: %s' % (json.dumps(data)))
 
-                    main = data.get('main', {})
+                        main = data.get('main', {})
 
-                    if 'temp' in main:
-                        self.temperature = main.get('temp')
-                    if 'pressure' in main:
-                        self.pressure = main.get('pressure') * 100
-                    if 'humidity' in main:
-                        self.humidity = main.get('humidity')
+                        if 'temp' in main:
+                            self.temperature = main.get('temp')
+                        if 'pressure' in main:
+                            self.pressure = main.get('pressure') * 100
+                        if 'humidity' in main:
+                            self.humidity = main.get('humidity')
 
-                    weather = data.get('weather', [])
+                        weather = data.get('weather', [])
 
-                    if len(weather) > 0:
-                        weather = weather[0]
-                        if isinstance(weather, dict):
-                            self.weather = weather.get('description', '')
+                        if len(weather) > 0:
+                            weather = weather[0]
+                            if isinstance(weather, dict):
+                                self.weather = weather.get('description', '')
 
-                    if 'wind' in data:
-                        wind = data.get('wind', {})
+                        if 'wind' in data:
+                            wind = data.get('wind', {})
 
-                        if 'speed' in wind:
-                            self.wind_speed = wind.get('speed')
-                            self.wind_direction = wind.get('deg', None)
+                            if 'speed' in wind:
+                                self.wind_speed = wind.get('speed')
+                                self.wind_direction = wind.get('deg', None)
         else:
             self.error = 'no appid set'
+            self.refresh_connect_state(False)
