@@ -8,6 +8,10 @@ import struct
 import time
 import logging
 from queue import Queue, Empty
+import os
+
+
+win = True if os.name == 'nt' else False
 
 
 class Transport(object):
@@ -49,6 +53,19 @@ class SerialTransport(Transport):
     def read(self):
         if self.serial is not None:
             if self.serial.is_open:
+                if win and self.serial.in_waiting==0:
+                    # on windows the serial.read() is blocking gevent
+                    t0 = time.time()
+                    timeout = self.serial.timeout
+                    read = False
+                    while time.time() - t0 < timeout:
+                        if self.serial.in_waiting>0:
+                            read = True
+                            break
+                        time.sleep(0.1)
+                    if not read:
+                        return
+
                 return self.serial.read(self.serial.in_waiting or 1)
             else:
                 self.close()

@@ -79,11 +79,14 @@ class ZigateBaseGateway(Device):
         dispatcher.connect(self._controller_callback, signal=CONNECTED, sender=z)
         dispatcher.connect(self._controller_callback, signal=DISCONNECTED, sender=z)
 
-        # start
-        self.log.debug('zigate startup')
-        z.startup()
+        # start transport
+        self.z.setup_connection()
+
 
     def _controller_init(self):
+        self.log.debug('zigate startup')
+        self.z.startup()
+
         self.version = self.z.get_version_text(refresh=True)
         self.log.info('zigate version: %s', self.version)
 
@@ -110,7 +113,8 @@ class ZigateBaseGateway(Device):
         self.refresh_connect_state(True)
 
         if signal == CONNECTED:
-            self._controller_init()
+            # run in a new process because it is blocking
+            self.core.process_manager.attach(Process(name="zigate.setup", target=self._controller_init))
             return
 
         if 'device' in kwargs:
@@ -215,7 +219,6 @@ class WrapperConnection(BaseTransport):
 
         self._process = self.core.process_manager.attach(Process(name="zigate.transport", target=self.main, terminate=self._stop, log=self.log))
 
-    @property
     def is_connected(self):
         return self._is_open
 
@@ -287,7 +290,8 @@ class ZigateSerial(zigate.ZiGate):
         self.gateway = gateway
 
     def setup_connection(self):
-        self.connection = WrapperConnection(self, transport=SerialTransport(self._port, 115200))
+        if self.connection is None:
+            self.connection = WrapperConnection(self, transport=SerialTransport(self._port, 115200))
 
 
 class ZigateWifi(zigate.ZiGateWiFi):
@@ -296,7 +300,8 @@ class ZigateWifi(zigate.ZiGateWiFi):
         self.gateway = gateway
 
     def setup_connection(self):
-        self.connection = WrapperConnection(self, transport=NetTransport(self._host, self._port))
+        if self.connection is None:
+            self.connection = WrapperConnection(self, transport=NetTransport(self._host, self._port))
 
 
 @attr('port', type=SerialPort(), description="The serial port name.")
