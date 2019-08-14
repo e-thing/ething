@@ -58,8 +58,11 @@ class ZigateBaseGateway(Device):
     @scheduler.setInterval(30, name="zigate.save_state")
     def save_state(self):
         if hasattr(self, 'z') and self.z:
-            self.log.debug('save_state')
-            self.z.save_state()
+            _activity = getattr(self, '_activity', 0)
+            if _activity != getattr(self, '_activity_last', 0):
+                self.log.debug('save_state')
+                self.z.save_state()
+                self._activity_last = _activity
 
     @scheduler.delay(0, name="zigate.init")
     def _controller_start(self):
@@ -68,6 +71,7 @@ class ZigateBaseGateway(Device):
         gconf = {'auto_start':False, 'auto_save':False, 'path':self.persistent_file}
 
         self.z = z = self._connect(**gconf)
+        self._activity = 0
 
         dispatcher.connect(self._controller_callback, signal=zigate.ZIGATE_DEVICE_ADDED, sender=z)
         dispatcher.connect(self._controller_callback, signal=zigate.ZIGATE_DEVICE_UPDATED, sender=z)
@@ -85,6 +89,11 @@ class ZigateBaseGateway(Device):
 
     def _controller_init(self):
         self.log.debug('zigate startup')
+
+        # reset some attributes
+        for d in self.children(lambda r: r.isTypeof(Device) and r.error):
+            d.error = None
+
         self.z.startup()
 
         self.version = self.z.get_version_text(refresh=True)
@@ -104,7 +113,7 @@ class ZigateBaseGateway(Device):
 
     def _controller_callback(self, sender, signal, **kwargs):
 
-        self.log.debug('signal received: %s %s', signal, kwargs)
+        self.log.debug('signal received: %s', signal)
 
         if signal == DISCONNECTED:
             self.refresh_connect_state(False)
@@ -133,6 +142,8 @@ class ZigateBaseGateway(Device):
                 for device in devices:
                     with device:
                         device.process_signal(signal, kwargs)
+
+        self._activity += 1
 
     def _create_devices(self, dz_instance):
 

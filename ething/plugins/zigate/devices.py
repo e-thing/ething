@@ -39,11 +39,13 @@ class ZigateBaseDevice(with_metaclass(ZigateDeviceMetaClass, Device)):
     def process_signal(self, signal, kwargs):
         zdevice = kwargs.get('device')
 
-        if signal == zigate.ZIGATE_DEVICE_ADDRESS_CHANGED:
-            self.addr = kwargs.get('new_addr')
-        elif signal == zigate.ZIGATE_DEVICE_NEED_DISCOVERY:
+        if signal == zigate.ZIGATE_DEVICE_NEED_DISCOVERY:
             self.error = 'need discovery'
-        elif signal == zigate.ZIGATE_DEVICE_ADDED:
+        elif signal == zigate.ZIGATE_DEVICE_ADDED or signal == zigate.ZIGATE_DEVICE_UPDATED or zigate.ZIGATE_DEVICE_ADDRESS_CHANGED:
+            if self.error and zdevice.get_property_value('type') is not None:
+                self.error = None
+
+            self.addr = zdevice.addr
             self.typename = zdevice.get_property_value('type', '')
             self.manufacturer = zdevice.get_property_value('manufacturer', '')
 
