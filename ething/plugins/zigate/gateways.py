@@ -90,9 +90,11 @@ class ZigateBaseGateway(Device):
     def _controller_init(self):
         self.log.debug('zigate startup')
 
+        devices = self.children(lambda r: r.isTypeof(Device))
         # reset some attributes
-        for d in self.children(lambda r: r.isTypeof(Device) and r.error):
-            d.error = None
+        for d in devices:
+            if d.error:
+                d.error = None
 
         self.z.startup()
 
@@ -102,6 +104,10 @@ class ZigateBaseGateway(Device):
         self.addr = self.z.addr
         self.ieee = self.z.ieee
         self.channel = self.z.channel
+
+        # refresh devices
+        for d in devices:
+            d.zdevice.refresh_device()
 
     def _controller_end(self):
         if hasattr(self, 'z') and self.z:
@@ -113,7 +119,7 @@ class ZigateBaseGateway(Device):
 
     def _controller_callback(self, sender, signal, **kwargs):
 
-        self.log.debug('signal received: %s', signal)
+        self.log.debug('signal received: %s %s', signal, kwargs)
 
         if signal == DISCONNECTED:
             self.refresh_connect_state(False)
@@ -175,7 +181,12 @@ class ZigateBaseGateway(Device):
                     self.log.exception('zigate cls isvalid exception for class %s', cls)
 
         # search by endpoints
+        self.log.debug("endpoints=%s", dz_instance.endpoints)
         for ep in dz_instance.endpoints:
+            device_id = dz_instance.endpoints[ep].get('device', 0xffff)
+            in_clusters = dz_instance.endpoints[ep].get('in_clusters', [])
+            self.log.debug("ep=%s device_id=%s (0x%x) in_clusters=%s", ep, device_id, device_id, in_clusters)
+
             for cls in zigate_device_classes:
                 if hasattr(cls, 'isvalid_ep'):
                     try:
@@ -190,7 +201,7 @@ class ZigateBaseGateway(Device):
                             except:
                                 self.log.exception('zigate cls create exception for class %s', r)
                     except:
-                        self.log.exception('zigate cls isvalid exception for class %s', cls)
+                        self.log.exception('zigate cls isvalid_ep exception for class %s', cls)
 
         if devices:
             return devices

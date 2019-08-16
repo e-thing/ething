@@ -36,6 +36,10 @@ class ZigateBaseDevice(with_metaclass(ZigateDeviceMetaClass, Device)):
     def zdevice(self):
         return self.z.get_device_from_ieee(self.ieee)
 
+    @attr()
+    def mac_capability(self):
+        return self.zdevice.info.get('mac_capability')
+
     def process_signal(self, signal, kwargs):
         zdevice = kwargs.get('device')
 
@@ -73,8 +77,8 @@ class ZigateBaseDevice(with_metaclass(ZigateDeviceMetaClass, Device)):
     @classmethod
     def create_device(cls, gateway, zigate_device_instante, endpoint=None, **kwargs):
         name = zigate_device_instante.get_property_value('type', cls.__name__)
-        if endpoint is not None:
-            name = '%s %d' % (name, endpoint)
+        #if endpoint is not None:
+        #    name = '%s #%d' % (name, endpoint)
 
         attrs = {
             'name': name,
@@ -309,33 +313,6 @@ class ZigateGenericColourDimmableLightDevice(ZigateBaseDevice, RGBWLight):
             # command status is bad !
             raise Exception('unable to reach the device')
 
-class ZigateGenericRelayDevice(ZigateBaseDevice, Relay):
-
-    @classmethod
-    def isvalid_ep(cls, gateway, zdev, endpoint):
-        device_id = zdev.endpoints[endpoint].get('device', 0xffff)
-        in_clusters = zdev.endpoints[endpoint].get('in_clusters', [])
-        # 0x0002: ON/OFF Output
-        # 0x0006: 'General: On/Off'
-        return device_id == 0x0002 and 0x0006 in in_clusters
-
-    def processAttr(self, name, value, attribute):
-        if name == 'onoff':
-            self.state = value
-
-    def setState(self, state):
-        onoff = zigate.ON if state else zigate.OFF
-        ep = self.endpoint
-
-        if ep is None:
-            res = self.zdevice.action_onoff(onoff)
-        else:
-            res = self.z.action_onoff(self.addr, ep, onoff)
-
-        if not res:
-            # command status is bad !
-            raise Exception('unable to reach the device')
-
 class ZigateGenericSwitchDevice(ZigateBaseDevice, Switch):
 
     @classmethod
@@ -364,14 +341,6 @@ class ZigateGenericDimmerDevice(ZigateBaseDevice, Dimmer):
             self.level = 100 if value else 0
         elif name == 'current_level':
             self.level = value
-
-class ZigateGenericSmartPlugDevice(ZigateGenericRelayDevice):
-
-    @classmethod
-    def isvalid_ep(cls, gateway, zdev, endpoint):
-        device_id = zdev.endpoints[endpoint].get('device', 0xffff)
-        # 0x0051: Smart Plug
-        return device_id ==  0x0051
 
 @dynamic
 @meta(icon='mdi-access-point')
@@ -411,3 +380,41 @@ class ZigateGenericSensorDevice(ZigateBaseDevice):
             self.light_level = value
         elif name == 'presence' and self.isTypeof(OccupencySensor):
             self.presence = value
+
+
+class ZigateGenericRelayDevice(ZigateBaseDevice, Relay):
+
+    @classmethod
+    def isvalid_ep(cls, gateway, zdev, endpoint):
+        device_id = zdev.endpoints[endpoint].get('device', 0xffff)
+        in_clusters = zdev.endpoints[endpoint].get('in_clusters', [])
+        # 0x0002: ON/OFF Output
+        # 0x0006: 'General: On/Off'
+        return 0x0006 in in_clusters
+        # return device_id == 0x0002 and 0x0006 in in_clusters
+
+    def processAttr(self, name, value, attribute):
+        if name == 'onoff':
+            self.state = value
+
+    def setState(self, state):
+        onoff = zigate.ON if state else zigate.OFF
+        ep = self.endpoint
+
+        if ep is None:
+            res = self.zdevice.action_onoff(onoff)
+        else:
+            res = self.z.action_onoff(self.addr, ep, onoff)
+
+        if not res:
+            # command status is bad !
+            raise Exception('unable to reach the device')
+
+
+class ZigateGenericSmartPlugDevice(ZigateGenericRelayDevice):
+
+    @classmethod
+    def isvalid_ep(cls, gateway, zdev, endpoint):
+        device_id = zdev.endpoints[endpoint].get('device', 0xffff)
+        # 0x0051: Smart Plug
+        return device_id ==  0x0051
