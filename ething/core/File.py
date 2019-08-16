@@ -52,7 +52,7 @@ class File(Resource):
         """Return True if this file has a thumbnail."""
         return bool(self.thumb)
 
-    def remove(self, removeChildren=False):
+    def remove(self):
 
         # remove the file from GridFS
         if self.content is not None:
@@ -63,7 +63,7 @@ class File(Resource):
             self.core.db.fs.remove(self.thumb)
 
         # remove the resource
-        super(File, self).remove(removeChildren)
+        super(File, self).remove()
 
     def __watch__(self, attr, value, old_value):
         if attr.name == 'name':

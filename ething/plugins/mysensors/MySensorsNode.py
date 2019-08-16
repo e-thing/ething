@@ -50,19 +50,6 @@ class MySensorsNode(Device):
     def getSensor(self, sensorId):
         return self.core.findOne(lambda r: r.isTypeof('resources/MySensorsSensor') and r.createdBy == self and r.sensorId == sensorId)
 
-    def removeAllSensors(self):
-        # remove all the nodes attached to it !
-        for sensor in self.getSensors():
-            sensor.remove()
-
-    def remove(self, removeChildren=False):
-
-        # remove all the sensors attached to it !
-        self.removeAllSensors()
-
-        # remove the resource
-        super(MySensorsNode, self).remove(removeChildren)
-
     # @method.arg('firmware', type='string', format='binary', minLength=1, description='only *.hex files must be uploaded !')
     def updateFirmware(self, firmware):
         """

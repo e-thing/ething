@@ -116,13 +116,13 @@ class Table(Resource):
     def table(self):
         return self.core.db[self.collectionName]
 
-    def remove(self, removeChildren=False):
+    def remove(self):
 
         # remove all the data from this table
         self.core.db.table_drop(self.collectionName, silent=True)
 
         # remove the resource
-        super(Table, self).remove(removeChildren)
+        super(Table, self).remove()
 
     def clear(self):
         """

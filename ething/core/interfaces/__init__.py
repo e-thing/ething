@@ -26,3 +26,8 @@ from .powerMeter import PowerMeter
 from .occupencySensor import OccupencySensor
 
 from .camera import Camera
+
+from .cover import Cover
+
+from .climate import Climate
+

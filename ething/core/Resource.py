@@ -294,11 +294,9 @@ class Resource(Entity):
 
         return self.core.find(_filter)
 
-    def remove(self, removeChildren=False):
+    def remove(self):
         """
         Remove this instance.
-
-        :param removeChildren: If True, remove also all the children. Default to False.
         """
         children = self.children()
 
@@ -318,11 +316,7 @@ class Resource(Entity):
         self.__destroyed__ = True
 
         for child in children:
-            if removeChildren:
-                child.remove(removeChildren)
-            else:
-                # remove the relationship
-                child.createdBy = None
+            child.remove()
 
     def __db_remove__(self):
         self.log.info("Resource deleted : %s" % str(self))

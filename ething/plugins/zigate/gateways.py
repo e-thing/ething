@@ -6,7 +6,6 @@ from zigate.transport import BaseTransport
 from future.utils import string_types
 from ething.core.Device import Device
 from ething.core.reg import *
-from ething.core.Process import Process
 from ething.core.env import USER_DIR
 from ething.core import scheduler
 from ething.core.TransportProcess import SerialTransport, NetTransport
@@ -22,11 +21,11 @@ LOGGER = logging.getLogger("ething.zigate")
 
 PERSISTENT_FILE = os.path.abspath(os.path.join(USER_DIR, 'zigate.json'))
 
-black_listed_devices = list()
-
 
 CONNECTED = 'CONNECTED'
 DISCONNECTED = 'DISCONNECTED'
+
+DISCOVERY_TIMEOUT = 15 # the amount of seconds to wait for the discovey to be completed
 
 
 @abstract
@@ -40,7 +39,11 @@ See for more details : https://zigate.fr
 @attr('channel', type=Integer(), default=0, mode = READ_ONLY, description="The channel used by the zigbee network")
 class ZigateBaseGateway(Device):
 
-    RESET_ATTR = list(),
+    RESET_ATTR = list()
+
+    def __init__(self, *args, **kwargs):
+        super(ZigateBaseGateway, self).__init__(*args, **kwargs)
+        self.black_listed_devices = list()
 
     def on_update(self, dirty_keys):
         for attr in self.RESET_ATTR:
@@ -51,6 +54,12 @@ class ZigateBaseGateway(Device):
     @property
     def persistent_file(self):
         return os.path.abspath(os.path.join(USER_DIR, 'zigate_%s.json' % self.id))
+
+    def remove(self):
+        self._controller_end()
+        if os.path.exists(self.persistent_file):
+            os.remove(self.persistent_file)
+        super(ZigateBaseGateway, self).remove()
 
     def _connect(self, **kwargs):
         raise NotImplementedError()
@@ -66,7 +75,9 @@ class ZigateBaseGateway(Device):
 
     @scheduler.delay(0, name="zigate.init")
     def _controller_start(self):
-        self._controller_end() # just in case...
+        self._controller_end() # just in case of restart
+
+        self.log.debug('zigate controller start')
 
         gconf = {'auto_start':False, 'auto_save':False, 'path':self.persistent_file}
 
@@ -107,12 +118,21 @@ class ZigateBaseGateway(Device):
 
         # refresh devices
         for d in devices:
+            self.log.debug('refreshing device %s', d)
             d.zdevice.refresh_device()
 
     def _controller_end(self):
         if hasattr(self, 'z') and self.z:
-            self.log.info('zigate close')
-            dispatcher.disconnect(self._controller_callback, sender=self.z)
+            self.log.debug('zigate controller stop')
+            dispatcher.disconnect(self._controller_callback, signal=zigate.ZIGATE_DEVICE_ADDED, sender=self.z)
+            dispatcher.disconnect(self._controller_callback, signal=zigate.ZIGATE_DEVICE_UPDATED, sender=self.z)
+            dispatcher.disconnect(self._controller_callback, signal=zigate.ZIGATE_DEVICE_REMOVED, sender=self.z)
+            dispatcher.disconnect(self._controller_callback, signal=zigate.ZIGATE_DEVICE_ADDRESS_CHANGED, sender=self.z)
+            dispatcher.disconnect(self._controller_callback, signal=zigate.ZIGATE_ATTRIBUTE_ADDED, sender=self.z)
+            dispatcher.disconnect(self._controller_callback, signal=zigate.ZIGATE_ATTRIBUTE_UPDATED, sender=self.z)
+            dispatcher.disconnect(self._controller_callback, signal=zigate.ZIGATE_DEVICE_NEED_DISCOVERY, sender=self.z)
+            dispatcher.disconnect(self._controller_callback, signal=CONNECTED, sender=self.z)
+            dispatcher.disconnect(self._controller_callback, signal=DISCONNECTED, sender=self.z)
             self.z.save_state()
             self.z.close()
             self.z = None
@@ -129,15 +149,11 @@ class ZigateBaseGateway(Device):
 
         if signal == CONNECTED:
             # run in a new process because it is blocking
-            self.core.process_manager.attach(Process(name="zigate.setup", target=self._controller_init))
+            self.core.process_manager.attach(self._controller_init, name="zigate.setup", target=self._controller_init)
             return
 
         if 'device' in kwargs:
             dz_instance = kwargs.get('device')
-
-            if signal == zigate.ZIGATE_DEVICE_ADDED:
-                # wait for the discovery process to complete
-                self.core.scheduler.delay(5., callback=lambda: self.log.info(json.dumps(dz_instance.to_json(properties=True), indent=4, sort_keys=True, cls=DeviceEncoder)))
 
             devices = self.children(lambda r: r.ieee == dz_instance.ieee)
             if not devices:
@@ -151,14 +167,57 @@ class ZigateBaseGateway(Device):
 
         self._activity += 1
 
-    def _create_devices(self, dz_instance):
+    def _wait_device_discovery(self, dz_instance):
+        self.log.debug('wait for the device %s to complete the discovery process', dz_instance)
+        setattr(dz_instance, 'wait_discovery', True)
+        t0 = time.time()
+
+        while not dz_instance.discovery and time.time() - t0 < DISCOVERY_TIMEOUT:
+            time.sleep(0.5)
+
+        if dz_instance.discovery:
+
+            if dz_instance.discovery == 'auto-discovered':
+                # wait a little longer for the attribute_discovery_request
+                t0 = time.time()
+                while not dz_instance.discovery and time.time() - t0 < 5:
+                    time.sleep(0.5)
+
+            self.log.debug('discovery process done for the device %s , discovery mode=%s', dz_instance, dz_instance.discovery)
+
+        else:
+            self.log.warning('unable to complete the discovery of the device %s', dz_instance)
+
+        delattr(dz_instance, 'wait_discovery')
+
+        self._create_devices(dz_instance, force=True)
+
+
+    def _create_devices(self, dz_instance, force=False):
 
         ieee = dz_instance.ieee
 
-        if ieee in black_listed_devices:
+        if ieee in self.black_listed_devices:
             return
 
-        self.log.info('new device: %s', dz_instance.info)
+        if not force:
+            if getattr(dz_instance, 'wait_discovery', False) is True:
+                return
+
+            if not dz_instance.discovery:
+                # wait for the discovery process to complete
+                process_id = '%s.%s.wait_discovery' % (self.id, ieee)
+                if process_id not in self.core.process_manager:
+                    self.core.process_manager.attach(self._wait_device_discovery, id=process_id, args=(dz_instance, ))
+                return
+
+        self.log.info('new device detected : %s', dz_instance)
+
+        # print some info here
+        info = dz_instance.to_json(properties=True)
+        info['actions'] = dz_instance.available_actions()
+        self.log.info(json.dumps(info, indent=4, sort_keys=True, cls=DeviceEncoder))
+
         devices = []
 
         for cls in zigate_device_classes:
@@ -181,12 +240,7 @@ class ZigateBaseGateway(Device):
                     self.log.exception('zigate cls isvalid exception for class %s', cls)
 
         # search by endpoints
-        self.log.debug("endpoints=%s", dz_instance.endpoints)
         for ep in dz_instance.endpoints:
-            device_id = dz_instance.endpoints[ep].get('device', 0xffff)
-            in_clusters = dz_instance.endpoints[ep].get('in_clusters', [])
-            self.log.debug("ep=%s device_id=%s (0x%x) in_clusters=%s", ep, device_id, device_id, in_clusters)
-
             for cls in zigate_device_classes:
                 if hasattr(cls, 'isvalid_ep'):
                     try:
@@ -206,7 +260,7 @@ class ZigateBaseGateway(Device):
         if devices:
             return devices
 
-        black_listed_devices.append(ieee)
+        self.black_listed_devices.append(ieee)
         self.log.warning('unable to create any device for %s', dz_instance)
 
     @method
@@ -239,7 +293,7 @@ class WrapperConnection(BaseTransport):
         self._is_open = False
         self.reconnect_delay = 15
 
-        self._process = self.core.process_manager.attach(Process(name="zigate.transport", target=self.main, terminate=self._stop, log=self.log))
+        self._process = self.core.process_manager.attach(name="zigate.transport", target=self.main, terminate=self._stop, log=self.log)
 
     def is_connected(self):
         return self._is_open

@@ -60,19 +60,6 @@ class MySensorsGateway(Device):
     def getNode(self, nodeId):
         return self.core.findOne(lambda r: r.isTypeof('resources/MySensorsNode') and r.createdBy == self and r.nodeId == nodeId)
 
-    def removeAllNodes(self):
-        # remove all the nodes attached to it !
-        for node in self.getNodes():
-            node.remove()
-
-    def remove(self, removeChildren=False):
-
-        # remove all the nodes attached to it !
-        self.removeAllNodes()
-
-        # remove the resource
-        super(MySensorsGateway, self).remove(removeChildren)
-
     def send(self, nodeId, sensorId, type, subtype, payload=None, value=None, ack=None, smartSleep=None, done=None, err=None, response=None):
         """
         send a message and wait for the response.

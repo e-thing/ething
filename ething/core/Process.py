@@ -140,7 +140,7 @@ class Runner(with_metaclass(ABCMeta, object)):
             for p in children:
                 p.stop(timeout=0)
 
-            self._process = None
+            self._process = None # kill any reference to this process.
             self._manager._process_evt('end', self)
             self._stop_evt.set()
 
@@ -186,12 +186,14 @@ class Manager(object):
 
     @property
     def processes(self):
-        return [r.process for r in self._runners()]
+        return [r.process for r in self._runners() if r.process is not None]
+
+    def exists(self, process_id):
+        return process_id in self
 
     def find(self, filter=None, name=None, parent=None):
         res = []
         for p in self.processes:
-            if p is None: continue
             if filter is not None and not filter(p):
                 continue
             if name is not None and p.name != name:
@@ -203,6 +205,14 @@ class Manager(object):
 
     def __getitem__(self, item):
         return self._get(item).process
+
+    def __contains__(self, item):
+        try:
+            self._get(item)
+        except IndexError:
+            return False
+        else:
+            return True
 
     def get(self, id):
         try:
@@ -223,9 +233,11 @@ class Manager(object):
                 return r
         raise IndexError('the process id=%s does not exist' % process)
 
-    def attach(self, process, auto_start=True):
+    def attach(self, process=None, auto_start=True, **kwargs):
         if not isinstance(process, Process):
-            raise Exception('not a process instance')
+            if process is not None:
+                kwargs.setdefault('target', process)
+            process = Process(**kwargs)
 
         if process.id not in self:
 
@@ -240,6 +252,9 @@ class Manager(object):
                 # automatically start
                 if not process.is_running:
                     process.start()
+
+        else:
+            raise Exception('a process with the same id already exists %s' % process)
 
         return process
 
@@ -388,7 +403,7 @@ class Process(object):
         :param id: a specific id. Must be id. If not provided, an id will be auto generated.
         """
         self._id = id or ShortId.generate()
-        self._name = name or ('process_%s' % self._id)
+        self._name = name or getattr(target, '__name__', None) or getattr(loop, '__name__', None) or ('process_%s' % self._id)
 
         self.parent = parent
 
@@ -396,7 +411,7 @@ class Process(object):
             kwargs = {}
 
         self._loop = proxy_method(loop)
-        self._loop_interval = loop_interval
+        self._loop_interval = loop_interval or 0
         self._target = proxy_method(target)
         self._args = args
         self._kwargs = kwargs
@@ -446,7 +461,7 @@ class Process(object):
         return str(self)
 
     def __str__(self):
-        return '<%s id=%s name=%s>' % (type(self).__name__, self.id, self.name)
+        return '<%s id=%s name=%s running=%s>' % (type(self).__name__, self.id, self.name, self.is_running)
 
     def start(self):
         """
@@ -511,8 +526,7 @@ class Process(object):
                 if self._loop(*self._args, **self._kwargs) is False:
                     self.stop()
                     break
-                if self._loop_interval is not None:
-                    time.sleep(self._loop_interval)
+                time.sleep(self._loop_interval)
         else:
             if self._target:
                 return self._target(*self._args, **self._kwargs)

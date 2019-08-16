@@ -137,14 +137,9 @@ def install(core, app, auth, **kwargs):
         raise Exception('Invalid request')
 
 
-    resource_delete_args = {
-        'children': fields.Bool(missing=False, location='query')
-    }
-
     @app.route('/api/resources/<id>', methods=['GET', 'DELETE', 'PATCH'])
-    @use_multi_args(DELETE=resource_delete_args)
     @auth.required(GET='resource:read', DELETE='resource:write', PATCH='resource:write')
-    def resource(args, id):
+    def resource(id):
         """Get a resource by its id
         ---
         get:
@@ -216,5 +211,5 @@ def install(core, app, auth, **kwargs):
             raise Exception('Invalid request')
 
         elif request.method == 'DELETE':
-            r.remove(args['children'])
+            r.remove()
             return '', 204

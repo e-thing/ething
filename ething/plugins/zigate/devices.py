@@ -38,17 +38,18 @@ class ZigateBaseDevice(with_metaclass(ZigateDeviceMetaClass, Device)):
 
     @attr()
     def mac_capability(self):
-        return self.zdevice.info.get('mac_capability')
+        zdevice = getattr(self, 'zdevice', None)
+        return zdevice.info.get('mac_capability') if zdevice else ''
 
     def process_signal(self, signal, kwargs):
         zdevice = kwargs.get('device')
 
+        if self.error and zdevice.get_property_value('type'):
+            self.error = None
+
         if signal == zigate.ZIGATE_DEVICE_NEED_DISCOVERY:
             self.error = 'need discovery'
         elif signal == zigate.ZIGATE_DEVICE_ADDED or signal == zigate.ZIGATE_DEVICE_UPDATED or zigate.ZIGATE_DEVICE_ADDRESS_CHANGED:
-            if self.error and zdevice.get_property_value('type') is not None:
-                self.error = None
-
             self.addr = zdevice.addr
             self.typename = zdevice.get_property_value('type', '')
             self.manufacturer = zdevice.get_property_value('manufacturer', '')
@@ -69,7 +70,23 @@ class ZigateBaseDevice(with_metaclass(ZigateDeviceMetaClass, Device)):
             if self.endpoint is None or self.endpoint == ep:
                 name = attribute.get('name')
                 value = attribute.get('value')
-                self.processAttr(name, value, attribute)
+                if name and value is not None:
+                    self.processAttr(name, value, attribute)
+
+    def init_state(self):
+        """
+        is used to initialize the internal state
+        """
+        with self:
+            for attribute in self.zdevice.attributes:
+                if (self.endpoint is not None and attribute['endpoint'] != self.endpoint) or attribute['cluster'] < 5:
+                    continue
+
+                name = attribute.get('name')
+                value = attribute.get('value')
+
+                if name and value is not None:
+                    self.processAttr(name, value, attribute)
 
     def processAttr(self, name, value, attribute):
         pass
@@ -91,41 +108,17 @@ class ZigateBaseDevice(with_metaclass(ZigateDeviceMetaClass, Device)):
 
         attrs.update(kwargs)
 
-        return gateway.core.create(cls, attrs)
+        gateway.log.debug('create device %s %s', cls.__name__, attrs)
+
+        dev = gateway.core.create(cls, attrs)
+
+        if dev:
+            dev.init_state()
+
+        return dev
 
 
-# class ZMihomeWeather(ZigateBaseDevice, Thermometer, HumiditySensor, PressureSensor):
-#     """
-#     Mihome temperature/humidity/pressure Sensor Device class.
-#     """
-#
-#     @classmethod
-#     def isvalid(cls, gateway, zigate_device_instante):
-#         return zigate_device_instante.get_property_value('type') == 'lumi.weather'
-#
-#     def processAttr(self, name, value, attribute):
-#         if name == 'temperature':
-#             self.temperature = value
-#         elif name == 'humidity':
-#             self.humidity = value
-#         elif name == 'pressure':  # mbar
-#             self.pressure = value * 100.
-
-
-# class ZMihomeSensorHT(ZigateBaseDevice, Thermometer, HumiditySensor):
-#     """
-#     Mihome temperature/humidity Sensor Device class.
-#     """
-#
-#     @classmethod
-#     def isvalid(cls, gateway, zigate_device_instante):
-#         return zigate_device_instante.get_property_value('type') == 'lumi.sensor_ht'
-#
-#     def processAttr(self, name, value, attribute):
-#         if name == 'temperature':
-#             self.temperature = value
-#         elif name == 'humidity':
-#             self.humidity = value
+# specific devices
 
 
 class ZMihomeMagnet(ZigateBaseDevice, DoorSensor):
@@ -190,72 +183,90 @@ class ZMihomeButton(ZigateBaseDevice, Button):
                 elif value > 2:
                     self.click(type='%d click' % value)
 
-class ZigateGenericLightDevice(ZigateBaseDevice, Light):
+
+# generic class
+
+# todo: lock devices
+
+
+class ZigateCoverDevice(ZigateBaseDevice, Cover):
 
     @classmethod
     def isvalid_ep(cls, gateway, zdev, endpoint):
-        device_id = zdev.endpoints[endpoint].get('device', 0xffff)
-        in_clusters = zdev.endpoints[endpoint].get('in_clusters', [])
-        # 0x0100: ON/OFF Light
-        # 0x0006: 'General: On/Off'
-        return device_id == 0x0100 and 0x0006 in in_clusters
+        actions = zdev.available_actions(endpoint).get(endpoint)
+        return zigate.ACTIONS_COVER in actions
 
     def processAttr(self, name, value, attribute):
-        if name == 'onoff':
-            self.state = value
+        if name == 'current_position_lift_percentage':
+            self.position = value
 
-    def setState(self, state):
-        onoff = zigate.ON if state else zigate.OFF
+    def _send_cmd(self, cmd):
         ep = self.endpoint
 
-        if ep is None:
-            res = self.zdevice.action_onoff(onoff)
-        else:
-            res = self.z.action_onoff(self.addr, ep, onoff)
+        res = self.z.action_onoff(self.addr, ep, cmd)
 
         if not res:
             # command status is bad !
             raise Exception('unable to reach the device')
 
-class ZigateGenericDimmableLightDevice(ZigateBaseDevice, DimmableLight):
+    def open_cover(self):
+        self._send_cmd(0x00)
+
+    def close_cover(self):
+        self._send_cmd(0x01)
+
+    def stop_cover(self):
+        self._send_cmd(0x02)
+
+
+climate_mode_type = Enum(['away', 'home'])
+
+
+@attr('mode', type=climate_mode_type, default='home')
+class ZigateClimateDevice(ZigateBaseDevice, Climate):
 
     @classmethod
     def isvalid_ep(cls, gateway, zdev, endpoint):
-        device_id = zdev.endpoints[endpoint].get('device', 0xffff)
-        # 0x0101: Dimmable Light
-        return device_id == 0x0101
+        actions = zdev.available_actions(endpoint).get(endpoint)
+        return zigate.ACTIONS_THERMOSTAT in actions
+
+    def _update_target_temperature(self):
+        if self.mode == 'away':
+            attr = 0x0014
+        else:
+            attr = 0x0012
+        t = 0
+        a = self.zdevice.get_attribute(self.endpoint, 0x0201, attr)
+        if a:
+            t = a.get('value', 0)
+        self.target_temperature = t
 
     def processAttr(self, name, value, attribute):
-        if name == 'onoff':
-            self.state = value
-        elif name == 'current_level':
-            self.level = value
+        if name == 'local_temperature':
+            self.temperature = value
+        elif name == 'occupancy':
+            self.mode = 'home' if value != 0 else 'away'
+            self._update_target_temperature()
+        elif name == 'occupied_heating_setpoint':
+            self._update_target_temperature()
+        elif name == 'unoccupied_heating_setpoint':
+            self._update_target_temperature()
 
-    def setState(self, state):
-        onoff = zigate.ON if state else zigate.OFF
-        ep = self.endpoint
-
-        if ep is None:
-            res = self.zdevice.action_onoff(onoff)
+    @method.arg('mode', type=climate_mode_type)
+    def set_mode(self, mode):
+        if mode == 'away':
+            self.z.write_attribute_request(self.addr, self.endpoint, 0x0201, [(0x0002, 0x18, 0)])
         else:
-            res = self.z.action_onoff(self.addr, ep, onoff)
+            self.z.write_attribute_request(self.addr, self.endpoint, 0x0201, [(0x0002, 0x18, 1)])
 
-        if not res:
-            # command status is bad !
-            raise Exception('unable to reach the device')
-
-    def setLevel(self, level):
-        onoff = zigate.ON if level > 0 else zigate.OFF
-        ep = self.endpoint
-
-        if ep is None:
-            res = self.zdevice.action_move_level_onoff(onoff, level)
+    def set_target_temperature(self, temperature):
+        temperature = int(temperature * 100)
+        if self.mode == 'away':
+            attr = 0x0014
         else:
-            res = self.z.action_move_level_onoff(self.addr, ep, onoff, level)
+            attr = 0x0012
+        self.z.write_attribute_request(self.addr, self.endpoint, 0x0201, [(attr, 0x29, temperature)])
 
-        if not res:
-            # command status is bad !
-            raise Exception('unable to reach the device')
 
 class ZigateGenericColourDimmableLightDevice(ZigateBaseDevice, RGBWLight):
 
@@ -263,7 +274,12 @@ class ZigateGenericColourDimmableLightDevice(ZigateBaseDevice, RGBWLight):
     def isvalid_ep(cls, gateway, zdev, endpoint):
         device_id = zdev.endpoints[endpoint].get('device', 0xffff)
         # 0x0102: Colour Dimmable Light
-        return device_id == 0x0102
+        if device_id == 0x0102:
+            return True
+
+        actions = zdev.available_actions(endpoint).get(endpoint)
+
+        return zigate.ACTIONS_ONOFF in actions and zigate.ACTIONS_LEVEL in actions and zigate.ACTIONS_HUE in actions
 
     def processAttr(self, name, value, attribute):
         if name == 'onoff':
@@ -279,10 +295,7 @@ class ZigateGenericColourDimmableLightDevice(ZigateBaseDevice, RGBWLight):
         onoff = zigate.ON if state else zigate.OFF
         ep = self.endpoint
 
-        if ep is None:
-            res = self.zdevice.action_onoff(onoff)
-        else:
-            res = self.z.action_onoff(self.addr, ep, onoff)
+        res = self.z.action_onoff(self.addr, ep, onoff)
 
         if not res:
             # command status is bad !
@@ -292,10 +305,7 @@ class ZigateGenericColourDimmableLightDevice(ZigateBaseDevice, RGBWLight):
         onoff = zigate.ON if level > 0 else zigate.OFF
         ep = self.endpoint
 
-        if ep is None:
-            res = self.zdevice.action_move_level_onoff(onoff, level)
-        else:
-            res = self.z.action_move_level_onoff(self.addr, ep, onoff, level)
+        res = self.z.action_move_level_onoff(self.addr, ep, onoff, level)
 
         if not res:
             # command status is bad !
@@ -304,94 +314,61 @@ class ZigateGenericColourDimmableLightDevice(ZigateBaseDevice, RGBWLight):
     def setColor(self, hue, saturation):
         ep = self.endpoint
 
-        if ep is None:
-            res = self.zdevice.action_move_hue_saturation(hue, saturation)
-        else:
-            res = self.z.action_move_hue_saturation(self.addr, ep, hue, saturation)
+        res = self.z.action_move_hue_saturation(self.addr, ep, hue, saturation)
 
         if not res:
             # command status is bad !
             raise Exception('unable to reach the device')
 
-class ZigateGenericSwitchDevice(ZigateBaseDevice, Switch):
+
+class ZigateGenericDimmableLightDevice(ZigateBaseDevice, DimmableLight):
 
     @classmethod
     def isvalid_ep(cls, gateway, zdev, endpoint):
         device_id = zdev.endpoints[endpoint].get('device', 0xffff)
-        in_clusters = zdev.endpoints[endpoint].get('in_clusters', [])
-        # 0x0000: ON/OFF Switch
-        # 0x0103: ON/OFF Light Switch
-        # 0x0006: 'General: On/Off'
-        return (device_id == 0x0 or device_id == 0x0103) and 0x0006 in in_clusters
+        # 0x0101: Dimmable Light
+        if device_id == 0x0101:
+            return True
+
+        actions = zdev.available_actions(endpoint).get(endpoint)
+
+        return zigate.ACTIONS_ONOFF in actions and zigate.ACTIONS_LEVEL in actions
 
     def processAttr(self, name, value, attribute):
         if name == 'onoff':
             self.state = value
-
-class ZigateGenericDimmerDevice(ZigateBaseDevice, Dimmer):
-
-    @classmethod
-    def isvalid_ep(cls, gateway, zdev, endpoint):
-        device_id = zdev.endpoints[endpoint].get('device', 0xffff)
-        # 0x0104: Dimmer Switch
-        return device_id == 0x0104
-
-    def processAttr(self, name, value, attribute):
-        if name == 'onoff':
-            self.level = 100 if value else 0
         elif name == 'current_level':
             self.level = value
 
-@dynamic
-@meta(icon='mdi-access-point')
-class ZigateGenericSensorDevice(ZigateBaseDevice):
+    def setState(self, state):
+        onoff = zigate.ON if state else zigate.OFF
+        ep = self.endpoint
 
-    @classmethod
-    def isvalid_ep(cls, gateway, zdev, endpoint):
-        in_clusters = zdev.endpoints[endpoint].get('in_clusters', [])
-        # guess by cluster id
-        # 0x0402: 'Measurement: Temperature'
-        # 0x0403: 'Measurement: Atmospheric Pressure'
-        # 0x0405: 'Measurement: Humidity'
+        res = self.z.action_onoff(self.addr, ep, onoff)
 
-        interfaces = []
-        if 0x0400 in in_clusters:
-            interfaces.append(LightSensor)
-        if 0x0402 in in_clusters:
-            interfaces.append(Thermometer)
-        if 0x0403 in in_clusters:
-            interfaces.append(PressureSensor)
-        if 0x0405 in in_clusters:
-            interfaces.append(HumiditySensor)
-        if 0x0406 in in_clusters:
-            interfaces.append(OccupencySensor)
+        if not res:
+            # command status is bad !
+            raise Exception('unable to reach the device')
 
-        if interfaces:
-            return create_dynamic_class(cls, *interfaces)
+    def setLevel(self, level):
+        onoff = zigate.ON if level > 0 else zigate.OFF
+        ep = self.endpoint
 
-    def processAttr(self, name, value, attribute):
-        if name == 'temperature' and self.isTypeof(Thermometer):
-            self.temperature = value
-        elif name == 'humidity' and self.isTypeof(PressureSensor):
-            self.humidity = value
-        elif name == 'pressure' and self.isTypeof(HumiditySensor):  # mbar
-            self.pressure = value * 100.
-        elif name == 'luminosity' and self.isTypeof(LightSensor):  # lm
-            self.light_level = value
-        elif name == 'presence' and self.isTypeof(OccupencySensor):
-            self.presence = value
+        res = self.z.action_move_level_onoff(self.addr, ep, onoff, level)
+
+        if not res:
+            # command status is bad !
+            raise Exception('unable to reach the device')
 
 
-class ZigateGenericRelayDevice(ZigateBaseDevice, Relay):
+class ZigateGenericLightDevice(ZigateBaseDevice, Light):
 
     @classmethod
     def isvalid_ep(cls, gateway, zdev, endpoint):
         device_id = zdev.endpoints[endpoint].get('device', 0xffff)
-        in_clusters = zdev.endpoints[endpoint].get('in_clusters', [])
-        # 0x0002: ON/OFF Output
-        # 0x0006: 'General: On/Off'
-        return 0x0006 in in_clusters
-        # return device_id == 0x0002 and 0x0006 in in_clusters
+        # 0x0100: ON/OFF Light
+        if device_id == 0x0100:
+            return True
 
     def processAttr(self, name, value, attribute):
         if name == 'onoff':
@@ -411,10 +388,145 @@ class ZigateGenericRelayDevice(ZigateBaseDevice, Relay):
             raise Exception('unable to reach the device')
 
 
-class ZigateGenericSmartPlugDevice(ZigateGenericRelayDevice):
+class ZigateGenericDimmerDevice(ZigateBaseDevice, Dimmer):
 
     @classmethod
     def isvalid_ep(cls, gateway, zdev, endpoint):
+
         device_id = zdev.endpoints[endpoint].get('device', 0xffff)
-        # 0x0051: Smart Plug
-        return device_id ==  0x0051
+        if device_id == 0x0104: # 0x0104: Dimmer Switch
+            return True
+
+        actions = zdev.available_actions(endpoint).get(endpoint)
+        if len(actions) > 0:
+            # sensor does not have any actions !
+            return
+
+        in_clusters = zdev.endpoints[endpoint].get('in_clusters', [])
+
+        return 0x0006 in in_clusters and 0x0008 in in_clusters
+
+    def processAttr(self, name, value, attribute):
+        if name == 'onoff':
+            self.level = 100 if value else 0
+        elif name == 'current_level':
+            self.level = value
+
+
+@dynamic
+@meta(icon='mdi-access-point')
+class ZigateGenericSensorDevice(ZigateBaseDevice):
+
+    @classmethod
+    def isvalid_ep(cls, gateway, zdev, endpoint):
+
+        actions = zdev.available_actions(endpoint).get(endpoint)
+        if len(actions) > 0:
+            # sensor does not have any actions !
+            return
+
+        interfaces = set()
+
+        # scan the attributes
+        for attribute in zdev.attributes:
+            if attribute['endpoint'] != endpoint or attribute['cluster'] < 5:
+                continue
+
+            name = attribute.get('name')
+
+            if name:
+                if 'temperature' in name:
+                    interfaces.add(Thermometer)
+                elif 'humidity' in name:
+                    interfaces.add(HumiditySensor)
+                elif 'luminosity' in name:
+                    interfaces.add(LightSensor)
+                elif 'pressure' in name:
+                    interfaces.add(PressureSensor)
+
+        if interfaces:
+            return create_dynamic_class(cls, *interfaces)
+
+    def processAttr(self, name, value, attribute):
+        if 'temperature' in name and self.isTypeof(Thermometer):
+            self.temperature = value
+        elif 'humidity' in name and self.isTypeof(PressureSensor):
+            self.humidity = value
+        elif 'pressure' in name and self.isTypeof(HumiditySensor):  # mbar
+            self.pressure = value * 100.
+        elif 'luminosity' in name and self.isTypeof(LightSensor):  # lm
+            self.light_level = value
+
+
+class ZigateOccupencySensorDevice(ZigateBaseDevice, OccupencySensor):
+
+    @classmethod
+    def isvalid_ep(cls, gateway, zdev, endpoint):
+
+        actions = zdev.available_actions(endpoint).get(endpoint)
+        if len(actions) > 0:
+            # sensor does not have any actions !
+            return
+
+        # scan the attributes
+        for attribute in zdev.attributes:
+            if attribute['endpoint'] != endpoint or attribute['cluster'] < 5:
+                continue
+
+            name = attribute.get('name')
+
+            if name:
+                if 'presence' in name:
+                    return True
+
+    def processAttr(self, name, value, attribute):
+        if 'presence' in name:
+            self.state = bool(value)
+
+
+class ZigateGenericBinarySensorDevice(ZigateBaseDevice, Switch):
+
+    @classmethod
+    def isvalid_ep(cls, gateway, zdev, endpoint):
+
+        actions = zdev.available_actions(endpoint).get(endpoint)
+        if len(actions) > 0:
+            # switch does not have any actions !
+            return
+
+        # scan the attributes
+        for attribute in zdev.attributes:
+            if attribute['endpoint'] != endpoint or attribute['cluster'] < 5:
+                continue
+
+            name = attribute.get('name')
+
+            if name:
+                if 'onoff' in name:
+                    return True
+
+    def processAttr(self, name, value, attribute):
+        if 'onoff' in name:
+            self.state = bool(value)
+
+
+class ZigateGenericRelayDevice(ZigateBaseDevice, Relay):
+
+    @classmethod
+    def isvalid_ep(cls, gateway, zdev, endpoint):
+        actions = zdev.available_actions(endpoint).get(endpoint)
+        return zigate.ACTIONS_ONOFF in actions
+
+    def processAttr(self, name, value, attribute):
+        if name == 'onoff':
+            self.state = value
+
+    def setState(self, state):
+        onoff = zigate.ON if state else zigate.OFF
+        ep = self.endpoint
+
+        res = self.z.action_onoff(self.addr, ep, onoff)
+
+        if not res:
+            # command status is bad !
+            raise Exception('unable to reach the device')

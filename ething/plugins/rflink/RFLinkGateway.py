@@ -65,19 +65,6 @@ class RFLinkGateway(Device):
 
         return self.core.findOne(_filter)
 
-    def removeAllNodes(self):
-        # remove all the nodes attached to it !
-        for node in self.getNodes():
-            node.remove()
-
-    def remove(self, removeChildren=False):
-
-        # remove all the nodes attached to it !
-        self.removeAllNodes()
-
-        # remove the resource
-        super(RFLinkGateway, self).remove(removeChildren)
-
     @method.arg('message', type=String(allow_empty=False))
     def sendMessage(self, message):
         """
