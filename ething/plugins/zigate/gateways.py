@@ -107,19 +107,44 @@ class ZigateBaseGateway(Device):
             if d.error:
                 d.error = None
 
+        first_start = not self.ieee and not self.addr and not os.path.exists(self.persistent_file) and not devices
+
+        if first_start:
+            # reset everything
+            self.log.warning('reset zigate key: erase all persistant data')
+            self.z.erase_persistent()
+
         self.z.startup()
 
-        self.version = self.z.get_version_text(refresh=True)
-        self.log.info('zigate version: %s', self.version)
+        version = self.z.get_version_text(refresh=True)
 
-        self.addr = self.z.addr
-        self.ieee = self.z.ieee
-        self.channel = self.z.channel
+        self.log.info('zigate version: %s', version)
+
+        with self:
+            self.version = version
+            self.addr = self.z.addr
+            self.ieee = self.z.ieee
+            self.channel = self.z.channel
+
+        self.z.get_devices_list(wait=True)
+        self.z.cleanup_devices()
 
         # refresh devices
         for d in devices:
-            self.log.debug('refreshing device %s', d)
-            d.zdevice.refresh_device()
+            zdevice = d.zdevice
+            if zdevice:
+                self.log.debug('refreshing device %s', d)
+                zdevice.refresh_device()
+            else:
+                self.log.warning('the device %s is no longer paired', d)
+
+        for zinstance in self.z.devices:
+            for d in devices:
+                if d.ieee == zinstance.ieee:
+                    break
+            else:
+                # not found: try to create it !
+                self._create_devices(zinstance, force=True)
 
     def _controller_end(self):
         if hasattr(self, 'z') and self.z:
@@ -154,10 +179,17 @@ class ZigateBaseGateway(Device):
 
         if 'device' in kwargs:
             dz_instance = kwargs.get('device')
+            ieee = dz_instance.ieee
+            addr = dz_instance.addr
 
-            devices = self.children(lambda r: r.ieee == dz_instance.ieee)
-            if not devices:
+            if ieee:
+                devices = self.children(lambda r: r.ieee == ieee)
+            else:
+                devices = self.children(lambda r: r.addr == addr)
+
+            if not devices and signal == zigate.ZIGATE_DEVICE_ADDED and ieee:
                 # new devices
+                self.log.info('new device detected : %s', dz_instance)
                 devices = self._create_devices(dz_instance)
 
             if devices:
@@ -210,8 +242,6 @@ class ZigateBaseGateway(Device):
                 if process_id not in self.core.process_manager:
                     self.core.process_manager.attach(self._wait_device_discovery, id=process_id, args=(dz_instance, ))
                 return
-
-        self.log.info('new device detected : %s', dz_instance)
 
         # print some info here
         info = dz_instance.to_json(properties=True)

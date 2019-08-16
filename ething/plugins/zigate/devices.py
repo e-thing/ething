@@ -49,17 +49,13 @@ class ZigateBaseDevice(with_metaclass(ZigateDeviceMetaClass, Device)):
 
         if signal == zigate.ZIGATE_DEVICE_NEED_DISCOVERY:
             self.error = 'need discovery'
-        elif signal == zigate.ZIGATE_DEVICE_ADDED or signal == zigate.ZIGATE_DEVICE_UPDATED or zigate.ZIGATE_DEVICE_ADDRESS_CHANGED:
+        elif zigate.ZIGATE_DEVICE_ADDRESS_CHANGED:
             self.addr = zdevice.addr
-            self.typename = zdevice.get_property_value('type', '')
-            self.manufacturer = zdevice.get_property_value('manufacturer', '')
+        elif signal == zigate.ZIGATE_DEVICE_REMOVED:
+            self.refresh_connect_state(False)
+            return
 
         self.lqi = zdevice.lqi_percent
-
-        if zdevice.info.get('power_type', 0) == 1:
-            self.battery = None # plugged
-        else:
-            self.battery = zdevice.battery_percent
 
         connected = not zdevice.missing
         self.refresh_connect_state(connected)
@@ -71,14 +67,19 @@ class ZigateBaseDevice(with_metaclass(ZigateDeviceMetaClass, Device)):
                 name = attribute.get('name')
                 value = attribute.get('value')
                 if name and value is not None:
-                    self.processAttr(name, value, attribute)
+                    if name == 'battery_voltage':
+                        self.battery = zdevice.battery_percent
+                    else:
+                        self.processAttr(name, value, attribute)
 
     def init_state(self):
         """
         is used to initialize the internal state
         """
+        zdevice = self.zdevice
+
         with self:
-            for attribute in self.zdevice.attributes:
+            for attribute in zdevice.attributes:
                 if (self.endpoint is not None and attribute['endpoint'] != self.endpoint) or attribute['cluster'] < 5:
                     continue
 
@@ -92,18 +93,27 @@ class ZigateBaseDevice(with_metaclass(ZigateDeviceMetaClass, Device)):
         pass
 
     @classmethod
-    def create_device(cls, gateway, zigate_device_instante, endpoint=None, **kwargs):
-        name = zigate_device_instante.get_property_value('type', cls.__name__)
+    def create_device(cls, gateway, zdevice, endpoint=None, **kwargs):
+        name = zdevice.get_property_value('type', cls.__name__)
         #if endpoint is not None:
         #    name = '%s #%d' % (name, endpoint)
 
+        if zdevice.info.get('power_type', 0) == 1:
+            battery = None  # plugged
+        else:
+            battery = zdevice.battery_percent
+
         attrs = {
             'name': name,
-            'ieee': zigate_device_instante.ieee,
-            'addr': zigate_device_instante.addr,
-            'lqi': zigate_device_instante.lqi_percent,
+            'ieee': zdevice.ieee,
+            'addr': zdevice.addr,
+            'lqi': zdevice.lqi_percent,
             'endpoint': endpoint,
-            'createdBy': gateway.id
+            'createdBy': gateway.id,
+            'description': zdevice.get_property_value('description', ''),
+            'typename': zdevice.get_property_value('type', ''),
+            'manufacturer': zdevice.get_property_value('manufacturer', ''),
+            'battery': battery
         }
 
         attrs.update(kwargs)
@@ -116,6 +126,13 @@ class ZigateBaseDevice(with_metaclass(ZigateDeviceMetaClass, Device)):
             dev.init_state()
 
         return dev
+
+    def remove(self):
+        try:
+            self.z.remove_device(self.addr)
+        except:
+            pass
+        super(ZigateBaseDevice, self).remove()
 
 
 # specific devices

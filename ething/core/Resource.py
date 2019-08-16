@@ -300,6 +300,9 @@ class Resource(Entity):
         """
         children = self.children()
 
+        for child in children:
+            child.remove()
+
         self.core.scheduler.unbind(self)
         self._process_stop()
 
@@ -314,9 +317,6 @@ class Resource(Entity):
         # flag it as destroyed
         # avoid to be saved again by mistake
         self.__destroyed__ = True
-
-        for child in children:
-            child.remove()
 
     def __db_remove__(self):
         self.log.info("Resource deleted : %s" % str(self))
