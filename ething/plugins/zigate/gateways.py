@@ -111,7 +111,7 @@ class ZigateBaseGateway(Device):
 
         if first_start:
             # reset everything
-            self.log.warning('reset zigate key: erase all persistant data')
+            self.log.warning('first start, reset zigate key: erase all persistant data')
             self.z.erase_persistent()
 
         self.z.startup()
@@ -180,22 +180,20 @@ class ZigateBaseGateway(Device):
         if 'device' in kwargs:
             dz_instance = kwargs.get('device')
             ieee = dz_instance.ieee
-            addr = dz_instance.addr
+            if not ieee:
+                return
 
-            if ieee:
-                devices = self.children(lambda r: r.ieee == ieee)
-            else:
-                devices = self.children(lambda r: r.addr == addr)
+            devices = self.children(lambda r: r.ieee == ieee)
 
-            if not devices and signal == zigate.ZIGATE_DEVICE_ADDED and ieee:
-                # new devices
-                self.log.info('new device detected : %s', dz_instance)
-                devices = self._create_devices(dz_instance)
+            if not devices:
+                if signal == zigate.ZIGATE_DEVICE_ADDED or signal == zigate.ZIGATE_DEVICE_UPDATED or signal == zigate.ZIGATE_DEVICE_ADDRESS_CHANGED:
+                    # new devices
+                    self.log.info('new device detected : %s', dz_instance)
+                    devices = self._create_devices(dz_instance)
 
-            if devices:
-                for device in devices:
-                    with device:
-                        device.process_signal(signal, kwargs)
+            for device in devices:
+                with device:
+                    device.process_signal(signal, kwargs)
 
         self._activity += 1
 
@@ -210,7 +208,7 @@ class ZigateBaseGateway(Device):
         if dz_instance.discovery:
 
             if dz_instance.discovery == 'auto-discovered':
-                # wait a little longer for the attribute_discovery_request
+                # wait a little longer for the attribute_discovery_request to complete
                 t0 = time.time()
                 while not dz_instance.discovery and time.time() - t0 < 5:
                     time.sleep(0.5)
@@ -228,6 +226,9 @@ class ZigateBaseGateway(Device):
     def _create_devices(self, dz_instance, force=False):
 
         ieee = dz_instance.ieee
+
+        if not ieee:
+            return
 
         if ieee in self.black_listed_devices:
             return
@@ -248,49 +249,55 @@ class ZigateBaseGateway(Device):
         info['actions'] = dz_instance.available_actions()
         self.log.info(json.dumps(info, indent=4, sort_keys=True, cls=DeviceEncoder))
 
-        devices = []
+        dev_type = dz_instance.get_value('type')
 
-        for cls in zigate_device_classes:
-            if hasattr(cls, 'isvalid'):
-                try:
-                    r = cls.isvalid(self, dz_instance) # returns either True/False or a class or a list of class
-                    if r:
-                        if r is True:
-                            r = cls
-                        if not isinstance(r, list):
-                            r = [r]
-                        for c in r:
-                            try:
-                                d = c.create_device(self, dz_instance)
-                                devices.append(d)
-                            except:
-                                self.log.exception('zigate cls create exception for class %s', c)
-                        return devices
-                except:
-                    self.log.exception('zigate cls isvalid exception for class %s', cls)
+        if dev_type is None:
+            self.log.warning('no type found for device for %s , try to pair it again', dz_instance)
+        else:
+            devices = []
 
-        # search by endpoints
-        for ep in dz_instance.endpoints:
             for cls in zigate_device_classes:
-                if hasattr(cls, 'isvalid_ep'):
+                if hasattr(cls, 'isvalid'):
                     try:
-                        r = cls.isvalid_ep(self, dz_instance, ep)  # returns either True/False or a class
+                        r = cls.isvalid(self, dz_instance) # returns either True/False or a class or a list of class
                         if r:
                             if r is True:
                                 r = cls
-                            try:
-                                d = r.create_device(self, dz_instance, ep)
-                                devices.append(d)
-                                break
-                            except:
-                                self.log.exception('zigate cls create exception for class %s', r)
+                            if not isinstance(r, list):
+                                r = [r]
+                            for c in r:
+                                try:
+                                    d = c.create_device(self, dz_instance)
+                                    devices.append(d)
+                                except:
+                                    self.log.exception('zigate cls create exception for class %s', c)
+                            return devices
                     except:
-                        self.log.exception('zigate cls isvalid_ep exception for class %s', cls)
+                        self.log.exception('zigate cls isvalid exception for class %s', cls)
 
-        if devices:
-            return devices
+            # search by endpoints
+            for ep in dz_instance.endpoints:
+                for cls in zigate_device_classes:
+                    if hasattr(cls, 'isvalid_ep'):
+                        try:
+                            r = cls.isvalid_ep(self, dz_instance, ep)  # returns either True/False or a class
+                            if r:
+                                if r is True:
+                                    r = cls
+                                try:
+                                    d = r.create_device(self, dz_instance, ep)
+                                    devices.append(d)
+                                    break
+                                except:
+                                    self.log.exception('zigate cls create exception for class %s', r)
+                        except:
+                            self.log.exception('zigate cls isvalid_ep exception for class %s', cls)
 
-        self.black_listed_devices.append(ieee)
+            if devices:
+                return devices
+
+            # self.black_listed_devices.append(ieee)
+
         self.log.warning('unable to create any device for %s', dz_instance)
 
     @method
