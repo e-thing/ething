@@ -4,7 +4,7 @@ import json
 import datetime
 import sys
 from future.utils import iteritems, binary_type
-from .reg import Entity
+from .reg import Entity, toJson as EntitytoJson
 
 
 def dict_recursive_update(a, *more):
@@ -22,7 +22,7 @@ def serialize(obj):
     if hasattr(obj, 'toJson'):
         return obj.toJson()
     if isinstance(obj, Entity):
-        return toJson(obj)
+        return EntitytoJson(obj)
     if isinstance(obj, datetime.datetime):
         return obj.isoformat()
     if isinstance(obj, binary_type):
