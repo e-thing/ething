@@ -1,11 +1,50 @@
 # coding: utf-8
 
+from ething.core.plugin import *
 import paho.mqtt.client as mqttClient
 import paho.mqtt.publish as publish
 from ething.core.flow import *
 from ething.core.TransportProcess import Transport
 import json
 from queue import Queue, Empty
+from .dispatcher import MqttDispatcherService
+
+
+@attr('publish_event', label="publish event", type=Dict(mapping=[
+    {
+        'name': 'enable',
+        'type': Boolean(),
+    },
+    {
+        'name': 'base_topic',
+        'label': 'base topic',
+        'type': String(),
+        'description': 'The prefix for the event topic'
+    },
+], optionals=['base_topic']), default={
+    'enable': False,
+    'base_topic': 'ething'
+}, description="If enable, the events will be published to the MQTT broker.")
+@attr('password', type=String(password=True), default='')
+@attr('user', type=String(), default='')
+@attr('port', type=Number(min=1, max=65535), default=1883)
+@attr('host', type=String(), default='', description='leave empty to disable this plugin')
+class Mqtt(Plugin):
+
+    def setup(self):
+        self.service = None
+        self.update_service()
+
+    def on_config_change(self, dirty_attributes):
+        self.update_service()
+
+    def update_service(self):
+        if self.service is not None:
+            self.service.stop()
+            self.service = None
+        if self.host and self.publish_event.get('enable'):
+            self.service = MqttDispatcherService(self.core, self.host, self.port, self.user, self.password, self.publish_event.get('base_topic'))
+            self.core.process_manager.attach(self.service)
 
 
 class MqttTransport(Transport):

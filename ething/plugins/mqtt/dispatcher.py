@@ -1,6 +1,5 @@
 # coding: utf-8
 
-from ething.core.plugin import *
 from ething.core.Process import Process
 import threading
 import paho.mqtt.client as mqttClient
@@ -9,29 +8,6 @@ import random
 import string
 import time
 from ething.core.Helpers import toJson
-from collections import OrderedDict
-
-
-@attr('password', type=String(password=True), default='')
-@attr('user', type=String(), default='')
-@attr('port', type=Number(min=1, max=65535), default=1883)
-@attr('host', type=String(), default='', description='leave empty to disable this plugin')
-class MqttDispatcher(Plugin):
-
-    def setup(self):
-        self.service = None
-        self.update_service()
-
-    def on_config_change(self, dirty_attributes):
-        self.update_service()
-
-    def update_service(self):
-        if self.service is not None:
-            self.service.stop()
-            self.service = None
-        if self.host:
-            self.service = MqttDispatcherService(self.core, self.host, self.port, self.user, self.password)
-            self.core.process_manager.attach(self.service)
 
 
 class MqttDispatcherService(Process):
@@ -39,13 +15,14 @@ class MqttDispatcherService(Process):
     KEEPALIVE = 60  # seconds
     RECONNECT_DELAY = 30
 
-    def __init__(self, core, host, port=1883, user=None, password=None):
+    def __init__(self, core, host, port=1883, user=None, password=None, base_topic=None):
         super(MqttDispatcherService, self).__init__(name='mqttDispatcher')
         self.core = core
         self.host = host
         self.port = port
         self.user = user
         self.password = password
+        self.base_topic = base_topic.rstrip("/") if base_topic else ''
         self._lock = threading.Lock()
 
     def main(self):
@@ -88,9 +65,7 @@ class MqttDispatcherService(Process):
 
         if rc == 0:
             self.log.info("connected")
-
             self.core.signalDispatcher.bind('*', self.dispatchSignal)
-
         else:
             # unable to connect
             self.log.error("connection refused : %s" %
@@ -113,11 +88,14 @@ class MqttDispatcherService(Process):
         if isinstance(signal, ResourceSignal):
             topic += '/%s' % signal.resource.id
 
+        if self.base_topic:
+            topic = self.base_topic + '/' + topic
+
         payload = toJson(signal)
 
         self.log.debug("publish topic=%s" % topic)
 
-        self.mqttClient.publish(topic, payload, 0, True)
+        self._mqttClient.publish(topic, payload, 0, True)
 
 
 

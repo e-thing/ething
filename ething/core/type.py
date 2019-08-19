@@ -283,7 +283,9 @@ class String(Basetype):
   def toSchema(self, context = None):
     schema = super(String, self).toSchema(context)
     schema['type'] = 'string'
-    if not self.allow_empty:
+    if self.allow_empty:
+      schema['minLength'] = 0
+    else:
       schema['minLength'] = 1
     if self.enum is not None:
       schema['enum'] = self.enum
@@ -777,6 +779,19 @@ class M_Array(MutableSequence):
       return str(self._list)
 
 
+def _convert_mapping_item (item):
+  if isinstance(item, Mapping):
+    schema = dict(item)
+    t = schema.pop('type')
+    schema.pop('name', None)
+    label = schema.pop('label', None)
+    if label:
+      schema.setdefault('title', label)
+    return convert_type(t), schema
+
+  return convert_type(item), None
+
+
 class Dict(Type):
 
   __synonyms__ = (Mapping, 'dict', 'OrderedDict', 'object')
@@ -806,9 +821,17 @@ class Dict(Type):
     self.allow_extra = allow_extra if isinstance(allow_extra, bool) else convert_type(allow_extra)
     self.optionals = optionals or []
     self.mapping = OrderedDict()
+    self.mapping_schema = dict()
     if mapping is not None:
+      if isinstance(mapping, Mapping):
         for k in mapping:
-          self.mapping[k] = convert_type(mapping[k])
+          self.mapping[k], self.mapping_schema[k] = _convert_mapping_item(mapping[k])
+      elif isinstance(mapping, Sequence):
+        for item in mapping:
+          k = item['name']
+          self.mapping[k], self.mapping_schema[k] = _convert_mapping_item(item)
+      else:
+        raise Exception('invalid mapping argument: must be either a dict or a list')
   
   def get_type_from_key(self, key):
     if key in self.mapping:
@@ -878,7 +901,10 @@ class Dict(Type):
     for key in self.mapping:
       if key not in self.optionals:
           required.append(key)
-      schema['properties'][key] = self.mapping[key].toSchema(context)
+      item_schema = self.mapping[key].toSchema(context)
+      if self.mapping_schema[key]:
+        item_schema.update(self.mapping_schema[key])
+      schema['properties'][key] = item_schema
     if required:
       schema['required'] = required
     return schema
