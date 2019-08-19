@@ -8,6 +8,11 @@ except Exception as e:
 else:
     zigate_lib_imported = True
 
+    from zigate.core import LOGGER
+    import logging
+
+    LOGGER.setLevel(logging.DEBUG)
+
 
 if zigate_lib_imported:
     from . import gateways

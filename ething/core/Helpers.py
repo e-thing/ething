@@ -4,6 +4,7 @@ import json
 import datetime
 import sys
 from future.utils import iteritems, binary_type
+from .reg import Entity
 
 
 def dict_recursive_update(a, *more):
@@ -20,11 +21,15 @@ def serialize(obj):
     """JSON serializer for objects not serializable by default json code"""
     if hasattr(obj, 'toJson'):
         return obj.toJson()
+    if isinstance(obj, Entity):
+        return toJson(obj)
     if isinstance(obj, datetime.datetime):
         return obj.isoformat()
     if isinstance(obj, binary_type):
         return obj.decode('utf8')
-    return obj.__dict__
+    if hasattr(obj, '__dict__'):
+        return obj.__dict__
+    return type(obj).__name__
 
 
 def filter_obj(obj, fields):
