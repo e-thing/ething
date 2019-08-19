@@ -143,3 +143,8 @@ class Device(Resource):
     def check_activity(self):
         if self.ACTIVITY_TIMEOUT and self.connected and utcnow() - self.lastSeenDate > datetime.timedelta(seconds=self.ACTIVITY_TIMEOUT):
             self.refresh_connect_state(False)
+
+    def __db_save__(self, insert):
+        super(Device, self).__db_save__(insert)
+        if insert:
+            self.notify('Device created: %s' % self.name, mode='success')

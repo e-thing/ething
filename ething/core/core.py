@@ -14,6 +14,7 @@ from .Resource import Resource
 from .Process import Process, Manager as ProcessManager
 from .flow import generate_event_nodes
 from .env import USER_DIR
+from .notification import *
 from functools import wraps
 import collections
 import logging
@@ -337,6 +338,9 @@ class Core(object):
 
         self._running.clear()
         self._stopped.set()
+
+    def notify(self, message, mode=INFO, persistant=False, **kwargs):
+        return notify(self, message, mode, persistant, **kwargs)
 
     #
     # Resources

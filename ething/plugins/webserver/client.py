@@ -1,11 +1,7 @@
 # coding: utf-8
-from ething.core.flow import *
 from ething.core.db import *
 from ething.core.utils.date import TzDate, utcnow
 from flask import request
-
-
-table_name = 'clients'
 
 
 @attr('modifiedDate', type=TzDate(), default=lambda _: utcnow(), mode=READ_ONLY)
@@ -129,16 +125,3 @@ def notify_client(app, message, cid=None):
     if cl is not None:
         cl.notify(message)
 
-
-@meta(icon='mdi-bell', category='notification')
-@attr('message', type=Descriptor(('text', 'template', 'msg', 'flow', 'glob', 'env')), description='The message of the notification')
-class NotifyClient(Node):
-    INPUTS = ['default']
-
-    def main(self, **inputs):
-        msg = inputs.get('default')
-        _context = {
-            'msg': msg,
-            'flow': self.flow
-        }
-        self.core.get_plugin('webserver').app.notify_client(self.message.get(**_context))

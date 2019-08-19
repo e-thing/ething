@@ -245,6 +245,10 @@ class Resource(Entity):
     def log(self):
         return self._log
 
+    def notify(self, message, mode=None, persistant=False, **kwargs):
+        kwargs['source'] = self
+        return self.core.notify(message, mode, persistant, **kwargs)
+
     def isTypeof(self, typename):
         """
         returns True if this instance derive from ``typename``

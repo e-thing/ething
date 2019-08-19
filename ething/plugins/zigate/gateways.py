@@ -26,6 +26,7 @@ CONNECTED = 'CONNECTED'
 DISCONNECTED = 'DISCONNECTED'
 
 DISCOVERY_TIMEOUT = 15 # the amount of seconds to wait for the discovey to be completed
+DISCOVERY_TIMEOUT_EXTRA = 5 # the amount of seconds to wait if the discovey mode is auto-discovered
 
 
 @abstract
@@ -69,7 +70,6 @@ class ZigateBaseGateway(Device):
         if hasattr(self, 'z') and self.z:
             _activity = getattr(self, '_activity', 0)
             if _activity != getattr(self, '_activity_last', 0):
-                self.log.debug('save_state')
                 self.z.save_state()
                 self._activity_last = _activity
 
@@ -136,6 +136,7 @@ class ZigateBaseGateway(Device):
                 self.log.debug('refreshing device %s', d)
                 zdevice.refresh_device()
             else:
+                d.error = 'the device is no longer paired'
                 self.log.warning('the device %s is no longer paired', d)
 
         for zinstance in self.z.devices:
@@ -144,7 +145,7 @@ class ZigateBaseGateway(Device):
                     break
             else:
                 # not found: try to create it !
-                self._create_devices(zinstance, force=True)
+                self._create_devices(zinstance, force=True, notify=False)
 
     def _controller_end(self):
         if hasattr(self, 'z') and self.z:
@@ -188,8 +189,7 @@ class ZigateBaseGateway(Device):
             if not devices:
                 if signal == zigate.ZIGATE_DEVICE_ADDED or signal == zigate.ZIGATE_DEVICE_UPDATED or signal == zigate.ZIGATE_DEVICE_ADDRESS_CHANGED:
                     # new devices
-                    self.log.info('new device detected : %s', dz_instance)
-                    devices = self._create_devices(dz_instance)
+                    devices = self._create_devices(dz_instance) or []
 
             for device in devices:
                 with device:
@@ -223,7 +223,7 @@ class ZigateBaseGateway(Device):
         self._create_devices(dz_instance, force=True)
 
 
-    def _create_devices(self, dz_instance, force=False):
+    def _create_devices(self, dz_instance, force=False, notify=True):
 
         ieee = dz_instance.ieee
 
@@ -233,26 +233,31 @@ class ZigateBaseGateway(Device):
         if ieee in self.black_listed_devices:
             return
 
-        if not force:
-            if getattr(dz_instance, 'wait_discovery', False) is True:
-                return
+        if getattr(dz_instance, 'wait_discovery', False) is True:
+            return
 
-            if not dz_instance.discovery:
-                # wait for the discovery process to complete
-                process_id = '%s.%s.wait_discovery' % (self.id, ieee)
-                if process_id not in self.core.process_manager:
-                    self.core.process_manager.attach(self._wait_device_discovery, id=process_id, args=(dz_instance, ))
-                return
+        dev_type = dz_instance.get_value('type')
+        dev_name = dev_type or ('address: 0x%X' % dz_instance.addr)
+
+        if not force and not dz_instance.discovery:
+            # wait for the discovery process to complete
+            process_id = '%s.%s.wait_discovery' % (self.id, ieee)
+            if process_id not in self.core.process_manager:
+                self.log.info('new device detected : %s', dz_instance)
+                if notify:
+                    self.notify('Pairing device: %s. Please wait...' % dev_name, timeout=DISCOVERY_TIMEOUT+DISCOVERY_TIMEOUT_EXTRA)
+                self.core.process_manager.attach(self._wait_device_discovery, id=process_id, args=(dz_instance, ))
+            return
 
         # print some info here
         info = dz_instance.to_json(properties=True)
         info['actions'] = dz_instance.available_actions()
         self.log.info(json.dumps(info, indent=4, sort_keys=True, cls=DeviceEncoder))
 
-        dev_type = dz_instance.get_value('type')
-
         if dev_type is None:
             self.log.warning('no type found for device for %s , try to pair it again', dz_instance)
+            if notify:
+                self.notify('incomplete discovery, try to pair it again', mode='warn')
         else:
             devices = []
 
@@ -297,6 +302,8 @@ class ZigateBaseGateway(Device):
                 return devices
 
             # self.black_listed_devices.append(ieee)
+            if notify:
+                self.notify('unknown device: %s' % dev_name, mode='warn')
 
         self.log.warning('unable to create any device for %s', dz_instance)
 

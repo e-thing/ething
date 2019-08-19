@@ -868,7 +868,7 @@ class OS_item(object):
             self._ref[id] = obj
       except:
           skipped += 1
-          LOGGER.exception('unable to unserialize a %s' % self._cls.__name__)
+          LOGGER.error('unable to unserialize a %s id=%s' % (self._cls.__name__, doc.get(self._id_key)))
 
     LOGGER.debug('[%s] %d items loaded, %d skipped' % (self._cls.__name__, len(self._ref), skipped))
 

@@ -395,7 +395,7 @@ def _generate_event_node_cls(signal_cls):
             attr('source', type=source_type, default={'type': 'any'}, description="Select the resources that emit the signal")(node_cls)
 
         return node_cls
-    except:
+    except Exception as e:
         return
 
 
