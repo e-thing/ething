@@ -146,7 +146,7 @@ class Message(object):
     def __expr__(self):
         return self.stringify()
 
-    def toJson(self):
+    def __json__(self):
         return {
             "nodeId": self.nodeId,
             "childSensorId": self.childSensorId,

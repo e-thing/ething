@@ -323,7 +323,7 @@ class Manager(object):
                 # no more reference to this process, remove it
                 self._map.pop(runner.id, None)
 
-    def toJson(self):
+    def __json__(self):
         j = []
         for r in self._runners():
             process = r.process

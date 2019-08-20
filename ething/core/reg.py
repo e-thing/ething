@@ -1580,9 +1580,6 @@ def toJson(obj, context=None):
     name = attribute.name
     j[name] = attribute.__get_json__(obj, context)
 
-  if hasattr(obj, '__json__'):
-    j = obj.__json__(j, context=context)
-
   return j
 
 
@@ -1762,6 +1759,9 @@ class Entity(with_metaclass(MetaReg, object)):
             if t == 0: self.__transaction_end__()
         finally:
             self.__reg__.context['__transaction'] = t
+
+    def __json__(self):
+        return toJson(self)
 
 
 def dbg_attr(obj):

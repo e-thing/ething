@@ -32,21 +32,6 @@ def get_info(core):
     return _info
 
 
-def print_info(core, printer):
-    info = get_info(core)
-
-    printer("ETHING    : version=%s" % info.get('VERSION'))
-
-    python_info = info.get('python', {})
-    printer("PYTHON    : version=%s type=%s" %
-            (python_info.get('version'), python_info.get('type')))
-    printer("PYTHON_EXE: %s" % (python_info.get('executable')))
-
-    platform_info = info.get('platform', {})
-    printer("PLATFORM  : %s" % (platform_info.get('name')))
-    printer("SYSTEM    : %s" % (platform_info.get('version')))
-
-
 class _Comparable:
     def __init__(self, obj, cls, *args):
         self.obj = obj
@@ -135,3 +120,12 @@ def getmembers(obj, predicate=None):
         processed.add(key)
     results.sort(key=lambda pair: pair[0])
     return results
+
+
+def filter_obj(obj, fields):
+    cpy = {}
+    for f in fields:
+        if f in obj:
+            cpy[f] = obj[f]
+    return cpy
+

@@ -25,7 +25,7 @@ class Catch(Node):
 
             if node is not None:
                 # Cf. Wrapper_Node
-                source = node.node.toJson()
+                source = node.node.id
 
             msg = {
                 'error': {

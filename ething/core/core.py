@@ -366,7 +366,7 @@ class Core(object):
             def _mapper(q):
                 if isinstance(q, string_types):
                     # expression
-                    return generate_filter(q, converter=lambda r:r.toJson())
+                    return generate_filter(q, converter=lambda r:r.__json__())
                 elif inspect.isclass(q):
                     return lambda r: r.isTypeof(q)
                 else:

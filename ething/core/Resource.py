@@ -420,7 +420,7 @@ class Resource(Entity):
         :param expression: a ObjectPath expression
         :return: boolean
         """
-        return bool(evaluate(expression, toJson(self)))
+        return bool(evaluate(expression, self.__json__()))
 
     def _process_bind(self):
         """

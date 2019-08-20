@@ -480,7 +480,7 @@ class Node(with_metaclass(ABCMeta, object)):
         # self._logger.debug(str(obj))
         self._flow.debug(obj, node=self)
 
-    def toJson(self):
+    def __json__(self):
         return self.id
 
     def handle_error(self, err):
@@ -551,7 +551,7 @@ class Message(MutableMapping):
     def __str__(self):
         return '<message data=%s>' % (self.__dict__,)
 
-    def toJson(self):
+    def __json__(self):
         return self.__dict__
 
     def clone(self):

@@ -88,7 +88,7 @@ def main():
         print("first startup, initializing...")
         os.makedirs(USER_DIR)
 
-    from .core.utils import print_info
+    from .core.utils import get_info
 
     log = init_logger(not getattr(args, 'quiet', False))
 
@@ -100,7 +100,16 @@ def main():
 
     core = Core(clear_db=bool(args.clear), log_level=loglevel, debug=args.debug, logger=log)
 
-    print_info(core, log.info)
+    # print some info
+    info = get_info(core)
+    log.info("ETHING    : version=%s" % info.get('VERSION'))
+    python_info = info.get('python', {})
+    log.info("PYTHON    : version=%s type=%s" %
+            (python_info.get('version'), python_info.get('type')))
+    log.info("PYTHON_EXE: %s" % (python_info.get('executable')))
+    platform_info = info.get('platform', {})
+    log.info("PLATFORM  : %s" % (platform_info.get('name')))
+    log.info("SYSTEM    : %s" % (platform_info.get('version')))
 
     # import builtin plugins here !
     log.info('search for builtin plugins...')

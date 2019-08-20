@@ -21,11 +21,10 @@ from future.utils import binary_type, string_types
 from .method_override import HTTPMethodOverrideMiddleware
 from .server_utils import ServerException, tb_extract_info, root_path, use_args, use_multi_args
 from .apikey import Apikey
-from ething.core.db import db_find, serialize, unserialize, save, toJson, Entity
+from ething.core.db import db_find, serialize, unserialize, save, toJson
 from ething.core.plugin import *
 from ething.core.Process import Process
-from ething.core.Helpers import filter_obj
-from ething.core.utils import dict_merge
+from ething.core.utils import dict_merge, filter_obj
 from ething.core.reg import get_registered_class, fromJson, get_definition_name
 from ething.core.Resource import Resource
 from ething.core.env import USER_DIR
@@ -230,10 +229,8 @@ class FlaskApp(Flask):
 
     def serialize(self, obj):
         """JSON serializer for objects not serializable by default json code"""
-        if hasattr(obj, 'toJson'):
-            return obj.toJson()
-        if isinstance(obj, Entity):
-            return toJson(obj)
+        if hasattr(obj, '__json__'):
+            return obj.__json__()
         if isinstance(obj, datetime.datetime):
             if obj.tzinfo is None:
                 obj = obj.replace(tzinfo=pytz.utc)

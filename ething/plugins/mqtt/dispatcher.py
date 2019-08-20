@@ -1,13 +1,13 @@
 # coding: utf-8
 
 from ething.core.Process import Process
+from ething.core.utils.json import dumps
 import threading
 import paho.mqtt.client as mqttClient
 from ething.core.Signal import ResourceSignal
 import random
 import string
 import time
-from ething.core.Helpers import toJson
 
 
 class MqttDispatcherService(Process):
@@ -91,7 +91,7 @@ class MqttDispatcherService(Process):
         if self.base_topic:
             topic = self.base_topic + '/' + topic
 
-        payload = toJson(signal)
+        payload = dumps(signal)
 
         self.log.debug("publish topic=%s" % topic)
 

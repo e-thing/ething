@@ -209,7 +209,7 @@ class Interactive_Shell_Manager(object):
         for shell in shells:
             shell.close()
 
-    def toJson(self):
+    def __json__(self):
         return [self._shells[id]['shell'] for id in self._shells]
 
 
@@ -298,8 +298,8 @@ class Interactive_Shell(Process):
 
             self.on_data(data)
 
-    def toJson(self):
-        data = super(Interactive_Shell, self).toJson()
+    def __json__(self):
+        data = super(Interactive_Shell, self).__json__()
         data.update({
             'id': self.id,
             'opened': self.opened,

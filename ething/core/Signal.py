@@ -20,10 +20,10 @@ class Signal(with_metaclass(MetaReg, Mapping)):
                 self.some_attribute = some_attribute
 
     """
-    def __init__(self):
+    def __init__(self, **data):
         self._type = get_definition_name(type(self))
         self._ts = time.time()
-        self.payload = dict()
+        self.payload = data
 
     def __str__(self):
         return '<signal %s>' % self._type
