@@ -29,7 +29,7 @@ def run_test_node(node_cls, attr=None, core=None, **inputs):
     if attr is not None:
         attributes.update(attr)
 
-    node = fromJson(node_cls, attributes, {
+    node = from_json(node_cls, attributes, {
         'core': core
     })
 
@@ -238,14 +238,14 @@ def test_node_Http_request(core):
 
 def test_flow(core):
     
-    n_btn = fromJson('nodes/Button', {
+    n_btn = from_json('nodes/Button', {
         'id': 'id_btn',
         'name': 'btn'
     }, {
         'core': core
     })
     
-    n_tst = fromJson('nodes/NodeTest', {
+    n_tst = from_json('nodes/NodeTest', {
         'id': 'id_tst',
         'name': 'tst'
     }, {

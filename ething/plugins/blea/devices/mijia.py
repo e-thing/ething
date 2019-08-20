@@ -18,7 +18,7 @@ class Mijia(BleaDevice, Thermometer, HumiditySensor):
         if name is not None and name.upper().startswith('MJ_HT_'):
             return True
 
-    @scheduler.setInterval(READ_INTERVAL, name="blea.mijia.read")
+    @scheduler.set_interval(READ_INTERVAL, name="blea.mijia.read")
     def read(self):
 
         try:

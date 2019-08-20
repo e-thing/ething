@@ -22,7 +22,7 @@ def test_table_create(core):
         'name': 'table.tb'
     })
 
-    f.importData(data)
+    f.import_data(data)
 
     assert isinstance(f, Table)
 
@@ -48,7 +48,7 @@ def test_table_unicode(core):
         'name': 'table.tb'
     })
 
-    f.importData(data)
+    f.import_data(data)
 
     assert isinstance(f, Table)
 

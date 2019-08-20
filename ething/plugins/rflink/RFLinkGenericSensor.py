@@ -12,13 +12,13 @@ class RFLinkGenericSensor(RFLinkNode):
     def _handle_incoming_data(self, protocol, data):
         super(RFLinkGenericSensor, self)._handle_incoming_data(protocol, data)
 
-        if 'TEMP' in data and self.isTypeof('interfaces/Thermometer'):
+        if 'TEMP' in data and self.typeof('interfaces/Thermometer'):
             self.temperature = float(data['TEMP'])
 
-        if 'HUM' in data and self.isTypeof('interfaces/HumiditySensor'):
+        if 'HUM' in data and self.typeof('interfaces/HumiditySensor'):
             self.humidity = float(data['HUM'])
 
-        if 'BARO' in data and self.isTypeof('interfaces/PressureSensor'):
+        if 'BARO' in data and self.typeof('interfaces/PressureSensor'):
             self.pressure = float(data['BARO'])
 
         for k in data:

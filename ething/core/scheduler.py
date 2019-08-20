@@ -216,10 +216,10 @@ def tick(**kwargs):
     return d
 
 
-def setInterval(interval, start_in_sec=0, **kwargs):
+def set_interval(interval, start_in_sec=0, **kwargs):
     def d(func):
         kwargs['start_in_sec'] = start_in_sec
-        setattr(func, '_scheduler', ('setInterval', (interval,), kwargs))
+        setattr(func, '_scheduler', ('set_interval', (interval,), kwargs))
         return func
     return d
 
@@ -282,7 +282,7 @@ class Scheduler(object):
 
         return _deco(callback, p)
 
-    def setInterval(self, interval, callback=None, start_in_sec=0, args=(), kwargs=None, **params):
+    def set_interval(self, interval, callback=None, start_in_sec=0, args=(), kwargs=None, **params):
         """
         Run a callable at regular interval.
 
@@ -356,7 +356,7 @@ class Scheduler(object):
 
             class Foo:
 
-                @setInterval(interval=30)
+                @set_interval(interval=30)
                 def task1(self):
                     # this method will be invoked every 30 seconds
                     pass
@@ -372,7 +372,7 @@ class Scheduler(object):
             scheduler = Scheduler()
             scheduler.bind_instance(foo)
 
-        :param instance: an instance with some methods decorated with setInterval, at, delay or tick
+        :param instance: an instance with some methods decorated with set_interval, at, delay or tick
         """
         for name, func in getmembers(instance, lambda x: hasattr(x, '_scheduler')):
             scheduler_func_name, args, kwargs = getattr(func, '_scheduler')

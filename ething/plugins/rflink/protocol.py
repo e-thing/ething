@@ -24,7 +24,7 @@ class RFLinkProtocol(LineReader):
         super(RFLinkProtocol, self).connection_made()
         self._responseListeners = []
 
-        self.core.scheduler.setInterval(1, self.check_response_timeout)
+        self.core.scheduler.set_interval(1, self.check_response_timeout)
 
     # exemple of messages :
     #     20;00;Nodo RadioFrequencyLink - RFLink Gateway V1.1 - R46;
@@ -58,7 +58,7 @@ class RFLinkProtocol(LineReader):
             if 'ID' in data:
 
                 def filter (r):
-                    if r.isTypeof('resources/RFLinkNode') and r.nodeId == data['ID'] and r.protocol == protocol and r.createdBy == self:
+                    if r.typeof('resources/RFLinkNode') and r.nodeId == data['ID'] and r.protocol == protocol and r.createdBy == self:
                         if 'SWITCH' in data:
                             return r.switchId == data['SWITCH']
                         return True

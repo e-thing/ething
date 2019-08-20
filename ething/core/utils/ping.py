@@ -32,7 +32,7 @@ def ping(host):
 def pingable(attr='host', interval=PING_DEFAULT_INTERVAL):
     def d(cls):
 
-        @scheduler.setInterval(interval, name='ping')
+        @scheduler.set_interval(interval, name='ping')
         def _ping(self):
 
             host = getattr(self, attr, None)

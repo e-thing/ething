@@ -14,7 +14,7 @@ class MihomeSensorHT(MihomeDevice, Thermometer, HumiditySensor, PressureSensor):
     def isvalid(cls, gateway, model):
         return model in ['sensor_ht', 'weather.v1']
 
-    def processAttr(self, name, value):
+    def process_attr(self, name, value):
 
         if name == 'temperature':
             self.temperature = int(value)/100.0

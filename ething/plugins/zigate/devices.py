@@ -70,7 +70,7 @@ class ZigateBaseDevice(with_metaclass(ZigateDeviceMetaClass, Device)):
                     if name == 'battery_voltage':
                         self.battery = zdevice.battery_percent
                     else:
-                        self.processAttr(name, value, attribute)
+                        self.process_attr(name, value, attribute)
 
     def init_state(self):
         """
@@ -87,9 +87,9 @@ class ZigateBaseDevice(with_metaclass(ZigateDeviceMetaClass, Device)):
                 value = attribute.get('value')
 
                 if name and value is not None:
-                    self.processAttr(name, value, attribute)
+                    self.process_attr(name, value, attribute)
 
-    def processAttr(self, name, value, attribute):
+    def process_attr(self, name, value, attribute):
         pass
 
     @classmethod
@@ -147,7 +147,7 @@ class ZMihomeMagnet(ZigateBaseDevice, DoorSensor):
     def isvalid(cls, gateway, zigate_device_instante):
         return zigate_device_instante.get_property_value('type') in ['lumi.sensor_magnet', 'lumi.sensor_magnet.aq2']
 
-    def processAttr(self, name, value, attribute):
+    def process_attr(self, name, value, attribute):
         if name == 'onoff':
             self.state = value
 
@@ -161,7 +161,7 @@ class ZMihomeSwitch(ZigateBaseDevice, Switch):
     def isvalid(cls, gateway, zigate_device_instante):
         return zigate_device_instante.get_property_value('type') in ['lumi.ctrl_ln1', 'lumi.sensor_86sw1']
 
-    def processAttr(self, name, value, attribute):
+    def process_attr(self, name, value, attribute):
         if name == 'onoff':
             self.state = value
 
@@ -175,7 +175,7 @@ class ZMihomeButton(ZigateBaseDevice, Button):
     def isvalid(cls, gateway, zigate_device_instante):
         return zigate_device_instante.get_property_value('type') in ['lumi.sensor_switch', 'lumi.sensor_switch.aq2', 'lumi.sensor_switch.aq3', 'lumi.remote.b1acn01', 'lumi.remote.b286acn01']
 
-    def processAttr(self, name, value, attribute):
+    def process_attr(self, name, value, attribute):
         if name == 'onoff':
             if value:
                 # cf. https://zigate.fr/produits-xiaomi-compatibles-zigate/compatible/bouton/
@@ -213,7 +213,7 @@ class ZigateCoverDevice(ZigateBaseDevice, Cover):
         actions = zdev.available_actions(endpoint).get(endpoint)
         return zigate.ACTIONS_COVER in actions
 
-    def processAttr(self, name, value, attribute):
+    def process_attr(self, name, value, attribute):
         if name == 'current_position_lift_percentage':
             self.position = value
 
@@ -258,7 +258,7 @@ class ZigateClimateDevice(ZigateBaseDevice, Climate):
             t = a.get('value', 0)
         self.target_temperature = t
 
-    def processAttr(self, name, value, attribute):
+    def process_attr(self, name, value, attribute):
         if name == 'local_temperature':
             self.temperature = value
         elif name == 'occupancy':
@@ -298,7 +298,7 @@ class ZigateGenericColourDimmableLightDevice(ZigateBaseDevice, RGBWLight):
 
         return zigate.ACTIONS_ONOFF in actions and zigate.ACTIONS_LEVEL in actions and zigate.ACTIONS_HUE in actions
 
-    def processAttr(self, name, value, attribute):
+    def process_attr(self, name, value, attribute):
         if name == 'onoff':
             self.state = value
         elif name == 'current_level': # [0-100]
@@ -351,7 +351,7 @@ class ZigateGenericDimmableLightDevice(ZigateBaseDevice, DimmableLight):
 
         return zigate.ACTIONS_ONOFF in actions and zigate.ACTIONS_LEVEL in actions
 
-    def processAttr(self, name, value, attribute):
+    def process_attr(self, name, value, attribute):
         if name == 'onoff':
             self.state = value
         elif name == 'current_level':
@@ -387,7 +387,7 @@ class ZigateGenericLightDevice(ZigateBaseDevice, Light):
         if device_id == 0x0100:
             return True
 
-    def processAttr(self, name, value, attribute):
+    def process_attr(self, name, value, attribute):
         if name == 'onoff':
             self.state = value
 
@@ -423,7 +423,7 @@ class ZigateGenericDimmerDevice(ZigateBaseDevice, Dimmer):
 
         return 0x0006 in in_clusters and 0x0008 in in_clusters
 
-    def processAttr(self, name, value, attribute):
+    def process_attr(self, name, value, attribute):
         if name == 'onoff':
             self.level = 100 if value else 0
         elif name == 'current_level':
@@ -464,14 +464,14 @@ class ZigateGenericSensorDevice(ZigateBaseDevice):
         if interfaces:
             return create_dynamic_class(cls, *interfaces)
 
-    def processAttr(self, name, value, attribute):
-        if 'temperature' in name and self.isTypeof(Thermometer):
+    def process_attr(self, name, value, attribute):
+        if 'temperature' in name and self.typeof(Thermometer):
             self.temperature = value
-        elif 'humidity' in name and self.isTypeof(PressureSensor):
+        elif 'humidity' in name and self.typeof(PressureSensor):
             self.humidity = value
-        elif 'pressure' in name and self.isTypeof(HumiditySensor):  # mbar
+        elif 'pressure' in name and self.typeof(HumiditySensor):  # mbar
             self.pressure = value * 100.
-        elif 'luminosity' in name and self.isTypeof(LightSensor):  # lm
+        elif 'luminosity' in name and self.typeof(LightSensor):  # lm
             self.light_level = value
 
 
@@ -496,7 +496,7 @@ class ZigateOccupencySensorDevice(ZigateBaseDevice, OccupencySensor):
                 if 'presence' in name:
                     return True
 
-    def processAttr(self, name, value, attribute):
+    def process_attr(self, name, value, attribute):
         if 'presence' in name:
             self.state = bool(value)
 
@@ -522,7 +522,7 @@ class ZigateGenericBinarySensorDevice(ZigateBaseDevice, Switch):
                 if 'onoff' in name:
                     return True
 
-    def processAttr(self, name, value, attribute):
+    def process_attr(self, name, value, attribute):
         if 'onoff' in name:
             self.state = bool(value)
 
@@ -534,7 +534,7 @@ class ZigateGenericRelayDevice(ZigateBaseDevice, Relay):
         actions = zdev.available_actions(endpoint).get(endpoint)
         return zigate.ACTIONS_ONOFF in actions
 
-    def processAttr(self, name, value, attribute):
+    def process_attr(self, name, value, attribute):
         if name == 'onoff':
             self.state = value
 

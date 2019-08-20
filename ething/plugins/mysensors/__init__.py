@@ -15,7 +15,7 @@ class MySensorsPlugin (Plugin):
         self.core.scheduler.delay(0, self.check_mysgw)
 
     def check_mysgw(self):
-        if not self.core.findOne(lambda r: r.isTypeof('resources/MySensorsGateway')):
+        if not self.core.find_one(lambda r: r.typeof('resources/MySensorsGateway')):
             self.log.debug("try to find any running local instance of mysgw")
             version = check_mysgw()
             if version is not None:

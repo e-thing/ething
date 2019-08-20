@@ -92,7 +92,7 @@ class ObjectPathExp(String):
     def __init__(self, **attributes):
         super(ObjectPathExp, self).__init__(allow_empty=False, **attributes)
 
-    def toSchema(self, context = None):
-        s = super(ObjectPathExp, self).toSchema(context)
+    def to_shema(self, context = None):
+        s = super(ObjectPathExp, self).to_shema(context)
         s['$component'] = 'OpenPathExpression'
         return s

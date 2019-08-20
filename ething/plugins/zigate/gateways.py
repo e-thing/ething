@@ -65,7 +65,7 @@ class ZigateBaseGateway(Device):
     def _connect(self, **kwargs):
         raise NotImplementedError()
 
-    @scheduler.setInterval(30, name="zigate.save_state")
+    @scheduler.set_interval(30, name="zigate.save_state")
     def save_state(self):
         if hasattr(self, 'z') and self.z:
             _activity = getattr(self, '_activity', 0)
@@ -101,7 +101,7 @@ class ZigateBaseGateway(Device):
     def _controller_init(self):
         self.log.debug('zigate startup')
 
-        devices = self.children(lambda r: r.isTypeof(Device))
+        devices = self.children(lambda r: r.typeof(Device))
         # reset some attributes
         for d in devices:
             if d.error:

@@ -49,7 +49,7 @@ class MySensorsGateway(Device):
     def getNodes(self, filter=None):
 
         def _filter (r):
-            if r.createdBy == self and r.isTypeof('resources/MySensorsNode'):
+            if r.createdBy == self and r.typeof('resources/MySensorsNode'):
                 if filter:
                     return filter(r)
                 return True
@@ -58,7 +58,7 @@ class MySensorsGateway(Device):
         return self.core.find(_filter)
 
     def getNode(self, nodeId):
-        return self.core.findOne(lambda r: r.isTypeof('resources/MySensorsNode') and r.createdBy == self and r.nodeId == nodeId)
+        return self.core.find_one(lambda r: r.typeof('resources/MySensorsNode') and r.createdBy == self and r.nodeId == nodeId)
 
     def send(self, nodeId, sensorId, type, subtype, payload=None, value=None, ack=None, smartSleep=None, done=None, err=None, response=None):
         """

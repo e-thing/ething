@@ -6,13 +6,8 @@ from ..Signal import ResourceSignal
 
 
 class StateChanged(ResourceSignal):
-    def __init__(self, resource, new_value, old_value = None):
-        super(StateChanged, self).__init__(resource)
-        self.payload = {
-            'state': new_value
-        }
-        if old_value is not None:
-            self.payload['state_old'] = old_value
+    def __init__(self, resource, value):
+        super(StateChanged, self).__init__(resource, state=value)
 
 
 @interface
@@ -25,4 +20,4 @@ class Switch(Device):
         super(Switch, self).on_attr_update(attr, new_value, old_value)
 
         if attr == 'state':
-            self.dispatchSignal(StateChanged(self, new_value, old_value))
+            self.emit(StateChanged(self, new_value))

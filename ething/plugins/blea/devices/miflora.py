@@ -24,7 +24,7 @@ class Miflora(BleaDevice, Thermometer, LightSensor, MoistureSensor):
         if (name is not None and name.lower() in VALID_DEVICE_NAMES) or (mac is not None and mac.upper().startswith(DEVICE_PREFIX)):
             return True
 
-    @scheduler.setInterval(READ_INTERVAL, name="blea.miflora.read")
+    @scheduler.set_interval(READ_INTERVAL, name="blea.miflora.read")
     def read(self):
 
         try:

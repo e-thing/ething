@@ -221,12 +221,12 @@ class Core(object):
             # commit every x secondes
             if commit_interval is None:
                 commit_interval = DEFAULT_COMMIT_INTERVAL
-            self.scheduler.setInterval(commit_interval, self.db.commit, condition=lambda _: self.db.connected and self.db.need_commit())
+            self.scheduler.set_interval(commit_interval, self.db.commit, condition=lambda _: self.db.connected and self.db.need_commit())
 
         # run garbage collector regularly
         if garbage_collector_period is None:
             garbage_collector_period = DEFAULT_GARBAGE_COLLECTOR_PERIOD
-        self.scheduler.setInterval(garbage_collector_period, self.db.run_garbage_collector, condition=lambda _: self.db.connected)
+        self.scheduler.set_interval(garbage_collector_period, self.db.run_garbage_collector, condition=lambda _: self.db.connected)
 
     def stop(self, block=False):
         """
@@ -290,10 +290,10 @@ class Core(object):
 
             # devices activity timeout
             def devices_activity_check():
-                for d in self.find(lambda r: r.isTypeof('resources/Device')):
+                for d in self.find(lambda r: r.typeof('resources/Device')):
                     d.check_activity()
 
-            self.scheduler.setInterval(60, devices_activity_check)
+            self.scheduler.set_interval(60, devices_activity_check)
 
         self.process_manager.start()
 
@@ -368,7 +368,7 @@ class Core(object):
                     # expression
                     return generate_filter(q, converter=lambda r:r.__json__())
                 elif inspect.isclass(q):
-                    return lambda r: r.isTypeof(q)
+                    return lambda r: r.typeof(q)
                 else:
                     return q
 
@@ -390,7 +390,7 @@ class Core(object):
         return self.db.os.find(Resource, query = query, limit = limit, skip = skip, sort = sort)
 
     @after_init
-    def findOne(self, query=None):
+    def find_one(self, query=None):
         """
         Returns only a single resource that optionnaly match a query.
 
@@ -429,7 +429,7 @@ class Core(object):
         attributes['type'] = get_definition_name(cls)
         return self.db.os.create(cls, attributes)
 
-    def dispatchSignal(self, signal, *args, **kwargs):
+    def emit(self, signal, *args, **kwargs):
         """
         Dispatch a signal.
 

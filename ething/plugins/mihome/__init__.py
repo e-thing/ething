@@ -35,7 +35,7 @@ class Controller(TransportProcess):
         self.core = core
 
     def on_open_state_changed(self):
-        for gateway in self.core.find(lambda r: r.isTypeof(MihomeGateway)):
+        for gateway in self.core.find(lambda r: r.typeof(MihomeGateway)):
             gateway.refresh_connect_state(self.is_open)
 
     def send(self, *args, **kwargs):

@@ -8,8 +8,8 @@ class CronExpr(String):
     def __init__(self, **attr):
         super(CronExpr, self).__init__(allow_empty=False, **attr)
 
-    def toSchema(self, context=None):
-        schema = super(CronExpr, self).toSchema(context)
+    def to_shema(self, context=None):
+        schema = super(CronExpr, self).to_shema(context)
         schema['$component'] = 'cron'
         return schema
 

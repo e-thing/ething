@@ -41,11 +41,11 @@ if bluepy_imported:
     class Blea(Plugin):
 
         def setup(self):
-            self.core.scheduler.setInterval(self.scan_interval, self.scan, name="blea.scan")
+            self.core.scheduler.set_interval(self.scan_interval, self.scan, name="blea.scan")
 
         def scan(self):
 
-            gateways = self.core.find(lambda r: r.isTypeof('resources/BleaGateway'))
+            gateways = self.core.find(lambda r: r.typeof('resources/BleaGateway'))
 
             for gateway in gateways:
 

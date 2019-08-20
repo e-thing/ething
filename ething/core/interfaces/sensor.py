@@ -6,12 +6,10 @@ from ..Signal import ResourceSignal
 
 
 class SensorValueChanged(ResourceSignal):
-    def __init__(self, resource, name, new_value, old_value = None):
-        super(SensorValueChanged, self).__init__(resource)
-        self.payload = {}
-        self.payload[name] = new_value
-        if old_value is not None:
-            self.payload[name+'_old'] = old_value
+    def __init__(self, resource, name, value):
+        data = dict()
+        data[name] = value
+        super(SensorValueChanged, self).__init__(resource, **data)
 
 
 def schema_mod(attr, schema):
@@ -50,4 +48,4 @@ class Sensor(Device):
         super(Sensor, self).on_attr_update(attr, new_value, old_value)
 
         if attr in self._sensor_attributes_names:
-            self.dispatchSignal(SensorValueChanged(self, attr, new_value, old_value))
+            self.emit(SensorValueChanged(self, attr, new_value))

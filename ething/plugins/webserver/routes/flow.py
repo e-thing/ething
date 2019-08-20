@@ -48,7 +48,7 @@ class SocketIoDebugger (Debugger):
             'flow_id': self.flow_id,
             'ts': time.time(),
             'event': evt,
-            'payload': self.app.toJson(data)
+            'payload': self.app.to_json(data)
         }
 
         self.app.socketio.emit('dbg_evt', pkt, namespace='/flow', room=self.client_id)

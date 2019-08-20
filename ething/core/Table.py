@@ -30,8 +30,7 @@ class TableDataAdded(ResourceSignal):
     is emitted each time a new value is appended to a table
     """
     def __init__(self, resource, data):
-        super(TableDataAdded, self).__init__(resource)
-        self.payload = data
+        super(TableDataAdded, self).__init__(resource, **data)
 
 
 @meta(icon='mdi-table-row-plus-after', category="storage")
@@ -90,7 +89,7 @@ class Table(Resource):
     ISO = 2
 
     # return an object
-    def docSerialize(self, doc, date_format=None):
+    def doc_serialize(self, doc, date_format=None):
 
         if 'date' in doc:
             dt = doc['date']
@@ -108,17 +107,17 @@ class Table(Resource):
         return doc
 
     @property
-    def collectionName(self):
+    def collection_name(self):
         return 'tb.%s' % self.id
 
     @property
     def table(self):
-        return self.core.db[self.collectionName]
+        return self.core.db[self.collection_name]
 
     def remove(self):
 
         # remove all the data from this table
-        self.core.db.table_drop(self.collectionName, silent=True)
+        self.core.db.table_drop(self.collection_name, silent=True)
 
         # remove the resource
         super(Table, self).remove()
@@ -199,10 +198,6 @@ class Table(Resource):
 
         self.contentModifiedDate = utcnow()
 
-    def updateMeta(self):
-        with self:
-            self._update_meta(reset = True)
-
     def remove_rows(self, row_ids):
         """
         Remove multiple rows.
@@ -228,7 +223,7 @@ class Table(Resource):
         """
         return self.remove_rows([row_id]) > 0
 
-    def sanitizeData(self, dataArray, invalidFields=INVALID_FIELD_RENAME, skipError=True):
+    def sanitize_data(self, dataArray, invalidFields=INVALID_FIELD_RENAME, skipError=True):
 
         if isinstance(invalidFields, string_types):
             if invalidFields == "stop":
@@ -331,7 +326,7 @@ class Table(Resource):
 
                 # sanitize the incoming data
                 dataArray = [data]
-                l = self.sanitizeData(dataArray, invalidFields, False)
+                l = self.sanitize_data(dataArray, invalidFields, False)
 
                 if l > 0:
 
@@ -350,15 +345,15 @@ class Table(Resource):
                         rows_to_be_removed = self.table.select(sort=('date', True), length=remove_length)
                         self.remove_rows([r['id'] for r in rows_to_be_removed])
 
-                    doc = self.docSerialize(dataArray[0])
+                    doc = self.doc_serialize(dataArray[0])
                     # generate an event
-                    self.dispatchSignal(TableDataAdded(self, doc))
+                    self.emit(TableDataAdded(self, doc))
 
                     return doc
 
         return False
 
-    def importData(self, dataArray, invalidFields=INVALID_FIELD_RENAME, skipError=True):
+    def import_data(self, dataArray, invalidFields=INVALID_FIELD_RENAME, skipError=True):
 
         with self:
             maxLength = self.maxLength
@@ -371,7 +366,7 @@ class Table(Resource):
             self.clear()
 
             # sanitize the incoming data
-            length = self.sanitizeData(dataArray, invalidFields, skipError)
+            length = self.sanitize_data(dataArray, invalidFields, skipError)
 
             if length > 0:
                 # insert the data
@@ -381,22 +376,22 @@ class Table(Resource):
 
         return True
 
-    def getRow(self, id):
+    def get_row(self, id):
         """
         Fetch a single row.
 
         :param id: row's id
         :return: a row or False if the row was not found
         """
-        return self.docSerialize(self.table[id])
+        return self.doc_serialize(self.table[id])
 
-    def replaceRowById(self, row_id, data, invalidFields=INVALID_FIELD_RENAME):
+    def replace_row_by_id(self, row_id, data, invalidFields=INVALID_FIELD_RENAME):
         if data:
             with self:
 
                 # sanitize the incoming data
                 dataArray = [data]
-                l = self.sanitizeData(dataArray, invalidFields, False)
+                l = self.sanitize_data(dataArray, invalidFields, False)
 
                 if l > 0:
                     new_row = dataArray[0]
@@ -407,12 +402,12 @@ class Table(Resource):
                         old_row = self.table[row_id]
                         self.table[row_id] = new_row
                         self._update_meta(removed_rows=[old_row], added_rows=[new_row])
-                        return self.docSerialize(new_row)
+                        return self.doc_serialize(new_row)
 
         return False
 
     # replace only one row
-    def replaceRow(self, query, data, invalidFields=INVALID_FIELD_RENAME, upsert=False):
+    def replace_row(self, query, data, invalidFields=INVALID_FIELD_RENAME, upsert=False):
         if data:
             with self:
 
@@ -421,7 +416,7 @@ class Table(Resource):
                 if len(rows) > 0:
                     row = rows[0]
 
-                    return self.replaceRowById(row['id'], data, invalidFields)
+                    return self.replace_row_by_id(row['id'], data, invalidFields)
                 else:
                     # not found !
                     if upsert:
@@ -480,7 +475,7 @@ class Table(Resource):
         rows = self.table.select()
 
         # apply the filter according to the query string
-        # TODO: what about the date field ? docSerialize() here ?
+        # TODO: what about the date field ? doc_serialize() here ?
 
         if query:
             _filter = ObjectPath.generate_filter(query)
@@ -498,9 +493,9 @@ class Table(Resource):
         if fields is not None:
             rows = [filter_obj(row, fields) for row in rows]
 
-        return [self.docSerialize(row, date_format) for row in rows]
+        return [self.doc_serialize(row, date_format) for row in rows]
 
-    def computeStatistics(self, key, query=None):
+    def compute_statistics(self, key, query=None):
 
         sum = 0
         sum2 = 0

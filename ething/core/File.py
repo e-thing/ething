@@ -6,17 +6,8 @@ from .utils.date import TzDate, utcnow
 from .reg import *
 from .Signal import ResourceSignal
 from .flow import ResourceNode
-import datetime
 import os
 from .utils.mime import content_to_mime, ext_to_mime
-import re
-import base64
-try:
-    from PIL import Image, ImageOps
-except ImportError:
-    Image = None
-    ImageOps = None
-from io import BytesIO
 
 
 class FileDataModified(ResourceSignal):
@@ -28,7 +19,6 @@ class FileDataModified(ResourceSignal):
 
 @throw(FileDataModified)
 @attr('content', default=None, mode=PRIVATE)
-@attr('thumb', default=None, mode=PRIVATE)
 @attr('size', default=0, mode=READ_ONLY, description="The size of this resource in bytes")
 @attr('mime', default='text/plain', mode=READ_ONLY, description="The MIME type of the file (automatically detected from the content or file extension).")
 @attr('contentModifiedDate', type=TzDate(), default=lambda _: utcnow(), mode=READ_ONLY, description="Last time the content of this file was modified (formatted RFC 3339 timestamp).")
@@ -47,20 +37,11 @@ class File(Resource):
         f.read(encoding='utf8') # = 'bar'
     """
 
-    @attr('hasThumbnail')
-    def hasThumbnail(self):
-        """Return True if this file has a thumbnail."""
-        return bool(self.thumb)
-
     def remove(self):
 
         # remove the file from GridFS
         if self.content is not None:
             self.core.db.fs.remove(self.content)
-
-        # remove any thumbnail
-        if self.thumb is not None:
-            self.core.db.fs.remove(self.thumb)
 
         # remove the resource
         super(File, self).remove()
@@ -122,11 +103,10 @@ class File(Resource):
             self._updateMeta(File.META_ALL, bytes)
 
         # generate an event
-        self.dispatchSignal(FileDataModified(self))
+        self.emit(FileDataModified(self))
 
-    # update meta information : mimeType and thumbnail
+    # update meta information : mimeType
     META_MIME = 1
-    META_THUMB = 2
     META_ALL = 255
     META_NONE = 0
     # the content can be provided to avoid reading it from the database
@@ -155,46 +135,6 @@ class File(Resource):
                     mime = 'text/plain' # default
 
                 self.mime = mime
-
-            if opt & File.META_THUMB:
-
-                if not content:
-                    content = self.read()
-
-                thumb = None
-                mime = self.mime
-                m = re.search('^image', mime.lower())
-                if content and m is not None:
-                    try:
-                        thumb = File.createThumb(content, 128)
-                    except:
-                        pass
-
-                if self.thumb is not None:
-                    self.core.db.fs.remove(self.thumb)
-                self.thumb = None
-
-                if thumb:
-                    f = self.core.db.fs.create('File/%s/thumb' % self.id, thumb, parent=self.id)
-                    self.thumb = f.id
-
-    def readThumbnail(self):
-        return self.core.db.fs[self.thumb].read() if self.thumb is not None else None
-
-    @staticmethod
-    def createThumb(imagedata, thumbWidth):
-        if Image is None:
-            return None
-        inBuffer = BytesIO(imagedata)
-        im = Image.open(inBuffer)
-        #im.thumbnail((thumbWidth, thumbWidth), Image.ANTIALIAS)
-        thumb = ImageOps.fit(im, (thumbWidth, thumbWidth), Image.ANTIALIAS)
-        buffer = BytesIO()
-        thumb.save(buffer, 'PNG')
-        thumbdata = buffer.getvalue()
-        buffer.close()
-        inBuffer.close()
-        return thumbdata
 
     def __db_save__(self, insert):
         super(File, self).__db_save__(insert)

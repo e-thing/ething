@@ -6,13 +6,8 @@ from ..Signal import ResourceSignal
 
 
 class LevelChanged(ResourceSignal):
-    def __init__(self, resource, new_value, old_value = None):
-        super(LevelChanged, self).__init__(resource)
-        self.payload = {
-            'level': new_value
-        }
-        if old_value is not None:
-            self.payload['level_old'] = old_value
+    def __init__(self, resource, new_value):
+        super(LevelChanged, self).__init__(resource, level=new_value)
 
 
 @throw(LevelChanged)
@@ -25,4 +20,4 @@ class Dimmer(Device):
         super(Dimmer, self).on_attr_update(attr, new_value, old_value)
 
         if attr == 'level':
-            self.dispatchSignal(LevelChanged(self, new_value, old_value))
+            self.emit(LevelChanged(self, new_value))

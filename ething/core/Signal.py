@@ -15,18 +15,21 @@ class Signal(with_metaclass(MetaReg, Mapping)):
     To register a new signal, simply override this class ::
 
         class MySignal(Signal):
-            def __init__(self, some_attribute):
-                super(MySignal, self).__init__()
-                self.some_attribute = some_attribute
+            pass
+
+        my_signal = MySignal(foo="bar")
+
+        # foo data is accessible through the data dictionary :
+        my_signal.data['foo'] # = "bar"
 
     """
     def __init__(self, **data):
-        self._type = get_definition_name(type(self))
-        self._ts = time.time()
-        self.payload = data
+        self.type = get_definition_name(type(self))
+        self.ts = time.time()
+        self.data = data
 
     def __str__(self):
-        return '<signal %s>' % self._type
+        return '<signal %s>' % self.type
 
     def __repr__(self):
         return str(self)
@@ -35,12 +38,19 @@ class Signal(with_metaclass(MetaReg, Mapping)):
         return self.__dict__[key]
 
     def __iter__(self):
-        return iter(self._data)
+        return iter(self.__dict__)
 
     def __len__(self):
-        return len(self._data)
+        return len(self.__dict__)
 
-    def toFlowMessage(self):
+    def __flow_msg__(self):
+        return {
+            '_type': self.type,
+            '_ts': self.ts,
+            'payload': self.data
+        }
+
+    def __json__(self):
         return self.__dict__
 
 
@@ -52,19 +62,31 @@ class ResourceSignal(Signal):
     To register a new signal, simply override this class ::
 
         class MySignal(ResourceSignal):
-            def __init__(self, resource, some_attribute):
-                super(MySignal, self).__init__(resource)
-                self.some_attribute = some_attribute
+            pass
+
+        my_signal = MySignal(resource, foo="bar")
+
+        # foo data is accessible through the data dictionary :
+        my_signal.data['foo'] # = "bar"
+
+        # the resource instance is accessible through:
+        my_signal.resource # Resource object
 
     """
-    def __init__(self, resource):
-        super(ResourceSignal, self).__init__()
+    def __init__(self, resource, **data):
+        super(ResourceSignal, self).__init__(**data)
         self.resource = resource
 
     def __str__(self):
-        return "<signal %s resource=%s>" % (self._type, self.resource.id)
+        return "<signal %s resource=%s>" % (self.type, self.resource.id)
 
-    def toFlowMessage(self):
-        msg = self.__dict__.copy()
+    def __flow_msg__(self):
+        msg = super(ResourceSignal, self).__flow_msg__()
         msg['resource'] = self.resource.id
         return msg
+
+    def __json__(self):
+        # do not send the whole resource instance
+        cpy = self.__dict__.copy()
+        cpy['resource']=self.resource.id
+        return cpy

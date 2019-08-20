@@ -25,8 +25,7 @@ class NotificationSent(Signal):
     is emitted each time a notification has been sent
     """
     def __init__(self, notification):
-        super(NotificationSent, self).__init__()
-        self.payload = notification
+        super(NotificationSent, self).__init__(**notification.__json__()) # must be a dictionary
 
 
 @attr('timeout', type=Integer(), default=3600, mode=READ_ONLY) # 0 means for ever, unit: seconds
@@ -113,7 +112,7 @@ def notify(core, message, mode=INFO, persistant=False, **kwargs):
         core.db.os.save(notification)
         _clean(core)
 
-    core.dispatchSignal(NotificationSent(notification))
+    core.emit(NotificationSent(notification))
 
     return notification
 

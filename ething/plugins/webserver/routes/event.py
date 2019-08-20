@@ -6,7 +6,7 @@ from queue import Queue, Empty
 
 def on_signal_sio(signal, app):
     signal_name = type(signal).__name__
-    app.socketio.emit(signal_name, app.toJson(signal), namespace="/events")
+    app.socketio.emit(signal_name, app.to_json(signal.__dict__), namespace="/events") # send the full signal object, necessary for the webui to operate
 
 
 def install(core, app, auth, **kwargs):
@@ -44,7 +44,7 @@ def install(core, app, auth, **kwargs):
                         yield "event:ping\ndata:\n\n"
                         continue
 
-                    data = app.toJson(signal)
+                    data = app.to_json(signal)
 
                     lines = ["data:{value}".format(
                         value=line) for line in data.splitlines()]

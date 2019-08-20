@@ -133,7 +133,7 @@ def test_async_processing(core):
     @attr('count', type=Number(), default=0)
     class TAPA(Resource):
 
-        @setInterval(1)
+        @set_interval(1)
         def async_processing(self):
             self.count += 1
             glo['count'] += 1

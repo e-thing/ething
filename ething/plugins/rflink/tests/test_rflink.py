@@ -33,7 +33,7 @@ def test_rflink_controller(core):
     assert switch
     assert isinstance(switch, Relay)
 
-    table = switch.children(lambda r: r.isTypeof('resources/Table'))[0]
+    table = switch.children(lambda r: r.typeof('resources/Table'))[0]
 
     print(table)
 

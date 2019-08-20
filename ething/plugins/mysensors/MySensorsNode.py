@@ -39,7 +39,7 @@ class MySensorsNode(Device):
     def getSensors(self, filter=None):
 
         def _filter (r):
-            if r.createdBy == self and r.isTypeof('resources/MySensorsSensor'):
+            if r.createdBy == self and r.typeof('resources/MySensorsSensor'):
                 if filter:
                     return filter(r)
                 return True
@@ -48,7 +48,7 @@ class MySensorsNode(Device):
         return self.core.find(_filter)
 
     def getSensor(self, sensorId):
-        return self.core.findOne(lambda r: r.isTypeof('resources/MySensorsSensor') and r.createdBy == self and r.sensorId == sensorId)
+        return self.core.find_one(lambda r: r.typeof('resources/MySensorsSensor') and r.createdBy == self and r.sensorId == sensorId)
 
     # @method.arg('firmware', type='string', format='binary', minLength=1, description='only *.hex files must be uploaded !')
     def updateFirmware(self, firmware):

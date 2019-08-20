@@ -1134,8 +1134,8 @@ class DBLink(String):
             value = db_id(value)
         return value
 
-    def fromJson(self, value, context=None):
-        value = super(DBLink, self).fromJson(value, context)
+    def from_json(self, value, context=None):
+        value = super(DBLink, self).from_json(value, context)
         # check the id exist !
         obj = self._db_get(value, context)
         self.check(obj)

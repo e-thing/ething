@@ -1,6 +1,6 @@
 # coding: utf-8
 from .dataflow import Flow as FlowBase, Node as NodeBase, Debugger, Message
-from ..Resource import Resource, ResourceType, ResourceTypeArray
+from ..Resource import Resource, ResourceType, ResourceTypeArray, ResourceCreated
 from ..reg import *
 from ..utils.jsonpath import jsonpath
 from ..utils.ObjectPath import ObjectPathExp, evaluate
@@ -255,7 +255,7 @@ class SignalEventNode(Node):
 
         def push(signal):
             if self._filter(signal):
-                q.put(signal.toFlowMessage())
+                q.put(signal.__flow_msg__())
 
         self.core.signalDispatcher.bind('*', push)
 
@@ -386,11 +386,20 @@ def _generate_event_node_cls(signal_cls):
         meta(label=get_meta(signal_cls, 'label'), description=get_meta(signal_cls, 'description'), icon=get_meta(signal_cls, 'icon', 'mdi-signal-variant'), category=get_meta(signal_cls, 'category', 'events'))(node_cls)
 
         if is_resource_signal:
-            source_type = OneOf([
-                ('any',),
-                ('resources', ResourceTypeArray(must_throw=signal_cls, min_len=1)),
-                ('expression', ObjectPathExp()),
-            ], **dict((('$inline', True), )))
+
+            if signal_cls is ResourceCreated:
+                OneOf_Items = [
+                    ('any',),
+                    ('expression', ObjectPathExp()),
+                ]
+            else:
+                OneOf_Items = [
+                    ('any',),
+                    ('resources', ResourceTypeArray(must_throw=signal_cls, min_len=1)),
+                    ('expression', ObjectPathExp()),
+                ]
+
+            source_type = OneOf(OneOf_Items, **dict((('$inline', True), )))
 
             attr('source', type=source_type, default={'type': 'any'}, description="Select the resources that emit the signal")(node_cls)
 

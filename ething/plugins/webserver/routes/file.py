@@ -91,14 +91,3 @@ def install(core, app, auth, **kwargs):
 
             return app.jsonify(r)
 
-    @app.route('/api/files/<id>/thumbnail')
-    @auth.required('resource:read file:read')
-    def file_thumb(id):
-        r = app.getResource(id, ['File'])
-        thumb = r.readThumbnail()
-
-        if not thumb:
-            raise Exception('No thumbnail available')
-
-        return Response(thumb, mimetype='image/png')
-

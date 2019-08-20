@@ -59,7 +59,7 @@ def install(core, app, auth, **kwargs):
 
                 def typeQuery (r):
                     for t in allowed_types:
-                        if r.isTypeof(t):
+                        if r.typeof(t):
                             return True
 
                 if query:

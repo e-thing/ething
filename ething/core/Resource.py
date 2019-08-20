@@ -13,18 +13,11 @@ import logging
 
 
 @meta(icon='mdi-plus')
-class ResourceCreated(Signal):
+class ResourceCreated(ResourceSignal):
     """
     is emitted each time a resource is created
     """
-    def __init__(self, resource):
-        super(ResourceCreated, self).__init__()
-        self.resource = resource
-
-    def toFlowMessage(self):
-        msg = self.__dict__.copy()
-        msg['resource'] = self.resource.id
-        return msg
+    pass
 
 
 @meta(icon='mdi-delete')
@@ -41,14 +34,11 @@ class ResourceUpdated(ResourceSignal):
     is emitted each time a resource attribute has been updated
     """
     def __init__(self, resource, attributes):
-        super(ResourceUpdated, self).__init__(resource)
-        self.payload = {
-            'attributes': attributes
-        }
+        super(ResourceUpdated, self).__init__(resource, attributes=attributes)
 
     @property
     def attributes(self):
-        return self.payload['attributes']
+        return self.data['attributes']
 
 
 class ResourceType(DBLink):
@@ -72,7 +62,7 @@ class ResourceType(DBLink):
     def check(self, r):
         if self.accepted_types is not None:
             for t in self.accepted_types:
-                if r.isTypeof(t):
+                if r.typeof(t):
                     break
             else:
                 raise ValueError('the Resource %s does not match the following types: %s' % (r, ','.join(
@@ -85,8 +75,8 @@ class ResourceType(DBLink):
                 raise ValueError("the resource %s does not throw the signal : %s" % (
                     r, get_definition_name(signal)))
 
-    def toSchema(self, context = None):
-        schema = super(ResourceType, self).toSchema(context)
+    def to_shema(self, context = None):
+        schema = super(ResourceType, self).to_shema(context)
         schema['$component'] = 'ething.resource'
         if self.accepted_types:
             schema['$onlyTypes'] = self.accepted_types
@@ -109,13 +99,13 @@ class ResourceTypeArray (Array):
 
 
 class RDict(Dict):
-    def toJson(self, value, context=None):
+    def to_json(self, value, context=None):
         """ do not show keys that starts with '_'"""
         j = {}
         for key in value:
             if not key.startswith('_'):
                 item_type = self.get_type_from_key(key)
-                j[key] = item_type.toJson(value[key], context)
+                j[key] = item_type.to_json(value[key], context)
         return j
 
 
@@ -184,7 +174,7 @@ class Resource(Entity):
         @attr('count', type=Number(), default=0)
         class Foo(Resource):
 
-            @setInterval(60) # every 60 secondes
+            @set_interval(60) # every 60 secondes
             def async_processing(self):
                 # this method is fired every minute
                 self.count += 1
@@ -249,7 +239,7 @@ class Resource(Entity):
         kwargs['source'] = self
         return self.core.notify(message, mode, persistant, **kwargs)
 
-    def isTypeof(self, typename):
+    def typeof(self, typename):
         """
         returns True if this instance derive from ``typename``
 
@@ -262,7 +252,7 @@ class Resource(Entity):
             typename = get_definition_name(typename)
         return typename in self.extends
 
-    def dispatchSignal(self, signal, *args, **kwargs):
+    def emit(self, signal, *args, **kwargs):
         """
         Dispatch a signal emitted by this resource.
 
@@ -274,13 +264,13 @@ class Resource(Entity):
             @throw(Signal)
             class Foo(Resource):
                 def bar(self):
-                self.dispatchSignal(MySignal())
+                self.emit(MySignal())
 
         :param signal: Either a signal instance or a string representing a signal type.
         :param args: Only used if a string was provided as signal. Any extra arguments to pass when instantiate the signal.
         :param kwargs: Only used if a string was provided as signal. Any extra arguments to pass when instantiate the signal.
         """
-        self.core.dispatchSignal(signal, *args, **kwargs)
+        self.core.emit(signal, *args, **kwargs)
 
     def children(self, filter=None):
         """
@@ -324,13 +314,13 @@ class Resource(Entity):
 
     def __db_remove__(self):
         self.log.info("Resource deleted : %s" % str(self))
-        self.core.dispatchSignal(ResourceDeleted(self))
+        self.core.emit(ResourceDeleted(self))
 
     def __db_save__(self, insert):
         if insert:
             if getattr(self, '__destroyed__', False):
                 raise Exception('this object was previously destroyed')
-            self.core.dispatchSignal(ResourceCreated(self))
+            self.core.emit(ResourceCreated(self))
             self.log.info("Resource created : %s" % str(self))
             return
 
@@ -368,7 +358,7 @@ class Resource(Entity):
 
         self.on_update(dirty_keys)
 
-        self.core.dispatchSignal(ResourceUpdated(self, dirty_keys))
+        self.core.emit(ResourceUpdated(self, dirty_keys))
 
     def on_update(self, dirty_keys):
         pass
@@ -387,8 +377,8 @@ class Resource(Entity):
         :return: :class:`ething.core.Table.Table` instance.
         """
         try:
-            table = self.core.findOne(
-                lambda r: r.createdBy == self and r.name == table_name and r.isTypeof('resources/Table'))
+            table = self.core.find_one(
+                lambda r: r.createdBy == self and r.name == table_name and r.typeof('resources/Table'))
 
             if not table:
                 # create it !

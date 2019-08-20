@@ -42,7 +42,7 @@ class OpenWeatherMapPlugin(Plugin):
 @attr('location', type=String(allow_empty=False), default=NO_VALUE, description='a city\'s name. See https://openweathermap.org/find')
 class OpenWeatherMapDevice(Thermometer, PressureSensor, HumiditySensor, Anemometer):
 
-    @scheduler.setInterval(REFRESH_INTERVAL)
+    @scheduler.set_interval(REFRESH_INTERVAL)
     def refresh(self):
         location = self.location
         if not location:

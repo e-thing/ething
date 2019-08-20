@@ -39,8 +39,8 @@ class SchedulerData(Array):
             **attributes
         )
 
-    def toSchema(self, context = None):
-        schema = super(SchedulerData, self).toSchema(context)
+    def to_shema(self, context = None):
+        schema = super(SchedulerData, self).to_shema(context)
         schema['$component'] = 'scheduler'
         return schema
 

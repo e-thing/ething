@@ -43,7 +43,7 @@ class spotify(Plugin):
     def setup(self):
         super(spotify, self).setup()
 
-        self._survey_task = self.core.scheduler.setInterval(REFRESH_TOKEN_SURVEY_INTERVAL, self._refresh_token_survey, name='spotify.refresh_token')
+        self._survey_task = self.core.scheduler.set_interval(REFRESH_TOKEN_SURVEY_INTERVAL, self._refresh_token_survey, name='spotify.refresh_token')
 
         # install specific http routes
         self._webserver_install()
@@ -140,7 +140,7 @@ class spotify(Plugin):
 
     def _refresh_token_survey(self):
         self.log.debug('verify refresh tokens ...')
-        accounts = self.core.find(lambda r: r.isTypeof('resources/SpotifyAccount'))
+        accounts = self.core.find(lambda r: r.typeof('resources/SpotifyAccount'))
         for account in accounts:
             if account._is_token_expired(offset=2 * REFRESH_TOKEN_SURVEY_INTERVAL):
                 account._refresh_access_token()

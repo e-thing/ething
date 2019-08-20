@@ -46,7 +46,7 @@ class RFLinkGateway(Device):
 
     def getNodes(self, filter=None):
         def _filter (r):
-            if r.createdBy == self and r.isTypeof('resources/RFLinkNode'):
+            if r.createdBy == self and r.typeof('resources/RFLinkNode'):
                 if filter:
                     return filter(r)
                 return True
@@ -57,13 +57,13 @@ class RFLinkGateway(Device):
     def getNode(self, filter):
 
         def _filter (r):
-            if r.createdBy == self and r.isTypeof('resources/RFLinkNode'):
+            if r.createdBy == self and r.typeof('resources/RFLinkNode'):
                 if filter:
                     return filter(r)
                 return True
             return False
 
-        return self.core.findOne(_filter)
+        return self.core.find_one(_filter)
 
     @method.arg('message', type=String(allow_empty=False))
     def sendMessage(self, message):

@@ -11,12 +11,8 @@ class BatteryLevelChanged(ResourceSignal):
     """
     is emitted each time the battery level changed
     """
-    def __init__(self, resource, new_value, old_value):
-        super(BatteryLevelChanged, self).__init__(resource)
-        self.payload = {
-            'battery': new_value,
-            'battery_old': old_value
-        }
+    def __init__(self, resource, new_value):
+        super(BatteryLevelChanged, self).__init__(resource, battery=new_value)
 
 
 @meta(icon='mdi-lan-connect')
@@ -81,7 +77,7 @@ class Device(Resource):
         class Foo(Device):
 
             # (optional) bind some method to the core.scheduler
-            @setInterval(30)
+            @set_interval(30)
             def read(self):
                 # this method will be called every 30 seconds during all the lifetime of this instance.
                 this.sensor_value = self._read_value_from_the_sensor()
@@ -117,14 +113,14 @@ class Device(Resource):
         super(Device, self).on_attr_update(attr, new_value, old_value)
 
         if attr == 'battery':
-            self.dispatchSignal(BatteryLevelChanged(self, new_value, old_value))
+            self.emit(BatteryLevelChanged(self, new_value))
         elif attr == 'connected':
             if new_value:
                 self.log.debug("device connected %s" % self)
-                self.dispatchSignal(DeviceConnected(self))
+                self.emit(DeviceConnected(self))
             else:
                 self.log.debug("device disconnected %s" % self)
-                self.dispatchSignal(DeviceDisconnected(self))
+                self.emit(DeviceDisconnected(self))
         elif attr == 'error':
             if new_value is not None:
                 self.log.error(new_value)
@@ -136,7 +132,7 @@ class Device(Resource):
                 self.lastSeenDate = utcnow()
 
         if not state and propagate:
-            for dev in self.children(lambda r: r.isTypeof(Device)):
+            for dev in self.children(lambda r: r.typeof(Device)):
                 dev.refresh_connect_state(state)
 
 

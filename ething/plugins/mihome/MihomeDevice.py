@@ -35,7 +35,7 @@ class MihomeDevice(with_metaclass(MihomeDeviceMetaClass, MihomeBase)):
     def _get_gateway(self):
         return self.createdBy
 
-    def processAttr(self, name, value):
+    def process_attr(self, name, value):
         pass  # to be implemented
 
     def _processData(self, response):
@@ -58,5 +58,5 @@ class MihomeDevice(with_metaclass(MihomeDeviceMetaClass, MihomeBase)):
                     self.voltage = voltage
                     self.battery = round(percent)
                 else:
-                    self.processAttr(k, value)
+                    self.process_attr(k, value)
 

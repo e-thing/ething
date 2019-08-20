@@ -22,7 +22,7 @@ class MihomeProtocol(Protocol):
         super(MihomeProtocol, self).connection_made()
         self._responseListeners = []
 
-        self.core.scheduler.setInterval(1, self.check_timeout, condition=lambda _: len(self._responseListeners)>0)
+        self.core.scheduler.set_interval(1, self.check_timeout, condition=lambda _: len(self._responseListeners)>0)
 
         self.search()
 
@@ -48,7 +48,7 @@ class MihomeProtocol(Protocol):
             # 1 - retrieve the device from the sid
             #
             if sid:
-                device = self.core.findOne(lambda r: r.isTypeof('resources/MihomeBase') and r.sid == sid)
+                device = self.core.find_one(lambda r: r.typeof('resources/MihomeBase') and r.sid == sid)
 
                 if not device and model is not None:
                     # try to create a new device from the incoming data !
@@ -69,7 +69,7 @@ class MihomeProtocol(Protocol):
                     else:
                         # concerning a device
 
-                        gateway = self.core.findOne(lambda r: r.isTypeof('resources/MihomeGateway') and r.ip == ip)
+                        gateway = self.core.find_one(lambda r: r.typeof('resources/MihomeGateway') and r.ip == ip)
 
                         if gateway:
 

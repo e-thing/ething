@@ -439,12 +439,12 @@ class RegItemBase (MutableMapping):
         d = data_type.set(d, context=context)
       return d
     
-    def toSchema(self, cls, **kwargs):
+    def to_shema(self, cls, **kwargs):
 
       data_type = self.get('type')
 
       if data_type:
-        schema = data_type.toSchema(context=kwargs)
+        schema = data_type.to_shema(context=kwargs)
       else:
         schema = {}
       
@@ -452,7 +452,7 @@ class RegItemBase (MutableMapping):
         try:
           d = self._make_default(cls, context=kwargs)
           if data_type:
-            d = data_type.toJson(d, context=kwargs)
+            d = data_type.to_json(d, context=kwargs)
           schema['default'] = d
         except Exception as e:
           # todo: print some warning somewhere
@@ -543,7 +543,7 @@ class Attribute (RegItemBase):
       
       data_type = self.get('type')
       if data_type:
-        val = data_type.toJson(val, context)
+        val = data_type.to_json(val, context)
       
       return val
     
@@ -620,7 +620,7 @@ class Attribute (RegItemBase):
     def __from_json__(self, val, context=None):
       data_type = self.get('type')
       if data_type:
-        val = data_type.fromJson(val, context)
+        val = data_type.from_json(val, context)
       return val
 
     def __str__(self):
@@ -708,14 +708,14 @@ def attr(name=None, **kwargs):
 
 default_alphabet = string.ascii_letters + string.digits
 
-def randomString(length=7, alphabet=default_alphabet):
+def random_string(length=7, alphabet=default_alphabet):
     """Generate a random string """
     return ''.join(random.choice(alphabet) for i in range(length))
 
 
 def uid(key='id', generator=None, **extra):
   if generator is None:
-    generator = randomString
+    generator = random_string
   
   def d(cls):
     attr(key, type=String(allow_empty=False), mode=READ_ONLY, default=lambda _: generator(), **extra)(cls)
@@ -951,7 +951,7 @@ class Method(RegItemBase):
       
       return arg_dict
 
-    def toSchema(self, **kwargs):
+    def to_shema(self, **kwargs):
         schema = {
             'type': 'function'
         }
@@ -969,7 +969,7 @@ class Method(RegItemBase):
             arg_type = arg.get('type')
 
             if arg_type:
-              arg_schema = arg_type.toSchema(context=kwargs)
+              arg_schema = arg_type.to_shema(context=kwargs)
             else:
               arg_schema = {}
 
@@ -980,7 +980,7 @@ class Method(RegItemBase):
               try:
                 default_value = arg._make_default(context=kwargs)
                 if arg_type:
-                  default_value = arg_type.toJson(default_value, context=kwargs)
+                  default_value = arg_type.to_json(default_value, context=kwargs)
                 arg_schema['default'] = default_value
               except Exception:
                 # todo: warn somehow
@@ -996,7 +996,7 @@ class Method(RegItemBase):
 
         return_type = self.get('return_type')
         if isinstance(return_type, Type):
-            schema['return'] = return_type.toSchema(context=kwargs)
+            schema['return'] = return_type.to_shema(context=kwargs)
         else:
             schema['return'] = return_type
 
@@ -1295,7 +1295,7 @@ def build_schema(cls, root=False, **kwargs):
     if mode == PRIVATE:
       continue
 
-    attr_schema = attribute.toSchema(cls, **kwargs)
+    attr_schema = attribute.to_shema(cls, **kwargs)
 
     if mode != READ_ONLY:
         if 'default' not in attr_schema:
@@ -1321,7 +1321,7 @@ def build_schema(cls, root=False, **kwargs):
           if (not flatted) and method.cls is not cls:
             continue
 
-          schema['methods'][method.name] = method.toSchema(**kwargs)
+          schema['methods'][method.name] = method.to_shema(**kwargs)
 
   if hasattr(cls, '__schema__'):
       schema = cls.__schema__(schema, context=kwargs)
@@ -1572,7 +1572,7 @@ def unserialize(cls, data=None, context=None):
   return create(cls, data, context, data_src='db')
 
 
-def toJson(obj, context=None):
+def to_json(obj, context=None):
   j = {}
   for attribute in list_registered_attr(obj):
     if attribute.get('mode') == PRIVATE:
@@ -1583,7 +1583,7 @@ def toJson(obj, context=None):
   return j
 
 
-def fromJson(cls, data, context=None):
+def from_json(cls, data, context=None):
   return create(cls, data, context, data_src='json')
 
 
@@ -1611,10 +1611,10 @@ class Type (with_metaclass(TypeMetaclass, object)):
   def get(self, value, context = None):
     return value
   
-  def toJson(self, value, context = None):
+  def to_json(self, value, context = None):
     return value
   
-  def fromJson(self, value, context = None):
+  def from_json(self, value, context = None):
     return value
   
   def serialize(self, value, context = None):
@@ -1623,7 +1623,7 @@ class Type (with_metaclass(TypeMetaclass, object)):
   def unserialize(self, value, context = None):
     return value
   
-  def toSchema(self, context = None):
+  def to_shema(self, context = None):
     s = {}
     for prop in self._attributes:
       s[prop] = self._attributes[prop]
@@ -1647,13 +1647,13 @@ class Class(Type):
   def serialize(self, value, context = None):
     return serialize(value, context)
 
-  def fromJson(self, data, context = None):
-    return fromJson(self.cls, data, context)
+  def from_json(self, data, context = None):
+    return from_json(self.cls, data, context)
 
-  def toJson(self, value, context = None):
-    return toJson(value, context)
+  def to_json(self, value, context = None):
+    return to_json(value, context)
   
-  def toSchema(self, context = None):
+  def to_shema(self, context = None):
     if context is None:
       context = {}
     return build_schema(self.cls, **context)
@@ -1761,7 +1761,7 @@ class Entity(with_metaclass(MetaReg, object)):
             self.__reg__.context['__transaction'] = t
 
     def __json__(self):
-        return toJson(self)
+        return to_json(self)
 
 
 def dbg_attr(obj):

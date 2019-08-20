@@ -19,7 +19,7 @@ def install(core, app, auth, **kwargs):
 
             if attr is not None:
 
-                apikey = fromJson(Apikey, attr, {
+                apikey = from_json(Apikey, attr, {
                     'core': core
                 })
 

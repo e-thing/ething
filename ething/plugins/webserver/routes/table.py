@@ -203,7 +203,7 @@ def install(core, app, auth, **kwargs):
             data = request.get_json()
 
             if data:
-                r.importData(data, args['invalid_field'], args['skip_error'])
+                r.import_data(data, args['invalid_field'], args['skip_error'])
                 return app.jsonify(r)
             else:
                 raise Exception('No data.')
@@ -295,7 +295,7 @@ def install(core, app, auth, **kwargs):
 
         if data:
 
-            r.replaceRow(args['q'], data, args['invalid_field'],
+            r.replace_row(args['q'], data, args['invalid_field'],
                          args['upsert'])
             return app.jsonify(r)
         else:
@@ -329,7 +329,7 @@ def install(core, app, auth, **kwargs):
         if app.etag_match(etag):
             return Response(status=304)
 
-        return app.set_etag(app.jsonify(r.computeStatistics(args['key'], args['q'])), etag)
+        return app.set_etag(app.jsonify(r.compute_statistics(args['key'], args['q'])), etag)
 
     table_cell_id_patch_args = {
         'invalid_field': fields.Str(validate=validate.OneOf(['rename', 'stop', 'skip', 'none']), missing='rename'),
@@ -344,7 +344,7 @@ def install(core, app, auth, **kwargs):
 
         if request.method == 'GET':
 
-            doc = r.getRow(doc_id)
+            doc = r.get_row(doc_id)
 
             if doc is None:
                 raise Exception(
@@ -361,7 +361,7 @@ def install(core, app, auth, **kwargs):
             data = request.get_json()
 
             if data:
-                doc = r.replaceRowById(doc_id, data, args['invalid_field'])
+                doc = r.replace_row_by_id(doc_id, data, args['invalid_field'])
                 if doc:
                     return app.jsonify(doc)
                 else:

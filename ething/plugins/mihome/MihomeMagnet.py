@@ -14,7 +14,7 @@ class MihomeMagnet(MihomeDevice, DoorSensor):
     def isvalid(cls, gateway, model):
         return model in ['magnet', 'sensor_magnet', 'sensor_magnet.aq2']
 
-    def processAttr(self, name, value):
+    def process_attr(self, name, value):
 
         if name == 'status':
             self.state = value == "open"

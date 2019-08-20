@@ -21,7 +21,7 @@ class YeelightProtocol(LineReader):
         super(YeelightProtocol, self).connection_made()
         self._pending_cmds.clear()
 
-        self.core.scheduler.setInterval(1, self.check_response_timeout)
+        self.core.scheduler.set_interval(1, self.check_response_timeout)
 
     def handle_line(self, line):
         self.log.debug('read: %s' % line)
@@ -187,7 +187,7 @@ class YeelightAdvertisementProtocol(Protocol):
         id = dev_info.get('id')
         model = dev_info.get('model')
 
-        device = self.core.findOne(lambda r: r.isTypeof('resources/YeelightDevice') and r.dev_id == id and r.model == model)
+        device = self.core.find_one(lambda r: r.typeof('resources/YeelightDevice') and r.dev_id == id and r.model == model)
 
         if not device:
             self.log.debug('new device : id = %s, model = %s' % (id, model))

@@ -4,7 +4,7 @@ from ething.core.utils.json import dumps
 import json
 
 
-def test_toJson():
+def test_json():
 
     obj = {
         'key1': 1,

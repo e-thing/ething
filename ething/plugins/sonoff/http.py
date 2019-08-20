@@ -23,7 +23,7 @@ class Sonoff_http(Relay):
         self._make_request('GET', '/cm?cmnd=Power%%20%s' % ('On' if state else 'Off'))
         self.state = state
 
-    @scheduler.setInterval(STATE_POLLING_PERIOD)
+    @scheduler.set_interval(STATE_POLLING_PERIOD)
     def updateState(self):
         try:
             r = self._make_request('GET', '/cm?cmnd=Power', timeout=2)

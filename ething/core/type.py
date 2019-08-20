@@ -24,11 +24,11 @@ class Nullable (Type):
   def get(self, value, context = None):
     return value if value is None else self._type.get(value, context)
   
-  def toJson(self, value, context = None):
-    return value if value is None else self._type.toJson(value, context)
+  def to_json(self, value, context = None):
+    return value if value is None else self._type.to_json(value, context)
   
-  def fromJson(self, value, context = None):
-    return value if value is None else self._type.fromJson(value, context)
+  def from_json(self, value, context = None):
+    return value if value is None else self._type.from_json(value, context)
   
   def serialize(self, value, context = None):
     return value if value is None else self._type.serialize(value, context)
@@ -36,14 +36,14 @@ class Nullable (Type):
   def unserialize(self, value, context = None):
     return value if value is None else self._type.unserialize(value, context)
   
-  def toSchema(self, context = None):
-    schema = super(Nullable, self).toSchema(context)
+  def to_shema(self, context = None):
+    schema = super(Nullable, self).to_shema(context)
 
     schema['anyOf'] = [
       {
         'type': 'null'
       },
-      self._type.toSchema(context)
+      self._type.to_shema(context)
     ]
 
     return schema
@@ -70,11 +70,11 @@ class OneOfBase (Type):
   def get(self, value, context = None):
     return self._discriminate(value, context).get(value, context)
 
-  def toJson(self, value, context = None):
-    return self._discriminate(value, context).toJson(value, context)
+  def to_json(self, value, context = None):
+    return self._discriminate(value, context).to_json(value, context)
 
-  def fromJson(self, value, context = None):
-    return self._discriminate(value, context).fromJson(value, context)
+  def from_json(self, value, context = None):
+    return self._discriminate(value, context).from_json(value, context)
 
   def serialize(self, value, context = None):
     return self._discriminate(value, context).serialize(value, context)
@@ -82,9 +82,9 @@ class OneOfBase (Type):
   def unserialize(self, value, context = None):
     return self._discriminate(value, context).unserialize(value, context)
 
-  def toSchema(self, context = None):
-    schema = super(OneOfBase, self).toSchema(context)
-    schema['oneOf'] = [t.toSchema(context) for t in self._types]
+  def to_shema(self, context = None):
+    schema = super(OneOfBase, self).to_shema(context)
+    schema['oneOf'] = [t.to_shema(context) for t in self._types]
     return schema
 
 
@@ -97,7 +97,7 @@ class Basetype(Type):
     self.validate(value, context)
     return value
   
-  def fromJson(self, value, context = None):
+  def from_json(self, value, context = None):
     self.validate(value, context)
     return value
 
@@ -114,8 +114,8 @@ class Scalar(Basetype):
         if not ( (value is None) or isinstance(value, bool) or isinstance(value, float) or isinstance(value, integer_types) or isinstance(value, string_types)):
             raise ValueError('not of the following types: null, number, string, boolean')
 
-    def toSchema(self, context = None):
-        schema = super(Scalar, self).toSchema(context)
+    def to_shema(self, context = None):
+        schema = super(Scalar, self).to_shema(context)
 
         schema['anyOf'] = [{
             'type': 'number'
@@ -140,8 +140,8 @@ class Null(Basetype):
         if value is not None:
             raise ValueError('not null')
 
-    def toSchema(self, context = None):
-        schema = super(Null, self).toSchema(context)
+    def to_shema(self, context = None):
+        schema = super(Null, self).to_shema(context)
         schema['type'] = 'null'
         return schema
 
@@ -165,8 +165,8 @@ class Number(Basetype):
       if value > self.max:
         raise ValueError('value %s > %s' % (str(value), str(self.max)))
   
-  def toSchema(self, context = None):
-    schema = super(Number, self).toSchema(context)
+  def to_shema(self, context = None):
+    schema = super(Number, self).to_shema(context)
     schema['type'] = 'number'
     if self.min is not None:
         schema['minimum'] = self.min
@@ -184,8 +184,8 @@ class Integer(Number):
       raise ValueError('not an integer')
     super(Integer, self).validate(value, context)
 
-  def toSchema(self, context = None):
-    schema = super(Integer, self).toSchema(context)
+  def to_shema(self, context = None):
+    schema = super(Integer, self).to_shema(context)
     schema['type'] = 'integer'
     return schema
 
@@ -200,8 +200,8 @@ class Boolean(Basetype):
     if not isinstance(value, bool):
       raise ValueError('not a boolean')
   
-  def toSchema(self, context = None):
-    schema = super(Boolean, self).toSchema(context)
+  def to_shema(self, context = None):
+    schema = super(Boolean, self).to_shema(context)
     schema['type'] = 'boolean'
     return schema
 
@@ -223,8 +223,8 @@ class Enum(Basetype):
       raise ValueError("must be one of the following values: %s." %
                         ','.join(str(e) for e in self.enum))
   
-  def toSchema(self, context = None):
-    schema = super(Enum, self).toSchema(context)
+  def to_shema(self, context = None):
+    schema = super(Enum, self).to_shema(context)
     schema['enum'] = self.enum
     if self.labels:
       schema['$labels'] = [self.labels[i] if i<len(self.labels) else str(self.enum[i]) for i in range(len(self.enum))]
@@ -280,8 +280,8 @@ class String(Basetype):
         raise ValueError(
           "the length must not be greater than %d" % self.maxLength)
   
-  def toSchema(self, context = None):
-    schema = super(String, self).toSchema(context)
+  def to_shema(self, context = None):
+    schema = super(String, self).to_shema(context)
     schema['type'] = 'string'
     if self.allow_empty:
       schema['minLength'] = 0
@@ -343,8 +343,8 @@ class Email(String):
             return value
         raise ValueError(message)
   
-  def toSchema(self, context = None):
-    schema = super(Email, self).toSchema(context)
+  def to_shema(self, context = None):
+    schema = super(Email, self).to_shema(context)
     schema['type'] = 'string'
     schema['format'] = 'email'
     return schema
@@ -356,8 +356,8 @@ class Text(String):
     super(Text, self).__init__(**attributes)
     self.lang = lang or 'text'
 
-  def toSchema(self, context = None):
-    schema = super(Text, self).toSchema(context)
+  def to_shema(self, context = None):
+    schema = super(Text, self).to_shema(context)
     schema['$lang'] = self.lang
     schema['$component'] = 'editor'
     return schema
@@ -414,30 +414,30 @@ class Date(Basetype):
     value = self._sanitize(value, context)
     return super(Date, self).set(value, context)
   
-  def toSchema(self, context = None):
-    schema = super(Date, self).toSchema(context)
+  def to_shema(self, context = None):
+    schema = super(Date, self).to_shema(context)
     schema['type'] = 'string'
     schema['format'] = 'date-time'
     return schema
   
-  def toJson(self, value, context = None):
+  def to_json(self, value, context = None):
     if not self._ignore_tz:
       to_tz = self._to_tz(context)
       if to_tz is not None:
         value = value.astimezone(to_tz)
     return value.isoformat()
   
-  def fromJson(self, value, context = None):
+  def from_json(self, value, context = None):
     value = self._sanitize(value, context)
-    return super(Date, self).fromJson(value, context)
+    return super(Date, self).from_json(value, context)
   
 
 class Color(String):
   def __init__(self, **attributes):
     super(Color, self).__init__(regex = '^#[0-9a-fA-F]{6}$', **attributes)
 
-  def toSchema(self, context = None):
-    schema = super(Color, self).toSchema(context)
+  def to_shema(self, context = None):
+    schema = super(Color, self).to_shema(context)
     schema['format'] = 'color'
     return schema
 
@@ -446,8 +446,8 @@ class Range(Number):
   def __init__(self, min, max, **attributes):
     super(Range, self).__init__(min=min, max=max, **attributes)
 
-  def toSchema(self, context = None):
-    schema = super(Range, self).toSchema(context)
+  def to_shema(self, context = None):
+    schema = super(Range, self).to_shema(context)
     schema['$component'] = 'range'
     return schema
 
@@ -456,8 +456,8 @@ class Host(String):
   def __init__(self, **attributes):
     super(Host, self).__init__(allow_empty=False, **attributes)
 
-  def toSchema(self, context = None):
-    schema = super(Host, self).toSchema(context)
+  def to_shema(self, context = None):
+    schema = super(Host, self).to_shema(context)
     schema['format'] = 'host'
     schema['$component'] = 'host'
     return schema
@@ -467,8 +467,8 @@ class SerialPort(String):
   def __init__(self, **attributes):
     super(SerialPort, self).__init__(allow_empty=False, **attributes)
 
-  def toSchema(self, context = None):
-    schema = super(SerialPort, self).toSchema(context)
+  def to_shema(self, context = None):
+    schema = super(SerialPort, self).to_shema(context)
     schema['$component'] = 'serial-port'
     return schema
 
@@ -477,8 +477,8 @@ class BluetoothInterface(Integer):
   def __init__(self, **attributes):
     super(BluetoothInterface, self).__init__(min=0, max=9, **attributes)
 
-  def toSchema(self, context = None):
-    schema = super(BluetoothInterface, self).toSchema(context)
+  def to_shema(self, context = None):
+    schema = super(BluetoothInterface, self).to_shema(context)
     schema['$component'] = 'bluetooth-interface'
     return schema
 
@@ -530,7 +530,7 @@ class AllOfItem(Type):
       raise ValueError('invalid type')
 
     if self._type is not None:
-      v = self._type.fromJson(value.get('value'), context)
+      v = self._type.from_json(value.get('value'), context)
     else:
       if 'value' in value:
         raise ValueError('invalid value')
@@ -541,20 +541,20 @@ class AllOfItem(Type):
   def get(self, value, context = None):
     return value
 
-  def toJson(self, value, context = None):
+  def to_json(self, value, context = None):
     j = {
       'type': self._name
     }
     if self._type is not None:
-      j['value'] = self._type.toJson(value.value, context)
+      j['value'] = self._type.to_json(value.value, context)
     return j
 
-  def fromJson(self, value, context = None):
+  def from_json(self, value, context = None):
     if value.get('type') != self._name:
       raise ValueError('invalid type')
 
     if self._type is not None:
-      v = self._type.fromJson(value.get('value'), context)
+      v = self._type.from_json(value.get('value'), context)
     else:
       if 'value' in value:
         raise ValueError('invalid value')
@@ -577,8 +577,8 @@ class AllOfItem(Type):
       v = None
     return self._data_cls(self._name, self._type, v, context)
 
-  def toSchema(self, context = None):
-    schema = super(AllOfItem, self).toSchema(context)
+  def to_shema(self, context = None):
+    schema = super(AllOfItem, self).to_shema(context)
     schema.update({
       'type': 'object',
       'properties': {
@@ -591,7 +591,7 @@ class AllOfItem(Type):
       'additionalProperties': False
     })
     if self._type is not None:
-      schema['properties']['value'] = self._type.toSchema(context)
+      schema['properties']['value'] = self._type.to_shema(context)
       schema['required'].append('value')
     return schema
 
@@ -704,18 +704,18 @@ class Array(Type):
     # value is a M_Array
     return [self.item_type.serialize(el, context) for el in value._list]
   
-  def fromJson(self, data, context = None):
+  def from_json(self, data, context = None):
       self.validate(data, context)
-      return M_Array(self, [self.item_type.fromJson(el, context) for el in data], context)
+      return M_Array(self, [self.item_type.from_json(el, context) for el in data], context)
   
-  def toJson(self, value, context = None):
+  def to_json(self, value, context = None):
     # value is a M_Array
-    return [self.item_type.toJson(el, context) for el in value._list]
+    return [self.item_type.to_json(el, context) for el in value._list]
   
-  def toSchema(self, context = None):
-    schema = super(Array, self).toSchema(context)
+  def to_shema(self, context = None):
+    schema = super(Array, self).to_shema(context)
     schema['type'] = 'array'
-    schema['items'] = self.item_type.toSchema(context)
+    schema['items'] = self.item_type.to_shema(context)
     if self.min_len is not None:
       schema['minItems'] = self.min_len
     if self.max_len is not None:
@@ -877,31 +877,31 @@ class Dict(Type):
       j[key] = item_type.serialize(value._store[key], context)
     return j
   
-  def fromJson(self, data, context = None):
+  def from_json(self, data, context = None):
     self.validate(data, context)
     j = {}
     for key in data:
       item_type = self.get_type_from_key(key)
-      j[key] = item_type.fromJson(data.get(key), context)
+      j[key] = item_type.from_json(data.get(key), context)
     return M_Dict(self, j, context) # j
   
-  def toJson(self, value, context = None):
+  def to_json(self, value, context = None):
     j = {}
     for key in value._store:
       item_type = self.get_type_from_key(key)
-      j[key] = item_type.toJson(value._store[key], context)
+      j[key] = item_type.to_json(value._store[key], context)
     return j
   
-  def toSchema(self, context = None):
-    schema = super(Dict, self).toSchema(context)
+  def to_shema(self, context = None):
+    schema = super(Dict, self).to_shema(context)
     schema['type'] = 'object'
-    schema['additionalProperties'] = self.allow_extra if isinstance(self.allow_extra, bool) else self.allow_extra.toSchema(context)
+    schema['additionalProperties'] = self.allow_extra if isinstance(self.allow_extra, bool) else self.allow_extra.to_shema(context)
     required = []
     schema['properties'] = OrderedDict()
     for key in self.mapping:
       if key not in self.optionals:
           required.append(key)
-      item_schema = self.mapping[key].toSchema(context)
+      item_schema = self.mapping[key].to_shema(context)
       if self.mapping_schema[key]:
         item_schema.update(self.mapping_schema[key])
       schema['properties'][key] = item_schema

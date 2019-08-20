@@ -91,7 +91,7 @@ class MySensorsProtocol(LineReader):
         super(MySensorsProtocol, self).connection_made()
         self._pendingMessages = []
 
-        self.core.scheduler.setInterval(1, self.check_timeout)
+        self.core.scheduler.set_interval(1, self.check_timeout)
 
     def createNode(self, nodeId):
         gateway = self.gateway

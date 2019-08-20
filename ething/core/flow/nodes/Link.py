@@ -10,8 +10,8 @@ class NodeFlow (Dict):
             'node': String(allow_empty=False),
         }, **attributes)
 
-    def toSchema(self, context = None):
-        schema = super(NodeFlow, self).toSchema(context)
+    def to_shema(self, context = None):
+        schema = super(NodeFlow, self).to_shema(context)
         schema['$component'] = 'ething.flow.node'
         schema['$filter'] = 'nodes/InputLink'
         return schema
@@ -26,8 +26,8 @@ class NodeFlowList (Array):
         }), **attributes)
         self.filter = filter
 
-    def toSchema(self, context = None):
-        schema = super(NodeFlowList, self).toSchema(context)
+    def to_shema(self, context = None):
+        schema = super(NodeFlowList, self).to_shema(context)
         schema['$component'] = 'ething.flow.node'
         if self.filter:
             schema['$filter'] = self.filter
@@ -44,7 +44,7 @@ class OutputLink(Node):
 
         current_flow_id = self.flow.id
         current_node_id = self.id
-        flows = self.flow.core.find(lambda r: r.isTypeof('resources/Flow'))
+        flows = self.flow.core.find(lambda r: r.typeof('resources/Flow'))
         targets = self.targets
 
 

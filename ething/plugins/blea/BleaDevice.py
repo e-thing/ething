@@ -26,7 +26,7 @@ class BleaDevice(Device):
         core = gateway.core
         
         # does the device already exist !
-        device = core.findOne(lambda r: r.isTypeof('resources/BleaDevice') and r.mac == mac)
+        device = core.find_one(lambda r: r.typeof('resources/BleaDevice') and r.mac == mac)
         
         if not device:
             if gateway.learning:

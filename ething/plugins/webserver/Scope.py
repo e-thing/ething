@@ -54,7 +54,7 @@ class ScopeType(String):
         if not validate(value):
             raise ValueError('not a valid scope')
 
-    def toSchema(self, context = None):
-        s = super(ScopeType, self).toSchema(context)
+    def to_shema(self, context = None):
+        s = super(ScopeType, self).to_shema(context)
         s['$component'] = 'scope'
         return s

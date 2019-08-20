@@ -15,7 +15,7 @@ def test_scheduler():
     def increase():
         g['i'] += 1
 
-    scheduler.setInterval(0.5, increase)
+    scheduler.set_interval(0.5, increase)
 
     tf = time.time() + 3.2
     while time.time() < tf:

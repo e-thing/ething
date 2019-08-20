@@ -180,7 +180,7 @@ def test_nested():
         })
     })
 
-    print(json.dumps(toJson(e), sort_keys=True, indent=2))
+    print(json.dumps(to_json(e), sort_keys=True, indent=2))
 
     assert is_dirty(e) is False
     assert is_dirty(e.nested) is False
@@ -210,7 +210,7 @@ def test_nested():
         'id': 5
     })
 
-    print(json.dumps(toJson(f), sort_keys=True, indent=2))
+    print(json.dumps(to_json(f), sort_keys=True, indent=2))
 
     assert is_dirty(f) is False
     assert is_dirty(f.nested) is False
@@ -220,7 +220,7 @@ def test_nested():
     assert is_dirty(f) is True
     assert is_dirty(f.nested) is True
     assert is_dirty(f.nested[0]) is True
-    print(json.dumps(toJson(f), sort_keys=True, indent=2))
+    print(json.dumps(to_json(f), sort_keys=True, indent=2))
 
     clean(f)
     assert is_dirty(f) is False
