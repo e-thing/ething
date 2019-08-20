@@ -10,7 +10,19 @@ import copy
 from abc import ABCMeta, abstractmethod
 
 
-_LOGGER = logging.getLogger('ething.flow')
+_LOGGER = logging.getLogger('flow')
+
+
+class NodeLoggerAdapter(logging.LoggerAdapter):
+
+    def __init__(self, node):
+        super(NodeLoggerAdapter, self).__init__(_LOGGER, {
+            'node_id': node.id,
+            'node_type': type(node).__name__,
+        })
+
+    def process(self, msg, kwargs):
+        return '[%s:%s] %s' % (self.extra['node_type'], self.extra['node_id'], msg), kwargs
 
 
 id_types = string_types + integer_types
@@ -393,7 +405,7 @@ class Node(with_metaclass(ABCMeta, object)):
     def __init__(self, flow=None, id=None, stop_on_error=False, **other):
         self._flow = flow
         self._id = id or ShortId.generate()
-        self._logger = logging.getLogger('ething.flow.%s' % self._id)
+        self._logger = NodeLoggerAdapter(self)
         self._t = {}
         self._emitted = False
         self._stop_on_error = stop_on_error

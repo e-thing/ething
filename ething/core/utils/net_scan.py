@@ -11,7 +11,7 @@ from platform import system as system_name  # Returns the system/OS name
 import logging
 
 
-# _LOGGER = logging.getLogger('ething.net_scan')
+# _LOGGER = logging.getLogger('net_scan')
 
 
 def get_my_ip():

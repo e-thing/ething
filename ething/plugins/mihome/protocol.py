@@ -30,7 +30,7 @@ class MihomeProtocol(Protocol):
     def data_received(self, from_tupple):
         data, addr = from_tupple
 
-        self.log.debug("Mihome: receive data from %s : %s" % (str(addr), data))
+        self.log.debug("Mihome: receive data from %s : %s", str(addr), data)
 
         data = data.decode("utf-8")
         ip = addr[0]
@@ -133,7 +133,7 @@ class MihomeProtocol(Protocol):
 
         if self.transport.is_open:
 
-            self.log.debug("command send %s" % str(command))
+            self.log.debug("command send %s", str(command))
 
             try:
                 self.transport.write(json.dumps(command).encode("utf-8"), (ip, port))
@@ -173,7 +173,7 @@ class MihomeProtocol(Protocol):
                 self._responseListeners.pop(i)
                 i -= 1
 
-                self.log.debug("command timeout for : %s" % str(responseListener.command.get('cmd')))
+                self.log.debug("command timeout for : %s", str(responseListener.command.get('cmd')))
 
                 responseListener.reject('response timeout')
 

@@ -16,8 +16,6 @@ import logging
 import time
 
 
-LOGGER = logging.getLogger("ething.zigate")
-
 
 PERSISTENT_FILE = os.path.abspath(os.path.join(USER_DIR, 'zigate.json'))
 
@@ -326,14 +324,14 @@ class ZigateBaseGateway(Device):
 
 class WrapperConnection(BaseTransport):
 
-    def __init__(self, zigate_instance, transport):
+    def __init__(self, zigate_instance, transport, logger=None):
         BaseTransport.__init__(self)
         self._running = False
         self.zigate_instance = zigate_instance
         self.gateway = zigate_instance.gateway
         self.core = zigate_instance.gateway.core
         self.transport = transport
-        self.log = LOGGER
+        self.log = logger or logging.getLogger("zigate_transport")
         self._is_open = False
         self.reconnect_delay = 15
 
@@ -411,7 +409,7 @@ class ZigateSerial(zigate.ZiGate):
 
     def setup_connection(self):
         if self.connection is None:
-            self.connection = WrapperConnection(self, transport=SerialTransport(self._port, 115200))
+            self.connection = WrapperConnection(self, transport=SerialTransport(self._port, 115200), logger=self.gateway.log)
 
 
 class ZigateWifi(zigate.ZiGateWiFi):
@@ -421,7 +419,7 @@ class ZigateWifi(zigate.ZiGateWiFi):
 
     def setup_connection(self):
         if self.connection is None:
-            self.connection = WrapperConnection(self, transport=NetTransport(self._host, self._port))
+            self.connection = WrapperConnection(self, transport=NetTransport(self._host, self._port), logger=self.gateway.log)
 
 
 @attr('port', type=SerialPort(), description="The serial port name.")

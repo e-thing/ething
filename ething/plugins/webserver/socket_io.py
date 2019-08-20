@@ -1,5 +1,11 @@
 # coding: utf-8
 from flask_socketio import SocketIO
+import logging
+
+
+# too verbose
+logging.getLogger("socketio").setLevel(logging.WARNING)
+logging.getLogger("engineio").setLevel(logging.WARNING)
 
 
 def patch_socketio():

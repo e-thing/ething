@@ -52,7 +52,7 @@ def pingable(attr='host', interval=PING_DEFAULT_INTERVAL):
                         self.log.error('ping() raises an exception: %s' % str(e))
                         return False
 
-                self.log.debug('ping %s, online=%s' % (host, online))
+                self.log.debug('ping %s, online=%s', host, online)
 
             with self:
                 self.refresh_connect_state(online)

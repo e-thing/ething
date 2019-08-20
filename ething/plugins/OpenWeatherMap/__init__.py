@@ -65,7 +65,7 @@ class OpenWeatherMapDevice(Thermometer, PressureSensor, HumiditySensor, Anemomet
                     with self:
                         self.refresh_connect_state(True)
 
-                        self.log.debug('data read: %s' % (json.dumps(data)))
+                        self.log.debug('data read: %s', json.dumps(data))
 
                         main = data.get('main', {})
 

@@ -11,7 +11,8 @@ else:
     from zigate.core import LOGGER
     import logging
 
-    LOGGER.setLevel(logging.DEBUG)
+    # reduce the verbosity
+    LOGGER.setLevel(logging.INFO)
 
 
 if zigate_lib_imported:

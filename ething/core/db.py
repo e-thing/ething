@@ -12,7 +12,7 @@ import logging
 import re
 
 
-LOGGER = logging.getLogger('ething.db')
+LOGGER = logging.getLogger('db')
 
 
 class Driver_Base(object):
@@ -921,7 +921,7 @@ class OS_item(object):
         finally:
             self._saving.discard(id)
 
-    LOGGER.debug('[%s] saving %s' % (self._cls.__name__, obj))
+    # LOGGER.debug('[%s] saving %s' % (self._cls.__name__, obj))
 
     # save the ref
     self._ref[id] = obj

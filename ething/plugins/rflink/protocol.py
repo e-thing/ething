@@ -36,7 +36,7 @@ class RFLinkProtocol(LineReader):
     #     20;06;NewKaku;ID=008440e6;SWITCH=1;CMD=OFF;
     #     20;02;VER=1.1;REV=46;BUILD=0c;
     def handle_line(self, line):
-        self.log.debug('read: %s' % line)
+        self.log.debug('read: %s', line)
 
         gateway = self.gateway
 
@@ -144,7 +144,7 @@ class RFLinkProtocol(LineReader):
     # $waitResponse (optional) true|false wait for a response or not
     def send(self, message, done = None, err = None, response = None):
 
-        self.log.debug("RFLink: send message '%s'" % message)
+        self.log.debug("RFLink: send message '%s'", message)
 
         result = Result(response, message, done = done, err = err)
 

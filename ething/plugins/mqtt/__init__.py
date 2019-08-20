@@ -193,7 +193,7 @@ class MqttPublish(Node):
                 'password': self.password
             }
 
-        self.log.debug("publish: topic=%s hostname=%s port=%s" % (self.topic, self.hostname, self.port))
+        self.log.debug("publish: topic=%s hostname=%s port=%s", self.topic, self.hostname, self.port)
 
         if not isinstance(_payload, string_types):
             _payload = json.dumps(_payload)

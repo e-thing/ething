@@ -10,7 +10,7 @@ from queue import Queue, Empty
 class SignalDispatcher(object):
 
     def __init__(self):
-        self.log = logging.getLogger('ething.SignalDispatcher')
+        self.log = logging.getLogger('signaldispatcher')
 
         self.r_lock = threading.RLock()
 

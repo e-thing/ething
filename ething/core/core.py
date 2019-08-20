@@ -9,11 +9,12 @@ from .version import __version__
 from .plugin import search_plugin_cls, list_registered_plugins
 from .scheduler import Scheduler
 from .Signal import Signal
+from .utils import get_info
 from .utils.ObjectPath import generate_filter, patch_all
 from .Resource import Resource
 from .Process import Process, Manager as ProcessManager
 from .flow import generate_event_nodes
-from .env import USER_DIR
+from .env import USER_DIR, LOG_FILE
 from .notification import *
 from functools import wraps
 import collections
@@ -38,7 +39,7 @@ class _CoreScheduler(Scheduler):
             if hasattr(task, '_p'):
                 p = self.core.process_manager.get(task._p)
                 if p and p.is_running:
-                    self.log.debug('task "%s" already running: skipped' % task.name)
+                    self.log.debug('task "%s" already running: skipped', task.name)
                     return
 
         task._p = self.core.process_manager.attach(Process(name=task.name, target=task.target, args=task.args, kwargs=task.kwargs, parent=task.instance)).id
@@ -113,16 +114,21 @@ class Core(object):
         self.plugins = list()
         self.debug = debug
 
-        if log_level is None:
-            log_level = logging.DEBUG if debug else logging.INFO
-
         self.log = logger or logging.getLogger('ething')
-        self.log.setLevel(log_level)
 
-        self.log.info('USER_DIR = %s', USER_DIR)
+        self.log.info('USER_DIR   : %s', USER_DIR)
+        self.log.info('LOG_FILE   : %s', LOG_FILE)
+        info = get_info(self)
+        self.log.info("ETHING     : version=%s", info.get('VERSION'))
+        python_info = info.get('python', {})
+        self.log.info("PYTHON     : version=%s type=%s",
+                    python_info.get('version'), python_info.get('type'))
+        self.log.info("PYTHON_EXE : %s", python_info.get('executable'))
+        platform_info = info.get('platform', {})
+        self.log.info("PLATFORM   : %s", platform_info.get('name'))
+        self.log.info("SYSTEM     : %s", platform_info.get('version'))
 
-        if debug:
-            self.log.info('debug mode enabled')
+        self.log.info("DEBUG      : %s", debug)
 
         self.signalDispatcher = SignalDispatcher()
         self.process_manager = ProcessManager(start=False)
@@ -171,7 +177,7 @@ class Core(object):
 
         for p in self.plugins:
             if p.name == plugin_name:
-                self.log.debug('plugin %s: already loaded' % plugin_name)
+                self.log.debug('plugin %s: already loaded', plugin_name)
                 return p
 
         # instanciate:

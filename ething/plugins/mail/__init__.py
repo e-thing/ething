@@ -37,5 +37,5 @@ class SendEmail(Node):
         mail_plugin = self.core.get_plugin('mail')
         mailer = SmtpMail(host=mail_plugin.host, port=mail_plugin.port, user=mail_plugin.user, password=mail_plugin.password)
         mailer.send(subject=subject, message=message, to=to)
-        self.log.debug('email "%s" send to %s' % (subject, to))
+        self.log.debug('email "%s" send to %s', subject, to)
 

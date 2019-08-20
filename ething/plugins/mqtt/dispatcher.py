@@ -93,7 +93,7 @@ class MqttDispatcherService(Process):
 
         payload = dumps(signal)
 
-        self.log.debug("publish topic=%s" % topic)
+        self.log.debug("publish topic=%s", topic)
 
         self._mqttClient.publish(topic, payload, 0, True)
 

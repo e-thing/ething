@@ -51,11 +51,11 @@ class SSHPlugin(Plugin):
 
         @socketio.on('connect', namespace='/ssh')
         def client_connect():
-            self.log.debug('Client connected %s' % request.sid)
+            self.log.debug('Client connected %s', request.sid)
 
         @socketio.on('disconnect', namespace='/ssh')
         def client_disconnect():
-            self.log.debug('Client disconnected %s' % request.sid)
+            self.log.debug('Client disconnected %s', request.sid)
             self.interactive_shell_manager.leave(request.sid)
 
         @socketio.on('open', namespace='/ssh')
@@ -74,7 +74,7 @@ class SSHPlugin(Plugin):
                 shell = Interactive_Shell(device, id=shell_id)
                 resume = False
 
-            self.log.debug('ssh open, client %s , shell %s , resume=%s' % (client_id, shell, resume))
+            self.log.debug('ssh open, client %s , shell %s , resume=%s', client_id, shell, resume)
 
             @copy_current_request_context
             def on_data(data):
@@ -108,7 +108,7 @@ class SSHPlugin(Plugin):
 
         @socketio.on('close', namespace='/ssh')
         def close_interactive_shell(data):
-            self.log.debug('ssh close, client %s' % (request.sid))
+            self.log.debug('ssh close, client %s', request.sid)
 
             shell_id = data.get('id')
             shell = self.interactive_shell_manager.get(shell_id)
@@ -117,7 +117,7 @@ class SSHPlugin(Plugin):
 
         @socketio.on('detach', namespace='/ssh')
         def detach_interactive_shell(data):
-            self.log.debug('ssh detach, client %s' % (request.sid))
+            self.log.debug('ssh detach, client %s', request.sid)
 
             shell_id = data.get('id')
             shell = self.interactive_shell_manager.get(shell_id)
@@ -237,7 +237,7 @@ class Interactive_Shell(Process):
         host = self.device.host
         port = self.device.port
 
-        self.log.debug('opening %s:%s ...' % (host, port))
+        self.log.debug('opening %s:%s ...', host, port)
 
         ssh = paramiko.SSHClient()
         ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
@@ -245,7 +245,7 @@ class Interactive_Shell(Process):
         ssh.connect(
             host, port, username=self.device.auth['user'], password=self.device.auth['password'])
 
-        self.log.debug('opened %s:%s ...' % (host, port))
+        self.log.debug('opened %s:%s ...', host, port)
 
         transport = ssh.get_transport()
         self.session = transport.open_session()
@@ -262,7 +262,7 @@ class Interactive_Shell(Process):
 
     def send(self, data):
         if self.session:
-            self.log.debug('send data = %s' % str(data))
+            self.log.debug('send data = %s', str(data))
             return self.session.send(data)
 
     def close(self):
@@ -290,7 +290,7 @@ class Interactive_Shell(Process):
                 # closed by server
                 self.log.debug('closed by server')
                 return False
-            self.log.debug('rec data = %s' % str(data))
+            self.log.debug('rec data = %s', str(data))
 
             self.buffer += data
             if len(self.buffer) > self.BUFFER_SIZE:

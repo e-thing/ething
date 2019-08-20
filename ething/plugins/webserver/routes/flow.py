@@ -81,7 +81,7 @@ def install(core, app, auth, **kwargs):
 
     @app.socketio.on('connect', namespace='/flow')
     def client_connect():
-        app.log.debug('[flow] Client connected %s' % request.sid)
+        app.log.debug('[flow] Client connected %s', request.sid)
 
     @app.socketio.on('disconnect', namespace='/flow')
     def client_disconnect():
@@ -96,7 +96,7 @@ def install(core, app, auth, **kwargs):
             d.destroy()
             _debuggers.remove(d)
 
-        app.log.debug('[flow] Client disconnected %s' % request.sid)
+        app.log.debug('[flow] Client disconnected %s', request.sid)
 
     @app.socketio.on('dbg_open', namespace='/flow')
     def open_debugger(data):

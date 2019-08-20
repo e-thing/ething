@@ -26,7 +26,7 @@ class Mijia(BleaDevice, Thermometer, HumiditySensor):
                 batteryData = bytearray(connector.read_handle(0x18)) # battery
                 battery = batteryData[0]
 
-                self.log.debug('read battery:%s' % (battery))
+                self.log.debug('read battery:%s', battery)
 
                 with self:
                     self.refresh_connect_state(True)
@@ -44,7 +44,7 @@ class Mijia(BleaDevice, Thermometer, HumiditySensor):
             temperature = float(m.group(1))
             humidity = float(m.group(2))
 
-            self.log.debug('read temperature:%s humidity:%s' % (temperature, humidity))
+            self.log.debug('read temperature:%s humidity:%s', temperature, humidity)
 
             with self:
                 self.temperature = temperature
@@ -55,4 +55,4 @@ class Mijia(BleaDevice, Thermometer, HumiditySensor):
                     'temperature': temperature
                 })
         else:
-            self.log.debug('unknown handle %X' % handle)
+            self.log.debug('unknown handle %X', handle)

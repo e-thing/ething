@@ -81,7 +81,7 @@ class FlaskApp(Flask):
         dict_merge(self._config, config if config is not None else dict())
 
         if logger is None:
-            self.log = logging.getLogger("ething.FlaskApp")
+            self.log = logging.getLogger("webserver")
         else:
             self.log = logger
 
@@ -112,6 +112,8 @@ class FlaskApp(Flask):
         socketio = SocketIO()
         socketio.init_app(
             self, async_mode='gevent',
+            logger=False,
+            engineio_logger=False
             # logger=self.debug,
             # engineio_logger=self.debug
         )

@@ -19,7 +19,7 @@ def disconnect(self):
 Peripheral.disconnect = disconnect
 
 
-_LOGGER = logging.getLogger('ething.blea.connector')
+_LOGGER = logging.getLogger('blea.connector')
 RETRY_LIMIT = 3
 RETRY_DELAY = 0.1
 

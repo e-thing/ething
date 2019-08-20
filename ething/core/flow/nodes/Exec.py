@@ -29,7 +29,7 @@ class Exec(Node):
 
         args = shlex.split(cmd)
 
-        self.log.debug('execute "%s"' % cmd)
+        self.log.debug('execute "%s"', cmd)
 
         p = subprocess.Popen(args, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 

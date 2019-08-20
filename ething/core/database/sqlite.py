@@ -2,7 +2,7 @@
 
 from ..db import Driver_Base, LOGGER
 from ..env import USER_DIR
-import threading #from ..utils.lock import SecureLock # todo
+import threading
 from ..green import make_it_green
 import os
 import json

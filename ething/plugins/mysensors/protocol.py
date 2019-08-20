@@ -139,7 +139,7 @@ class MySensorsProtocol(LineReader):
         return sensor
 
     def handle_line(self, line):
-        self.log.debug('read: %s' % line)
+        self.log.debug('read: %s', line)
 
         message = Message.parse(line)
 
@@ -205,8 +205,8 @@ class MySensorsProtocol(LineReader):
 
                             if sensor:
 
-                                self.log.debug("MySensors: set value nodeId=%d sensorId=%d valueType=%d value=%s" % (
-                                    nodeId, sensorId, message.subType, message.payload))
+                                self.log.debug("MySensors: set value nodeId=%d sensorId=%d valueType=%d value=%s",
+                                    nodeId, sensorId, message.subType, message.payload)
 
                                 datatype = valueTypeStr(message.subType)
 
@@ -405,7 +405,7 @@ class MySensorsProtocol(LineReader):
 
     def send(self, message, smartSleep=None, done=None, err=None, response=None):
 
-        self.log.debug("message send smartSleep=%s msg=%s" % (str(smartSleep), message))
+        self.log.debug("message send smartSleep=%s msg=%s", str(smartSleep), message)
 
         result = Result(self, message, done = done, err = err, smartSleep=smartSleep, response=response)
 

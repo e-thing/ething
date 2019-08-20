@@ -168,7 +168,7 @@ class Manager(object):
         self._runner_cls = runner_cls or self.RUNNER
         if self._runner_cls is None:
             raise Exception('no runner class defined')
-        self._log = log or logging.getLogger("ething.processes")
+        self._log = log or logging.getLogger("processes")
 
     @property
     def log(self):
@@ -355,6 +355,17 @@ class Manager(object):
         return j
 
 
+class ProcessLoggerAdapter(logging.LoggerAdapter):
+
+    def __init__(self, process):
+        super(ProcessLoggerAdapter, self).__init__(logging.getLogger(process.name), {
+            'process_id': process.id,
+        })
+
+    def process(self, msg, kwargs):
+        return '[%s] %s' % (self.extra['process_id'], msg), kwargs
+
+
 class Process(object):
     """
 
@@ -403,7 +414,7 @@ class Process(object):
         :param id: a specific id. Must be id. If not provided, an id will be auto generated.
         """
         self._id = id or ShortId.generate()
-        self._name = name or getattr(target, '__name__', None) or getattr(loop, '__name__', None) or ('process_%s' % self._id)
+        self._name = name or getattr(target, '__name__', None) or getattr(loop, '__name__', None) or type(self).__name__ # ('process_%s' % self._id)
 
         self.parent = parent
 
@@ -420,7 +431,7 @@ class Process(object):
         self.result = None
         self.exception = None
 
-        self._log = log or logging.getLogger("ething.%s" % self._name)
+        self.log = log or ProcessLoggerAdapter(self)
 
         self.manager = manager
 
@@ -438,6 +449,10 @@ class Process(object):
     @property
     def log(self):
         return self._log
+
+    @log.setter
+    def log(self, log):
+        self._log = log
 
     @property
     def parent(self):

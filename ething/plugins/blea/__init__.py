@@ -55,7 +55,7 @@ if bluepy_imported:
 
                     init_iface(iface)
 
-                    self.log.debug("BLEA: start scan thread on hci%s" % iface)
+                    self.log.debug("BLEA: start scan thread on hci%s", iface)
 
                     scanner = Scanner(iface).withDelegate(ScanDelegate(gateway))
 

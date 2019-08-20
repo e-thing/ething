@@ -21,7 +21,7 @@ def install(core, app, auth, **kwargs):
 
         remote_addr = request.remote_addr
 
-        core.log.debug('SSE: new listener %s' % remote_addr)
+        core.log.debug('SSE: new listener %s', remote_addr)
 
         def gen():
 
@@ -57,7 +57,7 @@ def install(core, app, auth, **kwargs):
 
             core.signalDispatcher.unbind('*', on_signal)
 
-            core.log.debug('SSE: stop listener %s' % remote_addr)
+            core.log.debug('SSE: stop listener %s', remote_addr)
 
         return gen()
 

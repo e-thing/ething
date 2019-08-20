@@ -18,7 +18,7 @@ class Transport(object):
 
     def __init__(self):
         self._opened = threading.Event()
-        self.log = logging.getLogger('ething')
+        self.log = logging.getLogger(type(self).__name__)
     
     def open(self):
         self._opened.set()
@@ -197,7 +197,7 @@ class UdpTransport(Transport):
 class Protocol(object):
 
     def __init__(self):
-        self.log = logging.getLogger('ething')
+        self.log = logging.getLogger(type(self).__name__)
 
     def init(self, transport):
         self.transport = transport
@@ -380,10 +380,6 @@ class ThreadedTransport(Transport):
         self._thread = None
         self._name = name or 'ThreadedTransport.%s' % type(transport).__name__
         self._timeout = timeout
-
-    def init(self, process):
-        super(ThreadedTransport, self).init(process)
-        self._transport.init(process)
 
     def open(self):
         if self._thread:

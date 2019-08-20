@@ -30,7 +30,8 @@ class Controller(TransportProcess):
             #), core.process_manager, 'mihome.read'),
 
             protocol=MihomeProtocol(core),
-            id='mihome'
+            id='mihome',
+            log=Mihome.LOGGER
         )
         self.core = core
 

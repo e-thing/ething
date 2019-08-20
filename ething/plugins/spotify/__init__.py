@@ -234,11 +234,11 @@ class SpotifyAccount (Device):
         if payload:
             args["data"] = json.dumps(payload)
 
-        self.log.debug('request: %s %s' % (method, url))
+        self.log.debug('request: %s %s', method, url)
 
         r = requests.request(method, url, headers=headers, **args)
 
-        self.log.debug('request status: %s' % (r.status_code))
+        self.log.debug('request status: %s', r.status_code)
 
         try:
             r.raise_for_status()

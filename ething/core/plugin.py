@@ -15,9 +15,18 @@ def generate_plugin_name(suffix):
     return "%s_%s" % (suffix, ShortId.generate())
 
 
+class PluginMetaClass(MetaReg):
+    def __new__(meta, name, bases, dct):
+        cls = MetaReg.__new__(meta, name, bases, dct)
+
+        cls.LOGGER = logging.getLogger(cls.get_name())
+
+        return cls
+
+
 @abstract
 @namespace('plugins')
-class Plugin(Entity):
+class Plugin(with_metaclass(PluginMetaClass, Entity)):
     """
     To create a new plugin, just override this class.
 
@@ -45,10 +54,12 @@ class Plugin(Entity):
     _REGISTER_ = False
 
     # if this plugin come from a package, this attribute will contain his name
-    PACKAGE = None
+    PACKAGE = dict()
 
     # the path to the plugin javascript file (metadata, widgets ...). This file is loaded by the web interface. (default to index.js)
     JS_INDEX = './index.js'
+
+    LOGGER = None
 
     @classmethod
     def get_name(cls):
@@ -71,8 +82,6 @@ class Plugin(Entity):
             'core': core
         }, data_src='db')
 
-        self._log = getattr(self, 'log', None) or logging.getLogger("ething.%s" % self.name)
-
     def __transaction_end__(self):
         if is_dirty(self):
 
@@ -89,7 +98,7 @@ class Plugin(Entity):
     @property
     def log(self):
         """the logger of this plugin. Every plugin has his own logger."""
-        return self._log
+        return self.LOGGER
 
     @classmethod
     def js_index(cls):

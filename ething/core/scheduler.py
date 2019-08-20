@@ -10,7 +10,7 @@ import threading
 from .utils.weak_ref import weak_ref, proxy_method
 
 
-_LOGGER = logging.getLogger('ething.scheduler')
+_LOGGER = logging.getLogger('scheduler')
 
 
 class Task(object):

@@ -22,11 +22,11 @@ import signal
 from .core.env import USER_DIR, LOG_FILE
 
 
-def init_logger(console_log=False):
+def init_logger(console_log=False, debug=False):
 
-    frm = logging.Formatter("%(asctime)s :: %(name)s :: %(levelname)s :: %(message)s")
-    log = logging.getLogger('ething')
-    log.setLevel(logging.INFO)
+    frm = logging.Formatter("%(asctime)s :: %(levelname)-7s :: %(name)s :: %(message)s")
+    log = logging.getLogger()
+    log.setLevel(logging.DEBUG if debug else logging.INFO)
 
     if console_log:
         console = logging.StreamHandler(sys.stdout)
@@ -38,17 +38,15 @@ def init_logger(console_log=False):
         file_handler = RotatingFileHandler(LOG_FILE, encoding="utf8", maxBytes=5 * 1024 * 1024, backupCount=2)
         file_handler.setFormatter(frm)
         log.addHandler(file_handler)
-        log.info('LOG_FILE = %s' % LOG_FILE)
     else:
         log.error('the log file is not writeable : %s' % LOG_FILE)
 
-    return log
+    return logging.getLogger('ething')
 
 
-def remove_logger():
-    log = logging.getLogger('ething')
-    for h in list(log.handlers):
-        log.removeHandler(h)
+def remove_logger(logger):
+    for h in list(logger.handlers):
+        logger.removeHandler(h)
         h.close()
 
 
@@ -88,9 +86,7 @@ def main():
         print("first startup, initializing...")
         os.makedirs(USER_DIR)
 
-    from .core.utils import get_info
-
-    log = init_logger(not getattr(args, 'quiet', False))
+    logger = init_logger(not getattr(args, 'quiet', False), args.debug)
 
     from .core import Core
 
@@ -98,37 +94,26 @@ def main():
     if loglevel:
         loglevel = getattr(logging, loglevel.upper(), None)
 
-    core = Core(clear_db=bool(args.clear), log_level=loglevel, debug=args.debug, logger=log)
-
-    # print some info
-    info = get_info(core)
-    log.info("ETHING    : version=%s" % info.get('VERSION'))
-    python_info = info.get('python', {})
-    log.info("PYTHON    : version=%s type=%s" %
-            (python_info.get('version'), python_info.get('type')))
-    log.info("PYTHON_EXE: %s" % (python_info.get('executable')))
-    platform_info = info.get('platform', {})
-    log.info("PLATFORM  : %s" % (platform_info.get('name')))
-    log.info("SYSTEM    : %s" % (platform_info.get('version')))
+    core = Core(clear_db=bool(args.clear), log_level=loglevel, debug=args.debug, logger=logger)
 
     # import builtin plugins here !
-    log.info('search for builtin plugins...')
+    logger.info('search for builtin plugins...')
     from .plugins import install_builtin_plugins
     install_builtin_plugins(core, webserver={'port': args.server_port})
 
     # import plugins
-    log.info('search for installed plugins...')
+    logger.info('search for installed plugins...')
     from .core.plugin import find_plugins
     for module_name in find_plugins():
         try:
             core.use(module_name)
         except:
-            core.log.exception('unable to import %s' % module_name)
+            logger.exception('unable to import %s' % module_name)
 
     exit_code = 0
 
     def stop(signum, frame):
-        log.warning('signal received %d' % signum)
+        logger.warning('signal received %d' % signum)
         core.stop()
 
     signal.signal(signal.SIGINT, stop)
@@ -139,23 +124,23 @@ def main():
         core.run()
 
     except KeyboardInterrupt:
-        log.warning("killed ething from Terminal")
+        logger.warning("killed ething from Terminal")
 
     except OSError as e:
 
         if e.errno == errno.EACCES or e.errno == errno.EPERM:
-            log.exception(
+            logger.exception(
                 "Permission denied: you may need to execute this program with sudo")
             exit_code = 3
         elif e.errno == errno.EINTR:
-            log.warning("interrupted")
+            logger.warning("interrupted")
             exit_code = 1
         else:
-            log.exception("unexpected error")
+            logger.exception("unexpected error")
             exit_code = 2
 
     except:
-        log.exception("unexpected error")
+        logger.exception("unexpected error")
         exit_code = 2
 
     finally:
@@ -164,10 +149,10 @@ def main():
         try:
             core.destroy()
         except:
-            log.exception("exception in core.destroy()")
+            logger.exception("exception in core.destroy()")
 
         try:
-            remove_logger()
+            remove_logger(logger)
         except Exception as e:
             print("exception in remove_logger(): %s" % str(e))
 

@@ -12,6 +12,17 @@ import inspect
 import logging
 
 
+class ResourceLoggerAdapter(logging.LoggerAdapter):
+
+    def __init__(self, resource):
+        super(ResourceLoggerAdapter, self).__init__(logging.getLogger(getattr(resource, 'LOGGER_NAME', None) or type(resource).__name__), {
+            'resource_id': resource.id,
+        })
+
+    def process(self, msg, kwargs):
+        return '[%s] %s' % (self.extra['resource_id'], msg), kwargs
+
+
 @meta(icon='mdi-plus')
 class ResourceCreated(ResourceSignal):
     """
@@ -196,7 +207,7 @@ class Resource(Entity):
 
         super(Resource, self).__init__(data, context)
 
-        self._log = logging.getLogger('ething.r.%s' % self.id)
+        self._log = getattr(self, 'LOGGER', None) or ResourceLoggerAdapter(self)
 
         self.core.scheduler.bind_instance(self)
 
@@ -329,8 +340,7 @@ class Resource(Entity):
         dirty_attrs = list_dirty_attr(self)
         dirty_keys = [a.name for a in dirty_attrs]
 
-        self.log.debug("Resource update : %s , dirtyFields: %s" % (
-            str(self), dirty_keys))
+        self.log.debug("Resource update : %s , dirtyFields: %s", str(self), dirty_keys)
 
         history_data = {}
 
@@ -453,6 +463,7 @@ class Resource(Entity):
 
         for p in processes:
             p.parent = self
+            p.log = self.log
             self._processes[p.id] = p
             self.core.process_manager.attach(p)
 
