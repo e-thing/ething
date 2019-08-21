@@ -1,16 +1,27 @@
 # coding: utf-8
 
 from .utils import ShortId, getmembers
-import inspect
 import time
 import datetime
 import logging
 
 import threading
-from .utils.weak_ref import weak_ref, proxy_method
+from .utils.weak_ref import weak_ref, proxy_method, LostReferenceException
+
+
+__all__ = [
+    'Scheduler',
+    'ThreadingScheduler',
+    'tick',
+    'set_interval',
+    'delay',
+    'at',
+]
 
 
 _LOGGER = logging.getLogger('scheduler')
+
+TICK_INTERVAL = 1 # one sec
 
 
 class Task(object):
@@ -138,6 +149,12 @@ class Task(object):
     def is_time_to_run(self, t):
         raise NotImplementedError()
 
+    def execute(self):
+        try:
+            self.target(*self.args, **self.kwargs)
+        except LostReferenceException:
+            self._valid = False
+
 
 class TickTask(Task):
     def is_time_to_run(self, t):
@@ -263,6 +280,7 @@ class Scheduler(object):
         self.tasks = []
         self.r_lock = threading.RLock()
         self.log = _LOGGER
+        self._running = False
 
     def tick(self, callback=None, args=(), kwargs=None, **params):
         """
@@ -423,4 +441,62 @@ class Scheduler(object):
             del self.tasks[:]
 
     def execute(self, task):
-        task.target(*task.args, **task.kwargs)
+        task.execute()
+
+    def run(self):
+        self._running = True
+        while self._running:
+            self.process()
+            time.sleep(TICK_INTERVAL)
+
+    def stop(self):
+        self._running = False
+
+
+class ThreadingScheduler(Scheduler):
+    """
+
+    Execute the Scheduler instance and the tasks in separate threads !
+
+    Example::
+
+        from ething.core.scheduler import *
+
+        scheduler = ThreadingScheduler()
+
+        @scheduler.tick()
+        def tick():
+            print('tick')
+
+
+
+    """
+
+    def __init__(self, autostart=True):
+        super(ThreadingScheduler, self).__init__()
+        self._t = None
+        if autostart:
+            self.run()
+
+    def execute(self, task):
+        # execute the task in a new thread
+        t = threading.Thread(target=task.execute, daemon=True)
+        t.start()
+
+    def run(self):
+        t = self._t
+
+        if t is not None and t.isAlive():
+            # already running
+            return
+
+        t = threading.Thread(target=super(ThreadingScheduler, self).run, daemon=True)
+        t.start()
+        self._t = t
+
+    def stop(self):
+        super(ThreadingScheduler, self).stop()
+        if self._t is not None:
+            self._t.join()
+            self._t = None
+

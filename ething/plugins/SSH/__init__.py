@@ -299,13 +299,11 @@ class Interactive_Shell(Process):
             self.on_data(data)
 
     def __json__(self):
-        data = super(Interactive_Shell, self).__json__()
-        data.update({
+        return {
             'id': self.id,
             'opened': self.opened,
             'device_id': self.device.id
-        })
-        return data
+        }
 
     ## process
     def main(self):

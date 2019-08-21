@@ -2,8 +2,24 @@ from ething.core.Device import Device
 from ething.core.reg import *
 from ething.core.utils.ping import pingable
 from ething.core.interfaces import Relay
+from ething.core.discovery import mdns
 import requests
 import xmltodict
+
+
+def install(core, options):
+
+    def discover_handler(alive, info):
+        if alive:
+            host = info.address
+            if not core.find_one(lambda r: r.typeof(Denon) and r.host == host):
+                # not already created, so create it !
+                core.create(Denon, {
+                    'name': 'Marantz M-CR611',
+                    'host': host
+                })
+
+    mdns.register_service('Marantz M-CR611._http._tcp.local.', discover_handler)
 
 
 @pingable()

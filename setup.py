@@ -33,6 +33,7 @@ install_requires = [
     "jsonpath-rw", # flow
     "objectpath",
     "Jinja2",
+    "zeroconf",
 
     # --webserver
     "Flask>=1.0.2",

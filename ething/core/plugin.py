@@ -65,7 +65,7 @@ class Plugin(with_metaclass(PluginMetaClass, Entity)):
     def get_name(cls):
         return getattr(cls, 'PACKAGE', {}).get('name', cls.__name__)
 
-    def __init__(self, core):
+    def __init__(self, core, options):
         """
 
         .. attribute:: core
@@ -74,7 +74,16 @@ class Plugin(with_metaclass(PluginMetaClass, Entity)):
 
             :type: :class:`ething.core.Core`
 
+        .. attribute:: options
+
+            A dictionary that contains extra options. Extra options might be passed this way::
+
+                core.use(MyPlugin, foo='bar')
+
         """
+
+        self.options = options
+
         # get the config from the core db
         config = core.db.store.get('config.%s' % self.name, None)
 
@@ -128,13 +137,9 @@ class Plugin(with_metaclass(PluginMetaClass, Entity)):
         """
         pass
 
-    def load(self, **options):
+    def load(self):
         """
         Is called right after this plugin was instanciated.
-
-        Extra options might be passed this way::
-
-            core.use(MyPlugin, foo='bar')
         """
         pass
 
@@ -227,8 +232,8 @@ def get_package_info(mod):
 
 def install_func_to_plugin(install_func, name=None):
 
-    def load(self, **options):
-        return install_func(self.core, **options)
+    def load(self):
+        return install_func(self.core, self.options)
 
     if name is None:
         name = generate_plugin_name('AnonymousPlugin')

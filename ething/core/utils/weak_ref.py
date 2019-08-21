@@ -2,13 +2,13 @@
 
 import weakref
 
-__all__ = ['weak_ref', ]
+__all__ = ['weak_ref', 'proxy_method', 'LostReferenceException']
 
 
 class BoundMethodWeakref:
     def __init__(self, func):
         self.func_name = func.__name__
-        self.wref = weakref.ref(func.__self__)  # __self__ returns the class
+        self.wref = weakref.ref(func.__self__)  # __self__ returns the instance
 
     def __call__(self):
         func_cls = self.wref()
@@ -33,7 +33,7 @@ class LostReferenceException(Exception):
 class BoundMethodWeakProxy:
     def __init__(self, func):
         self.func_name = func.__name__
-        self.wref = weakref.ref(func.__self__)  # __self__ returns the class
+        self.wref = weakref.ref(func.__self__)  # __self__ returns the instance
 
     def get_func(self, silent=False):
         func_cls = self.wref()

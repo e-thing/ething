@@ -28,6 +28,8 @@ import threading
 DEFAULT_COMMIT_INTERVAL = 5
 DEFAULT_GARBAGE_COLLECTOR_PERIOD = 300
 
+LOGGER = logging.getLogger('ething')
+
 
 class _CoreScheduler(Scheduler):
     def __init__(self, core):
@@ -43,6 +45,77 @@ class _CoreScheduler(Scheduler):
                     return
 
         task._p = self.core.process_manager.attach(Process(name=task.name, target=task.target, args=task.args, kwargs=task.kwargs, parent=task.instance)).id
+
+
+# class ResourceCollection(collections.Mapping):
+#
+#     def __init__(self, core):
+#         self.db = core.db
+#
+#     def __iter__(self):
+#         return iter(self.find())
+#
+#     def __getitem__(self, id):
+#         if not isinstance(id, string_types):
+#             raise ValueError('id must be a string')
+#         return self.db.os.get(Resource, id)
+#
+#     def __len__(self):
+#         return len(self.find())
+#
+#     def find(self, query=None, limit=None, skip=None, sort=None):
+#         """
+#         Return resources.
+#
+#         :param query: Either a string representing an ObjectPath query expression, or a predicate. If a list of queries is given, returns only resources that match all the queries.
+#         :param limit: specify the maximum number of returned resources.
+#         :param skip: The number of resources to skip in the results set.
+#         :param sort: Specifies the order of the returned resources. Must be a string representing a resource attribute. If preceded by '-', the sort will be descending order.
+#         :return: A list of resources
+#         """
+#
+#         if query is not None:
+#
+#             if not isinstance(query, collections.Sequence):
+#                 query = [query]
+#
+#             def _mapper(q):
+#                 if isinstance(q, string_types):
+#                     # expression
+#                     return generate_filter(q, converter=lambda r:r.__json__())
+#                 elif inspect.isclass(q):
+#                     return lambda r: r.typeof(q)
+#                 else:
+#                     return q
+#
+#             filters = list(map(_mapper, query))
+#
+#             def fn(r):
+#                 for f in filters:
+#                     try:
+#                         res = f(r)
+#                     except Exception as e:
+#                         LOGGER.exception('error in resource filter')
+#                         res = False
+#                     if not res:
+#                         return False
+#                 return True
+#
+#             query = fn
+#
+#         return self.db.os.find(Resource, query = query, limit = limit, skip = skip, sort = sort)
+#
+#     def find_one(self, query=None):
+#         """
+#         Returns only a single resource that optionnaly match a query.
+#
+#         :param query: Same as find()
+#         :return: a resource
+#         """
+#         r = self.find(query, 1)
+#         return r[0] if len(r) > 0 else None
+#
+
 
 
 def after_init(f):
@@ -182,8 +255,8 @@ class Core(object):
 
         # instanciate:
         try:
-            plugin = plugin_cls(self)
-            plugin.load(**options)
+            plugin = plugin_cls(self, options)
+            plugin.load()
         except:
             self.log.exception('plugin %s: unable to load' % plugin_name)
         else:
