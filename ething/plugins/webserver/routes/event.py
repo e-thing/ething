@@ -12,7 +12,7 @@ def on_signal_sio(signal, app):
 def install(core, app, auth, **kwargs):
 
     if hasattr(app, 'socketio'):
-        core.signalDispatcher.bind('*', on_signal_sio, args=(app,))
+        core.bind('*', on_signal_sio, args=(app,))
 
     def generate_events_flow(filter = None):
 
@@ -31,7 +31,7 @@ def install(core, app, auth, **kwargs):
                 if not filter or filter(signal):
                     q.put(signal)
 
-            core.signalDispatcher.bind('*', on_signal)
+            core.bind('*', on_signal)
 
             yield "event:init\ndata:\n\n"
 
@@ -55,7 +55,7 @@ def install(core, app, auth, **kwargs):
             except GeneratorExit:  # Or maybe use flask signals
                 pass
 
-            core.signalDispatcher.unbind('*', on_signal)
+            core.unbind('*', on_signal)
 
             core.log.debug('SSE: stop listener %s', remote_addr)
 

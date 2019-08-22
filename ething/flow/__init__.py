@@ -257,12 +257,12 @@ class SignalEventNode(Node):
             if self._filter(signal):
                 q.put(signal.__flow_msg__())
 
-        self.core.signalDispatcher.bind('*', push)
+        self.core.bind('*', push)
 
         while True:
             self.emit(q.get())
 
-        self.core.signalDispatcher.unbind('*', push)
+        self.core.unbind('*', push)
 
 
 connection_type = Dict(

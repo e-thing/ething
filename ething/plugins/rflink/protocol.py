@@ -6,7 +6,10 @@ from ething.scheduler import set_interval, unbind
 from .helpers import parse_incoming_data, is_protocol, Result
 import time
 import re
-import datetime
+import logging
+
+
+LOGGER = logging.getLogger(__name__)
 
 
 class RFLinkProtocol(LineReader):
@@ -36,7 +39,7 @@ class RFLinkProtocol(LineReader):
     #     20;06;NewKaku;ID=008440e6;SWITCH=1;CMD=OFF;
     #     20;02;VER=1.1;REV=46;BUILD=0c;
     def handle_line(self, line):
-        self.log.debug('read: %s', line)
+        LOGGER.debug('read: %s', line)
 
         gateway = self.gateway
 
@@ -79,7 +82,7 @@ class RFLinkProtocol(LineReader):
                         device = self.create_device(protocol, data, attributes)
 
                         if not device:
-                            self.log.warning("fail to create the node from %s" % (line))
+                            LOGGER.warning("fail to create the node from %s" % (line))
 
                 if device:
                     with device:
@@ -94,7 +97,7 @@ class RFLinkProtocol(LineReader):
                 with gateway:
                     gateway.version = matches.group(1)
                     gateway.revision = matches.group(2)
-                self.log.info("RFLink: ver:%s rev:%s" %
+                LOGGER.info("RFLink: ver:%s rev:%s" %
                               (matches.group(1), matches.group(2)))
             else:
                 matches = re.search(
@@ -104,7 +107,7 @@ class RFLinkProtocol(LineReader):
                         gateway.version = matches.group(1)
                         gateway.revision = matches.group(2)
                         gateway.build = matches.group(3)
-                    self.log.info("RFLink: ver:%s rev:%s build:%s" % (
+                    LOGGER.info("RFLink: ver:%s rev:%s build:%s" % (
                         matches.group(1), matches.group(2), matches.group(3)))
 
         i = 0
@@ -144,7 +147,7 @@ class RFLinkProtocol(LineReader):
     # $waitResponse (optional) true|false wait for a response or not
     def send(self, message, done = None, err = None, response = None):
 
-        self.log.debug("RFLink: send message '%s'", message)
+        LOGGER.debug("RFLink: send message '%s'", message)
 
         result = Result(response, message, done = done, err = err)
 

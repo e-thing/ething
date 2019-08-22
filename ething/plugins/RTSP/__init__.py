@@ -1,12 +1,14 @@
 # coding: utf-8
-
-
 from ething.Device import *
 from ething.utils.ping import pingable
 from ething.interfaces import Camera
 import subprocess
 import re
 import sys
+import logging
+
+
+LOGGER = logging.getLogger(__name__)
 
 
 def is_avconv_installed ():
@@ -25,7 +27,7 @@ def is_avconv_installed ():
 
 def install(core, options):
     if not is_avconv_installed():
-        core.log.warning('[RTSP] avconv is not installed')
+        LOGGER.warning('[RTSP] avconv is not installed')
 
 
 @pingable('url')

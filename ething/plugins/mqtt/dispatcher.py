@@ -69,7 +69,7 @@ class MqttDispatcherService(Process):
 
         if rc == 0:
             LOGGER.info("connected")
-            self.core.signalDispatcher.bind('*', self.emit)
+            self.core.bind('*', self.emit)
         else:
             # unable to connect
             LOGGER.error("connection refused : %s" %
@@ -81,7 +81,7 @@ class MqttDispatcherService(Process):
             LOGGER.warning("Unexpected disconnection")
             self._mqttClient.reconnect()
 
-        self.core.signalDispatcher.unbind('*', self.emit)
+        self.core.unbind('*', self.emit)
 
     def emit(self, signal):
 

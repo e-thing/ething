@@ -48,9 +48,13 @@ class SerialTransport(Transport):
         self.baudrate = baudrate
 
     def open(self):
-        self.serial = serial.serial_for_url(self.port, baudrate=self.baudrate, timeout=1)
+        try:
+            self.serial = serial.serial_for_url(self.port, baudrate=self.baudrate, timeout=1)
+        except serial.SerialException as e:
+            LOGGER.error(e)
+            return
         super(SerialTransport, self).open()
-        self.log.info("(serial) connected to port=%s baudrate=%d" % (self.port, self.baudrate))
+        LOGGER.info("(serial) connected to port=%s baudrate=%d" % (self.port, self.baudrate))
 
     def read(self):
         if self.serial is not None:
@@ -75,7 +79,7 @@ class SerialTransport(Transport):
     def write(self, data):
         if self.serial is not None:
             with self._lock:
-                # self.log.debug("(serial) write to port=%s baudrate=%d data=%s" % (self.port, self.baudrate, data))
+                # LOGGER.debug("(serial) write to port=%s baudrate=%d data=%s" % (self.port, self.baudrate, data))
                 self.serial.write(data)
         else:
             raise Exception('Not connected')
@@ -86,7 +90,7 @@ class SerialTransport(Transport):
                 super(SerialTransport, self).close()
                 self.serial.close()
                 self.serial = None
-                self.log.info("(serial) closed from port=%s baudrate=%d" % (self.port, self.baudrate))
+                LOGGER.info("(serial) closed from port=%s baudrate=%d" % (self.port, self.baudrate))
 
 class NetTransport(Transport):
 
@@ -102,13 +106,13 @@ class NetTransport(Transport):
         self.sock.connect((self.host, self.port))
         self.sock.settimeout(1)
         super(NetTransport, self).open()
-        self.log.info("(net) connected to host=%s port=%d" % (self.host, self.port))
+        LOGGER.info("(net) connected to host=%s port=%d" % (self.host, self.port))
 
     def read(self):
         if self.sock is not None:
             try:
                 data = self.sock.recv(1024)  # return as bytes
-                # self.log.debug("(net) read from host=%s port=%d data=%s" % (self.host, self.port, data))
+                # LOGGER.debug("(net) read from host=%s port=%d data=%s" % (self.host, self.port, data))
             except socket.timeout:
                 pass
             else:
@@ -121,7 +125,7 @@ class NetTransport(Transport):
     def write(self, data):
         if self.sock is not None:
             with self._lock:
-                # self.log.debug("(net) write to host=%s port=%d data=%s" % (self.host, self.port, data))
+                # LOGGER.debug("(net) write to host=%s port=%d data=%s" % (self.host, self.port, data))
                 self.sock.send(data)
         else:
             raise Exception('Not connected')
@@ -132,7 +136,7 @@ class NetTransport(Transport):
                 super(NetTransport, self).close()
                 self.sock.close()
                 self.sock = None
-                self.log.info("(net) closed from host=%s port=%d" % (self.host, self.port))
+                LOGGER.info("(net) closed from host=%s port=%d" % (self.host, self.port))
 
 
 class UdpTransport(Transport):
@@ -163,7 +167,7 @@ class UdpTransport(Transport):
 
         super(UdpTransport, self).open()
 
-        self.log.info("(udp): connection opened, host: %s , port: %d" % (
+        LOGGER.info("(udp): connection opened, host: %s , port: %d" % (
             str(self.host), self.port))
 
 
@@ -193,7 +197,7 @@ class UdpTransport(Transport):
                 super(UdpTransport, self).close()
                 self.sock.close()
                 self.sock = None
-                self.log.info("(udp) closed from host=%s port=%d" % (self.host, self.port))
+                LOGGER.info("(udp) closed from host=%s port=%d" % (self.host, self.port))
 
 
 class Protocol(object):
@@ -212,7 +216,7 @@ class Protocol(object):
 
     def connection_lost(self, exc):
         #if isinstance(exc, Exception):
-        #    self.log.error("Exception in transport process: %s" % str(exc))
+        #    LOGGER.error("Exception in transport process: %s" % str(exc))
         pass
 
 

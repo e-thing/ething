@@ -5,7 +5,10 @@ from .MySensorsGateway import MySensorsGateway, MySensorsController
 from ething.TransportProcess import Transport
 from .Message import Message
 from .helpers import *
-import time, random
+import time, random, logging
+
+
+LOGGER = logging.getLogger(__name__)
 
 
 class FakeTransport(Transport):
@@ -19,7 +22,7 @@ class FakeTransport(Transport):
         self.msg_sent.clear()
         self.msg_rec.clear()
 
-        self.log.info("(fake) connected")
+        LOGGER.info("(fake) connected")
 
         self.msg_rec.append(Message(GATEWAY_ADDRESS, INTERNAL_CHILD, INTERNAL, I_GATEWAY_READY))
 
@@ -36,7 +39,7 @@ class FakeTransport(Transport):
 
         if self.msg_sent:
             msg = Message.parse(self.msg_sent.pop(0))
-            self.log.debug("(fake) msg=%s", msg)
+            LOGGER.debug("(fake) msg=%s", msg)
 
             if msg.ack:
                 ack_msg = msg.copy()
@@ -55,7 +58,7 @@ class FakeTransport(Transport):
 
         if self.msg_rec:
             for m in self.msg_rec:
-                self.log.debug("(fake) read=%s", m)
+                LOGGER.debug("(fake) read=%s", m)
             rec = b''.join([m.raw()+b'\r\n' for m in self.msg_rec])
             self.msg_rec.clear()
             return rec
@@ -63,11 +66,11 @@ class FakeTransport(Transport):
         time.sleep(0.5)
 
     def write(self, data):
-        self.log.debug("(fake) write=%s", data)
+        LOGGER.debug("(fake) write=%s", data)
         self.msg_sent.append(data)
 
     def close(self):
-        self.log.info("(fake) closed")
+        LOGGER.info("(fake) closed")
 
 
 class MySensorsFakeController(MySensorsController):

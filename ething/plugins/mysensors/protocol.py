@@ -7,7 +7,10 @@ from ething.TransportProcess import LineReader, AsyncResult
 from ething.scheduler import set_interval, unbind
 import time
 import re
-import datetime
+import logging
+
+
+LOGGER = logging.getLogger(__name__)
 
 
 class Result(AsyncResult):
@@ -105,7 +108,7 @@ class MySensorsProtocol(LineReader):
         if not node:
             raise Exception("fail to create the node nodeId=%d" % nodeId)
 
-        self.log.info("MySensors: new node nodeId=%d" % nodeId)
+        LOGGER.info("MySensors: new node nodeId=%d" % nodeId)
 
         return node
 
@@ -133,13 +136,13 @@ class MySensorsProtocol(LineReader):
             raise Exception("fail to create the sensor nodeId=%d sensorId=%d sensorType=%s" % (
                 node.nodeId, sensorId, sensorType))
 
-        self.log.info("MySensors: new sensor nodeId=%d sensorId=%d sensorType=%s" % (
+        LOGGER.info("MySensors: new sensor nodeId=%d sensorId=%d sensorType=%s" % (
             node.nodeId, sensorId, sensorType))
 
         return sensor
 
     def handle_line(self, line):
-        self.log.debug('read: %s', line)
+        LOGGER.debug('read: %s', line)
 
         message = Message.parse(line)
 
@@ -168,7 +171,7 @@ class MySensorsProtocol(LineReader):
                         sensor = self.createSensor(node, sensorId, message.subType, message.value)
                         node_err = None
                     else:
-                        self.log.warning('unable to create sensor (node=%s sensor=%s), waiting for a presentation packet, restart the node' % (nodeId, sensorId))
+                        LOGGER.warning('unable to create sensor (node=%s sensor=%s), waiting for a presentation packet, restart the node' % (nodeId, sensorId))
                         node_err = 'restart of the node needed'
 
             if not node:
@@ -205,7 +208,7 @@ class MySensorsProtocol(LineReader):
 
                             if sensor:
 
-                                self.log.debug("MySensors: set value nodeId=%d sensorId=%d valueType=%d value=%s",
+                                LOGGER.debug("MySensors: set value nodeId=%d sensorId=%d valueType=%d value=%s",
                                     nodeId, sensorId, message.subType, message.payload)
 
                                 datatype = valueTypeStr(message.subType)
@@ -218,10 +221,10 @@ class MySensorsProtocol(LineReader):
                                     try:
                                         sensor._set_data(message.subType, message.value)
                                     except:
-                                        self.log.exception('error in sensor._set_data for sensor %s and datatype=%s' % (sensor, datatype))
+                                        LOGGER.exception('error in sensor._set_data for sensor %s and datatype=%s' % (sensor, datatype))
 
                                 else:
-                                    self.log.warning(
+                                    LOGGER.warning(
                                         "MySensors: unknown value subtype %d" % message.subType)
 
                         elif message.messageType == REQ:
@@ -236,7 +239,7 @@ class MySensorsProtocol(LineReader):
                                     try:
                                         value = sensor._get_data(message.subType)
                                     except:
-                                        self.log.exception('error in sensor._get_data for sensor %s and datatype=%s' % (sensor, datatype))
+                                        LOGGER.exception('error in sensor._get_data for sensor %s and datatype=%s' % (sensor, datatype))
                                         value = None
 
                                     if value is not None:
@@ -253,21 +256,21 @@ class MySensorsProtocol(LineReader):
                                         pass
 
                                 else:
-                                    self.log.warning(
+                                    LOGGER.warning(
                                         "MySensors: unknown value subtype %d" % message.subType)
 
                         elif message.messageType == INTERNAL:
 
                             if message.subType == I_GATEWAY_READY:
                                 self.gatewayReady = True
-                                self.log.info("info: gateway ready")
+                                LOGGER.info("info: gateway ready")
                                 # get the version
                                 self.send(Message(GATEWAY_ADDRESS, INTERNAL_CHILD, INTERNAL, I_VERSION))
 
                             elif message.subType == I_VERSION:
                                 self.gatewayLibVersion = message.value
                                 gateway.libVersion = message.value
-                                self.log.info(
+                                LOGGER.info(
                                     "MySensors: gateway version = %s" % self.gatewayLibVersion)
 
                             elif message.subType == I_TIME:
@@ -332,7 +335,7 @@ class MySensorsProtocol(LineReader):
                                     i += 1
 
                             elif message.subType == I_LOG_MESSAGE:
-                                self.log.info("MySensors: nodeId=%d sensorId=%d %s" % (
+                                LOGGER.info("MySensors: nodeId=%d sensorId=%d %s" % (
                                     message.nodeId, message.childSensorId, message.value))
 
                             elif message.subType == I_DISCOVER_RESPONSE:
@@ -341,7 +344,7 @@ class MySensorsProtocol(LineReader):
                                 pass
 
                             else:
-                                self.log.warning(
+                                LOGGER.warning(
                                     "MySensors: message not processed : %s" % str(message))
 
                         #elif message.messageType == STREAM:
@@ -354,7 +357,7 @@ class MySensorsProtocol(LineReader):
                                             str(message))
 
                     except Exception as e:
-                        self.log.exception(e)
+                        LOGGER.exception(e)
                         r = False
 
                     i = 0
@@ -381,7 +384,7 @@ class MySensorsProtocol(LineReader):
 
                 else:
                     # ack message
-                    self.log.debug("ack message received")
+                    LOGGER.debug("ack message received")
 
                     i = 0
                     while i < len(self._pendingMessages):
@@ -393,7 +396,7 @@ class MySensorsProtocol(LineReader):
                                 originalMessage.messageType == message.messageType and \
                                 originalMessage.subType == message.subType:
                             
-                            self.log.debug("ack match")
+                            LOGGER.debug("ack match")
 
                             pendingMessage.next()
 
@@ -405,7 +408,7 @@ class MySensorsProtocol(LineReader):
 
     def send(self, message, smartSleep=None, done=None, err=None, response=None):
 
-        self.log.debug("message send smartSleep=%s msg=%s", str(smartSleep), message)
+        LOGGER.debug("message send smartSleep=%s msg=%s", str(smartSleep), message)
 
         result = Result(self, message, done = done, err = err, smartSleep=smartSleep, response=response)
 

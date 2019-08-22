@@ -6,6 +6,10 @@ import time
 import random
 import json
 import re
+import logging
+
+
+LOGGER = logging.getLogger(__name__)
 
 
 class YeelightProtocol(LineReader):
@@ -25,14 +29,14 @@ class YeelightProtocol(LineReader):
         set_interval(1, self.check_response_timeout)
 
     def handle_line(self, line):
-        self.log.debug('read: %s', line)
+        LOGGER.debug('read: %s', line)
 
         try:
             # must be json
             message = json.loads(line)
         except Exception as e:
             # skip the line
-            self.log.exception(
+            LOGGER.exception(
                 "Yeelight: unable to handle the message %s" % line)
             return
 
@@ -107,7 +111,7 @@ class YeelightProtocol(LineReader):
 
         if self.transport.is_open:
 
-            self.log.debug("message send %s", str(command))
+            LOGGER.debug("message send %s", str(command))
 
             self.write_line(json.dumps(command))
 
@@ -158,7 +162,7 @@ class YeelightAdvertisementProtocol(Protocol):
 
         data = data.decode('utf-8', 'replace')
 
-        self.log.debug('rec %s : %s', remote_ip_port, data)
+        LOGGER.debug('rec %s : %s', remote_ip_port, data)
 
         if data[:15] == "HTTP/1.1 200 OK" or data[:17] == "NOTIFY * HTTP/1.1":
 
@@ -177,13 +181,13 @@ class YeelightAdvertisementProtocol(Protocol):
             self.process_device_info(dev_info)
 
     def search(self):
-        self.log.debug('search...')
+        LOGGER.debug('search...')
         package = "M-SEARCH * HTTP/1.1\r\nST:wifi_bulb\r\nMAN:\"ssdp:discover\"\r\n"
         self.transport.write(package.encode('utf8'), (yeelight.MULTICAST_ADDRESS, yeelight.MULTICAST_PORT))
 
     def process_device_info(self, dev_info):
 
-        self.log.debug('device info : %s', dev_info)
+        LOGGER.debug('device info : %s', dev_info)
 
         id = dev_info.get('id')
         model = dev_info.get('model')
@@ -191,7 +195,7 @@ class YeelightAdvertisementProtocol(Protocol):
         device = self.core.find_one(lambda r: r.typeof('resources/YeelightDevice') and r.dev_id == id and r.model == model)
 
         if not device:
-            self.log.debug('new device : id = %s, model = %s', id, model)
+            LOGGER.debug('new device : id = %s, model = %s', id, model)
 
             support = dev_info.get('support', '').split()
 
@@ -215,7 +219,7 @@ class YeelightAdvertisementProtocol(Protocol):
                     device = self.core.create('resources/YeelightBulbMono', attributes)
 
             if not device:
-                self.log.warning('unable to create the device : id = %s, model = %s' % (id, model))
+                LOGGER.warning('unable to create the device : id = %s, model = %s' % (id, model))
 
         if device:
             with device:

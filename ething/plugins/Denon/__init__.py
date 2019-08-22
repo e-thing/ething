@@ -11,7 +11,7 @@ def install(core, options):
 
     def discover_handler(alive, info):
         if alive:
-            host = info.address
+            host = info.get('address')
             if not core.find_one(lambda r: r.typeof(Denon) and r.host == host):
                 # not already created, so create it !
                 core.create(Denon, {
@@ -19,7 +19,7 @@ def install(core, options):
                     'host': host
                 })
 
-    mdns.register_service('Marantz M-CR611._http._tcp.local.', discover_handler)
+    mdns.register_service('_http._tcp.local.', discover_handler, 'Marantz M-CR611')
 
 
 @pingable()

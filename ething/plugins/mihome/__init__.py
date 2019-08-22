@@ -26,8 +26,6 @@ class Controller(TransportProcess):
             ),
 
             protocol=MihomeProtocol(core),
-            id='mihome',
-            log=Mihome.LOGGER
         )
         self.core = core
 

@@ -24,20 +24,21 @@ from .env import USER_DIR, LOG_FILE
 
 
 def init_logger(console_log=False, debug=False):
+    from .utils.logger import ColoredFormatter
 
-    frm = logging.Formatter("%(asctime)s :: %(levelname)-7s :: %(name)s :: %(message)s")
+    frm = "%(asctime)s :: %(levelname)-7s :: %(name)s :: %(message)s"
     log = logging.getLogger('ething')
     log.setLevel(logging.DEBUG if debug else logging.INFO)
 
     if console_log:
         console = logging.StreamHandler(sys.stdout)
-        console.setFormatter(frm)
+        console.setFormatter(ColoredFormatter(frm))
         log.addHandler(console)
 
     if not os.access(LOG_FILE, os.F_OK) or os.access(LOG_FILE, os.W_OK):
         # file_handler = logging.FileHandler(LOG_FILE, encoding="utf8")
         file_handler = RotatingFileHandler(LOG_FILE, encoding="utf8", maxBytes=5 * 1024 * 1024, backupCount=2)
-        file_handler.setFormatter(frm)
+        file_handler.setFormatter(logging.Formatter(frm))
         log.addHandler(file_handler)
     else:
         log.error('the log file is not writeable : %s' % LOG_FILE)
@@ -88,12 +89,9 @@ from .processes import processes
 
 core = Core(clear_db=bool(args.clear), debug=args.debug, webserver_port= args.server_port)
 
-sys.exit(45)
-
 if args.debug:
     from .green import install_debugger
     install_debugger()
-
 
 exit_code = 0
 

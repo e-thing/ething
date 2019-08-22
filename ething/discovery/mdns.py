@@ -9,7 +9,7 @@ from future.utils import binary_type
 LOGGER = logging.getLogger(__name__)
 
 
-__all__ = ['register_service', 'unregister_service']
+__all__ = ['register_service']
 
 
 _service_handlers = dict()
@@ -35,27 +35,15 @@ def _zc_update():
             _zc_instance = None
 
 
-def register_service(service_name, callback):
+def register_service(service_name, callback, device_name=None):
     _service_handlers.setdefault(service_name, set())
-    _service_handlers[service_name].add(proxy_method(callback))
+    _service_handlers[service_name].add(proxy_method((callback, device_name)))
     _update(service_name)
-
-
-def unregister_service(service_name, callback=None):
-    if service_name in _service_handlers:
-        if callback is None:
-            _service_handlers.pop(service_name)
-        else:
-            try:
-                _service_handlers[service_name].remove(callback)
-            except KeyError:
-                pass
-        _update(service_name)
 
 
 def _update(service_name):
     browser = _browsers.get(service_name)
-    has_handlers = (service_name in _service_handlers) and _service_handlers[service_name]
+    has_handlers = (service_name in _service_handlers) and len(_service_handlers[service_name]) > 0
 
     if browser and not has_handlers:
         # stop the service
@@ -67,8 +55,8 @@ def _update(service_name):
 
     if not browser and has_handlers:
         # start the service
-        LOGGER.debug('[%s] start service', service_name)
         zeroconf = _zc()
+        LOGGER.debug('[%s] start service', service_name)
         browser = ServiceBrowser(zeroconf, service_name, ServiceListener(service_name))
         _browsers[service_name] = browser
         return
@@ -83,19 +71,14 @@ class ServiceListener:
     def service_name(self):
         return self._service_name
 
-    @property
-    def handlers(self):
-        _hs = _service_handlers.get(self._service_name)
-        if _hs:
-            return _hs
-        return []
-
-    def _run_handlers(self, *args, **kwargs):
+    def _run_handlers(self, is_alive, info):
         need_update = False
 
-        for h in self.handlers:
+        for h, dev_name in _service_handlers.get(self._service_name, []):
+            if dev_name and not info['name'].startswith(dev_name):
+                continue
             try:
-                h(*args, **kwargs)
+                h(is_alive, info)
             except LostReferenceException:
                 need_update = True
             except:

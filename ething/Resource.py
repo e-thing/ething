@@ -6,6 +6,7 @@ from .utils.date import TzDate, utcnow
 from .utils.ObjectPath import evaluate
 from .scheduler import *
 from .processes import *
+from .dispatcher import SignalEmitter
 from collections import Mapping
 import inspect
 import logging
@@ -135,7 +136,7 @@ class RDict(Dict):
 @db(table='resources')
 @namespace('resources')
 @meta(description='')
-class Resource(Entity):
+class Resource(Entity, SignalEmitter):
     """
     The Resource class is the base class of any "EThing object".
 
@@ -178,6 +179,16 @@ class Resource(Entity):
                     # ... do some processing here
                     time.sleep(0.1) # do not forget to give some time, sp other processes can run
 
+    If the resource emits a signal, be sure that the signal was previously binded to the current class
+    using the ``@throw`` decorator::
+
+        class MySignal(Signal):
+            pass
+
+        @throw(Signal)
+        class Foo(Resource):
+            def bar(self):
+                self.emit(MySignal())
 
     """
 
@@ -244,6 +255,9 @@ class Resource(Entity):
     def extends(self):
         return [get_definition_name(c) for c in type(self).__mro__ if issubclass(c, Resource)]
 
+    def namespace(self):
+        return self.core.namespace + "." + self.id
+
     @property
     def log(self):
         return self._log
@@ -268,27 +282,6 @@ class Resource(Entity):
         elif inspect.isclass(typename) and issubclass(typename, Resource):
             typename = get_definition_name(typename)
         return typename in self.extends
-
-    def emit(self, signal, *args, **kwargs):
-        """
-        Dispatch a signal emitted by this resource.
-
-        Be sure that the signal was previously binded to the current class using the ``@throw`` decorator::
-
-            class MySignal(Signal):
-                pass
-
-            @throw(Signal)
-            class Foo(Resource):
-                def bar(self):
-                self.emit(MySignal())
-
-        :param signal: Either a signal instance or a string representing a signal type.
-        :param args: Only used if a string was provided as signal. Any extra arguments to pass when instantiate the signal.
-        :param kwargs: Only used if a string was provided as signal. Any extra arguments to pass when instantiate the signal.
-        """
-        kwargs.setdefault('sender', self)
-        self.core.emit(signal, *args, **kwargs)
 
     def children(self, filter=None):
         """

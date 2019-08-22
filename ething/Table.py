@@ -1,24 +1,17 @@
 # coding: utf-8
 from .Resource import Resource, ResourceType
-from .utils.date import TzDate, utcnow, utcfromtimestamp, datetime_to_array
+from .utils.date import TzDate, utcnow, utcfromtimestamp
 from .reg import *
 from .Signal import ResourceSignal
 from .utils import object_sort, generate_id, ObjectPath, filter_obj
 from .flow import ResourceNode
-import datetime
 import time
 import re
 from dateutil.parser import parse
 import csv
-import sys
 import pytz
 import math
-
-if (sys.version_info > (3, 0)):
-    from io import StringIO
-else:
-    # cf: https://stackoverflow.com/questions/13120127/how-can-i-use-io-stringio-with-the-csv-module
-    from StringIO import StringIO
+from io import StringIO
 
 
 number_types = integer_types + (float, )

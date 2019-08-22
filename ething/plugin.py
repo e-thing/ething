@@ -23,7 +23,7 @@ class PluginMetaClass(MetaReg):
     def __new__(meta, name, bases, dct):
         cls = MetaReg.__new__(meta, name, bases, dct)
 
-        cls.LOGGER = logging.getLogger(cls.get_name())
+        cls.LOGGER = logging.getLogger('ething.plugins.%s' % cls.get_name())
 
         return cls
 

@@ -31,7 +31,7 @@ class ProcessCollection(Mapping):
 
     @property
     def parent(self):
-        return self.parent
+        return self._parent
 
     def _items(self):
         if self._weak:
@@ -55,7 +55,7 @@ class ProcessCollection(Mapping):
         elif isinstance(process, Process):
             # process instance
             pass
-        elif issubclass(process, Process):
+        elif inspect.isclass(process) and issubclass(process, Process):
             # Process subclass
             if parent is not None:
                 process = process(parent, **kwargs)
@@ -74,10 +74,7 @@ class ProcessCollection(Mapping):
         if parent is not None:
             process.parent = parent
 
-        if self._weak:
-            process = weakref.ref(process)
-
-        self._processes.append(process)
+        self._processes.append(weakref.ref(process) if self._weak else process)
 
         if start:
             process.start()

@@ -7,20 +7,18 @@ from .Config import Config
 from .version import __version__
 from .plugin import search_plugin_cls, import_plugins
 from .scheduler import set_interval
-from .dispatcher import emit
+from .dispatcher import SignalEmitter
+from .processes import ProcessCollection
 from .utils import get_info
 from .utils.ObjectPath import generate_filter, patch_all
 from .Resource import Resource
 from .flow import generate_event_nodes
 from .env import USER_DIR, LOG_FILE
 from .notification import *
-from functools import wraps
 import collections
 import logging
 import pytz
-import time
 import inspect
-import threading
 
 
 DEFAULT_COMMIT_INTERVAL = 5
@@ -29,8 +27,7 @@ DEFAULT_GARBAGE_COLLECTOR_PERIOD = 300
 LOGGER = logging.getLogger(__name__)
 
 
-
-class Core(object):
+class Core(SignalEmitter):
     """
 
     instantiate a new Core instance::
@@ -78,29 +75,27 @@ class Core(object):
             :type: :class:`ething.db.Db`
 
         """
-        self._initialized = False
-
         patch_all(self)
 
         self.name = name
         self.plugins = list()
         self.debug = debug
+        
+        self._processes = ProcessCollection(parent=self, weak=True)
 
-        self.log = LOGGER
-
-        self.log.info('USER_DIR   : %s', USER_DIR)
-        self.log.info('LOG_FILE   : %s', LOG_FILE)
+        LOGGER.info('USER_DIR   : %s', USER_DIR)
+        LOGGER.info('LOG_FILE   : %s', LOG_FILE)
         info = get_info(self)
-        self.log.info("ETHING     : version=%s", info.get('VERSION'))
+        LOGGER.info("ETHING     : version=%s", info.get('VERSION'))
         python_info = info.get('python', {})
-        self.log.info("PYTHON     : version=%s type=%s",
+        LOGGER.info("PYTHON     : version=%s type=%s",
                     python_info.get('version'), python_info.get('type'))
-        self.log.info("PYTHON_EXE : %s", python_info.get('executable'))
+        LOGGER.info("PYTHON_EXE : %s", python_info.get('executable'))
         platform_info = info.get('platform', {})
-        self.log.info("PLATFORM   : %s", platform_info.get('name'))
-        self.log.info("SYSTEM     : %s", platform_info.get('version'))
+        LOGGER.info("PLATFORM   : %s", platform_info.get('name'))
+        LOGGER.info("SYSTEM     : %s", platform_info.get('version'))
 
-        self.log.info("DEBUG      : %s", debug)
+        LOGGER.info("DEBUG      : %s", debug)
 
         # load db
         self._init_database(database, clear_db=clear_db, commit_interval=commit_interval, garbage_collector_period=garbage_collector_period)
@@ -138,6 +133,13 @@ class Core(object):
     def local_tz (self):
         local_tz = self.config.timezone
         return pytz.timezone(local_tz)
+    
+    @property
+    def processes(self):
+        """
+        the processes bind to this instance
+        """
+        return self._processes
 
     def use(self, something, **options):
         """
@@ -147,15 +149,13 @@ class Core(object):
         :param options: Some paramaters to pass to the plugin.load(...) method.
         :return: The plugin instance.
         """
-        if self._initialized:
-            raise Exception('unable to use this plugin: the core is already initialized')
 
         plugin_cls = search_plugin_cls(something)
         plugin_name = plugin_cls.get_name()
 
         for p in self.plugins:
             if p.name == plugin_name:
-                self.log.debug('plugin %s: already loaded', plugin_name)
+                LOGGER.debug('plugin %s: already loaded', plugin_name)
                 return p
 
         # instanciate:
@@ -163,7 +163,7 @@ class Core(object):
             plugin = plugin_cls(self, options)
             plugin.load()
         except:
-            self.log.exception('plugin %s: unable to load' % plugin_name)
+            LOGGER.exception('plugin %s: unable to load' % plugin_name)
         else:
             self.plugins.append(plugin)
 
@@ -171,7 +171,7 @@ class Core(object):
             if info:
                 info = ', '.join(['%s: %s' % (k, str(info[k])) for k in info])
 
-            self.log.info('plugin %s loaded, info: %s' % (plugin.name, info))
+            LOGGER.info('plugin %s loaded, info: %s' % (plugin.name, info))
             return plugin
 
     def _init_database(self, database=None, clear_db=False, commit_interval=None, garbage_collector_period=None):
@@ -180,7 +180,7 @@ class Core(object):
 
         db_type = 'sqlite'
 
-        self.log.info('db type: %s' % (db_type))
+        LOGGER.info('db type: %s' % (db_type))
 
         if db_type == 'sqlite':
             from .database.sqlite import SQLiteDriver
@@ -193,11 +193,11 @@ class Core(object):
         self.db.os.context.update({'core': self})
 
         if clear_db:
-            self.log.info('clear db')
+            LOGGER.info('clear db')
             self.db.clear()
 
         db_version = self.db.store.get('VERSION')
-        self.log.info('db version: %s' % (db_version))
+        LOGGER.info('db version: %s' % (db_version))
         if db_version is None and self.version != 'unknown':
             self.db.store['VERSION'] = self.version
 
@@ -217,7 +217,7 @@ class Core(object):
         return __version__
 
     def close(self):
-        self.log.info("close")
+        LOGGER.info("close")
 
         self._plugins_call('unload')
 
@@ -267,7 +267,7 @@ class Core(object):
                     try:
                         res = f(r)
                     except Exception as e:
-                        self.log.exception('error in resource filter')
+                        LOGGER.exception('error in resource filter')
                         res = False
                     if not res:
                         return False
@@ -314,27 +314,6 @@ class Core(object):
         attributes['type'] = get_definition_name(cls)
         return self.db.os.create(cls, attributes)
 
-    def emit(self, signal, *args, **kwargs):
-        """
-        Dispatch a signal.
-
-        :param signal: Either a signal instance or a string representing a signal type.
-        :param args: Only used if a string was provided as signal. Any extra arguments to pass when instantiate the signal.
-        :param kwargs: Only used if a string was provided as signal. Any extra arguments to pass when instantiate the signal.
-        """
-        if isinstance(signal, string_types):
-            try:
-                if not signal.startswith('signals/'):
-                    signal = 'signals/' + signal
-                cls = get_registered_class(signal)
-                if not cls:
-                    raise Exception('unknown signal %s' % signal)
-                signal = cls(*args, **kwargs)
-            except:
-                self.log.exception('signal instantiate error')
-
-        emit(signal, sender=self)
-
     def get_plugin(self, name):
         """
         Find a plugin by its name.
@@ -351,5 +330,5 @@ class Core(object):
             try:
                 getattr(p, method)(*args, **kwargs)
             except:
-                self.log.exception("plugin %s: error while executing '%s'" % (p.name, method))
+                LOGGER.exception("plugin %s: error while executing '%s'" % (p.name, method))
 

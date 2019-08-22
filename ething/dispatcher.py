@@ -3,36 +3,44 @@
 import logging
 import threading
 import time
+import re
 from .utils.weak_ref import proxy_method, LostReferenceException
 from queue import Queue, Empty
 
 
-__all__ = ['emit', 'bind', 'unbind']
+__all__ = ['emit', 'bind', 'unbind', 'SignalEmitter']
 
 
 LOGGER = logging.getLogger(__name__)
+
+
+ANY = '*'
+
+
+class Signal(object):
+    pass
 
 
 class SignalDispatcher(object):
 
     def __init__(self, auto_start=True):
         self.r_lock = threading.RLock()
-        self.handlers = {}
+        self.handlers = list()
         self._queue = Queue()
         self._running = False
         if auto_start:
             self.start()
 
-    def queue(self, signal, sender=None):
-        self._queue.put((signal, sender))
+    def queue(self, signal, sender=None, namespace=None):
+        self._queue.put((signal, sender, namespace))
 
     def process(self, timeout=0):
         block = bool(timeout != 0)
         t0 = time.time()
         while timeout >= 0:
             try:
-                signal, sender = self._queue.get(block, timeout)
-                self.dispatch(signal)
+                arg = self._queue.get(block, timeout)
+                self.dispatch(*arg)
             except Empty:
                 break
             else:
@@ -43,8 +51,8 @@ class SignalDispatcher(object):
         LOGGER.debug('signal dispatcher event loop started')
         while self._running:
             try:
-                signal, sender = self._queue.get(True, 1)
-                self.dispatch(signal)
+                arg = self._queue.get(True, 1)
+                self.dispatch(*arg)
             except Empty:
                 pass
         LOGGER.debug('signal dispatcher event loop stopped')
@@ -61,52 +69,42 @@ class SignalDispatcher(object):
             t.join()
             delattr(self, '_t')
 
-    def dispatch(self, signal, sender=None):
+    def dispatch(self, signal, sender=None, namespace=None):
         with self.r_lock:
-            event_type = type(signal).__name__
-
-            for weakref_handlers in [self.handlers.get('*', []), self.handlers.get(event_type, [])]:
-                for weakref_handler_info in weakref_handlers:
-                    handler, once, _sender, args = weakref_handler_info
+            for weakref_handler_info in list(self.handlers):
+                _signal, handler, once, _sender, _, _ns_re, args = weakref_handler_info
+                if _signal == ANY or issubclass(signal, _signal):
                     if _sender is None or _sender == sender:
-                        remove = False
-                        try:
-                            handler(signal, *args)
-                        except LostReferenceException:
-                            # lost reference
-                            remove = True
-                        except Exception as e:
-                            LOGGER.exception("Error calling signal handler with signal: %s handler: %s" % (str(signal), handler))
-                        if once or remove:
-                            weakref_handlers.remove(weakref_handler_info)
+                        if _ns_re is None or (namespace and _ns_re.match(namespace)):
+                            remove = False
+                            try:
+                                handler(signal, *args)
+                            except LostReferenceException:
+                                # lost reference
+                                remove = True
+                            except Exception as e:
+                                LOGGER.exception("Error calling signal handler with signal: %s handler: %s" % (str(signal), handler))
+                            if once or remove:
+                                self.handlers.remove(weakref_handler_info)
 
-    def bind(self, event_types, handler, once = False, sender=None, args=()):
+    def bind(self, signal, handler, once = False, sender=None, args=(), namespace=None):
         """Adds an event listener for event name"""
         with self.r_lock:
-            for event_type in event_types.split(' '):
-                if not event_type:
-                    continue
+            ns_re = re.compile(namespace + '(\.|$)') if namespace else None
+            self.handlers.append((signal, proxy_method(handler), once, sender, namespace, ns_re, args))
 
-                if event_type not in self.handlers:
-                    self.handlers[event_type] = []
-
-                self.handlers[event_type].append((proxy_method(handler), once, sender, args))
-
-    def unbind(self, event_types, handler = None, sender=None):
+    def unbind(self, signal=ANY, handler = None, sender=None, namespace=None):
         """removes previously added event listener"""
+        if namespace is not None:
+            namespace = re.compile(namespace + '(\.|$)')
         with self.r_lock:
-            for event_type in event_types.split(' '):
-                if not event_type:
-                    continue
-
-                for type in list(self.handlers.keys()):
-                    if event_type == '*' or event_type == type:
-                        for index, handler_info in enumerate(self.handlers[type]):
-                            _handler, once, _sender, args = handler_info
-                            if handler is None or handler == _handler:
-                                if sender is None or sender == _sender:
-                                    del self.handlers[type][index]
-                                    break
+            for index, handler_info in enumerate(self.handlers):
+                _signal, _handler, once, _sender, _namespace, _, args = handler_info
+                if signal == ANY or issubclass(_signal, signal):
+                    if handler is None or handler == _handler:
+                        if sender is None or sender == _sender:
+                            if namespace is None or (_namespace and namespace.match(_namespace)):
+                                del self.handlers[index]
 
     def clear(self):
         with self.r_lock:
@@ -114,7 +112,7 @@ class SignalDispatcher(object):
 
         while True:
             try:
-                signal, sender = self._queue.get(False)
+                self._queue.get(False)
             except Empty:
                 break
 
@@ -132,16 +130,38 @@ def global_instance():
     return _dispatcher
 
 
-def emit(signal, sender=None):
+def emit(signal, sender=None, namespace=None):
     """dispatch asynchronously a signal"""
-    global_instance().queue(signal, sender)
+    global_instance().queue(signal, sender, namespace)
 
 
-def bind(event_types, handler, once = False, sender=None, args=()):
+def bind(signal, handler, once=False, sender=None, args=(), namespace=None):
     """Adds an event listener for event name"""
-    global_instance().bind(event_types, handler, once, sender, args)
+    global_instance().bind(signal, handler, once, sender, args, namespace)
 
 
-def unbind(event_types, handler = None, sender=None):
+def unbind(signal, handler=None, sender=None, namespace=None):
     """removes previously added event listener"""
-    global_instance().unbind(event_types, handler, sender)
+    global_instance().unbind(signal, handler, sender, namespace)
+
+
+class SignalEmitter(object):
+
+    @property
+    def namespace(self):
+        return str(id(self))
+
+    def emit(self, signal):
+        """
+        Dispatch a signal.
+
+        :param signal: a signal instance
+        """
+
+        emit(signal, sender=self, namespace=self.namespace)
+
+    def bind(self, signal, handler, once=False, args=()):
+        bind(signal, handler, once, self, args, self.namespace)
+
+    def unbind(self, signal, handler=None):
+        unbind(signal, handler, self, self.namespace)

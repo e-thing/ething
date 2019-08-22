@@ -1,11 +1,13 @@
 # coding: utf-8
 from ething.TransportProcess import Protocol
-from ething.scheduler import set_interval
+from ething.scheduler import set_interval, unbind
 from .helpers import *
 from .MihomeDevice import mihome_device_classes
 import time
-import datetime
+import logging
 
+
+LOGGER = logging.getLogger(__name__)
 
 
 class MihomeProtocol(Protocol):
@@ -30,7 +32,7 @@ class MihomeProtocol(Protocol):
     def data_received(self, from_tupple):
         data, addr = from_tupple
 
-        self.log.debug("Mihome: receive data from %s : %s", str(addr), data)
+        LOGGER.debug("Mihome: receive data from %s : %s", str(addr), data)
 
         data = data.decode("utf-8")
         ip = addr[0]
@@ -83,16 +85,16 @@ class MihomeProtocol(Protocol):
                                         device = self.core.create(cls, attributes)
                                         break
                                 except:
-                                    self.log.exception('mihome cls create exception')
+                                    LOGGER.exception('mihome cls create exception')
                             else:
-                                self.log.warning('unable to create the device: no associated class found for model: %s' % model)
+                                LOGGER.warning('unable to create the device: no associated class found for model: %s' % model)
 
                         else:
-                            self.log.warning(
+                            LOGGER.warning(
                                 "Mihome: gateway not found with ip=%s" % (ip,))
 
                     if not device:
-                        self.log.error(
+                        LOGGER.error(
                             "Mihome: unable to create the device model: %s , sid:%s" % (model, sid))
 
 
@@ -133,12 +135,12 @@ class MihomeProtocol(Protocol):
 
         if self.transport.is_open:
 
-            self.log.debug("command send %s", str(command))
+            LOGGER.debug("command send %s", str(command))
 
             try:
                 self.transport.write(json.dumps(command).encode("utf-8"), (ip, port))
             except Exception as e:
-                self.log.exception('send error')
+                LOGGER.exception('send error')
                 result.reject('send error: %s' % str(e))
             else:
                 if ack:
@@ -173,14 +175,14 @@ class MihomeProtocol(Protocol):
                 self._responseListeners.pop(i)
                 i -= 1
 
-                self.log.debug("command timeout for : %s", str(responseListener.command.get('cmd')))
+                LOGGER.debug("command timeout for : %s", str(responseListener.command.get('cmd')))
 
                 responseListener.reject('response timeout')
 
             i += 1
 
     def search(self):
-        self.log.debug('search...')
+        LOGGER.debug('search...')
         self.send({"cmd":"whois"}, port = SERVER_PORT, ack = False)
 
 
