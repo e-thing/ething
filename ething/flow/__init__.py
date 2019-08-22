@@ -217,10 +217,6 @@ class Node(Entity, NodeBase):
         Entity.__init__(self, value, context)
         NodeBase.__init__(self, id=self.id)
 
-    @property
-    def log(self):
-        return self._logger
-
     @classmethod
     def __schema__(cls, schema, context = None):
         schema['inputs'] = cls.INPUTS

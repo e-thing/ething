@@ -73,20 +73,23 @@ class ServiceListener:
 
     def _run_handlers(self, is_alive, info):
         need_update = False
+        handlers_items = _service_handlers.get(self._service_name, [])
 
-        for h, dev_name in _service_handlers.get(self._service_name, []):
+        for item in list(handlers_items):
+            h, dev_name = item
             if dev_name and not info['name'].startswith(dev_name):
                 continue
             try:
                 h(is_alive, info)
             except LostReferenceException:
                 need_update = True
+                # remove
+                handlers_items.remove(item)
             except:
                 LOGGER.exception('[%s] exception in handler %s', self.service_name, h)
 
         if need_update:
             _update(self.service_name)
-
 
     def remove_service(self, zeroconf, type, name):
         #
@@ -100,7 +103,6 @@ class ServiceListener:
 
 
     def add_service(self, zeroconf, type, name):
-        # Service LIVEBOX._http._tcp.local. added, service info: ServiceInfo(type='_http._tcp.local.', name='LIVEBOX._http._tcp.local.', addresses=[b'\xc0\xa8\x01\x01'], port=80, weight=0, priority=0, server='LIVEBOX.local.', properties={})
         info = zeroconf.get_service_info(type, name)
         LOGGER.info("Service %s added, service info: %s" % (name, info))
 

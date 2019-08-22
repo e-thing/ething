@@ -422,6 +422,10 @@ class Node(with_metaclass(ABCMeta, object)):
         return self._flow
 
     @property
+    def log(self):
+        return self._logger
+
+    @property
     def stop_on_error(self):
         return self._stop_on_error
 

@@ -65,7 +65,10 @@ class MihomeProtocol(Protocol):
 
                     if model == 'gateway':
                         # concerning a gateway
-                        attributes.update({'ip': ip})
+                        attributes.update({
+                            'ip': ip,
+                            'name': 'lumi gateway'
+                        })
                         device = self.core.create('resources/MihomeGateway', attributes)
 
                     else:
