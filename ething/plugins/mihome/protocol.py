@@ -1,6 +1,6 @@
 # coding: utf-8
-from ething.core.TransportProcess import Protocol
-from ething.core.utils.date import utcnow
+from ething.TransportProcess import Protocol
+from ething.scheduler import set_interval
 from .helpers import *
 from .MihomeDevice import mihome_device_classes
 import time
@@ -22,7 +22,7 @@ class MihomeProtocol(Protocol):
         super(MihomeProtocol, self).connection_made()
         self._responseListeners = []
 
-        self.core.scheduler.set_interval(1, self.check_timeout, condition=lambda _: len(self._responseListeners)>0)
+        set_interval(1, self.check_timeout, condition=lambda _: len(self._responseListeners)>0)
 
         self.search()
 
@@ -152,7 +152,7 @@ class MihomeProtocol(Protocol):
 
     def connection_lost(self, exc):
 
-        self.core.scheduler.unbind(self.check_timeout)
+        unbind(self.check_timeout)
 
         for responseListener in self._responseListeners:
             responseListener.reject('disconnected')

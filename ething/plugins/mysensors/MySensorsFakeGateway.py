@@ -2,7 +2,7 @@
 
 
 from .MySensorsGateway import MySensorsGateway, MySensorsController
-from ething.core.TransportProcess import Transport
+from ething.TransportProcess import Transport
 from .Message import Message
 from .helpers import *
 import time, random

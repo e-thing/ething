@@ -1,5 +1,5 @@
 # coding: utf-8
-from ething.core.TransportProcess import AsyncResult
+from ething.TransportProcess import AsyncResult
 
 specialCtrlCmds = ['OK', 'REBOOT', 'PING', 'PONG', 'VERSION', 'RFDEBUG', 'RFUDEBUG',
                    'QRFDEBUG', 'TRISTATEINVERT', 'RTSCLEAN', 'RTSRECCLEAN', 'RTSSHOW', 'RTSINVERT', 'RTSLONGTX']

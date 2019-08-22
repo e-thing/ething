@@ -1,8 +1,8 @@
 # coding: utf-8
 
 from ..BleaDevice import BleaDevice
-from ething.core.interfaces import Thermometer, HumiditySensor
-from ething.core import scheduler
+from ething.interfaces import Thermometer, HumiditySensor
+from ething import scheduler
 import re
 
 

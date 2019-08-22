@@ -2,7 +2,7 @@
 from future.utils import integer_types, string_types, with_metaclass
 import time
 import logging
-from ..utils import ShortId
+from ..utils import generate_id
 import gevent
 from collections import MutableMapping, Mapping
 from queue import Queue, Empty
@@ -10,7 +10,7 @@ import copy
 from abc import ABCMeta, abstractmethod
 
 
-_LOGGER = logging.getLogger('flow')
+_LOGGER = logging.getLogger(__name__)
 
 
 class NodeLoggerAdapter(logging.LoggerAdapter):
@@ -404,7 +404,7 @@ class Node(with_metaclass(ABCMeta, object)):
 
     def __init__(self, flow=None, id=None, stop_on_error=False, **other):
         self._flow = flow
-        self._id = id or ShortId.generate()
+        self._id = id or generate_id()
         self._logger = NodeLoggerAdapter(self)
         self._t = {}
         self._emitted = False
@@ -533,7 +533,7 @@ class Event(object):
 
 class Message(MutableMapping):
     def __init__(self, data=None):
-        self._id = ShortId.generate()
+        self._id = generate_id()
         #self._src = node
         self._ts = time.time()
         self.payload = None

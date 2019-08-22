@@ -1,7 +1,7 @@
 # coding: utf-8
 from future.utils import string_types, integer_types, iteritems
-from ething.core.Device import Device
-from ething.core.reg import *
+from ething.Device import Device
+from ething.reg import *
 from .connector import Connector
 
 

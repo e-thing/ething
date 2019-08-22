@@ -2,7 +2,7 @@
 
 
 from .RFLinkNode import RFLinkNode
-from ething.core.reg import *
+from ething.reg import *
 from .helpers import attrMap
 
 

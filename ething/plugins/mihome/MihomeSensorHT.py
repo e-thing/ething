@@ -2,7 +2,7 @@
 
 
 from .MihomeDevice import MihomeDevice
-from ething.core.interfaces import Thermometer, HumiditySensor, PressureSensor
+from ething.interfaces import Thermometer, HumiditySensor, PressureSensor
 
 
 class MihomeSensorHT(MihomeDevice, Thermometer, HumiditySensor, PressureSensor):

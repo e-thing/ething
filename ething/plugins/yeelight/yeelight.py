@@ -5,7 +5,7 @@ import socket
 import struct
 import re
 import colorsys
-from ething.core.TransportProcess import AsyncResult
+from ething.TransportProcess import AsyncResult
 import math
 
 

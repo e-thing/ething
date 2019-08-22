@@ -3,7 +3,7 @@ from future.utils import string_types
 
 
 from .YeelightDevice import YeelightDevice
-from ething.core.interfaces import DimmableLight
+from ething.interfaces import DimmableLight
 from .yeelight import parse_brightness
 
 

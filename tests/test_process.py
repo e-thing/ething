@@ -1,6 +1,6 @@
 # coding: utf-8
 import pytest
-from ething.core.Process import Process, Manager
+from ething.Process import Process, Manager
 import time
 
 

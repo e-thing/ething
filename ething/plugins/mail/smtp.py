@@ -8,8 +8,8 @@ from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from email.mime.base import MIMEBase
 
-from ething.core.Table import Table
-from ething.core.File import File
+from ething.Table import Table
+from ething.File import File
 
 
 class SmtpMail(object):

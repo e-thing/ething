@@ -1,13 +1,17 @@
 # coding: utf-8
 
-from ething.core.Process import Process
-from ething.core.utils.json import dumps
+from ething.processes import Process
+from ething.utils.json import dumps
 import threading
 import paho.mqtt.client as mqttClient
-from ething.core.Signal import ResourceSignal
+from ething.Signal import ResourceSignal
 import random
 import string
 import time
+import logging
+
+
+LOGGER = logging.getLogger(__name__)
 
 
 class MqttDispatcherService(Process):
@@ -25,7 +29,7 @@ class MqttDispatcherService(Process):
         self.base_topic = base_topic.rstrip("/") if base_topic else ''
         self._lock = threading.Lock()
 
-    def main(self):
+    def run(self):
         self._mqttClient = mqttClient.Client(client_id='ething_%s' % ''.join(random.choice(
             string.ascii_uppercase + string.digits) for _ in range(6)), clean_session=True)
 
@@ -46,35 +50,35 @@ class MqttDispatcherService(Process):
                 self._mqttClient.connect(host, port=port, keepalive=self.KEEPALIVE)
             except Exception as e:
                 # unable to connect
-                self.log.error("Error: unable to connect to %s:%d" % (host, port))
+                LOGGER.error("Error: unable to connect to %s:%d" % (host, port))
                 # wait before retry
                 t_end = time.time() + self.RECONNECT_DELAY
                 while self.is_running and time.time() < t_end:
                     time.sleep(0.5)
                 continue
 
-            self.log.info("connected to %s:%d" % (host, port))
+            LOGGER.info("connected to %s:%d" % (host, port))
 
             while self.is_running:
                 self._mqttClient.loop(1.0)
 
-            self.log.info("disconnect")
+            LOGGER.info("disconnect")
             self._mqttClient.disconnect()
 
     def on_connect(self, client, userdata, flags, rc):
 
         if rc == 0:
-            self.log.info("connected")
+            LOGGER.info("connected")
             self.core.signalDispatcher.bind('*', self.emit)
         else:
             # unable to connect
-            self.log.error("connection refused : %s" %
+            LOGGER.error("connection refused : %s" %
                            mqttClient.connack_string(rc))
             self.stop()
 
     def on_disconnect(self, client, userdata, rc):
         if rc != 0:
-            self.log.warning("Unexpected disconnection")
+            LOGGER.warning("Unexpected disconnection")
             self._mqttClient.reconnect()
 
         self.core.signalDispatcher.unbind('*', self.emit)
@@ -93,7 +97,7 @@ class MqttDispatcherService(Process):
 
         payload = dumps(signal)
 
-        self.log.debug("publish topic=%s", topic)
+        LOGGER.debug("publish topic=%s", topic)
 
         self._mqttClient.publish(topic, payload, 0, True)
 

@@ -1,7 +1,7 @@
 # coding: utf-8
 import pytest
-from ething.core.SignalDispatcher import SignalDispatcher
-from ething.core.Signal import Signal
+from ething.SignalDispatcher import SignalDispatcher
+from ething.Signal import Signal
 
 
 class Foo(Signal):

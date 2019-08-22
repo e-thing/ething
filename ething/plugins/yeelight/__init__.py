@@ -2,8 +2,8 @@
 from .YeelightBulbRGBW import YeelightBulbRGBW
 from .YeelightBulbMono import YeelightBulbMono
 
-from ething.core.plugin import Plugin
-from ething.core.TransportProcess import TransportProcess, UdpTransport
+from ething.plugin import Plugin
+from ething.TransportProcess import TransportProcess, UdpTransport
 from .protocol import YeelightAdvertisementProtocol
 from .yeelight import MULTICAST_ADDRESS, MULTICAST_PORT
 
@@ -11,7 +11,7 @@ from .yeelight import MULTICAST_ADDRESS, MULTICAST_PORT
 class Yeelight(Plugin):
 
     def setup(self):
-        self.core.process_manager.attach(AdvertisementController(self.core))
+        self.core.processes.add(AdvertisementController(self.core))
 
 
 class AdvertisementController(TransportProcess):

@@ -1,9 +1,9 @@
 # coding: utf-8
 
-from ething.core import Device
-from ething.core.reg import *
-from ething.core.interfaces import Relay
-from ething.core import scheduler
+from ething import Device
+from ething.reg import *
+from ething.interfaces import Relay
+from ething import scheduler
 import requests
 
 

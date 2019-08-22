@@ -5,6 +5,10 @@
 import pkgutil
 import os
 import importlib
+import logging
+
+
+LOGGER = logging.getLogger(__name__)
 
 
 def find_builtin_plugins():
@@ -17,12 +21,20 @@ def find_builtin_plugins():
     return plugins
 
 
-def install_builtin_plugins(core, **options):
+def import_builtin_plugins():
+    modules = list()
 
     for module_name in find_builtin_plugins():
         try:
             mod = importlib.import_module('.%s' % module_name, __name__)
+            modules.append(mod)
         except:
-            core.log.exception('unable to import %s' % module_name)
-        else:
-            core.use(mod, **options.get(module_name, {}))
+            LOGGER.exception('unable to import %s' % module_name)
+
+    return modules
+
+
+def install_builtin_plugins(core, **options):
+
+    for module in import_builtin_plugins():
+        core.use(module, **options.get(module.__name__, {}))

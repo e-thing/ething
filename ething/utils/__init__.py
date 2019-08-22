@@ -1,9 +1,35 @@
 # coding: utf-8
 
-from .null_context_manager import NullContextManager
 import collections
 import inspect
 import types
+from builtins import object
+from shortid import ShortId as ShortIdlib
+
+
+id_re = '^[-_a-zA-Z0-9]{7}$'
+
+length = 7
+
+alphabet = '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_-'
+
+sid = ShortIdlib()
+
+
+def generate_id():
+    return sid.generate()[-length:]
+
+
+
+class NullContextManager(object):
+    def __enter__(self):
+        return None
+
+    def __exit__(self, *args):
+        pass
+
+    def __bool__(self):
+        return False
 
 
 _info = None
@@ -130,9 +156,6 @@ def filter_obj(obj, fields):
     return cpy
 
 
-from collections import defaultdict
-
-
 # Taken from http://stackoverflow.com/a/10077069
 def etree_to_dict(t):
     """Convert an ETree object to a dict."""
@@ -144,7 +167,7 @@ def etree_to_dict(t):
     }
     children = list(t)
     if children:
-        dd = defaultdict(list)
+        dd = collections.defaultdict(list)
         for dc in map(etree_to_dict, children):
             for k, v in dc.items():
                 dd[k].append(v)

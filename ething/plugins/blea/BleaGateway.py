@@ -1,6 +1,6 @@
 # coding: utf-8
-from ething.core.Device import Device
-from ething.core.reg import *
+from ething.Device import Device
+from ething.reg import *
 
 
 @attr('learning', type=Boolean(), default=True, description="If true, new device will be automatically included.")

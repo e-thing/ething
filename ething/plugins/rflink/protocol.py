@@ -1,8 +1,8 @@
 # coding: utf-8
 from .RFLinkSwitch import RFLinkSwitch
 from .RFLinkGenericSensor import RFLinkGenericSensor
-from ething.core.TransportProcess import LineReader
-from ething.core.utils.date import utcnow
+from ething.TransportProcess import LineReader
+from ething.scheduler import set_interval, unbind
 from .helpers import parse_incoming_data, is_protocol, Result
 import time
 import re
@@ -24,7 +24,7 @@ class RFLinkProtocol(LineReader):
         super(RFLinkProtocol, self).connection_made()
         self._responseListeners = []
 
-        self.core.scheduler.set_interval(1, self.check_response_timeout)
+        set_interval(1, self.check_response_timeout)
 
     # exemple of messages :
     #     20;00;Nodo RadioFrequencyLink - RFLink Gateway V1.1 - R46;
@@ -159,7 +159,7 @@ class RFLinkProtocol(LineReader):
 
     def connection_lost(self, exc):
 
-        self.core.scheduler.unbind(self.check_response_timeout)
+        unbind(self.check_response_timeout)
 
         for responseListener in self._responseListeners:
             responseListener.reject('disconnected')

@@ -2,8 +2,8 @@
 
 
 from .MySensorsGateway import MySensorsGateway, MySensorsController
-from ething.core.reg import *
-from ething.core.TransportProcess import SerialTransport
+from ething.reg import *
+from ething.TransportProcess import SerialTransport
 
 
 class MySensorsSerialController(MySensorsController):

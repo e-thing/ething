@@ -1,13 +1,12 @@
 # coding: utf-8
 
 from .db import *
-from .Signal import ResourceSignal, Signal
+from .Signal import ResourceSignal
 from .utils.date import TzDate, utcnow
 from .utils.ObjectPath import evaluate
-from .utils import getmembers
 from .scheduler import *
-from .Process import Process
-from collections import Mapping, Sequence
+from .processes import *
+from collections import Mapping
 import inspect
 import logging
 
@@ -120,24 +119,6 @@ class RDict(Dict):
         return j
 
 
-def _import_process(instance, p):
-    if isinstance(p, Process):
-        # process instance
-        return p
-    elif issubclass(p, Process):
-        # Process subclass
-        return p(instance)
-    elif callable(p):
-        # create a process
-        return Process(target=p)
-    else:
-        raise Exception('not a process')
-
-
-def process(func):
-    # process decorator
-    setattr(func, '_process', True)
-    return func
 
 
 @abstract
@@ -190,12 +171,12 @@ class Resource(Entity):
                 # this method is fired every minute
                 self.count += 1
 
-            @process
+            @process()
             def daemon_like_async_processing(self):
                 # this method is fired when the instance is created
                 while True:
                     # ... do some processing here
-                    time.sleep(1) # do not forget to give some time
+                    time.sleep(0.1) # do not forget to give some time, sp other processes can run
 
 
     """
@@ -209,9 +190,30 @@ class Resource(Entity):
 
         self._log = getattr(self, 'LOGGER', None) or ResourceLoggerAdapter(self)
 
-        self.core.scheduler.bind_instance(self)
+        self._processes = ProcessCollection(parent=self)
 
-        self._process_bind()
+        """
+        bind processes to this instance
+        1 - look for __process__ attribute which can either be :
+             - a method:
+               def __process__(self): return MyProcess(...)
+             - a Process subclass:
+               __process__ = MyProcess # will be instantiated with a single argument corresponding to the current resource
+             - an array of Process subclass:
+               __process__ = [MyProcess0, MyProcess1, ...]
+
+        2 - look for any method decorated with @process
+
+        """
+
+        if hasattr(self, '__process__'):
+            self.processes.add(self.__process__() if callable(self.__process__) else self.__process__)
+
+        # find any @process decorator
+        for p in generate_instance_processes(self):
+            self.processes.add(p)
+
+        bind_instance(self)
 
     def __eq__(self, other):
         if isinstance(other, Resource):
@@ -245,6 +247,10 @@ class Resource(Entity):
     @property
     def log(self):
         return self._log
+
+    @property
+    def processes(self):
+        return self._processes
 
     def notify(self, message, mode=None, persistant=False, **kwargs):
         kwargs['source'] = self
@@ -281,6 +287,7 @@ class Resource(Entity):
         :param args: Only used if a string was provided as signal. Any extra arguments to pass when instantiate the signal.
         :param kwargs: Only used if a string was provided as signal. Any extra arguments to pass when instantiate the signal.
         """
+        kwargs.setdefault('sender', self)
         self.core.emit(signal, *args, **kwargs)
 
     def children(self, filter=None):
@@ -308,8 +315,8 @@ class Resource(Entity):
         for child in children:
             child.remove()
 
-        self.core.scheduler.unbind(self)
-        self._process_stop()
+        unbind(self)
+        self.processes.stop_all()
 
         remove(self)
 
@@ -384,7 +391,7 @@ class Resource(Entity):
         :param data: the data to store (dict, string, number, boolean)
         :param name: the name of the column (not used if the data is a dict)
         :param table_length: max length of the table. Default to 5000.
-        :return: :class:`ething.core.Table.Table` instance.
+        :return: :class:`ething.Table.Table` instance.
         """
         try:
             table = self.core.find_one(
@@ -421,57 +428,4 @@ class Resource(Entity):
         :return: boolean
         """
         return bool(evaluate(expression, self.__json__()))
-
-    def _process_bind(self):
-        """
-        bind processes to this instance
-        1 - look for __process__ attribute which can either be :
-             - a method:
-               def __process__(self): return MyProcess(...)
-             - a Process subclass:
-               __process__ = MyProcess # will be instantiated with a single argument corresponding to the current resource
-             - an array of Process subclass:
-               __process__ = [MyProcess0, MyProcess1, ...]
-
-        2 - look for any method decorated with @process
-
-        """
-        processes = []
-
-        if hasattr(self, '__process__'):
-            pa = self.__process__
-
-            if callable(pa):
-                pres = pa()
-                if isinstance(pres, Sequence):
-                    for p in pres:
-                        processes.append(_import_process(self, p))
-                else:
-                    processes.append(_import_process(self, pres))
-            elif isinstance(pa, Sequence):
-                for ppa in pa:
-                    processes.append(_import_process(self, ppa))
-            else:
-                processes.append(_import_process(self, pa))
-
-        # find any @process decorator
-        for name, func in getmembers(self, lambda x: hasattr(x, '_process')):
-            processes.append(Process(name=name, target=getattr(self, name)))
-
-        # keep references to this process during the lifetime of this resource
-        self._processes = dict()
-
-        for p in processes:
-            p.parent = self
-            p.log = self.log
-            self._processes[p.id] = p
-            self.core.process_manager.attach(p)
-
-    def _process_stop(self):
-        self._processes.clear() # remove references
-
-        # stop & destroy any processes binded to this resource
-        for p in self.core.process_manager.find(parent=self):
-            p.destroy(timeout=2)
-
 

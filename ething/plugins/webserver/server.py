@@ -21,14 +21,17 @@ from future.utils import binary_type, string_types
 from .method_override import HTTPMethodOverrideMiddleware
 from .server_utils import ServerException, tb_extract_info, root_path, use_args, use_multi_args
 from .apikey import Apikey
-from ething.core.db import db_find, serialize, unserialize, save, to_json
-from ething.core.plugin import *
-from ething.core.Process import Process
-from ething.core.utils import dict_merge, filter_obj
-from ething.core.reg import get_registered_class, from_json, get_definition_name
-from ething.core.Resource import Resource
-from ething.core.env import USER_DIR
+from ething.db import db_find, serialize, unserialize, save, to_json
+from ething.plugin import *
+from ething.processes import Process
+from ething.utils import dict_merge, filter_obj
+from ething.reg import get_registered_class, from_json, get_definition_name
+from ething.Resource import Resource
+from ething.env import USER_DIR
 from collections import OrderedDict
+
+
+LOGGER = logging.getLogger(__name__)
 
 
 @attr('auth', type=Dict(mapping={
@@ -52,7 +55,7 @@ class WebServer(Plugin):
     def setup(self):
         # clients
         install_clients_manager(self.app)
-        self.core.process_manager.attach(WebServerProcess(self.app))
+        self.core.processes.add(WebServerProcess(self.app))
 
 
 class FlaskApp(Flask):
@@ -81,7 +84,7 @@ class FlaskApp(Flask):
         dict_merge(self._config, config if config is not None else dict())
 
         if logger is None:
-            self.log = logging.getLogger("webserver")
+            self.log = LOGGER
         else:
             self.log = logger
 
@@ -313,6 +316,6 @@ class WebServerProcess(Process):
     def terminate(self):
         self.app.stop()
 
-    def main(self):
+    def run(self):
         self.app.run()
 

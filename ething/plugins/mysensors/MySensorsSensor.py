@@ -1,7 +1,7 @@
 # coding: utf-8
 
-from ething.core.Device import Device
-from ething.core.reg import *
+from ething.Device import Device
+from ething.reg import *
 from .helpers import *
 
 
@@ -52,8 +52,8 @@ class MySensorsSensor (with_metaclass(MySensorsSensorMetaClass, Device)):
         pass
 
 
-from ething.core.interfaces import *
-from ething.core.interfaces.sensor import *
+from ething.interfaces import *
+from ething.interfaces.sensor import *
 
 
 # S_DOOR;0;Door and window sensors;V_TRIPPED, V_ARMED

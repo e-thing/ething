@@ -1,7 +1,7 @@
 # coding: utf-8
 from future.utils import string_types
 from .reg import *
-from .utils import ShortId
+from .utils import generate_id
 import logging
 import inspect
 import os
@@ -9,10 +9,14 @@ import pkgutil
 import importlib
 import pkg_resources
 from email.parser import FeedParser
+from .plugins import import_builtin_plugins
+
+
+LOGGER = logging.getLogger(__name__)
 
 
 def generate_plugin_name(suffix):
-    return "%s_%s" % (suffix, ShortId.generate())
+    return "%s_%s" % (suffix, generate_id())
 
 
 class PluginMetaClass(MetaReg):
@@ -32,22 +36,18 @@ class Plugin(with_metaclass(PluginMetaClass, Entity)):
 
     Example::
 
-        @attr('some_option')
+        @attr('some_config')
         class MyPlugin(Plugin):
 
             def setup(self):
-                # access the option:
-                self.some_option
-
                 # access the core instance
                 self.core
 
+                # access to the registered configuration (note, this config is accessible through the web interface):
+                self.some_config
 
-        # bind the plugin to a specific core instance :
-        core.use(MyPlugin)
-
-        # or register it globally :
-        register_plugin(MyPlugin)
+                # access to the command line options
+                self.options.get('foo')
 
     """
 
@@ -72,7 +72,7 @@ class Plugin(with_metaclass(PluginMetaClass, Entity)):
 
             link to the core instance.
 
-            :type: :class:`ething.core.Core`
+            :type: :class:`ething.Core`
 
         .. attribute:: options
 
@@ -149,18 +149,6 @@ class Plugin(with_metaclass(PluginMetaClass, Entity)):
         """
         pass
 
-    def start(self):
-        """
-        Is called once the core has been started.
-        """
-        pass
-
-    def stop(self):
-        """
-        Is called once the core has been stopped.
-        """
-        pass
-
     def unload(self):
         """
         Is called once the core has been destroyed. Used to free up the memory.
@@ -232,14 +220,14 @@ def get_package_info(mod):
 
 def install_func_to_plugin(install_func, name=None):
 
-    def load(self):
+    def setup(self):
         return install_func(self.core, self.options)
 
     if name is None:
         name = generate_plugin_name('AnonymousPlugin')
 
     return type(name, (Plugin,), {
-        'load': load
+        'setup': setup
     })
 
 
@@ -247,6 +235,7 @@ def _is_in_module(mod_name, base_mod_name):
     if base_mod_name == mod_name:
         return True
     return (base_mod_name + ".") in mod_name
+
 
 def extract_plugin_from_module(mod):
     for attr_name in dir(mod):
@@ -290,40 +279,30 @@ def search_plugin_cls(something):
     return plugin_cls
 
 
-_plugins_cache = None
-
-
-def clear_cache():
-    global _plugins_cache
-    _plugins_cache = None
-
-
 def find_plugins():
-    global _plugins_cache
+    ret = set()
 
-    if _plugins_cache is None:
-        _plugins_cache = []
+    # find installed packages in PYTHON_PATH
+    for loader, module_name, is_pkg in pkgutil.iter_modules():
+        if module_name.startswith('ething_'):
+            ret.add(module_name)
 
-        # find installed packages in PYTHON_PATH
-        for loader, module_name, is_pkg in pkgutil.iter_modules():
-            if module_name.startswith('ething_'):
-                _plugins_cache.append(module_name)
-
-    return _plugins_cache
+    return ret
 
 
-_registered_plugins_cls = set()
+def import_plugins():
+    modules = []
 
+    # builtin plugins
+    modules += import_builtin_plugins()
 
-def register_plugin(something):
-    """
-    Register the given plugin globally (ie: will be available in any :class:`ething.core.Core` instance).
+    # installed plugins as package
+    for module_name in find_plugins():
+        try:
+            mod = importlib.import_module(module_name)
+            modules.append(mod)
+        except:
+            LOGGER.exception('unable to import %s' % module_name)
 
-    :param something: a plugin, module or install function.
-    """
-    plugin_cls = search_plugin_cls(something)
-    _registered_plugins_cls.add(plugin_cls)
+    return modules
 
-
-def list_registered_plugins():
-    return list(_registered_plugins_cls)

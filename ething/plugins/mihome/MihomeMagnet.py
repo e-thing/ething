@@ -2,7 +2,7 @@
 
 
 from .MihomeDevice import MihomeDevice
-from ething.core.interfaces import DoorSensor
+from ething.interfaces import DoorSensor
 
 
 class MihomeMagnet(MihomeDevice, DoorSensor):

@@ -1,6 +1,7 @@
 # coding: utf-8
 from future.utils import string_types, integer_types
 from .reg import Type, convert_type, get_type_from_value, set_dirty, attach, detach
+from .utils import id_re
 from collections import MutableSequence, Sequence, MutableMapping, Mapping, OrderedDict
 import re
 import datetime
@@ -961,3 +962,14 @@ class M_Dict(MutableMapping):
   def __str__(self):
     return str(self._store)
 
+
+class Id(String):
+
+  def __init__(self, **attributes):
+    super(Id, self).__init__(regex=id_re, **attributes)
+
+  def validate(self, value, context=None):
+    try:
+      return super(Id, self).validate(value, context)
+    except ValueError:
+      raise ValueError('not an id')

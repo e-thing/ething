@@ -1,10 +1,10 @@
 # coding: utf-8
 
-from ething.core.plugin import *
-from ething.core import scheduler
-from ething.core.Device import *
-from ething.core.interfaces import Thermometer, PressureSensor, HumiditySensor, Anemometer
-from ething.core.interfaces.sensor import sensor_attr
+from ething.plugin import *
+from ething import scheduler
+from ething.Device import *
+from ething.interfaces import Thermometer, PressureSensor, HumiditySensor, Anemometer
+from ething.interfaces.sensor import sensor_attr
 import requests
 import json
 

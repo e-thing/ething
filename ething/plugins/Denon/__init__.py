@@ -1,8 +1,8 @@
-from ething.core.Device import Device
-from ething.core.reg import *
-from ething.core.utils.ping import pingable
-from ething.core.interfaces import Relay
-from ething.core.discovery import mdns
+from ething.Device import Device
+from ething.reg import *
+from ething.utils.ping import pingable
+from ething.interfaces import Relay
+from ething.discovery import mdns
 import requests
 import xmltodict
 

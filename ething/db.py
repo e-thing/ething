@@ -3,7 +3,7 @@
 from future.utils import string_types
 from queue import Queue, Empty
 from .reg import *
-from .utils import object_sort, ShortId
+from .utils import object_sort, generate_id
 from collections import OrderedDict, MutableMapping, Iterable
 import copy
 from time import time
@@ -12,7 +12,7 @@ import logging
 import re
 
 
-LOGGER = logging.getLogger('db')
+LOGGER = logging.getLogger(__name__)
 
 
 class Driver_Base(object):
@@ -538,7 +538,7 @@ class FS(Iterable):
 
     def create(self, filename, content=None, **metadata):
 
-        file_id = ShortId.generate()
+        file_id = generate_id()
 
         metadata.update({
             'id': file_id,

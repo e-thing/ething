@@ -2,9 +2,9 @@
 
 from .helpers import *
 from .Message import Message
-from ething.core.utils import NullContextManager
-from ething.core.TransportProcess import LineReader, AsyncResult
-from ething.core.utils.date import utcnow
+from ething.utils import NullContextManager
+from ething.TransportProcess import LineReader, AsyncResult
+from ething.scheduler import set_interval, unbind
 import time
 import re
 import datetime
@@ -91,7 +91,7 @@ class MySensorsProtocol(LineReader):
         super(MySensorsProtocol, self).connection_made()
         self._pendingMessages = []
 
-        self.core.scheduler.set_interval(1, self.check_timeout)
+        set_interval(1, self.check_timeout)
 
     def createNode(self, nodeId):
         gateway = self.gateway
@@ -421,7 +421,7 @@ class MySensorsProtocol(LineReader):
 
     def connection_lost(self, exc):
 
-        self.core.scheduler.unbind(self.check_timeout)
+        unbind(self.check_timeout)
 
         for pendingMessages in self._pendingMessages:
             pendingMessages.reject('disconnected')

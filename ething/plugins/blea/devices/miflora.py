@@ -1,9 +1,9 @@
 # coding: utf-8
 
 from ..BleaDevice import BleaDevice
-from ething.core.reg import *
-from ething.core.interfaces import Thermometer, LightSensor, MoistureSensor
-from ething.core import scheduler
+from ething.reg import *
+from ething.interfaces import Thermometer, LightSensor, MoistureSensor
+from ething import scheduler
 
 
 VALID_DEVICE_NAMES = ['flower mate',

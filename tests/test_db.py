@@ -1,7 +1,7 @@
 # coding: utf-8
 import pytest
 import datetime
-from ething.core.db import *
+from ething.db import *
 
 
 def test_db_store(core):

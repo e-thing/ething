@@ -1,6 +1,6 @@
 # coding: utf-8
 import pytest
-from ething.core.utils.jsonpath import jsonpath
+from ething.utils.jsonpath import jsonpath
 
 
 def test_create(core):

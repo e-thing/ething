@@ -1,5 +1,5 @@
 # coding: utf-8
-from ething.core.flow import *
+from ething.flow import *
 import json
 import gevent
 import pytest

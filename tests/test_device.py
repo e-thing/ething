@@ -1,6 +1,6 @@
 # coding: utf-8
 import pytest
-from ething.core.Device import *
+from ething.Device import *
 
 
 def test_device(core):

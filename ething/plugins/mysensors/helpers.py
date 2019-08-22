@@ -1,6 +1,6 @@
 # coding: utf-8
 from future.utils import string_types, integer_types
-from ething.core.reg import MetaReg
+from ething.reg import MetaReg
 
 
 DEFAULT_ETH_PORT = 5003

@@ -8,11 +8,11 @@ import random
 import string
 from collections import OrderedDict
 
-from ething.core.reg import build_schema_definitions, Entity, build_schema
+from ething.reg import build_schema_definitions, Entity, build_schema
 
 from ..Scope import list as scope_list
 
-from ething.core.utils import get_info
+from ething.utils import get_info
 
 
 def install(core, app, auth, **kwargs):
@@ -46,13 +46,13 @@ def install(core, app, auth, **kwargs):
     @app.route('/api/utils/net_list')
     @auth.required()
     def net_list():
-        from ething.core.utils.net_scan import scan
+        from ething.utils.net_scan import scan
         return app.jsonify(scan(), indent=4)
 
     @app.route('/api/utils/bluetooth_list')
     @auth.required()
     def bluetooth_list():
-        from ething.core.utils.bluetooth import list_bluetooth_interfaces
+        from ething.utils.bluetooth import list_bluetooth_interfaces
         return app.jsonify(list_bluetooth_interfaces(), indent=4)
 
     #

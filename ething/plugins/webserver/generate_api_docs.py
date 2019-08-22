@@ -21,7 +21,7 @@ def main():
 
         print('output directory: %s' % output_dir)
 
-        from ething.core import Core
+        from ething import Core
         from ething.plugins.webserver.server import FlaskApp
         from ething.plugins.webserver.specification import generate
 

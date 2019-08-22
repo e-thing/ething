@@ -1,12 +1,17 @@
 # coding: utf-8
-from ething.core.Device import *
+from ething.Device import *
 import paramiko
-from ething.core.utils.ping import pingable
-from ething.core.plugin import Plugin
-from ething.core.Process import Process
+from ething.utils.ping import pingable
+from ething.plugin import Plugin
+from ething.processes import Process
+from ething.scheduler import set_interval
 import socket
 import uuid
 import time
+import logging
+
+
+LOGGER = logging.getLogger(__name__)
 
 
 SHELL_CLIENT_ACTIVITY_TIMEOUT = 60
@@ -51,11 +56,11 @@ class SSHPlugin(Plugin):
 
         @socketio.on('connect', namespace='/ssh')
         def client_connect():
-            self.log.debug('Client connected %s', request.sid)
+            LOGGER.debug('Client connected %s', request.sid)
 
         @socketio.on('disconnect', namespace='/ssh')
         def client_disconnect():
-            self.log.debug('Client disconnected %s', request.sid)
+            LOGGER.debug('Client disconnected %s', request.sid)
             self.interactive_shell_manager.leave(request.sid)
 
         @socketio.on('open', namespace='/ssh')
@@ -71,25 +76,25 @@ class SSHPlugin(Plugin):
             resume = True
             shell = self.interactive_shell_manager.get(shell_id)
             if not shell:
-                shell = Interactive_Shell(device, id=shell_id)
+                shell = Interactive_Shell(device, shell_id=shell_id)
                 resume = False
 
-            self.log.debug('ssh open, client %s , shell %s , resume=%s', client_id, shell, resume)
+            LOGGER.debug('ssh open, client %s , shell %s , resume=%s', client_id, shell, resume)
 
             @copy_current_request_context
             def on_data(data):
-                # socketio.emit('data', data, namespace="/ssh", room=interactive_shell_instance.id)
+                # socketio.emit('data', data, namespace="/ssh", room=interactive_shell_instance.shell_id)
                 emit('data', {
-                    'id': shell.id,
+                    'id': shell.shell_id,
                     'data': data
                 }, namespace='/ssh')
 
             @copy_current_request_context
             def on_close():
-                # socketio.close_room(interactive_shell_instance.id, namespace="/ssh")
+                # socketio.close_room(interactive_shell_instance.shell_id, namespace="/ssh")
                 self.interactive_shell_manager.remove(shell)
                 emit('closed', {
-                    'id': shell.id
+                    'id': shell.shell_id
                 }, namespace='/ssh')
 
             shell.on_data = on_data
@@ -102,13 +107,13 @@ class SSHPlugin(Plugin):
             self.interactive_shell_manager.join(client_id, shell)
 
             emit('opened', {
-                'id': shell.id,
+                'id': shell.shell_id,
                 'buffer': shell.buffer
             }, namespace='/ssh')
 
         @socketio.on('close', namespace='/ssh')
         def close_interactive_shell(data):
-            self.log.debug('ssh close, client %s', request.sid)
+            LOGGER.debug('ssh close, client %s', request.sid)
 
             shell_id = data.get('id')
             shell = self.interactive_shell_manager.get(shell_id)
@@ -117,7 +122,7 @@ class SSHPlugin(Plugin):
 
         @socketio.on('detach', namespace='/ssh')
         def detach_interactive_shell(data):
-            self.log.debug('ssh detach, client %s', request.sid)
+            LOGGER.debug('ssh detach, client %s', request.sid)
 
             shell_id = data.get('id')
             shell = self.interactive_shell_manager.get(shell_id)
@@ -131,7 +136,7 @@ class SSHPlugin(Plugin):
             if shell:
                 shell.send(data.get('data'))
 
-        self.core.scheduler.set_interval(10, self.interactive_shell_manager.clean, name="ssh.clean_session", condition=lambda _: not self.interactive_shell_manager.is_empty)
+        set_interval(10, self.interactive_shell_manager.clean, name="ssh.clean_session", condition=lambda _: not self.interactive_shell_manager.is_empty)
 
 
 class Interactive_Shell_Manager(object):
@@ -143,8 +148,8 @@ class Interactive_Shell_Manager(object):
         return not bool(self._shells)
 
     def add(self, shell):
-        if shell.id not in self._shells:
-            self._shells[shell.id] = {
+        if shell.shell_id not in self._shells:
+            self._shells[shell.shell_id] = {
                 'shell': shell,
                 'clients': set(),
                 'ts_create': time.time(),
@@ -153,7 +158,7 @@ class Interactive_Shell_Manager(object):
 
     def remove(self, shell):
         if isinstance(shell, Interactive_Shell):
-            shell = shell.id
+            shell = shell.shell_id
 
         if shell in self._shells:
             del self._shells[shell]
@@ -164,7 +169,7 @@ class Interactive_Shell_Manager(object):
 
     def join(self, client_id, shell):
         if isinstance(shell, Interactive_Shell):
-            shell = shell.id
+            shell = shell.shell_id
 
         if shell in self._shells:
             self._shells[shell]['clients'].add(client_id)
@@ -172,7 +177,7 @@ class Interactive_Shell_Manager(object):
 
     def leave(self, client_id, shell=None):
         if isinstance(shell, Interactive_Shell):
-            shell = shell.id
+            shell = shell.shell_id
 
         if shell is None:
             # remove the client from all the interactive shells
@@ -217,17 +222,18 @@ class Interactive_Shell(Process):
 
     BUFFER_SIZE = 2000
 
-    def __init__(self, device, id=None, on_data=None, on_open=None, on_close=None):
-        super(Interactive_Shell, self).__init__(name='ssh.interactive_shell', manager=device.core.process_manager, id=id)
+    def __init__(self, device, shell_id=None, on_data=None, on_open=None, on_close=None):
+        super(Interactive_Shell, self).__init__(name='ssh.interactive_shell')
         self.device = device
         self.session = None
         self.on_data = on_data
         self.on_open = on_open
         self.on_close = on_close
+        self.shell_id = shell_id
         self.buffer = b''
 
     def __str__(self):
-        return '<SSH.Interactive_Shell device=%s id=%s>' % (self.device, self.id)
+        return '<SSH.Interactive_Shell device=%s id=%s>' % (self.device, self.shell_id)
 
     @property
     def opened(self):
@@ -237,7 +243,7 @@ class Interactive_Shell(Process):
         host = self.device.host
         port = self.device.port
 
-        self.log.debug('opening %s:%s ...', host, port)
+        LOGGER.debug('opening %s:%s ...', host, port)
 
         ssh = paramiko.SSHClient()
         ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
@@ -245,7 +251,7 @@ class Interactive_Shell(Process):
         ssh.connect(
             host, port, username=self.device.auth['user'], password=self.device.auth['password'])
 
-        self.log.debug('opened %s:%s ...', host, port)
+        LOGGER.debug('opened %s:%s ...', host, port)
 
         transport = ssh.get_transport()
         self.session = transport.open_session()
@@ -262,7 +268,7 @@ class Interactive_Shell(Process):
 
     def send(self, data):
         if self.session:
-            self.log.debug('send data = %s', str(data))
+            LOGGER.debug('send data = %s', str(data))
             return self.session.send(data)
 
     def close(self):
@@ -270,7 +276,7 @@ class Interactive_Shell(Process):
 
     def _close_session(self):
         if self.session:
-            self.log.debug('close')
+            LOGGER.debug('close')
             if self.on_close:
                 self.on_close()
             # self.session.send('\x03') # send ^C
@@ -288,9 +294,9 @@ class Interactive_Shell(Process):
         else:
             if len(data) == 0:
                 # closed by server
-                self.log.debug('closed by server')
+                LOGGER.debug('closed by server')
                 return False
-            self.log.debug('rec data = %s', str(data))
+            LOGGER.debug('rec data = %s', str(data))
 
             self.buffer += data
             if len(self.buffer) > self.BUFFER_SIZE:
@@ -300,18 +306,17 @@ class Interactive_Shell(Process):
 
     def __json__(self):
         return {
-            'id': self.id,
+            'id': self.shell_id,
             'opened': self.opened,
             'device_id': self.device.id
         }
 
     ## process
-    def main(self):
+    def run(self):
         while self.is_running:
             if self.loop() is False:
                 break
-
-    def end(self):
+        
         self._close_session()
 
 

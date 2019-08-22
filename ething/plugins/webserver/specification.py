@@ -5,9 +5,9 @@ from __future__ import print_function
 from future.utils import string_types
 from .Scope import list as scope_list
 import apispec
-from ething.core.version import __version__
-from ething.core.Resource import Resource
-from ething.core.reg import *
+from ething.version import __version__
+from ething.Resource import Resource
+from ething.reg import *
 import json
 import jinja2
 from codecs import open

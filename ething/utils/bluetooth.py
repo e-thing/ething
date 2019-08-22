@@ -7,7 +7,7 @@ import re
 import logging
 
 
-_LOGGER = logging.getLogger('bluetooth')
+_LOGGER = logging.getLogger(__name__)
 
 
 def list_bluetooth_interfaces():

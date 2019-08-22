@@ -1,6 +1,6 @@
 # coding: utf-8
 from flask import Response, request
-from ething.core.Signal import ResourceSignal
+from ething.Signal import ResourceSignal
 from queue import Queue, Empty
 
 

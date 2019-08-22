@@ -1,5 +1,5 @@
 # coding: utf-8
-from ething.core.flow.dataflow import Flow, Node
+from ething.flow.dataflow import Flow, Node
 
 
 class StartNode(Node):

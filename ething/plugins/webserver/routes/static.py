@@ -2,7 +2,7 @@
 
 
 from flask import send_from_directory, redirect, url_for, request, send_file
-from ething.core.env import LOG_FILE
+from ething.env import LOG_FILE
 
 
 def install(core, app, auth, **kwargs):

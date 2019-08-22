@@ -1,6 +1,6 @@
 # coding: utf-8
 import pytest
-from ething.core.utils.ObjectPath import *
+from ething.utils.ObjectPath import *
 import datetime
 
 

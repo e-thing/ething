@@ -1,12 +1,12 @@
 # coding: utf-8
 
 from future.utils import string_types
-from ething.core.Device import Device
-from ething.core.reg import *
+from ething.Device import Device
+from ething.reg import *
 from .helpers import *
 from .Message import Message
 from .protocol import MySensorsProtocol
-from ething.core.TransportProcess import TransportProcess
+from ething.TransportProcess import TransportProcess
 
 
 class MySensorsController(TransportProcess):

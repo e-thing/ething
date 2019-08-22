@@ -1,9 +1,9 @@
 # coding: utf-8
 
-from ething.core.Device import Device
-from ething.core.reg import *
-from ething.core.interfaces import Light
-from ething.core.TransportProcess import TransportProcess, NetTransport, UdpTransport, Protocol
+from ething.Device import Device
+from ething.reg import *
+from ething.interfaces import Light
+from ething.TransportProcess import TransportProcess, NetTransport, UdpTransport, Protocol
 from .protocol import YeelightProtocol
 from .yeelight import PORT
 

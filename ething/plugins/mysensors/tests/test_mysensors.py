@@ -3,7 +3,7 @@ import pytest
 from ..Message import Message
 from .. import helpers as MySensors
 from ..protocol import MySensorsProtocol
-from ething.core.interfaces import Thermometer
+from ething.interfaces import Thermometer
 
 
 def test_mysensors_message():

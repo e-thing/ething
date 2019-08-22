@@ -1,6 +1,6 @@
 # coding: utf-8
 
-from ething.core.TransportProcess import AsyncResult
+from ething.TransportProcess import AsyncResult
 import socket
 import struct
 import json

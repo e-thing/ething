@@ -32,7 +32,8 @@ if bluepy_imported:
             os.system('hciconfig hci%d up' % iface)
 
 
-    from ething.core.plugin import *
+    from ething.plugin import *
+    from ething.scheduler import set_interval
     from .BleaGateway import BleaGateway
     from .devices import devices
 
@@ -41,7 +42,7 @@ if bluepy_imported:
     class Blea(Plugin):
 
         def setup(self):
-            self.core.scheduler.set_interval(self.scan_interval, self.scan, name="blea.scan")
+            set_interval(self.scan_interval, self.scan, name="blea.scan")
 
         def scan(self):
 

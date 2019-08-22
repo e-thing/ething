@@ -1,7 +1,7 @@
 # coding: utf-8
 
-from ething.core.reg import *
-from ething.core.interfaces import RGBWLight, LightSensor
+from ething.reg import *
+from ething.interfaces import RGBWLight, LightSensor
 from .MihomeBase import MihomeBase
 import json
 import colorsys

@@ -5,7 +5,7 @@ from ..reg import *
 from ..utils.jsonpath import jsonpath
 from ..utils.ObjectPath import ObjectPathExp, evaluate
 from ..utils.weak_ref import weak_ref
-from ..Process import Process
+from ..processes import Process
 from ..Signal import ResourceSignal
 from queue import Queue
 import time
@@ -231,7 +231,7 @@ class Node(Entity, NodeBase):
 @attr('resource', type=ResourceType(), description='the resource bind to this node')
 class ResourceNode(Node):
     """
-    A node bind to a :class:`ething.core.Resource.Resource` instance.
+    A node bind to a :class:`ething.Resource.Resource` instance.
     """
     pass
 
@@ -289,21 +289,19 @@ class Flow(Resource, FlowBase):
         """
         Deploy the flow.
         """
-        self._processes["flow.%s" % self.id].restart()
+        self.processes["flow.%s" % self.id].restart()
 
     def __process__(self):
-        p = Process(id="flow.%s" % self.id, target=self.run, terminate=self.stop)
-        self._process = weak_ref(p)
-        return p
+        return Process(name="flow.%s" % self.id, target=self.run, terminate=self.stop)
 
     def on_attr_update(self, attr, new_value, old_value):
         super(Flow, self).on_attr_update(attr, new_value, old_value)
 
         if attr == 'enabled':
             if new_value:
-                self._processes["flow.%s" % self.id].restart()
+                self.processes["flow.%s" % self.id].restart()
             else:
-                self._processes["flow.%s" % self.id].stop(block=False)
+                self.processes["flow.%s" % self.id].stop()
 
     def inject(self, node, data=None):
         """

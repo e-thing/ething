@@ -3,8 +3,8 @@
 
 from .MySensorsGateway import MySensorsGateway, MySensorsController
 from .helpers import DEFAULT_ETH_PORT
-from ething.core.reg import *
-from ething.core.TransportProcess import NetTransport
+from ething.reg import *
+from ething.TransportProcess import NetTransport
 
 
 class MySensorsEthernetController(MySensorsController):

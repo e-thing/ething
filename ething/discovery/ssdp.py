@@ -18,7 +18,7 @@ __all__ = [
 ]
 
 
-LOGGER = logging.getLogger('ssdp')
+LOGGER = logging.getLogger(__name__)
 
 
 SCAN_INTERVAL = 30.

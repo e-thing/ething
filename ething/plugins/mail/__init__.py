@@ -1,9 +1,9 @@
 # coding: utf-8
 
-from ething.core.plugin import *
+from ething.plugin import *
 from .smtp import SmtpMail
-from ething.core.flow import Node, Descriptor
-from ething.core.reg import *
+from ething.flow import Node, Descriptor
+from ething.reg import *
 
 
 @attr('password', type=String(password=True), default='')

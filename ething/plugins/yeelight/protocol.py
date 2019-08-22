@@ -1,5 +1,6 @@
 # coding: utf-8
-from ething.core.TransportProcess import LineReader, Protocol
+from ething.TransportProcess import LineReader, Protocol
+from ething.scheduler import set_interval, unbind
 from . import yeelight
 import time
 import random
@@ -21,7 +22,7 @@ class YeelightProtocol(LineReader):
         super(YeelightProtocol, self).connection_made()
         self._pending_cmds.clear()
 
-        self.core.scheduler.set_interval(1, self.check_response_timeout)
+        set_interval(1, self.check_response_timeout)
 
     def handle_line(self, line):
         self.log.debug('read: %s', line)
@@ -120,7 +121,7 @@ class YeelightProtocol(LineReader):
 
     def connection_lost(self, exc):
 
-        self.core.scheduler.unbind(self.check_response_timeout)
+        unbind(self.check_response_timeout)
 
         for id in self._pending_cmds:
             self._pending_cmds[id].reject('disconnected', args = (self.device,))

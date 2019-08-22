@@ -1,6 +1,6 @@
 # coding: utf-8
-from ething.core.db import *
-from ething.core.utils.date import TzDate, utcnow
+from ething.db import *
+from ething.utils.date import TzDate, utcnow
 from flask import request
 
 

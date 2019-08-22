@@ -1,6 +1,6 @@
 # coding: utf-8
 import pytest
-from ething.core.reg import *
+from ething.reg import *
 import json
 import abc
 

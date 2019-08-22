@@ -76,7 +76,7 @@ class Device(Resource):
         @attr('sensor_value', type=Number(), default=0, mode=READ_ONLY, history=True, force_watch=True, description="sensor value")
         class Foo(Device):
 
-            # (optional) bind some method to the core.scheduler
+            # (optional) bind some method to the scheduler
             @set_interval(30)
             def read(self):
                 # this method will be called every 30 seconds during all the lifetime of this instance.

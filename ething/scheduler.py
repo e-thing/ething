@@ -1,17 +1,18 @@
 # coding: utf-8
 
-from .utils import ShortId, getmembers
+from .utils import generate_id, getmembers
 import time
 import datetime
 import logging
+import inspect
 
 import threading
 from .utils.weak_ref import weak_ref, proxy_method, LostReferenceException
 
 
 __all__ = [
-    'Scheduler',
-    'ThreadingScheduler',
+    'bind_instance',
+    'unbind',
     'tick',
     'set_interval',
     'delay',
@@ -19,7 +20,7 @@ __all__ = [
 ]
 
 
-_LOGGER = logging.getLogger('scheduler')
+_LOGGER = logging.getLogger(__name__)
 
 TICK_INTERVAL = 1 # one sec
 
@@ -48,7 +49,7 @@ class Task(object):
 
         self._scheduler = scheduler
 
-        self._id = ShortId.generate()
+        self._id = generate_id()
 
         self._params = params
 
@@ -72,6 +73,8 @@ class Task(object):
         self._executed_count = 0
         self._valid = True
         self._t0 = time.time()
+
+        scheduler.add(self)
 
     def __getattr__(self, item):
         if item in self._params:
@@ -226,48 +229,6 @@ class AtTask(Task):
             return True
 
 
-def tick(**kwargs):
-    def d(func):
-        setattr(func, '_scheduler', ('tick', (), kwargs))
-        return func
-    return d
-
-
-def set_interval(interval, start_in_sec=0, **kwargs):
-    def d(func):
-        kwargs['start_in_sec'] = start_in_sec
-        setattr(func, '_scheduler', ('set_interval', (interval,), kwargs))
-        return func
-    return d
-
-
-def delay(delay, **kwargs):
-    def d(func):
-        setattr(func, '_scheduler', ('delay', (delay,), kwargs))
-        return func
-    return d
-
-
-def at(hour='*', min=0, **kwargs):
-    def d(func):
-        kwargs['hour'] = hour
-        kwargs['min'] = min
-        setattr(func, '_scheduler', ('at', (), kwargs))
-        return func
-    return d
-
-
-def _deco(callback, p):
-    if callback is None:
-        def d(f):
-            p(f)
-            return f
-
-        return d
-    else:
-        return p(callback)
-
-
 class Scheduler(object):
     """
 
@@ -282,139 +243,19 @@ class Scheduler(object):
         self.log = _LOGGER
         self._running = False
 
-    def tick(self, callback=None, args=(), kwargs=None, **params):
-        """
-        Run a callable every tick (ie: each time process() is called).
+    def add(self, task):
+        with self.r_lock:
+            self.tasks.append(task)
 
-        :param callback: If not provided, act as a decorator.
-        :param args: args is the argument tuple for the callback invocation. Defaults to ().
-        :param kwargs: kwargs is a dictionary of keyword arguments for the callback invocation. Defaults to {}.
-        :param params: More optional parameters. See Task class.
-        :return: Task instance
-        """
-        def p(f):
-            with self.r_lock:
-                task = TickTask(self, f, args=args, kwargs=kwargs, **params)
-                self.tasks.append(task)
-                return task
-
-        return _deco(callback, p)
-
-    def set_interval(self, interval, callback=None, start_in_sec=0, args=(), kwargs=None, **params):
-        """
-        Run a callable at regular interval.
-
-        :param interval: The amount of seconds between 2 successive calls.
-        :param callback: If not provided, act as a decorator.
-        :param start_in_sec: Delay the first call. Default to 0.
-        :param args: args is the argument tuple for the callback invocation. Defaults to ().
-        :param kwargs: kwargs is a dictionary of keyword arguments for the callback invocation. Defaults to {}.
-        :param params: More optional parameters. See Task class.
-        :return: Task instance
-        """
-        def p(f):
-            with self.r_lock:
-                task = IntervalTask(interval, self, f, args=args, kwargs=kwargs, start_in_sec=start_in_sec, **params)
-                self.tasks.append(task)
-                return task
-
-        return _deco(callback, p)
-
-    def delay(self, delay, callback=None, args=(), kwargs=None, **params):
-        """
-        Run a callable once after a certain delay.
-
-        :param delay: The delay in seconds
-        :param callback: If not provided, act as a decorator.
-        :param args: args is the argument tuple for the callback invocation. Defaults to ().
-        :param kwargs: kwargs is a dictionary of keyword arguments for the callback invocation. Defaults to {}.
-        :param params: More optional parameters. See Task class.
-        :return: Task instance
-        """
-        def p(f):
-            with self.r_lock:
-                task = DelayTask(delay, self, f, args=args, kwargs=kwargs, **params)
-                self.tasks.append(task)
-                return task
-
-        return _deco(callback, p)
-
-    def at(self, hour='*', min=0, callback=None, args=(), kwargs=None, **params):
-        """
-        Run a callable at a certain time of a the day.
-
-        :param hour: The hour or '*' for every hour. Default to '*'.
-        :param min: The minute or '*' for every minute. Default to 0.
-        :param callback: If not provided, act as a decorator.
-        :param args: args is the argument tuple for the callback invocation. Defaults to ().
-        :param kwargs: kwargs is a dictionary of keyword arguments for the callback invocation. Defaults to {}.
-        :param params: More optional parameters. See Task class.
-        :return: Task instance
-        """
-        def p(f):
-            with self.r_lock:
-                task = AtTask(self, f, hour=hour, min=min, args=args, kwargs=kwargs, **params)
-                self.tasks.append(task)
-                return task
-
-        return _deco(callback, p)
+    def remove(self, task):
+        with self.r_lock:
+            if task in self.tasks:
+                self.tasks.remove(task)
 
     def _get(self, task_id):
         for task in self.tasks:
             if task.id == task_id:
                 return task
-
-    def bind_instance(self, instance):
-        """
-        Bind an instance.
-
-        Example::
-
-            from ething.core.scheduler import *
-
-            class Foo:
-
-                @set_interval(interval=30)
-                def task1(self):
-                    # this method will be invoked every 30 seconds
-                    pass
-
-                @at(12, 30)
-                def task2(self):
-                    # this method will be invoked every day at 12h30.
-                    pass
-
-
-            foo = Foo()
-
-            scheduler = Scheduler()
-            scheduler.bind_instance(foo)
-
-        :param instance: an instance with some methods decorated with set_interval, at, delay or tick
-        """
-        for name, func in getmembers(instance, lambda x: hasattr(x, '_scheduler')):
-            scheduler_func_name, args, kwargs = getattr(func, '_scheduler')
-            kwargs['instance'] = instance
-            try:
-                getattr(self, scheduler_func_name)(*args, callback=getattr(instance, name), **kwargs)
-            except:
-                _LOGGER.exception('unable to create instance task')
-
-    def unbind(self, task):
-        """
-        Unregister a task, callback or instance.
-
-        :param task:
-        """
-        with self.r_lock:
-            if isinstance(task, Task):
-                if task in self.tasks:
-                    self.tasks.remove(task)
-            else:
-                to_remove = [t for t in self.tasks if t.target == task or t.instance is task]
-
-                for t in to_remove:
-                    self.unbind(t)
 
     def process(self):
         now = time.time()
@@ -431,7 +272,7 @@ class Scheduler(object):
             task.run()
 
             if not task.is_valid():
-                self.unbind(task)
+                self.remove(task)
 
     def clear(self):
         """
@@ -460,7 +301,7 @@ class ThreadingScheduler(Scheduler):
 
     Example::
 
-        from ething.core.scheduler import *
+        from ething.scheduler import *
 
         scheduler = ThreadingScheduler()
 
@@ -472,16 +313,24 @@ class ThreadingScheduler(Scheduler):
 
     """
 
-    def __init__(self, autostart=True):
+    def __init__(self, auto_start=True):
         super(ThreadingScheduler, self).__init__()
         self._t = None
-        if autostart:
+        if auto_start:
             self.run()
 
     def execute(self, task):
         # execute the task in a new thread
-        t = threading.Thread(target=task.execute, daemon=True)
+        if not task.allow_multiple:
+            if hasattr(task, '_p'):
+                p = task._p
+                if p and p.is_alive():
+                    _LOGGER.debug('task "%s" already running: skipped', task.name)
+                    return
+
+        t = threading.Thread(name="scheduler.%s" % task.name, target=task.execute, daemon=True)
         t.start()
+        task._p = t
 
     def run(self):
         t = self._t
@@ -490,7 +339,7 @@ class ThreadingScheduler(Scheduler):
             # already running
             return
 
-        t = threading.Thread(target=super(ThreadingScheduler, self).run, daemon=True)
+        t = threading.Thread(name="scheduler", target=super(ThreadingScheduler, self).run, daemon=True)
         t.start()
         self._t = t
 
@@ -500,3 +349,164 @@ class ThreadingScheduler(Scheduler):
             self._t.join()
             self._t = None
 
+
+_scheduler = None
+
+
+def global_instance():
+    global _scheduler
+
+    if _scheduler is None:
+        # start the global instance
+        _scheduler = ThreadingScheduler()
+
+    return _scheduler
+
+
+def bind_instance(instance):
+    """
+    Bind an instance.
+
+    Example::
+
+        from ething.scheduler import *
+
+        class Foo:
+
+            @set_interval(interval=30)
+            def task1(self):
+                # this method will be invoked every 30 seconds
+                pass
+
+            @at(12, 30)
+            def task2(self):
+                # this method will be invoked every day at 12h30.
+                pass
+
+
+        foo = Foo()
+
+        bind_instance(foo) # task1 and task2 will be automatically registered
+
+    :param instance: an instance with some methods decorated with set_interval, at, delay or tick
+    """
+
+    # find any scheduler decorators (@set_interval @at ...)
+    tasks = list()
+    for name, func in getmembers(instance, lambda x: hasattr(x, '_scheduler')):
+        f = getattr(instance, name)
+        installer = getattr(f, '_scheduler')
+        t = installer(f)
+        tasks.append(t)
+    return tasks
+
+
+def unbind(obj):
+    """
+    Unregister a task, callback or instance.
+
+    :param obj: either a task, a callback or an instance
+    """
+    scheduler = global_instance()
+    if isinstance(obj, Task):
+        scheduler.remove(obj)
+    else:
+        to_remove = [t for t in scheduler.tasks if t.target == obj or t.instance is obj]
+
+        for t in to_remove:
+            scheduler.remove(t)
+
+
+# decorators
+
+def _is_method(func):
+    """return True if the function is a method"""
+    spec = inspect.getfullargspec(func)
+    return bool(spec.args and spec.args[0] == 'self')
+
+
+def _deco(callback, p):
+    if callback is None:
+        # create a decorator
+        def d(func):
+            if _is_method(func):
+                # tag it only. then call bind_instance(instance)
+                setattr(func, '_scheduler', p)
+            else:
+                # function decorator
+                p(func)
+            return func
+
+        return d
+    else:
+        return p(callback)
+
+
+def tick(callback=None, args=(), kwargs=None, **params):
+    """
+    Run a callable every tick (ie: each time process() is called).
+
+    :param callback: If not provided, act as a decorator.
+    :param args: args is the argument tuple for the callback invocation. Defaults to ().
+    :param kwargs: kwargs is a dictionary of keyword arguments for the callback invocation. Defaults to {}.
+    :param params: More optional parameters. See Task class.
+    :return: Task instance
+    """
+
+    def p(f):
+        return TickTask(global_instance(), f, args=args, kwargs=kwargs, **params)
+
+    return _deco(callback, p)
+
+
+def set_interval(interval, callback=None, start_in_sec=0, args=(), kwargs=None, **params):
+    """
+    Run a callable at regular interval.
+
+    :param interval: The amount of seconds between 2 successive calls.
+    :param callback: If not provided, act as a decorator.
+    :param start_in_sec: Delay the first call. Default to 0.
+    :param args: args is the argument tuple for the callback invocation. Defaults to ().
+    :param kwargs: kwargs is a dictionary of keyword arguments for the callback invocation. Defaults to {}.
+    :param params: More optional parameters. See Task class.
+    :return: Task instance
+    """
+    def p(f):
+        return IntervalTask(interval, global_instance(), f, args=args, kwargs=kwargs, start_in_sec=start_in_sec, **params)
+
+    return _deco(callback, p)
+
+
+def delay(delay, callback=None, args=(), kwargs=None, **params):
+    """
+    Run a callable once after a certain delay.
+
+    :param delay: The delay in seconds
+    :param callback: If not provided, act as a decorator.
+    :param args: args is the argument tuple for the callback invocation. Defaults to ().
+    :param kwargs: kwargs is a dictionary of keyword arguments for the callback invocation. Defaults to {}.
+    :param params: More optional parameters. See Task class.
+    :return: Task instance
+    """
+    def p(f):
+        return DelayTask(delay, global_instance(), f, args=args, kwargs=kwargs, **params)
+
+    return _deco(callback, p)
+
+
+def at(hour='*', min=0, callback=None, args=(), kwargs=None, **params):
+    """
+    Run a callable at a certain time of a the day.
+
+    :param hour: The hour or '*' for every hour. Default to '*'.
+    :param min: The minute or '*' for every minute. Default to 0.
+    :param callback: If not provided, act as a decorator.
+    :param args: args is the argument tuple for the callback invocation. Defaults to ().
+    :param kwargs: kwargs is a dictionary of keyword arguments for the callback invocation. Defaults to {}.
+    :param params: More optional parameters. See Task class.
+    :return: Task instance
+    """
+    def p(f):
+        return AtTask(global_instance(), f, hour=hour, min=min, args=args, kwargs=kwargs, **params)
+
+    return _deco(callback, p)

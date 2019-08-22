@@ -2,7 +2,7 @@
 
 
 from .MihomeBase import MihomeBase
-from ething.core.reg import *
+from ething.reg import *
 import json
 
 

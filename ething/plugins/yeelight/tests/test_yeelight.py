@@ -1,7 +1,7 @@
 # coding: utf-8
 import pytest
 from ..protocol import YeelightProtocol, YeelightAdvertisementProtocol
-from ething.core.interfaces import Light
+from ething.interfaces import Light
 import re
 
 

@@ -1,7 +1,7 @@
 # coding: utf-8
 import pytest
-from ething.core.Table import Table
-from ething.core import Core
+from ething.Table import Table
+from ething import Core
 import time
 import importlib
 

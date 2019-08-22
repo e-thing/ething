@@ -1,6 +1,6 @@
 # coding: utf-8
 
-from ething.core import scheduler
+from ething import scheduler
 from multiping import multi_ping
 try:
     from urllib.parse import urlparse

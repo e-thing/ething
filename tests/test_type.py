@@ -1,6 +1,6 @@
 # coding: utf-8
 import pytest
-from ething.core.type import *
+from ething.type import *
 import pytz
 
 

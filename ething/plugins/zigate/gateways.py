@@ -4,17 +4,18 @@ from zigate import dispatcher
 from zigate.core import DeviceEncoder
 from zigate.transport import BaseTransport
 from future.utils import string_types
-from ething.core.Device import Device
-from ething.core.reg import *
-from ething.core.env import USER_DIR
-from ething.core import scheduler
-from ething.core.TransportProcess import SerialTransport, NetTransport
+from ething.Device import Device
+from ething.reg import *
+from ething.env import USER_DIR
+from ething import scheduler
+from ething.TransportProcess import SerialTransport, NetTransport
 from .devices import zigate_device_classes
 import json
 import os
 import logging
 import time
 
+LOGGER = logging.getLogger(__name__)
 
 
 PERSISTENT_FILE = os.path.abspath(os.path.join(USER_DIR, 'zigate.json'))
@@ -173,7 +174,7 @@ class ZigateBaseGateway(Device):
 
         if signal == CONNECTED:
             # run in a new process because it is blocking
-            self.core.process_manager.attach(self._controller_init, name="zigate.setup", target=self._controller_init)
+            self.core.processes.add(self._controller_init, name="zigate.setup", target=self._controller_init)
             return
 
         if 'device' in kwargs:
@@ -240,11 +241,11 @@ class ZigateBaseGateway(Device):
         if not force and not dz_instance.discovery:
             # wait for the discovery process to complete
             process_id = '%s.%s.wait_discovery' % (self.id, ieee)
-            if process_id not in self.core.process_manager:
+            if process_id not in self.processes:
                 self.log.info('new device detected : %s', dz_instance)
                 if notify:
                     self.notify('Pairing device: %s. Please wait...' % dev_name, timeout=DISCOVERY_TIMEOUT+DISCOVERY_TIMEOUT_EXTRA)
-                self.core.process_manager.attach(self._wait_device_discovery, id=process_id, args=(dz_instance, ))
+                self.core.processes.add(self._wait_device_discovery, name=process_id, args=(dz_instance, ))
             return
 
         # print some info here
@@ -331,11 +332,10 @@ class WrapperConnection(BaseTransport):
         self.gateway = zigate_instance.gateway
         self.core = zigate_instance.gateway.core
         self.transport = transport
-        self.log = logger or logging.getLogger("zigate_transport")
         self._is_open = False
         self.reconnect_delay = 15
 
-        self._process = self.core.process_manager.attach(name="zigate.transport", target=self.main, terminate=self._stop, log=self.log)
+        self.gateway.processes.add(name="zigate.transport", target=self.main, terminate=self._stop)
 
     def is_connected(self):
         return self._is_open
@@ -353,7 +353,7 @@ class WrapperConnection(BaseTransport):
             try:
                 self.transport.open()
             except Exception as e:
-                self.log.exception('exception in transport.open()')
+                LOGGER.exception('exception in transport.open()')
                 error = e
 
             while not error and self._running and self.transport.is_open:
@@ -368,7 +368,7 @@ class WrapperConnection(BaseTransport):
                 except Exception as e:
                     # probably some I/O problem such as disconnected USB serial
                     # adapters -> exit
-                    self.log.exception('exception in transport')
+                    LOGGER.exception('exception in transport')
                     error = e
                 else:
                     if data:
@@ -376,7 +376,7 @@ class WrapperConnection(BaseTransport):
                         try:
                             self.read_data(data)
                         except Exception as e:
-                            self.log.exception('exception in protocol.data_received()')
+                            LOGGER.exception('exception in protocol.data_received()')
                             error = e
 
             self._is_open = False
@@ -386,20 +386,18 @@ class WrapperConnection(BaseTransport):
                 try:
                     self.transport.close()
                 except Exception as e:
-                    self.log.exception('exception in transport.close()')
+                    LOGGER.exception('exception in transport.close()')
 
             t_end = time.time() + self.reconnect_delay
             while self._running and time.time() < t_end:
                 time.sleep(1.)
-            self.log.debug('reconnecting...')
+            LOGGER.debug('reconnecting...')
 
     def send(self, data):
         self.transport.write(data)
 
     def close(self):
-        if self._process:
-            self._process.destroy(timeout=2)
-            self._process = None
+        del self.gateway.processes['zigate.transport']
 
 
 class ZigateSerial(zigate.ZiGate):

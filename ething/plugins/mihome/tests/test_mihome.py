@@ -1,7 +1,7 @@
 # coding: utf-8
 import pytest
 from ..protocol import MihomeProtocol
-from ething.core.interfaces import Thermometer, Light
+from ething.interfaces import Thermometer, Light
 
 
 def test_mihome_controller(core):

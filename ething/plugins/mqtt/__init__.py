@@ -1,10 +1,10 @@
 # coding: utf-8
 
-from ething.core.plugin import *
+from ething.plugin import *
 import paho.mqtt.client as mqttClient
 import paho.mqtt.publish as publish
-from ething.core.flow import *
-from ething.core.TransportProcess import Transport
+from ething.flow import *
+from ething.TransportProcess import Transport
 import json
 from queue import Queue, Empty
 from .dispatcher import MqttDispatcherService
@@ -44,7 +44,7 @@ class Mqtt(Plugin):
             self.service = None
         if self.host and self.publish_event.get('enable'):
             self.service = MqttDispatcherService(self.core, self.host, self.port, self.user, self.password, self.publish_event.get('base_topic'))
-            self.core.process_manager.attach(self.service)
+            self.core.processes.add(self.service)
 
 
 class MqttTransport(Transport):

@@ -1,6 +1,6 @@
 # coding: utf-8
 import pytest
-from ething.core import Core
+from ething import Core
 import logging
 
 

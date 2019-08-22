@@ -1,0 +1,391 @@
+# coding: utf-8
+import logging
+import threading
+import gevent
+from .utils.weak_ref import weak_ref, proxy_method
+from .utils import generate_id, getmembers
+import inspect
+import weakref
+from collections import Mapping, Sequence
+
+
+__all__ = [
+    'ProcessCollection',
+    'Process',
+    'run',
+    'generate_instance_processes',
+    'process',
+    'processes'
+]
+
+
+LOGGER = logging.getLogger(__name__)
+
+
+class ProcessCollection(Mapping):
+
+    def __init__(self, parent=None, weak=False):
+        self._processes = list()
+        self._parent = parent
+        self._weak = weak
+
+    @property
+    def parent(self):
+        return self.parent
+
+    def _items(self):
+        if self._weak:
+            # filter the invalid ref
+            ret = list()
+            for i in list(self._processes):
+                _i = i() # check weakref
+                if _i is not None:
+                    ret.append(_i)
+                else:
+                    self._processes.remove(i)
+            return ret
+        else:
+            return list(self._processes)
+
+    def add(self, process=None, start=True, **kwargs):
+        parent = self.parent
+
+        if process is None:
+            process = Process(**kwargs)
+        elif isinstance(process, Process):
+            # process instance
+            pass
+        elif issubclass(process, Process):
+            # Process subclass
+            if parent is not None:
+                process = process(parent, **kwargs)
+            else:
+                process = process(**kwargs)
+        elif callable(process):
+            # create a process
+            process = Process(target=process, **kwargs)
+        elif isinstance(process, Sequence):
+            for p in process:
+                self.add(p, start, **kwargs)
+            return
+        else:
+            raise Exception('not a process')
+
+        if parent is not None:
+            process.parent = parent
+
+        if self._weak:
+            process = weakref.ref(process)
+
+        self._processes.append(process)
+
+        if start:
+            process.start()
+
+        return process
+
+    def stop(self, obj, timeout=3):
+        if not isinstance(obj, Process):
+            obj = self[obj]
+        elif obj not in self:
+            raise KeyError('process not found')
+        obj.stop(timeout)
+
+    def stop_all(self):
+        for p in self:
+            self.stop(p)
+
+    def __iter__(self):
+        return iter(self._items())
+
+    def __getitem__(self, key):
+        """
+        the key can either be a process id or process name
+        """
+        for p in self._items():
+            if p.id == key or p.name == key:
+                return p
+        raise KeyError
+
+    def __len__(self):
+        return len(self._items())
+
+    def __delitem__(self, key):
+        p = self[key]
+        self._processes.remove(p)
+
+
+processes = ProcessCollection(weak=True)
+
+
+class Process(object):
+    """
+
+    Process is similar to Thread: it represents an activity that is run in a separate thread of control.
+
+
+    Example::
+
+        def long_running_process():
+            while True:
+                process_something() # must not be blocking
+                # do not forget to sleep as often as possible for the global event loop to process
+                time.sleep(0.1)
+
+        # create a new process :
+        process = Process(target=long_running_process)
+        process.start()
+
+        # to stop the process, simply do:
+        process.stop() # by default, after 3 secondes the process will be killed
+
+
+        # you may override the run() method instead of using the target argument.
+
+        class MyProcess(Process):
+
+            def run(self):
+                while self.is_running:
+                    process_something() # must not be blocking
+                    # do not forget to sleep as often as possible for the global event loop to process
+                    time.sleep(0.1)
+
+        process = MyProcess()
+        process.start()
+
+    """
+    def __init__(self, name=None, target=None, args=(), kwargs=None, terminate=None, parent=None):
+        """
+
+        :param name: The name of the process.
+        :param target: target is the callable object to be invoked by the run() method. Use either target or loop but not both.
+        :param args: args is the argument tuple for the target or loop invocation. Defaults to ().
+        :param kwargs: kwargs is a dictionary of keyword arguments for the target or loop invocation. Defaults to {}.
+        :param terminate: a callable that is invoked on stop()
+        :param parent: any object. If a process is provided, all child processes will be automatically killed when the parent process stop.
+        """
+        self._id = generate_id()
+        self._name = name or getattr(target, '__name__', None) or type(self).__name__ # ('process_%s' % self._id)
+
+        self.parent = parent
+
+        if kwargs is None:
+            kwargs = {}
+
+        self._target = proxy_method(target)
+        self._args = args
+        self._kwargs = kwargs
+        self._terminate = proxy_method(terminate)
+
+        self._reset()
+
+        processes.add(self, False)
+
+    @property
+    def name(self):
+        return self._name
+
+    @property
+    def id(self):
+        return self._id
+
+    @property
+    def parent(self):
+        return self._parent() if self._parent is not None else None
+
+    @parent.setter
+    def parent(self, p):
+        self._parent = weak_ref(p) if p is not None else None
+
+    @property
+    def is_running(self):
+        return not self._ask_stop and self.is_alive()
+
+    def __repr__(self):
+        return str(self)
+
+    def __str__(self):
+        return '<%s id=%s name=%s running=%s>' % (type(self).__name__, self.id, self.name, self.is_running)
+
+    def start(self):
+        """
+        Start the process.
+        """
+        if self._started.is_set():
+            raise Exception('The process has already been started. Use restart() to run it again.')
+
+        self._started.set()
+        self._ask_stop = False
+
+        self._g = gevent.spawn(self._run)
+
+    def stop(self, timeout=3):
+        """
+        Stop the process.
+
+        :param timeout: Kill the process after the timeout occurs. If None, the process is immediately killed.
+        """
+        if self.is_alive():
+            # must be running
+
+            self._ask_stop = True
+
+            if self._terminate is not None:
+                # must be run anyway for clean exit
+                try:
+                    self._terminate()
+                except:
+                    pass
+
+            if timeout > 0:
+                # wait for exit
+
+                if self._stopped.wait(timeout):
+                    return
+
+            # kill it !
+            try:
+                gevent.kill(self._g)
+            except gevent.GreenletExit:
+                pass
+
+            self._end()
+
+    def join(self, timeout=None):
+        """
+        wait until the process has stopped.
+
+        :param timeout: Wait until the timeout occurs. If None, wait until the process finished.
+        :return: True if the process exited
+        """
+        return self._stopped.wait(timeout)
+
+    def restart(self):
+        self.stop()
+        self._reset()
+        self.start()
+
+    def _reset(self):
+        self.result = None
+        self.exception = None
+
+        self._started = threading.Event()
+        self._stopped = threading.Event()
+        self._ask_stop = False
+
+    def _run(self):
+        """
+        Do not override this method but run() instead.
+        """
+
+        try:
+            self.result = self.run()
+        except Exception as e:
+            LOGGER.exception('Exception in process "%s"', self)
+            self.exception = e
+
+        self._end()
+
+    def _end(self):
+        self._stopped.set()
+
+        # stop also the children
+        for p in processes:
+            if p.parent == self:
+                p.stop()
+
+        del self._g
+
+        # free up memory (not needed)
+        # del self._target
+        # del self._args
+        # del self._kwargs
+        # del self._terminate
+        # del self._parent
+
+    def is_alive(self):
+        return self._started.is_set() and not self._stopped.is_set()
+
+    def run(self):
+        """
+        Invoke the target callable. To be override if necessary.
+        """
+        if self._target:
+            return self._target(*self._args, **self._kwargs)
+        else:
+            raise Exception('empty process')
+
+
+
+def run(target, **kwargs):
+    sync = kwargs.pop('kwargs', None)
+    kwargs['target'] = target
+    p = Process(**kwargs)
+    p.start()
+    if sync:
+        p.join()
+    return p
+
+
+# decorator
+
+def _is_method(func):
+    """return True if the function is a method"""
+    spec = inspect.getfullargspec(func)
+    return bool(spec.args and spec.args[0] == 'self')
+
+
+def process(*args, **kwargs):
+    def w(func):
+        if _is_method(func):
+            # tag it only. then call generate_instance_processes(instance)
+            setattr(func, '_process', (args, kwargs))
+        else:
+            # function decorator
+            Process(target=func)
+        return func
+    return w
+
+
+def generate_instance_processes(instance):
+    # find any @process decorator
+    processes = list()
+    for name, func in getmembers(instance, lambda x: hasattr(x, '_process')):
+        f = getattr(instance, name)
+        args, kwargs = getattr(f, '_process')
+        kwargs['target'] = f
+        processes.append(Process(*args, **kwargs))
+    return processes
+
+
+def print_info(no_print=False, printer=None):
+    _processes = list(processes)
+    _lines = list()
+
+    def _children(p):
+        return [_p for _p in _processes if _p.parent == p]
+
+    def _print(p, level=0):
+        _processes.remove(p)
+        line = ''.rjust(level * 4) + str(p)
+        _lines.append(line)
+        for _p in _children(p):
+            _print(_p, level=level+1)
+
+    # make a tree
+    for p in list(_processes):
+        if p.parent is None:
+            # no parent, print it
+            _print(p)
+
+    if _processes:
+        # unnested child
+        _parents = set([p.parent for p in _processes])
+        for p in _parents:
+            _print(p)
+
+    if not no_print:
+        for l in _lines:
+            print(l) if printer is None else printer(l)
+    else:
+        return '\n'.join(_lines)

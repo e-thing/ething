@@ -2,7 +2,7 @@
 from future.utils import string_types
 from flask import request, Response
 from ..server_utils import *
-from ething.core.reg import update
+from ething.reg import update
 
 
 def install(core, app, auth, **kwargs):

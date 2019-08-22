@@ -2,7 +2,7 @@
 import pytest
 from .. import RFLinkGenericSensor
 from ..protocol import RFLinkProtocol
-from  ething.core.interfaces import Relay, Thermometer, HumiditySensor
+from  ething.interfaces import Relay, Thermometer, HumiditySensor
 
 
 def test_rflink_controller(core):

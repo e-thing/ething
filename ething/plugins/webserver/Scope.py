@@ -1,6 +1,6 @@
 # coding: utf-8
 from future.utils import string_types
-from ething.core.reg import *
+from ething.reg import *
 
 
 list = {

@@ -1,6 +1,6 @@
 # coding: utf-8
 import pytest
-from ething.core.utils.json import dumps
+from ething.utils.json import dumps
 import json
 
 

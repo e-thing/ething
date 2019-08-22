@@ -1,18 +1,23 @@
 # coding: utf-8
 
-from ething.core.Device import Device
-from ething.core.reg import *
-from ething.core.TransportProcess import TransportProcess
+from ething.Device import Device
+from ething.reg import *
+from ething.TransportProcess import TransportProcess, SerialTransport
 from .protocol import RFLinkProtocol
 
 
-class RFLinkController(TransportProcess):
-    RESET_ATTR = list()
+CONTROLLER_NAME = 'rflink.controller'
 
-    def __init__(self, gateway, transport):
+
+class RFLinkController(TransportProcess):
+
+    def __init__(self, gateway):
         super(RFLinkController, self).__init__(
-            'rflink.%s' % gateway.id,
-            transport = transport,
+            CONTROLLER_NAME,
+            transport = SerialTransport(
+                port = gateway.port,
+                baudrate = gateway.baudrate
+            ),
             protocol = RFLinkProtocol(gateway)
         )
         self.gateway = gateway
@@ -29,20 +34,37 @@ class RFLinkController(TransportProcess):
 @attr('revision', default=None, mode=READ_ONLY, description="The revision number of the RFLink library used.")
 @attr('build', default=None, mode=READ_ONLY, description="The build number of the RFLink library used.")
 @attr('inclusion', default=False, type=Boolean(),  description="If true, new devices will be automatically created.")
+@attr('baudrate', type=Enum([110, 150, 300, 600, 1200, 2400, 4800, 9600, 19200, 38400, 57600, 115200]), default=57600, description="The baudrate")
+@attr('port', type=SerialPort(), description="The serial port name.")
 class RFLinkGateway(Device):
     """
     See http://www.rflink.nl
     """
 
-    def __process__(self):
-        self.controller = self.__controller__(self)
-        return self.controller
+    RESET_ATTR = ['port', 'baudrate']
+
+    def __init__(self, *args, **kwargs):
+        super(RFLinkGateway, self).__init__(*args, **kwargs)
+        self.restart_controller()
 
     def on_update(self, dirty_keys):
-        for attr in self.controller.RESET_ATTR:
+        for attr in self.RESET_ATTR:
             if attr in dirty_keys:
-                self.controller.restart()
+                self.restart_controller()
                 break
+
+    @property
+    def controller(self):
+        return self.processes[CONTROLLER_NAME]
+
+    def restart_controller(self):
+        try:
+            # kill any existing controller
+            del self.processes[CONTROLLER_NAME]
+        except KeyError:
+            pass
+        # create a new one
+        self.processes.start(RFLinkController(self))
 
     def getNodes(self, filter=None):
         def _filter (r):

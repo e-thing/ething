@@ -1,8 +1,8 @@
 # coding: utf-8
 import pytest
-from ething.core.reg import *
-from ething.core.Resource import *
-from ething.core.File import File
+from ething.reg import *
+from ething.Resource import *
+from ething.File import File
 
 
 def test_extends(core):

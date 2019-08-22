@@ -1,7 +1,7 @@
 # coding: utf-8
 
-from ething.core.Device import Device
-from ething.core.reg import *
+from ething.Device import Device
+from ething.reg import *
 from .helpers import IV
 import binascii
 import pyaes
@@ -20,7 +20,7 @@ class MihomeBase(Device):
 
     @property
     def controller(self):
-        return self.core.process_manager.get('mihome')
+        return self.core.processes['mihome']
 
     def _get_gateway(self):
         raise NotImplementedError()

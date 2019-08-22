@@ -6,13 +6,14 @@ from .MySensorsEthernetGateway import MySensorsEthernetGateway
 from .MySensorsNode import MySensorsNode
 from .MySensorsSensor import MySensorsSensor
 from .helpers import check_mysgw, DEFAULT_ETH_PORT
-from ething.core import Plugin
+from ething import Plugin
+from ething.scheduler import delay
 
 
 class MySensorsPlugin (Plugin):
 
     def setup(self):
-        self.core.scheduler.delay(0, self.check_mysgw)
+        delay(0, self.check_mysgw) # make it async !
 
     def check_mysgw(self):
         if not self.core.find_one(lambda r: r.typeof('resources/MySensorsGateway')):

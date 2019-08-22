@@ -1,8 +1,8 @@
 # coding: utf-8
 import zigate
-from ething.core import Device
-from ething.core.reg import *
-from ething.core.interfaces import *
+from ething import Device
+from ething.reg import *
+from ething.interfaces import *
 
 
 zigate_device_classes = list()

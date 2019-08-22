@@ -1,9 +1,9 @@
 # coding: utf-8
 
 
-from ething.core.Device import *
-from ething.core.utils.ping import pingable
-from ething.core.interfaces import Camera
+from ething.Device import *
+from ething.utils.ping import pingable
+from ething.interfaces import Camera
 import subprocess
 import re
 import sys
@@ -23,7 +23,7 @@ def is_avconv_installed ():
     return version
 
 
-def install(core):
+def install(core, options):
     if not is_avconv_installed():
         core.log.warning('[RTSP] avconv is not installed')
 

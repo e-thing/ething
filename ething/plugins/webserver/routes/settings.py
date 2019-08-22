@@ -2,7 +2,7 @@
 
 from flask import request
 from ..server_utils import *
-from ething.core.reg import update
+from ething.reg import update
 
 
 def install(core, app, auth, **kwargs):

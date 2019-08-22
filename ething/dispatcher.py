@@ -7,24 +7,31 @@ from .utils.weak_ref import proxy_method, LostReferenceException
 from queue import Queue, Empty
 
 
+__all__ = ['emit', 'bind', 'unbind']
+
+
+LOGGER = logging.getLogger(__name__)
+
+
 class SignalDispatcher(object):
 
-    def __init__(self):
-        self.log = logging.getLogger('signaldispatcher')
+    def __init__(self, auto_start=True):
         self.r_lock = threading.RLock()
         self.handlers = {}
         self._queue = Queue()
         self._running = False
+        if auto_start:
+            self.start()
 
-    def queue(self, signal):
-        self._queue.put(signal)
+    def queue(self, signal, sender=None):
+        self._queue.put((signal, sender))
 
     def process(self, timeout=0):
         block = bool(timeout != 0)
         t0 = time.time()
         while timeout >= 0:
             try:
-                signal = self._queue.get(block, timeout)
+                signal, sender = self._queue.get(block, timeout)
                 self.dispatch(signal)
             except Empty:
                 break
@@ -33,15 +40,26 @@ class SignalDispatcher(object):
 
     def run(self):
         self._running = True
+        LOGGER.debug('signal dispatcher event loop started')
         while self._running:
             try:
-                signal = self._queue.get(True, 1)
+                signal, sender = self._queue.get(True, 1)
                 self.dispatch(signal)
             except Empty:
                 pass
+        LOGGER.debug('signal dispatcher event loop stopped')
+
+    def start(self):
+        t = threading.Thread(name='signaldispatcher', target=self.run, daemon=True)
+        t.start()
+        setattr(self, '_t', t)
 
     def stop(self):
         self._running = False
+        t = getattr(self, '_t', None)
+        if t is not None:
+            t.join()
+            delattr(self, '_t')
 
     def dispatch(self, signal, sender=None):
         with self.r_lock:
@@ -58,7 +76,7 @@ class SignalDispatcher(object):
                             # lost reference
                             remove = True
                         except Exception as e:
-                            self.log.exception("Error calling signal handler with signal: %s handler: %s" % (str(signal), handler))
+                            LOGGER.exception("Error calling signal handler with signal: %s handler: %s" % (str(signal), handler))
                         if once or remove:
                             weakref_handlers.remove(weakref_handler_info)
 
@@ -96,7 +114,34 @@ class SignalDispatcher(object):
 
         while True:
             try:
-                signal = self._queue.get(False)
+                signal, sender = self._queue.get(False)
             except Empty:
                 break
 
+
+_dispatcher = None
+
+
+def global_instance():
+    global _dispatcher
+
+    if _dispatcher is None:
+        # start the global instance
+        _dispatcher = SignalDispatcher()
+
+    return _dispatcher
+
+
+def emit(signal, sender=None):
+    """dispatch asynchronously a signal"""
+    global_instance().queue(signal, sender)
+
+
+def bind(event_types, handler, once = False, sender=None, args=()):
+    """Adds an event listener for event name"""
+    global_instance().bind(event_types, handler, once, sender, args)
+
+
+def unbind(event_types, handler = None, sender=None):
+    """removes previously added event listener"""
+    global_instance().unbind(event_types, handler, sender)

@@ -6,7 +6,7 @@ import logging
 from future.utils import binary_type
 
 
-LOGGER = logging.getLogger('mdns')
+LOGGER = logging.getLogger(__name__)
 
 
 __all__ = ['register_service', 'unregister_service']

@@ -2,7 +2,7 @@
 
 
 from .MihomeDevice import MihomeDevice
-from ething.core.interfaces import Button
+from ething.interfaces import Button
 
 
 class MihomeButton(MihomeDevice, Button):

@@ -1,9 +1,10 @@
 # coding: utf-8
 
-from ething.core.plugin import Plugin
-from ething.core.Device import Device
-from ething.core.reg import *
-from ething.core.utils import ShortId
+from ething.plugin import Plugin
+from ething.Device import Device
+from ething.scheduler import set_interval
+from ething.reg import *
+from ething.utils import generate_id
 from flask import redirect, request, url_for
 import re
 import base64
@@ -43,7 +44,7 @@ class spotify(Plugin):
     def setup(self):
         super(spotify, self).setup()
 
-        self._survey_task = self.core.scheduler.set_interval(REFRESH_TOKEN_SURVEY_INTERVAL, self._refresh_token_survey, name='spotify.refresh_token')
+        set_interval(REFRESH_TOKEN_SURVEY_INTERVAL, self._refresh_token_survey, name='spotify.refresh_token')
 
         # install specific http routes
         self._webserver_install()
@@ -68,7 +69,7 @@ class spotify(Plugin):
 
             redirect_uri = re.sub('/api/resources/.*$', '/api/spotify/callback', request.url)
 
-            state = ShortId.generate()
+            state = generate_id()
 
             _states[state] = {
                 'oauth_redirect_uri': redirect_uri,
