@@ -64,7 +64,7 @@ class RFLinkGateway(Device):
         except KeyError:
             pass
         # create a new one
-        self.processes.start(RFLinkController(self))
+        self.processes.add(RFLinkController(self))
 
     def getNodes(self, filter=None):
         def _filter (r):

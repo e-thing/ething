@@ -1,5 +1,7 @@
 # coding: utf-8
 import logging
+import inspect
+
 
 BLACK, RED, GREEN, YELLOW, BLUE, MAGENTA, CYAN, WHITE = range(8)
 
@@ -30,3 +32,15 @@ class ColoredFormatter(logging.Formatter):
     def formatMessage(self, record):
         s = super(ColoredFormatter, self).formatMessage(record)
         return COLOR_SEQ % (30 + COLORS[record.levelname]) + s + RESET_SEQ
+
+
+
+class NamedLoggerAdapter(logging.LoggerAdapter):
+
+    def __init__(self, obj, name):
+        super(NamedLoggerAdapter, self).__init__(logging.getLogger(inspect.getmodule(obj).__name__), {
+            'name': name,
+        })
+
+    def process(self, msg, kwargs):
+        return '[%s] %s' % (self.extra['name'], msg), kwargs

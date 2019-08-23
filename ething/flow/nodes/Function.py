@@ -40,7 +40,7 @@ if res is not None:
             print(self.emit)
             exec(formatted, {
                 'msg': msg,
-                'logger': self.log,
+                'logger': self.logger,
                 'core': self.core,
                 'debug': self.debug,
                 'emit': self.emit,

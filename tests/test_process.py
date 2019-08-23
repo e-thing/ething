@@ -1,21 +1,21 @@
 # coding: utf-8
 import pytest
-from ething.Process import Process, Manager
+from ething.processes import Process, ProcessCollection
 import time
 
 
-def test_process():
-    manager = Manager()
+def test_process_start_stop():
 
     counter = {
         'index': 0
     }
 
     def count(counter):
-        counter['index'] += 1
-        time.sleep(0.1)
+        while True:
+            counter['index'] += 1
+            time.sleep(0.1)
 
-    p = Process(name='foobar', loop=count, args=(counter,), manager=manager)
+    p = Process(name='foobar', target=count, args=(counter,))
 
     assert not p.is_running
 
@@ -23,43 +23,66 @@ def test_process():
 
     assert p.is_running
 
-    time.sleep(1)
+    time.sleep(0.5)
+
+    p.stop()
+
+    _count = counter['index']
+
+    assert not p.is_running
+
+    time.sleep(0.3)
+
+    assert _count == counter['index']
+
+    p.restart()
+
+    assert p.is_running
+
+    time.sleep(0.5)
+
+    assert _count < counter['index']
 
     p.stop()
 
     assert not p.is_running
 
-    print(counter['index'])
 
-    assert counter['index'] > 5
-
-
-def test_manager():
-
-    manager = Manager(start=False)
+def test_process_wait():
 
     def sleep(sec):
         time.sleep(sec)
 
     p = Process(target=sleep, args=(2, ), name='2sec')
-
-    manager.attach(p)
+    p.start()
+    p.join(timeout=3)
 
     assert not p.is_running
 
-    manager.start()
+
+def test_process_collection():
+
+    class T(object):
+        pass
+
+    parent = T()
+
+    col = ProcessCollection(parent=parent)
+
+    def sleep(sec):
+        time.sleep(sec)
+
+    p = col.add(sleep, args=(2, ), name='2sec')
 
     assert p.is_running
+    assert p.parent is parent
 
-    assert len(manager.processes) == 1
+    assert '2sec' in col
+    assert p.id in col
+    assert p in col
+    assert len(col) == 1
+    assert col['2sec'] is p
 
-    manager.attach(Process(target=sleep, args=(1, ), name='1sec'))
+    del col['2sec']
 
-    assert len(manager.processes) == 2
-
-    p.wait()
-
-    assert len(manager.processes) == 1
-
-    print(manager.processes)
-
+    assert not p.is_running

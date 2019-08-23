@@ -11,6 +11,10 @@ import base64
 import requests
 import time
 import json
+import logging
+
+LOGGER = logging.getLogger(__name__)
+
 
 # Workaround to support both python 2 & 3
 try:
@@ -52,7 +56,7 @@ class spotify(Plugin):
     def _webserver_install(self):
 
         # install specific http routes
-        webserver_plugin = self.core.get_plugin('webserver')
+        webserver_plugin = self.core.plugins['webserver']
         if not webserver_plugin:
             return
 
@@ -140,7 +144,7 @@ class spotify(Plugin):
             return redirect(redirect_uri, code=302)
 
     def _refresh_token_survey(self):
-        self.log.debug('verify refresh tokens ...')
+        LOGGER.debug('verify refresh tokens ...')
         accounts = self.core.find(lambda r: r.typeof('resources/SpotifyAccount'))
         for account in accounts:
             if account._is_token_expired(offset=2 * REFRESH_TOKEN_SURVEY_INTERVAL):
@@ -183,7 +187,7 @@ class SpotifyAccount (Device):
         refresh_token = self.refresh_token
 
         if not refresh_token:
-            self.log.error("no refresh_token")
+            self.logger.error("no refresh_token")
             return
 
         payload = {
@@ -195,12 +199,12 @@ class SpotifyAccount (Device):
 
         response = requests.post(OAUTH_TOKEN_URL, data=payload, headers=headers)
         if response.status_code != 200:
-            self.log.warning("couldn't refresh token: code:%d reason:%s" % (response.status_code, response.reason))
+            self.logger.warning("couldn't refresh token: code:%d reason:%s" % (response.status_code, response.reason))
             return
 
         token_info = response.json()
 
-        self.log.debug("token refreshed")
+        self.logger.debug("token refreshed")
 
         access_token = token_info['access_token']
         expires_in = token_info['expires_in']
@@ -235,11 +239,11 @@ class SpotifyAccount (Device):
         if payload:
             args["data"] = json.dumps(payload)
 
-        self.log.debug('request: %s %s', method, url)
+        self.logger.debug('request: %s %s', method, url)
 
         r = requests.request(method, url, headers=headers, **args)
 
-        self.log.debug('request status: %s', r.status_code)
+        self.logger.debug('request status: %s', r.status_code)
 
         try:
             r.raise_for_status()

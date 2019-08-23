@@ -866,9 +866,9 @@ class OS_item(object):
           id = getattr(obj, self._id_key)
           if id not in self._ref: # do not erase previous reference
             self._ref[id] = obj
-      except:
+      except Exception as e:
           skipped += 1
-          LOGGER.error('unable to unserialize a %s id=%s' % (self._cls.__name__, doc.get(self._id_key)))
+          LOGGER.error('unable to unserialize a %s id=%s name=%s type=%s (%s)' % (self._cls.__name__, doc.get(self._id_key), doc.get('name'), doc.get('type'), str(e)))
 
     LOGGER.debug('[%s] %d items loaded, %d skipped' % (self._cls.__name__, len(self._ref), skipped))
 

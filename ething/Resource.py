@@ -4,6 +4,7 @@ from .db import *
 from .Signal import ResourceSignal
 from .utils.date import TzDate, utcnow
 from .utils.ObjectPath import evaluate
+from .utils.logger import NamedLoggerAdapter
 from .scheduler import *
 from .processes import *
 from .dispatcher import SignalEmitter
@@ -12,15 +13,7 @@ import inspect
 import logging
 
 
-class ResourceLoggerAdapter(logging.LoggerAdapter):
-
-    def __init__(self, resource):
-        super(ResourceLoggerAdapter, self).__init__(logging.getLogger(getattr(resource, 'LOGGER_NAME', None) or type(resource).__name__), {
-            'resource_id': resource.id,
-        })
-
-    def process(self, msg, kwargs):
-        return '[%s] %s' % (self.extra['resource_id'], msg), kwargs
+LOGGER = logging.getLogger(__name__)
 
 
 @meta(icon='mdi-plus')
@@ -199,7 +192,7 @@ class Resource(Entity, SignalEmitter):
 
         super(Resource, self).__init__(data, context)
 
-        self._log = getattr(self, 'LOGGER', None) or ResourceLoggerAdapter(self)
+        self._logger = NamedLoggerAdapter(self, self.name)
 
         self._processes = ProcessCollection(parent=self)
 
@@ -259,8 +252,8 @@ class Resource(Entity, SignalEmitter):
         return self.core.namespace + "." + self.id
 
     @property
-    def log(self):
-        return self._log
+    def logger(self):
+        return self._logger
 
     @property
     def processes(self):
@@ -324,7 +317,7 @@ class Resource(Entity, SignalEmitter):
         self.__destroyed__ = True
 
     def __db_remove__(self):
-        self.log.info("Resource deleted : %s" % str(self))
+        self.logger.info("Resource deleted")
         self.core.emit(ResourceDeleted(self))
 
     def __db_save__(self, insert):
@@ -332,7 +325,7 @@ class Resource(Entity, SignalEmitter):
             if getattr(self, '__destroyed__', False):
                 raise Exception('this object was previously destroyed')
             self.core.emit(ResourceCreated(self))
-            self.log.info("Resource created : %s" % str(self))
+            self.logger.info("Resource created")
             return
 
         self.modifiedDate = utcnow()  # update the modification time
@@ -340,7 +333,7 @@ class Resource(Entity, SignalEmitter):
         dirty_attrs = list_dirty_attr(self)
         dirty_keys = [a.name for a in dirty_attrs]
 
-        self.log.debug("Resource update : %s , dirtyFields: %s", str(self), dirty_keys)
+        self.logger.debug("Resource update, dirtyFields: %s", dirty_keys)
 
         history_data = {}
 
@@ -411,7 +404,7 @@ class Resource(Entity, SignalEmitter):
 
                 return table
         except Exception as e:
-            self.log.exception('table store error for %s' % table_name)
+            self.logger.exception('table store error for %s' % table_name)
 
     def match(self, expression):
         """

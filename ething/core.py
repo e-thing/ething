@@ -27,6 +27,28 @@ DEFAULT_GARBAGE_COLLECTOR_PERIOD = 300
 LOGGER = logging.getLogger(__name__)
 
 
+
+class _PluginCollection(collections.Mapping):
+
+    def __init__(self, core):
+        self._plugins = core._plugins
+
+    def __iter__(self):
+        return iter(self._plugins)
+
+    def __getitem__(self, key):
+        """
+        the key can either be a plugin instance or a plugin name
+        """
+        for p in self._plugins:
+            if p == key or p.name == key:
+                return p
+        raise KeyError
+
+    def __len__(self):
+        return len(self._plugins)
+
+
 class Core(SignalEmitter):
     """
 
@@ -57,7 +79,7 @@ class Core(SignalEmitter):
                 if instance.name == name:
                     return instance
 
-    def __init__(self, name=None, debug=False, database=None, clear_db=False, commit_interval=None, garbage_collector_period=None, **plugins_options):
+    def __init__(self, name=None, debug=False, database=None, clear_db=False, commit_interval=None, garbage_collector_period=None, plugins=True, **plugins_options):
         """
 
         :param name: the name of the core instance. Default to None.
@@ -78,7 +100,8 @@ class Core(SignalEmitter):
         patch_all(self)
 
         self.name = name
-        self.plugins = list()
+        self._plugins = list()
+        self._plugins_coll = _PluginCollection(self)
         self.debug = debug
         
         self._processes = ProcessCollection(parent=self, weak=True)
@@ -104,7 +127,7 @@ class Core(SignalEmitter):
 
         self.__instances.append(self)
 
-        plugin_modules = import_plugins()
+        plugin_modules = import_plugins(None if plugins is True else plugins) if plugins else list()
 
         generate_event_nodes()
 
@@ -141,6 +164,13 @@ class Core(SignalEmitter):
         """
         return self._processes
 
+    @property
+    def plugins(self):
+        """
+        the collection of plugins
+        """
+        return self._plugins_coll
+
     def use(self, something, **options):
         """
         Load a plugin.
@@ -153,7 +183,7 @@ class Core(SignalEmitter):
         plugin_cls = search_plugin_cls(something)
         plugin_name = plugin_cls.get_name()
 
-        for p in self.plugins:
+        for p in self._plugins:
             if p.name == plugin_name:
                 LOGGER.debug('plugin %s: already loaded', plugin_name)
                 return p
@@ -165,7 +195,7 @@ class Core(SignalEmitter):
         except:
             LOGGER.exception('plugin %s: unable to load' % plugin_name)
         else:
-            self.plugins.append(plugin)
+            self._plugins.append(plugin)
 
             info = getattr(plugin, 'PACKAGE', None)
             if info:
@@ -314,19 +344,8 @@ class Core(SignalEmitter):
         attributes['type'] = get_definition_name(cls)
         return self.db.os.create(cls, attributes)
 
-    def get_plugin(self, name):
-        """
-        Find a plugin by its name.
-
-        :param name: the name of the plugin.
-        :return: A plugin instance.
-        """
-        for p in self.plugins:
-            if p.name == name:
-                return p
-
     def _plugins_call(self, method, *args, **kwargs):
-        for p in self.plugins:
+        for p in self._plugins:
             try:
                 getattr(p, method)(*args, **kwargs)
             except:

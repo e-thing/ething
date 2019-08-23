@@ -3,6 +3,7 @@ import pytest
 from ething.reg import *
 from ething.Resource import *
 from ething.File import File
+import time
 
 
 def test_extends(core):
@@ -43,7 +44,7 @@ def test_attr_changed(core):
 
             attr_changed.add(attr)
 
-            if attr == 'cccaa':
+            if attr == 'cccaa' or attr == 'cccab':
                 print('cccaa changed', new_value)
                 attr_changed2.add(attr)
 
@@ -79,7 +80,10 @@ def test_attr_changed(core):
         tac.cccab = 'b'
         tac.cccba = 'w'
 
-    assert attr_changed == set(['taca', 'cccaa', 'cccba', 'modifiedDate'])
+    if 'modifiedDate' in attr_changed:
+        attr_changed.remove('modifiedDate')
+
+    assert attr_changed == set(['taca', 'cccaa', 'cccba'])
     assert attr_changed2 == set(['taca', 'cccaa', 'cccba'])
 
 
@@ -138,7 +142,7 @@ def test_async_processing(core):
             self.count += 1
             glo['count'] += 1
 
-        @process
+        @process()
         def daemon_like_async_processing(self):
             while True:
                 self.count2 += 1

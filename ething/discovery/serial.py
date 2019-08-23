@@ -2,6 +2,7 @@ from serial.tools.list_ports import comports
 import logging
 import threading
 import time
+from .scanner import *
 
 
 INTERVAL = 30 # sec
@@ -41,14 +42,18 @@ def _call_handlers(is_alive, info):
                 LOGGER.exception('exception in callback for device %s', info['device'])
 
 
+def _port_info_to_dict(port):
+    info = dict()
+    for attr in port_attr_list:
+        info[attr] = getattr(port, attr, None)
+
+
 def scan ():
     global _prev_ports
 
     ports = comports()
     for p in ports:
-        info = dict()
-        for attr in port_attr_list:
-            info[attr] = getattr(p, attr, None)
+        info = _port_info_to_dict(p)
 
         # just connected ?
         for _p in _prev_ports:
@@ -91,4 +96,10 @@ def _update():
 def register(callback, **filter):
     _reg_items.append((callback, filter))
     _update()
+
+
+class SerialScanner(Scanner):
+
+    def scan(self, timeout):
+        return [SerialScannerResult(p.device, _port_info_to_dict(p)) for p in comports()]
 

@@ -6,9 +6,7 @@ import logging
 
 @pytest.fixture
 def core():
-    _core = Core(clear_db=True, database=':memory:', log_level=logging.DEBUG, debug=True)
-
-    _core.init()
+    _core = Core(clear_db=True, database=':memory:', plugins=['mihome'], debug=True)
 
     return _core
 

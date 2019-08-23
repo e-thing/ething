@@ -76,7 +76,7 @@ class ZigateBaseGateway(Device):
     def _controller_start(self):
         self._controller_end() # just in case of restart
 
-        self.log.debug('zigate controller start')
+        self.logger.debug('zigate controller start')
 
         gconf = {'auto_start':False, 'auto_save':False, 'path':self.persistent_file}
 
@@ -98,7 +98,7 @@ class ZigateBaseGateway(Device):
 
 
     def _controller_init(self):
-        self.log.debug('zigate startup')
+        self.logger.debug('zigate startup')
 
         devices = self.children(lambda r: r.typeof(Device))
         # reset some attributes
@@ -110,14 +110,14 @@ class ZigateBaseGateway(Device):
 
         if first_start:
             # reset everything
-            self.log.warning('first start, reset zigate key: erase all persistant data')
+            self.logger.warning('first start, reset zigate key: erase all persistant data')
             self.z.erase_persistent()
 
         self.z.startup()
 
         version = self.z.get_version_text(refresh=True)
 
-        self.log.info('zigate version: %s', version)
+        self.logger.info('zigate version: %s', version)
 
         with self:
             self.version = version
@@ -132,11 +132,11 @@ class ZigateBaseGateway(Device):
         for d in devices:
             zdevice = d.zdevice
             if zdevice:
-                self.log.debug('refreshing device %s', d)
+                self.logger.debug('refreshing device %s', d)
                 zdevice.refresh_device()
             else:
                 d.error = 'the device is no longer paired'
-                self.log.warning('the device %s is no longer paired', d)
+                self.logger.warning('the device %s is no longer paired', d)
 
         for zinstance in self.z.devices:
             for d in devices:
@@ -148,7 +148,7 @@ class ZigateBaseGateway(Device):
 
     def _controller_end(self):
         if hasattr(self, 'z') and self.z:
-            self.log.debug('zigate controller stop')
+            self.logger.debug('zigate controller stop')
             dispatcher.disconnect(self._controller_callback, signal=zigate.ZIGATE_DEVICE_ADDED, sender=self.z)
             dispatcher.disconnect(self._controller_callback, signal=zigate.ZIGATE_DEVICE_UPDATED, sender=self.z)
             dispatcher.disconnect(self._controller_callback, signal=zigate.ZIGATE_DEVICE_REMOVED, sender=self.z)
@@ -164,7 +164,7 @@ class ZigateBaseGateway(Device):
 
     def _controller_callback(self, sender, signal, **kwargs):
 
-        self.log.debug('signal received: %s %s', signal, kwargs)
+        self.logger.debug('signal received: %s %s', signal, kwargs)
 
         if signal == DISCONNECTED:
             self.refresh_connect_state(False)
@@ -197,7 +197,7 @@ class ZigateBaseGateway(Device):
         self._activity += 1
 
     def _wait_device_discovery(self, dz_instance):
-        self.log.debug('wait for the device %s to complete the discovery process', dz_instance)
+        self.logger.debug('wait for the device %s to complete the discovery process', dz_instance)
         setattr(dz_instance, 'wait_discovery', True)
         t0 = time.time()
 
@@ -212,10 +212,10 @@ class ZigateBaseGateway(Device):
                 while not dz_instance.discovery and time.time() - t0 < 5:
                     time.sleep(0.5)
 
-            self.log.debug('discovery process done for the device %s , discovery mode=%s', dz_instance, dz_instance.discovery)
+            self.logger.debug('discovery process done for the device %s , discovery mode=%s', dz_instance, dz_instance.discovery)
 
         else:
-            self.log.warning('unable to complete the discovery of the device %s', dz_instance)
+            self.logger.warning('unable to complete the discovery of the device %s', dz_instance)
 
         delattr(dz_instance, 'wait_discovery')
 
@@ -242,7 +242,7 @@ class ZigateBaseGateway(Device):
             # wait for the discovery process to complete
             process_id = '%s.%s.wait_discovery' % (self.id, ieee)
             if process_id not in self.processes:
-                self.log.info('new device detected : %s', dz_instance)
+                self.logger.info('new device detected : %s', dz_instance)
                 if notify:
                     self.notify('Pairing device: %s. Please wait...' % dev_name, timeout=DISCOVERY_TIMEOUT+DISCOVERY_TIMEOUT_EXTRA)
                 self.core.processes.add(self._wait_device_discovery, name=process_id, args=(dz_instance, ))
@@ -251,10 +251,10 @@ class ZigateBaseGateway(Device):
         # print some info here
         info = dz_instance.to_json(properties=True)
         info['actions'] = dz_instance.available_actions()
-        self.log.info(json.dumps(info, indent=4, sort_keys=True, cls=DeviceEncoder))
+        self.logger.info(json.dumps(info, indent=4, sort_keys=True, cls=DeviceEncoder))
 
         if dev_type is None:
-            self.log.warning('no type found for device for %s , try to pair it again', dz_instance)
+            self.logger.warning('no type found for device for %s , try to pair it again', dz_instance)
             if notify:
                 self.notify('incomplete discovery, try to pair it again', mode='warn')
         else:
@@ -274,10 +274,10 @@ class ZigateBaseGateway(Device):
                                     d = c.create_device(self, dz_instance)
                                     devices.append(d)
                                 except:
-                                    self.log.exception('zigate cls create exception for class %s', c)
+                                    self.logger.exception('zigate cls create exception for class %s', c)
                             return devices
                     except:
-                        self.log.exception('zigate cls isvalid exception for class %s', cls)
+                        self.logger.exception('zigate cls isvalid exception for class %s', cls)
 
             # search by endpoints
             for ep in dz_instance.endpoints:
@@ -293,9 +293,9 @@ class ZigateBaseGateway(Device):
                                     devices.append(d)
                                     break
                                 except:
-                                    self.log.exception('zigate cls create exception for class %s', r)
+                                    self.logger.exception('zigate cls create exception for class %s', r)
                         except:
-                            self.log.exception('zigate cls isvalid_ep exception for class %s', cls)
+                            self.logger.exception('zigate cls isvalid_ep exception for class %s', cls)
 
             if devices:
                 return devices
@@ -304,7 +304,7 @@ class ZigateBaseGateway(Device):
             if notify:
                 self.notify('unknown device: %s' % dev_name, mode='warn')
 
-        self.log.warning('unable to create any device for %s', dz_instance)
+        self.logger.warning('unable to create any device for %s', dz_instance)
 
     @method
     def start_pairing_mode(self):
@@ -425,7 +425,7 @@ class ZigateSerialGateway(ZigateBaseGateway):
     RESET_ATTR = ['port']
 
     def _connect(self, **kwargs):
-        self.log.info('zigate connect on port %s', self.port)
+        self.logger.info('zigate connect on port %s', self.port)
         return ZigateSerial(self, **kwargs)
 
 
@@ -435,7 +435,7 @@ class ZigateWifiGateway(ZigateBaseGateway):
     RESET_ATTR = ['host', 'port']
 
     def _connect(self, **kwargs):
-        self.log.info('zigate connect on host %s:%s', self.host, self.port)
+        self.logger.info('zigate connect on host %s:%s', self.host, self.port)
         return ZigateWifi(self, **kwargs)
 
 
@@ -445,7 +445,7 @@ from zigate.core import FakeZiGate
 class ZigateFakeGateway(ZigateBaseGateway):
 
     def _connect(self, **kwargs):
-        self.log.info('fake zigate connect')
+        self.logger.info('fake zigate connect')
         return FakeZiGate(**kwargs)
 
     @scheduler.delay(0, name="zigate.init")

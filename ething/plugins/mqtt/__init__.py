@@ -8,6 +8,10 @@ from ething.TransportProcess import Transport
 import json
 from queue import Queue, Empty
 from .dispatcher import MqttDispatcherService
+import logging
+
+
+LOGGER = logging.getLogger(__name__)
 
 
 @attr('publish_event', label="publish event", type=Dict(mapping=[
@@ -87,7 +91,7 @@ class MqttTransport(Transport):
         self._c.subscribe(self.topic, self.qos)
 
         super(MqttTransport, self).open()
-        self.log.info("(mqtt) connected to host=%s port=%d" % (self.host, self.port))
+        LOGGER.info("(mqtt) connected to host=%s port=%d" % (self.host, self.port))
 
     def on_message(self, client, userdata, msg):
         # msg.topic
@@ -132,7 +136,7 @@ class MqttTransport(Transport):
             while self._connected is True and (time.time() - t0) < self.connection_timeout:
                 self._c.loop(timeout=0.2, max_packets=1)
 
-            self.log.info("(net) closed from host=%s port=%d" % (self.host, self.port))
+            LOGGER.info("(net) closed from host=%s port=%d" % (self.host, self.port))
 
 
 @meta(icon='mdi-signal-variant', category="input")
@@ -154,7 +158,7 @@ class MqttSubscribe(Node):
             })
 
         _mqttClient = mqttClient.Client()
-        #_mqttClient.enable_logger(self.log)
+        #_mqttClient.enable_logger(self.logger)
 
         if self.username and self.password:
             _mqttClient.username_pw_set(self.username, self.password)
@@ -193,7 +197,7 @@ class MqttPublish(Node):
                 'password': self.password
             }
 
-        self.log.debug("publish: topic=%s hostname=%s port=%s", self.topic, self.hostname, self.port)
+        self.logger.debug("publish: topic=%s hostname=%s port=%s", self.topic, self.hostname, self.port)
 
         if not isinstance(_payload, string_types):
             _payload = json.dumps(_payload)

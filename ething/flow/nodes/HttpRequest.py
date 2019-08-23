@@ -36,7 +36,7 @@ class HttpRequest(Node):
 
         resp = s.send(prepped)
 
-        self.log.debug("method=%s, url=%s, resp.status_code=%s", method, url, resp.status_code)
+        self.logger.debug("method=%s, url=%s, resp.status_code=%s", method, url, resp.status_code)
 
         resp.raise_for_status()
 

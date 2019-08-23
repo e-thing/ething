@@ -26,7 +26,7 @@ class Mijia(BleaDevice, Thermometer, HumiditySensor):
                 batteryData = bytearray(connector.read_handle(0x18)) # battery
                 battery = batteryData[0]
 
-                self.log.debug('read battery:%s', battery)
+                self.logger.debug('read battery:%s', battery)
 
                 with self:
                     self.refresh_connect_state(True)
@@ -35,7 +35,7 @@ class Mijia(BleaDevice, Thermometer, HumiditySensor):
                 connector.wait_for_notification(0x10, self, notification_timeout=5)
 
         except Exception:
-            self.log.exception('error in read()')
+            self.logger.exception('error in read()')
             self.refresh_connect_state(False)
 
     def handleNotification(self,handle,data):
@@ -44,7 +44,7 @@ class Mijia(BleaDevice, Thermometer, HumiditySensor):
             temperature = float(m.group(1))
             humidity = float(m.group(2))
 
-            self.log.debug('read temperature:%s humidity:%s', temperature, humidity)
+            self.logger.debug('read temperature:%s humidity:%s', temperature, humidity)
 
             with self:
                 self.temperature = temperature
@@ -55,4 +55,4 @@ class Mijia(BleaDevice, Thermometer, HumiditySensor):
                     'temperature': temperature
                 })
         else:
-            self.log.debug('unknown handle %X', handle)
+            self.logger.debug('unknown handle %X', handle)

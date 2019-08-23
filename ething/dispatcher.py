@@ -73,7 +73,7 @@ class SignalDispatcher(object):
         with self.r_lock:
             for weakref_handler_info in list(self.handlers):
                 _signal, handler, once, _sender, _, _ns_re, args = weakref_handler_info
-                if _signal == ANY or issubclass(signal, _signal):
+                if _signal == ANY or isinstance(signal, _signal):
                     if _sender is None or _sender == sender:
                         if _ns_re is None or (namespace and _ns_re.match(namespace)):
                             remove = False
@@ -98,13 +98,13 @@ class SignalDispatcher(object):
         if namespace is not None:
             namespace = re.compile(namespace + '(\.|$)')
         with self.r_lock:
-            for index, handler_info in enumerate(self.handlers):
+            for handler_info in list(self.handlers):
                 _signal, _handler, once, _sender, _namespace, _, args = handler_info
                 if signal == ANY or issubclass(_signal, signal):
                     if handler is None or handler == _handler:
                         if sender is None or sender == _sender:
                             if namespace is None or (_namespace and namespace.match(_namespace)):
-                                del self.handlers[index]
+                                self.handlers.remove(handler_info)
 
     def clear(self):
         with self.r_lock:

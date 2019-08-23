@@ -10,6 +10,7 @@ from xml.etree import ElementTree
 from ..utils import etree_to_dict
 from ..utils.weak_ref import proxy_method, LostReferenceException
 from collections import Mapping
+from .scanner import *
 
 
 __all__ = [
@@ -312,3 +313,9 @@ def _update():
     if _ssdp_service is None and len(_registered_items) > 0:
         # start service
         _ssdp_service = SSDP_Service(_SSDP_Listener())
+
+
+class SsdpScanner(Scanner):
+
+    def scan(self, timeout):
+        return [NetScannerResult(d.ip, dict(d)) for d in scan(timeout)]

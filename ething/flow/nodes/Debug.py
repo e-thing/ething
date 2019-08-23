@@ -19,4 +19,4 @@ class DebugNode(Node):
         if self.print_debug_window:
             self.debug(_data)
         if self.print_log:
-            self.log.info("%s: %s", self.name, str(_data))
+            self.logger.info("%s: %s", self.name, str(_data))

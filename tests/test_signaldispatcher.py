@@ -1,6 +1,6 @@
 # coding: utf-8
 import pytest
-from ething.SignalDispatcher import SignalDispatcher
+from ething.dispatcher import SignalDispatcher
 from ething.Signal import Signal
 
 
@@ -20,7 +20,7 @@ def test_signaldispatcher():
 
     foo = Foo()
 
-    signaldispatcher.bind('Foo', inc)
+    signaldispatcher.bind(Foo, inc)
 
     signaldispatcher.dispatch(foo)
     signaldispatcher.dispatch(foo)
@@ -52,7 +52,7 @@ def test_signaldispatcher_once():
 
     foo = Foo()
 
-    signaldispatcher.bind('Foo', inc, once=True)
+    signaldispatcher.bind(Foo, inc, once=True)
 
     signaldispatcher.dispatch(foo)
 

@@ -48,7 +48,7 @@ def install(core, app, auth, **kwargs):
                     with core.config:
                         update(core.config, d)
                 else:
-                    p = core.get_plugin(k)
+                    p = core.plugins.get(k)
                     if p is not None:
                         with p:
                             update(p, d)

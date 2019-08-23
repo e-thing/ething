@@ -5,11 +5,16 @@ import time
 import threading
 import datetime
 from collections import OrderedDict
+import logging
+
+LOGGER = logging.getLogger(__name__)
+
+
 try:
     from bluepy.btle import Scanner, DefaultDelegate, BTLEException
 except Exception as e:
     bluepy_imported = False
-    print("WARNING: unable to import the package 'bluepy' (https://github.com/IanHarvey/bluepy): %s" % str(e))
+    LOGGER.warning("unable to import the package 'bluepy' (https://github.com/IanHarvey/bluepy): %s" % str(e))
 else:
     bluepy_imported = True
 
@@ -56,7 +61,7 @@ if bluepy_imported:
 
                     init_iface(iface)
 
-                    self.log.debug("BLEA: start scan thread on hci%s", iface)
+                    LOGGER.debug("BLEA: start scan thread on hci%s", iface)
 
                     scanner = Scanner(iface).withDelegate(ScanDelegate(gateway))
 
@@ -67,7 +72,7 @@ if bluepy_imported:
                         gateway.refresh_connect_state(True)
                     except Exception:
                         gateway.refresh_connect_state(False)
-                        self.log.exception("BLEA: scan exception")
+                        LOGGER.exception("BLEA: scan exception")
                     finally:
                         try:
                             scanner.stop()
@@ -80,14 +85,14 @@ if bluepy_imported:
         def __init__(self, gateway):
             DefaultDelegate.__init__(self)
             self.gateway = gateway
-            self.log = gateway.log
+            LOGGER = gateway.log
 
 
         def handleDiscovery(self, dev, isNewDev, isNewData):
 
             if isNewDev or isNewData:
 
-                self.log.debug("[BLEA] device detected mac=%s rssi=%ddb connectable=%s data=%s", dev.addr, dev.rssi, str(dev.connectable), dev.getScanData())
+                LOGGER.debug("device detected mac=%s rssi=%ddb connectable=%s data=%s", dev.addr, dev.rssi, str(dev.connectable), dev.getScanData())
 
                 mac = dev.addr.upper()
                 rssi = dev.rssi
@@ -111,5 +116,5 @@ if bluepy_imported:
                         cls.handleDiscovery(self.gateway, mac, data, name, rssi, connectable)
                         break
                 else:
-                    self.log.warning('[BLEA] unknown device: name=%s manuf=%s' % (name, manuf))
+                    LOGGER.warning('unknown device: name=%s manuf=%s' % (name, manuf))
 

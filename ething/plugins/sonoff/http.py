@@ -56,11 +56,11 @@ class Sonoff_http(Relay):
 
         url += path
 
-        self.log.debug('request: %s %s', method, url)
+        self.logger.debug('request: %s %s', method, url)
 
         r = requests.request(method.upper(), url, headers=headers, params=params, data=body, **options)
 
-        self.log.debug('request status: %s', r.status_code)
+        self.logger.debug('request status: %s', r.status_code)
 
         r.raise_for_status()
 

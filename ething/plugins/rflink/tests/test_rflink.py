@@ -7,7 +7,7 @@ from  ething.interfaces import Relay, Thermometer, HumiditySensor
 
 def test_rflink_controller(core):
 
-    gateway = core.create('resources/RFLinkSerialGateway', {
+    gateway = core.create('resources/RFLinkGateway', {
         'name': 'gateway',
         'port': '?'
     })

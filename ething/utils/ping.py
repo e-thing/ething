@@ -1,6 +1,6 @@
 # coding: utf-8
 
-from ething import scheduler
+from ething.scheduler import set_interval
 from multiping import multi_ping
 try:
     from urllib.parse import urlparse
@@ -32,7 +32,7 @@ def ping(host):
 def pingable(attr='host', interval=PING_DEFAULT_INTERVAL):
     def d(cls):
 
-        @scheduler.set_interval(interval, name='ping')
+        @set_interval(interval, name='ping')
         def _ping(self):
 
             host = getattr(self, attr, None)
@@ -49,10 +49,10 @@ def pingable(attr='host', interval=PING_DEFAULT_INTERVAL):
                     try:
                         online = ping(host)
                     except Exception as e:
-                        self.log.error('ping() raises an exception: %s' % str(e))
+                        self.logger.error('ping() raises an exception: %s' % str(e))
                         return False
 
-                self.log.debug('ping %s, online=%s', host, online)
+                self.logger.debug('ping %s, online=%s', host, online)
 
             with self:
                 self.refresh_connect_state(online)

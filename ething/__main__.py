@@ -23,7 +23,7 @@ import threading
 from .env import USER_DIR, LOG_FILE
 
 
-def init_logger(console_log=False, debug=False):
+def init_logger(console_log=False, file_log=True, debug=False):
     from .utils.logger import ColoredFormatter
 
     frm = "%(asctime)s :: %(levelname)-7s :: %(name)s :: %(message)s"
@@ -35,13 +35,14 @@ def init_logger(console_log=False, debug=False):
         console.setFormatter(ColoredFormatter(frm))
         log.addHandler(console)
 
-    if not os.access(LOG_FILE, os.F_OK) or os.access(LOG_FILE, os.W_OK):
-        # file_handler = logging.FileHandler(LOG_FILE, encoding="utf8")
-        file_handler = RotatingFileHandler(LOG_FILE, encoding="utf8", maxBytes=5 * 1024 * 1024, backupCount=2)
-        file_handler.setFormatter(logging.Formatter(frm))
-        log.addHandler(file_handler)
-    else:
-        log.error('the log file is not writeable : %s' % LOG_FILE)
+    if file_log:
+        if not os.access(LOG_FILE, os.F_OK) or os.access(LOG_FILE, os.W_OK):
+            # file_handler = logging.FileHandler(LOG_FILE, encoding="utf8")
+            file_handler = RotatingFileHandler(LOG_FILE, encoding="utf8", maxBytes=5 * 1024 * 1024, backupCount=2)
+            file_handler.setFormatter(logging.Formatter(frm))
+            log.addHandler(file_handler)
+        else:
+            log.error('the log file is not writeable : %s' % LOG_FILE)
 
     return log
 
@@ -58,8 +59,9 @@ parser = argparse.ArgumentParser(
 
 parser.add_argument('-v', '--version', action='store_true',
                     help='return the version number and exit')
+
 parser.add_argument('-q', '--quiet', action='store_true',
-                        help='Quiet mode, disable log messages written to the terminal')
+                    help='Quiet mode, disable log messages written to the terminal')
 
 parser.add_argument('--debug', action='store_true',
                     help='activate the debug mode')
@@ -70,10 +72,21 @@ parser.add_argument('--clear', action='store_true',
 parser.add_argument('--server-port', type=int, default=8000,
                     help='the port number the webserver is listening to')
 
+parser.add_argument('--scan', action='store', nargs='?', type=int,
+                    help='perform a scan of the system and exit')
+
 args = parser.parse_args()
 
 if args.version:
     print("v%s" % __version__)
+    sys.exit()
+
+if args.scan is not None:
+    from .discovery import scan
+    init_logger(console_log=True, file_log=False, debug=args.debug)
+    timeout = args.scan or 10
+    print('scanning ... timeout=%d' % timeout)
+    scan(timeout=timeout, printer=print)
     sys.exit()
 
 if not os.path.exists(USER_DIR):
@@ -82,7 +95,7 @@ if not os.path.exists(USER_DIR):
     print("first startup, initializing...")
     os.makedirs(USER_DIR)
 
-logger = init_logger(not getattr(args, 'quiet', False), args.debug)
+logger = init_logger(console_log=not getattr(args, 'quiet', False), file_log=True, debug=args.debug)
 
 from .core import Core
 from .processes import processes

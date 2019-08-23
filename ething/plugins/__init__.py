@@ -21,15 +21,16 @@ def find_builtin_plugins():
     return plugins
 
 
-def import_builtin_plugins():
+def import_builtin_plugins(white_list=None):
     modules = list()
 
     for module_name in find_builtin_plugins():
-        try:
-            mod = importlib.import_module('.%s' % module_name, __name__)
-            modules.append(mod)
-        except:
-            LOGGER.exception('unable to import %s' % module_name)
+        if white_list is None or module_name in white_list:
+            try:
+                mod = importlib.import_module('.%s' % module_name, __name__)
+                modules.append(mod)
+            except:
+                LOGGER.exception('unable to import %s' % module_name)
 
     return modules
 

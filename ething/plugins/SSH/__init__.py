@@ -28,7 +28,7 @@ class SSHPlugin(Plugin):
     def _webserver_install(self):
 
         # install specific http routes
-        webserver_plugin = self.core.get_plugin('webserver')
+        webserver_plugin = self.core.plugins['webserver']
         if not webserver_plugin:
             return
 

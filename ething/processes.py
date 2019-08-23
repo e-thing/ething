@@ -97,10 +97,10 @@ class ProcessCollection(Mapping):
 
     def __getitem__(self, key):
         """
-        the key can either be a process id or process name
+        the key can either be a process instance, a process id or process name
         """
         for p in self._items():
-            if p.id == key or p.name == key:
+            if p == key or p.id == key or p.name == key:
                 return p
         raise KeyError
 
@@ -109,6 +109,7 @@ class ProcessCollection(Mapping):
 
     def __delitem__(self, key):
         p = self[key]
+        p.stop()
         self._processes.remove(p)
 
 

@@ -58,7 +58,7 @@ class OutputLink(Node):
                             try:
                                 flow.inject(node, _msg)
                             except:
-                                self.log.exception('node flow inject error')
+                                self.logger.exception('node flow inject error')
                             break
                     else:
                         # check the sources
@@ -68,7 +68,7 @@ class OutputLink(Node):
                                 try:
                                     flow.inject(node, _msg)
                                 except:
-                                    self.log.exception('node flow inject error')
+                                    self.logger.exception('node flow inject error')
                                 break
 
 

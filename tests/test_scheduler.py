@@ -1,6 +1,6 @@
 # coding: utf-8
 import pytest
-from ething.scheduler import Scheduler, tick
+from ething.scheduler import set_interval, tick, unbind, Scheduler, bind_instance
 import time
 
 
@@ -15,7 +15,7 @@ def test_scheduler():
     def increase():
         g['i'] += 1
 
-    scheduler.set_interval(0.5, increase)
+    set_interval(0.5, increase, scheduler=scheduler)
 
     tf = time.time() + 3.2
     while time.time() < tf:
@@ -24,7 +24,7 @@ def test_scheduler():
 
     assert g['i'] == 6
 
-    scheduler.unbind(increase)
+    unbind(increase, scheduler=scheduler)
 
     tf = time.time() + 1.2
     while time.time() < tf:
@@ -47,7 +47,7 @@ def test_class_method():
 
     scheduler = Scheduler()
 
-    scheduler.tick(foo.increase)
+    tick(foo.increase, scheduler=scheduler)
 
     scheduler.process()
     scheduler.process()
@@ -55,35 +55,7 @@ def test_class_method():
 
     assert foo.cnt == 3
 
-    scheduler.unbind(foo.increase)
-
-    scheduler.process()
-
-    assert foo.cnt == 3
-
-
-def test_class_method2():
-
-    class Foo(object):
-        def __init__(self):
-            self.cnt = 0
-
-        def increase(self):
-            self.cnt += 1
-
-    foo = Foo()
-
-    scheduler = Scheduler()
-
-    scheduler.tick(foo.increase)
-
-    scheduler.process()
-    scheduler.process()
-    scheduler.process()
-
-    assert foo.cnt == 3
-
-    scheduler.unbind(foo)
+    unbind(foo.increase, scheduler=scheduler)
 
     scheduler.process()
 
@@ -98,13 +70,13 @@ def test_instance():
         def __init__(self):
             self.i = 0
 
-        @tick()
+        @tick(scheduler=scheduler)
         def bar(self):
             self.i += 1
 
     foo = Foo()
 
-    scheduler.bind_instance(foo)
+    bind_instance(foo)
 
     assert foo.i == 0
 
@@ -113,7 +85,7 @@ def test_instance():
 
     assert foo.i == 2
 
-    scheduler.unbind(foo)
+    unbind(foo, scheduler=scheduler)
 
     scheduler.process()
 
@@ -137,7 +109,7 @@ def test_instance_delete():
 
     foo = Foo(ctx)
 
-    scheduler.tick(foo.bar)
+    tick(foo.bar, scheduler=scheduler)
 
     assert ctx['i'] == 0
 
@@ -160,7 +132,7 @@ def test_decorator():
         'i': 0
     }
 
-    @scheduler.tick()
+    @tick(scheduler=scheduler)
     def bar():
         ctx['i'] += 1
 

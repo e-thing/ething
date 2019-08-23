@@ -2,6 +2,10 @@
 from ething.db import *
 from ething.utils.date import TzDate, utcnow
 from flask import request
+import logging
+
+
+LOGGER = logging.getLogger(__name__)
 
 
 @attr('modifiedDate', type=TzDate(), default=lambda _: utcnow(), mode=READ_ONLY)
@@ -36,7 +40,7 @@ class Client(Entity):
         if sid not in self.__sio:
             self.__sio.add(sid)
             if len(self.__sio) == 1:
-                self.app.log.debug('client online %s', self)
+                LOGGER.debug('client online %s', self)
                 self.online = True
 
     def detach_socket(self, sid):
@@ -44,7 +48,7 @@ class Client(Entity):
             self.__sio.remove(sid)
             if len(self.__sio) == 0:
                 self.online = False
-                self.app.log.debug('client offline %s', self)
+                LOGGER.debug('client offline %s', self)
 
     def update_from_request(self):
         """must be executed in a flask context"""

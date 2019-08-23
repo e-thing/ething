@@ -116,14 +116,14 @@ class Device(Resource):
             self.emit(BatteryLevelChanged(self, new_value))
         elif attr == 'connected':
             if new_value:
-                self.log.debug("device connected %s", self)
+                self.logger.debug("device connected %s", self)
                 self.emit(DeviceConnected(self))
             else:
-                self.log.debug("device disconnected %s", self)
+                self.logger.debug("device disconnected %s", self)
                 self.emit(DeviceDisconnected(self))
         elif attr == 'error':
             if new_value is not None:
-                self.log.error(new_value)
+                self.logger.error(new_value)
 
     def refresh_connect_state(self, state, propagate=True):
         with self:

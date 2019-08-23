@@ -59,8 +59,6 @@ class Plugin(with_metaclass(PluginMetaClass, Entity)):
     # the path to the plugin javascript file (metadata, widgets ...). This file is loaded by the web interface. (default to index.js)
     JS_INDEX = './index.js'
 
-    LOGGER = None
-
     @classmethod
     def get_name(cls):
         return getattr(cls, 'PACKAGE', {}).get('name', cls.__name__)
@@ -103,11 +101,6 @@ class Plugin(with_metaclass(PluginMetaClass, Entity)):
     def name(self):
         """the name of this plugin"""
         return self.get_name()
-
-    @property
-    def log(self):
-        """the logger of this plugin. Every plugin has his own logger."""
-        return self.LOGGER
 
     @classmethod
     def js_index(cls):
@@ -290,19 +283,20 @@ def find_plugins():
     return ret
 
 
-def import_plugins():
+def import_plugins(white_list=None):
     modules = []
 
     # builtin plugins
-    modules += import_builtin_plugins()
+    modules += import_builtin_plugins(white_list)
 
     # installed plugins as package
     for module_name in find_plugins():
-        try:
-            mod = importlib.import_module(module_name)
-            modules.append(mod)
-        except:
-            LOGGER.exception('unable to import %s' % module_name)
+        if white_list is None or module_name[7:] in white_list:
+            try:
+                mod = importlib.import_module(module_name)
+                modules.append(mod)
+            except:
+                LOGGER.exception('unable to import %s' % module_name)
 
     return modules
 

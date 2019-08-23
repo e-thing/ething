@@ -20,7 +20,7 @@ __all__ = [
 ]
 
 
-_LOGGER = logging.getLogger(__name__)
+LOGGER = logging.getLogger(__name__)
 
 TICK_INTERVAL = 1 # one sec
 
@@ -140,7 +140,7 @@ class Task(object):
             try:
                 self._scheduler.execute(self)
             except:
-                _LOGGER.exception('exception in task "%s"' % self._name)
+                LOGGER.exception('exception in task "%s"' % self._name)
 
             return True
         else:  # lost reference
@@ -240,7 +240,6 @@ class Scheduler(object):
         super(Scheduler, self).__init__()
         self.tasks = []
         self.r_lock = threading.RLock()
-        self.log = _LOGGER
         self._running = False
 
     def add(self, task):
@@ -325,7 +324,7 @@ class ThreadingScheduler(Scheduler):
             if hasattr(task, '_p'):
                 p = task._p
                 if p and p.is_alive():
-                    _LOGGER.debug('task "%s" already running: skipped', task.name)
+                    LOGGER.debug('task "%s" already running: skipped', task.name)
                     return
 
         t = threading.Thread(name="scheduler.%s" % task.name, target=task.execute, daemon=True)
@@ -401,13 +400,13 @@ def bind_instance(instance):
     return tasks
 
 
-def unbind(obj):
+def unbind(obj, scheduler=None):
     """
     Unregister a task, callback or instance.
 
     :param obj: either a task, a callback or an instance
     """
-    scheduler = global_instance()
+    scheduler = scheduler or global_instance()
     if isinstance(obj, Task):
         scheduler.remove(obj)
     else:
@@ -442,7 +441,7 @@ def _deco(callback, p):
         return p(callback)
 
 
-def tick(callback=None, args=(), kwargs=None, **params):
+def tick(callback=None, args=(), kwargs=None, scheduler=None, **params):
     """
     Run a callable every tick (ie: each time process() is called).
 
@@ -454,12 +453,12 @@ def tick(callback=None, args=(), kwargs=None, **params):
     """
 
     def p(f):
-        return TickTask(global_instance(), f, args=args, kwargs=kwargs, **params)
+        return TickTask(scheduler or global_instance(), f, args=args, kwargs=kwargs, **params)
 
     return _deco(callback, p)
 
 
-def set_interval(interval, callback=None, start_in_sec=0, args=(), kwargs=None, **params):
+def set_interval(interval, callback=None, start_in_sec=0, args=(), kwargs=None, scheduler=None, **params):
     """
     Run a callable at regular interval.
 
@@ -472,12 +471,12 @@ def set_interval(interval, callback=None, start_in_sec=0, args=(), kwargs=None, 
     :return: Task instance
     """
     def p(f):
-        return IntervalTask(interval, global_instance(), f, args=args, kwargs=kwargs, start_in_sec=start_in_sec, **params)
+        return IntervalTask(interval, scheduler or global_instance(), f, args=args, kwargs=kwargs, start_in_sec=start_in_sec, **params)
 
     return _deco(callback, p)
 
 
-def delay(delay, callback=None, args=(), kwargs=None, **params):
+def delay(delay, callback=None, args=(), kwargs=None, scheduler=None, **params):
     """
     Run a callable once after a certain delay.
 
@@ -489,12 +488,12 @@ def delay(delay, callback=None, args=(), kwargs=None, **params):
     :return: Task instance
     """
     def p(f):
-        return DelayTask(delay, global_instance(), f, args=args, kwargs=kwargs, **params)
+        return DelayTask(delay, scheduler or global_instance(), f, args=args, kwargs=kwargs, **params)
 
     return _deco(callback, p)
 
 
-def at(hour='*', min=0, callback=None, args=(), kwargs=None, **params):
+def at(hour='*', min=0, callback=None, args=(), kwargs=None, scheduler=None, **params):
     """
     Run a callable at a certain time of a the day.
 
@@ -507,6 +506,6 @@ def at(hour='*', min=0, callback=None, args=(), kwargs=None, **params):
     :return: Task instance
     """
     def p(f):
-        return AtTask(global_instance(), f, hour=hour, min=min, args=args, kwargs=kwargs, **params)
+        return AtTask(scheduler or global_instance(), f, hour=hour, min=min, args=args, kwargs=kwargs, **params)
 
     return _deco(callback, p)

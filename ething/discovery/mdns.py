@@ -1,9 +1,11 @@
 # coding: utf-8
 
-from zeroconf import ServiceBrowser, Zeroconf
+from zeroconf import ServiceBrowser, Zeroconf, ZeroconfServiceTypes
 from ..utils.weak_ref import proxy_method, LostReferenceException
 import logging
 from future.utils import binary_type
+from .scanner import *
+import time
 
 
 LOGGER = logging.getLogger(__name__)
@@ -62,6 +64,40 @@ def _update(service_name):
         return
 
 
+def _convert_service_info(info):
+    _info = dict()
+
+    for name in (
+            'type',
+            'name',
+            'port',
+            'weight',
+            'priority',
+            'server',
+    ):
+        _info[name] = getattr(info, name, None)
+
+    try:
+        address = info.addresses[0]
+    except IndexError:
+        address = None
+
+    if isinstance(address, binary_type):
+        address = '.'.join(map(str, address))
+
+    _info['address'] = address
+
+    properties = info.properties
+    for name in properties:
+        val = properties[name]
+        name = name.decode('utf8')
+        if name not in _info:
+            if isinstance(val, binary_type):
+                val = val.decode('utf8')
+            _info[name] = val
+
+    return _info
+
 class ServiceListener:
 
     def __init__(self, service_name):
@@ -111,39 +147,30 @@ class ServiceListener:
             info.setdefault('type', type)
             info.setdefault('name', name)
         else:
-            _info = dict()
-
-            for name in (
-                    'type',
-                    'name',
-                    'port',
-                    'weight',
-                    'priority',
-                    'server',
-            ):
-                _info[name] = getattr(info, name, None)
-
-            try:
-                address = info.addresses[0]
-            except IndexError:
-                address = None
-
-            if isinstance(address, binary_type):
-                address = '.'.join(map(str, address))
-
-            _info['address'] = address
-
-            properties = info.properties
-            for name in properties:
-                val = properties[name]
-                name = name.decode('utf8')
-                if name not in _info:
-                    if isinstance(val, binary_type):
-                        val = val.decode('utf8')
-                    _info[name] = val
-
-            info = _info
+            info = _convert_service_info(info)
 
         self._run_handlers(True, info)
 
 
+class MdnsScanner(Scanner):
+
+    def scan(self, timeout):
+        zc = _zc()
+        services = ZeroconfServiceTypes.find(zc, timeout=5)
+
+        browsers = [ServiceBrowser(zc, sevice, self) for sevice in services]
+
+        time.sleep(timeout - 5)
+
+        for b in browsers:
+            b.cancel()
+
+        _zc_update()
+
+    def remove_service(self, zeroconf, type, name):
+        pass
+
+    def add_service(self, zeroconf, type, name):
+        info = zeroconf.get_service_info(type, name)
+        info = _convert_service_info(info)
+        self.results.put(NetScannerResult(info.get('address'), info))

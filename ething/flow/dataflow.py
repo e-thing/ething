@@ -3,6 +3,7 @@ from future.utils import integer_types, string_types, with_metaclass
 import time
 import logging
 from ..utils import generate_id
+from ..utils.logger import NamedLoggerAdapter
 import gevent
 from collections import MutableMapping, Mapping
 from queue import Queue, Empty
@@ -11,18 +12,6 @@ from abc import ABCMeta, abstractmethod
 
 
 _LOGGER = logging.getLogger(__name__)
-
-
-class NodeLoggerAdapter(logging.LoggerAdapter):
-
-    def __init__(self, node):
-        super(NodeLoggerAdapter, self).__init__(_LOGGER, {
-            'node_id': node.id,
-            'node_type': type(node).__name__,
-        })
-
-    def process(self, msg, kwargs):
-        return '[%s:%s] %s' % (self.extra['node_type'], self.extra['node_id'], msg), kwargs
 
 
 id_types = string_types + integer_types
@@ -405,7 +394,7 @@ class Node(with_metaclass(ABCMeta, object)):
     def __init__(self, flow=None, id=None, stop_on_error=False, **other):
         self._flow = flow
         self._id = id or generate_id()
-        self._logger = NodeLoggerAdapter(self)
+        self._logger = NamedLoggerAdapter(self, self._id)
         self._t = {}
         self._emitted = False
         self._stop_on_error = stop_on_error
@@ -422,7 +411,7 @@ class Node(with_metaclass(ABCMeta, object)):
         return self._flow
 
     @property
-    def log(self):
+    def logger(self):
         return self._logger
 
     @property

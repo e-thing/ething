@@ -279,7 +279,7 @@ class Flow(Resource, FlowBase):
     """
     def __init__(self, value=None, context=None):
         Resource.__init__(self, value, context)
-        FlowBase.__init__(self, logger=self.log)
+        FlowBase.__init__(self, logger=self.logger)
 
     def deploy(self):
         """

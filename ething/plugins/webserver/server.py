@@ -50,7 +50,7 @@ class WebServer(Plugin):
             'port': port
         }
 
-        self.app = FlaskApp(self.core, config=config, logger=self.log, root_path=root_path)
+        self.app = FlaskApp(self.core, config=config, root_path=root_path)
 
     def setup(self):
         # clients
@@ -60,7 +60,7 @@ class WebServer(Plugin):
 
 class FlaskApp(Flask):
 
-    def __init__(self, core, config=None, logger = None, **kwargs):
+    def __init__(self, core, config=None, **kwargs):
         kwargs.setdefault('static_url_path', '')
         super(FlaskApp, self).__init__(__name__, **kwargs)
 
@@ -83,15 +83,10 @@ class FlaskApp(Flask):
 
         dict_merge(self._config, config if config is not None else dict())
 
-        if logger is None:
-            self.log = LOGGER
-        else:
-            self.log = logger
-
         # debug
         self.debug = core.debug
         if self.debug:
-            self.log.info('webserver: debug mode enabled')
+            LOGGER.info('webserver: debug mode enabled')
 
         # for PATCH request
         self.wsgi_app = HTTPMethodOverrideMiddleware(self.wsgi_app)
@@ -125,11 +120,11 @@ class FlaskApp(Flask):
         @socketio.on('connect')
         def connect_handler():
             self.auth.check()
-            self.log.info('[SocketIO] client connected %s (%s)', request.sid, request.remote_addr)
+            LOGGER.info('[SocketIO] client connected %s (%s)', request.sid, request.remote_addr)
 
         @socketio.on('disconnect')
         def disconnect_handler():
-            self.log.info('[SocketIO] client disconnected %s', request.sid)
+            LOGGER.info('[SocketIO] client disconnected %s', request.sid)
 
         #logging
         logging.getLogger('werkzeug').setLevel(logging.ERROR)
@@ -167,7 +162,7 @@ class FlaskApp(Flask):
                 ssl_args['certfile'] = ssl_path + '.crt'
                 ssl_enabled = True
             except:
-                self.log.exception('unable to create ssl certificate')
+                LOGGER.exception('unable to create ssl certificate')
 
         # retrieve current ip:
         current_ip = None
@@ -179,8 +174,8 @@ class FlaskApp(Flask):
         except:
             pass
 
-        self.log.info("web server started at http%s://%s:%d" % ('s' if ssl_enabled else '', current_ip or 'localhost', port))
-        self.log.info("web server root path = %s" % self.root_path)
+        LOGGER.info("web server started at http%s://%s:%d" % ('s' if ssl_enabled else '', current_ip or 'localhost', port))
+        LOGGER.info("web server root path = %s" % self.root_path)
 
         self.running.set()
 
@@ -207,7 +202,7 @@ class FlaskApp(Flask):
             error['file'] = file
             error['line'] = line
 
-            self.log.exception('http request exception')
+            LOGGER.exception('http request exception')
 
         return Response(json.dumps(error), status=error['code'], mimetype='application/json')
 

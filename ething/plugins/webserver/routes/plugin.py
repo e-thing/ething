@@ -7,7 +7,7 @@ def install(core, app, auth, **kwargs):
     @app.route('/api/plugin/<name>/index.js')
     @auth.required()
     def plugin_js_index(name):
-        p = core.get_plugin(name)
+        p = core.plugins[name]
         if p:
             if p.is_js_index_valid():
                 return send_file(p.js_index())
@@ -24,7 +24,7 @@ def install(core, app, auth, **kwargs):
     @app.route('/api/plugin/<name>')
     @auth.required()
     def plugin(name):
-        p = core.get_plugin(name)
+        p = core.plugins[name]
         if p:
             return app.jsonify(p)
         else:
