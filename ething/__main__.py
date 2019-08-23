@@ -72,7 +72,7 @@ parser.add_argument('--clear', action='store_true',
 parser.add_argument('--server-port', type=int, default=8000,
                     help='the port number the webserver is listening to')
 
-parser.add_argument('--scan', action='store', nargs='?', type=int,
+parser.add_argument('--scan', action='store', const=10, nargs='?', type=int,
                     help='perform a scan of the system and exit')
 
 args = parser.parse_args()
@@ -84,7 +84,7 @@ if args.version:
 if args.scan is not None:
     from .discovery import scan
     init_logger(console_log=True, file_log=False, debug=args.debug)
-    timeout = args.scan or 10
+    timeout = args.scan
     print('scanning ... timeout=%d' % timeout)
     scan(timeout=timeout, printer=print)
     sys.exit()

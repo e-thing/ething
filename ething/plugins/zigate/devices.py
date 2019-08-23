@@ -118,7 +118,7 @@ class ZigateBaseDevice(with_metaclass(ZigateDeviceMetaClass, Device)):
 
         attrs.update(kwargs)
 
-        gateway.log.debug('create device %s %s', cls.__name__, attrs)
+        gateway.logger.debug('create device %s %s', cls.__name__, attrs)
 
         dev = gateway.core.create(cls, attrs)
 

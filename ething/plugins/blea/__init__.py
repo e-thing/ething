@@ -85,7 +85,6 @@ if bluepy_imported:
         def __init__(self, gateway):
             DefaultDelegate.__init__(self)
             self.gateway = gateway
-            LOGGER = gateway.log
 
 
         def handleDiscovery(self, dev, isNewDev, isNewData):

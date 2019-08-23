@@ -22,7 +22,7 @@ def scan(timeout=10, printer=None):
     jobs = [gevent.spawn(scanner.scan, timeout) for scanner in scanners]
     gevent.joinall(jobs)
 
-    results = sum([job.value for job in jobs], [])
+    results = sum([job.value for job in jobs if job.value], [])
     results = sum([scanner.get_results() for scanner in scanners], results)
 
     results = set(results)
