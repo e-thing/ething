@@ -3,6 +3,7 @@ import pytest
 from ething.core.reg import *
 from ething.core.Resource import *
 from ething.core.File import File
+import time
 
 
 def test_extends(core):
