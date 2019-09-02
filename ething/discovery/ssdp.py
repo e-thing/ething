@@ -276,7 +276,7 @@ def register(filter, callback):
     }, handler)
 
     :param filter: a dictionary that describe a filter
-    :param callback: a callable (is_alive, info) => bool
+    :param callback: a callable (is_alive, info)
     """
     _registered_items.append((filter, proxy_method(callback)))
     _update()

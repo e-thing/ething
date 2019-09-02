@@ -2,7 +2,7 @@
 
 from future.utils import string_types
 from .db import Db
-from .reg import get_registered_class, get_definition_name, update
+from .reg import get_registered_class, get_definition_name
 from .Config import Config
 from .version import __version__
 from .plugin import search_plugin_cls, import_plugins
@@ -19,6 +19,7 @@ import collections
 import logging
 import pytz
 import inspect
+import sys
 
 
 DEFAULT_COMMIT_INTERVAL = 5
@@ -106,6 +107,7 @@ class Core(SignalEmitter):
         
         self._processes = ProcessCollection(parent=self, weak=True)
 
+        LOGGER.info('CLI_ARGS   : %s', ' '.join(sys.argv[1:]))
         LOGGER.info('USER_DIR   : %s', USER_DIR)
         LOGGER.info('LOG_FILE   : %s', LOG_FILE)
         info = get_info(self)

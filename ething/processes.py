@@ -162,7 +162,7 @@ class Process(object):
         :param terminate: a callable that is invoked on stop()
         :param parent: any object. If a process is provided, all child processes will be automatically killed when the parent process stop.
         """
-        self._id = generate_id()
+        self._id = id or generate_id()
         self._name = name or getattr(target, '__name__', None) or type(self).__name__ # ('process_%s' % self._id)
 
         self.parent = parent

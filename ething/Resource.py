@@ -45,7 +45,7 @@ class ResourceUpdated(ResourceSignal):
         return self.data['attributes']
 
 
-class ResourceType(DBLink):
+class ResourceType(WeakDBLink):
 
     def __init__(self, accepted_types=None, must_throw=None, **attributes):
         super(ResourceType, self).__init__('resources/Resource', **attributes)
@@ -88,18 +88,12 @@ class ResourceType(DBLink):
             schema['$must_throw'] = get_definition_name(self.must_throw)
         return schema
 
-    def get(self, value, context=None):
-        try:
-            return super(ResourceType, self).get(value, context)
-        except ValueError:
-            return None
 
+class ResourceTypeArray (WeakDBLinkArray):
 
-class ResourceTypeArray (Array):
-
-    def __init__(self, accepted_types=None, must_throw=None, min_len=None, max_len=None, **attributes):
+    def __init__(self, accepted_types=None, must_throw=None, max_len=None, **attributes):
         attributes.setdefault('$component', 'ething.resource')
-        super(ResourceTypeArray, self).__init__(ResourceType(accepted_types=accepted_types, must_throw=must_throw), min_len=min_len, max_len=max_len, **attributes)
+        super(ResourceTypeArray, self).__init__(ResourceType(accepted_types=accepted_types, must_throw=must_throw), max_len=max_len, **attributes)
 
 
 class RDict(Dict):

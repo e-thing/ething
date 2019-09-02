@@ -98,7 +98,7 @@ def _convert_service_info(info):
 
     return _info
 
-class ServiceListener:
+class ServiceListener(object):
 
     def __init__(self, service_name):
         self._service_name = service_name

@@ -647,6 +647,65 @@ class OneOf(OneOfBase):
 
 is_array = lambda x: isinstance(x, Sequence) and not isinstance(x, string_types)
 
+
+class M_Array(MutableSequence):
+
+  def __init__(self, dtype, value=None, context=None):
+    if value is None:
+      value = []
+
+    self._list = list()
+    self._type = dtype
+    self._context = context
+
+    # self._type.validate(value, context) # already validated
+
+    for v in value:
+      #v = self._type.item_type.set(el, context) # value is already raw
+      attach(self, v)
+      self._list.append(v)
+
+  def __len__(self):
+    return len(self._list)
+
+  def __getitem__(self, i):
+    return self._type.item_type.get(self._list[i], self._context)
+
+  def __delitem__(self, i):
+    if self._type.min_len is not None:
+      l = len(self._list)
+      if l == self._type.min_len:
+        raise ValueError(
+          'the array must contain at least %d items' % (self._type.min_len))
+
+    detach(self, self._list[i])
+    del self._list[i]
+    set_dirty(self)
+
+  def __setitem__(self, i, val):
+    if i in self._list:
+      detach(self, self._list[i])
+    v = self._type.item_type.set(val, self._context)
+    attach(self, v)
+    self._list[i] = v
+    set_dirty(self)
+
+  def insert(self, i, val):
+    if self._type.max_len is not None:
+      l = len(self._list)
+      if l > self._type.max_len:
+        raise ValueError(
+          'the array must contain at most %d items' % (self._type.max_len))
+
+    v = self._type.item_type.set(val, self._context)
+    attach(self, v)
+    self._list.insert(i, v)
+    set_dirty(self)
+
+  def __str__(self):
+    return str(self._list)
+
+
 class Array(Type):
 
   __synonyms__ = (Sequence, 'tuple', 'list', 'set', 'array', 'frozenset')
@@ -667,11 +726,12 @@ class Array(Type):
         return Array()
       return Array( get_type_from_value(v[0]) )
 
-  def __init__(self, item_type = Basetype(), min_len=None, max_len=None, **attributes):
+  def __init__(self, item_type = Basetype(), min_len=None, max_len=None, container_cls=M_Array, **attributes):
     super(Array, self).__init__(**attributes)
     self.item_type = convert_type(item_type)
     self.min_len = min_len
     self.max_len = max_len
+    self.container_cls = container_cls
   
   def validate(self, data, context = None):
     if not isinstance(data, Sequence) and not isinstance(data, string_types):
@@ -691,15 +751,17 @@ class Array(Type):
                 'the array must contain at most %d items (got %d)' % (self.max_len, l))
   
   def set(self, value, context = None):
-    if not (isinstance(value, M_Array) and value._type is self):
-      if isinstance(value, Sequence) and not isinstance(value, string_types):
-        value = M_Array(self, value, context)
-      else:
-        raise ValueError('not an array')
-    return value
+    if not (isinstance(value, self.container_cls) and value._type is self):
+      self.validate(value, context)
+      _value = self.container_cls(self, context=context)
+      for i in range(len(value)):
+        _value[i] = value[i]
+      return _value
+    else:
+      return value
 
   def unserialize(self, data, context = None):
-      return M_Array(self, [self.item_type.unserialize(el, context) for el in data], context)
+      return self.container_cls(self, [self.item_type.unserialize(el, context) for el in data], context=context)
 
   def serialize(self, value, context = None):
     # value is a M_Array
@@ -707,7 +769,7 @@ class Array(Type):
   
   def from_json(self, data, context = None):
       self.validate(data, context)
-      return M_Array(self, [self.item_type.from_json(el, context) for el in data], context)
+      return self.container_cls(self, [self.item_type.from_json(el, context) for el in data], context=context)
   
   def to_json(self, value, context = None):
     # value is a M_Array
@@ -723,62 +785,6 @@ class Array(Type):
       schema['maxItems'] = self.max_len
     return schema
 
-  
-class M_Array(MutableSequence):
-
-    def __init__(self, dtype, value = None, context = None):
-      if value is None:
-        value = []
-
-      self._list = list()
-      self._type = dtype
-      self._context = context
-
-      self._type.validate(value, context)
-
-      for el in value:
-        v = self._type.item_type.set(el, context)
-        attach(self, v)
-        self._list.append(v)
-
-    def __len__(self): return len(self._list)
-
-    def __getitem__(self, i): return self._type.item_type.get(self._list[i], self._context)
-
-    def __delitem__(self, i):
-      if self._type.min_len is not None:
-        l = len(self._list)
-        if l == self._type.min_len:
-            raise ValueError(
-                'the array must contain at least %d items' % (self._type.min_len))
-      
-      detach(self, self._list[i])
-      del self._list[i]
-      set_dirty(self)
-
-    def __setitem__(self, i, val):
-      if i in self._list:
-        detach(self, self._list[i])
-      v = self._type.item_type.set(val, self._context)
-      attach(self, v)
-      self._list[i] = v
-      set_dirty(self)
-
-    def insert(self, i, val):
-      if self._type.max_len is not None:
-        l = len(self._list)
-        if l > self._type.max_len:
-            raise ValueError(
-                'the array must contain at most %d items' % (self._type.max_len))
-      
-      v = self._type.item_type.set(val, self._context)
-      attach(self, v)
-      self._list.insert(i, v)
-      set_dirty(self)
-
-    def __str__(self):
-      return str(self._list)
-
 
 def _convert_mapping_item (item):
   if isinstance(item, Mapping):
@@ -793,139 +799,22 @@ def _convert_mapping_item (item):
   return convert_type(item), None
 
 
-class Dict(Type):
-
-  __synonyms__ = (Mapping, 'dict', 'OrderedDict', 'object')
-
-  @staticmethod
-  def __convert__(t):
-    if isinstance(t, Mapping):
-      mapping = {}
-      for key in t:
-        mapping[key] = convert_type(t[key])
-      return Dict(mapping = mapping)
-  
-  @staticmethod
-  def __convert_value__(v):
-    if isinstance(v, Mapping):
-      mapping = {}
-      for key in v:
-        mapping[key] = get_type_from_value(v[key])
-      return Dict(mapping = mapping)
-
-  def __init__(self, allow_extra=None, optionals=None, mapping = None, **attributes):
-    super(Dict, self).__init__(**attributes)
-
-    if allow_extra is None:
-        allow_extra = bool(mapping is None)
-
-    self.allow_extra = allow_extra if isinstance(allow_extra, bool) else convert_type(allow_extra)
-    self.optionals = optionals or []
-    self.mapping = OrderedDict()
-    self.mapping_schema = dict()
-    if mapping is not None:
-      if isinstance(mapping, Mapping):
-        for k in mapping:
-          self.mapping[k], self.mapping_schema[k] = _convert_mapping_item(mapping[k])
-      elif isinstance(mapping, Sequence):
-        for item in mapping:
-          k = item['name']
-          self.mapping[k], self.mapping_schema[k] = _convert_mapping_item(item)
-      else:
-        raise Exception('invalid mapping argument: must be either a dict or a list')
-  
-  def get_type_from_key(self, key):
-    if key in self.mapping:
-      return self.mapping[key]
-    if self.allow_extra:
-      if isinstance(self.allow_extra, Type):
-        return self.allow_extra
-      return Basetype()
-    raise KeyError('invalid key %s' % key)
-  
-  def validate(self, data, context = None):
-    if not isinstance(data, Mapping):
-      raise ValueError('not an object')
-    
-    for key in data:
-      self.get_type_from_key(key) # will throw an error if the key is invalid !
-
-    # check for missing keys
-    for key in self.mapping:
-      if key not in data:
-        if key not in self.optionals:
-          raise ValueError("the key '%s' is not present" % key)
-  
-  def set(self, value, context = None):
-    if not (isinstance(value, M_Dict) and value._type is self):
-      if isinstance(value, Mapping):
-        value = M_Dict(self, value, context)
-      else :
-        raise ValueError('not an object, got %s' % type(value).__name__)
-    return value
-
-  def unserialize(self, data, context = None):
-    j = {}
-    for key in data:
-      item_type = self.get_type_from_key(key)
-      j[key] = item_type.unserialize(data.get(key), context)
-    return M_Dict(self, j, context) # j
-  
-  def serialize(self, value, context = None):
-    j = {}
-    for key in value._store:
-      item_type = self.get_type_from_key(key)
-      j[key] = item_type.serialize(value._store[key], context)
-    return j
-  
-  def from_json(self, data, context = None):
-    self.validate(data, context)
-    j = {}
-    for key in data:
-      item_type = self.get_type_from_key(key)
-      j[key] = item_type.from_json(data.get(key), context)
-    return M_Dict(self, j, context) # j
-  
-  def to_json(self, value, context = None):
-    j = {}
-    for key in value._store:
-      item_type = self.get_type_from_key(key)
-      j[key] = item_type.to_json(value._store[key], context)
-    return j
-  
-  def to_shema(self, context = None):
-    schema = super(Dict, self).to_shema(context)
-    schema['type'] = 'object'
-    schema['additionalProperties'] = self.allow_extra if isinstance(self.allow_extra, bool) else self.allow_extra.to_shema(context)
-    required = []
-    schema['properties'] = OrderedDict()
-    for key in self.mapping:
-      if key not in self.optionals:
-          required.append(key)
-      item_schema = self.mapping[key].to_shema(context)
-      if self.mapping_schema[key]:
-        item_schema.update(self.mapping_schema[key])
-      schema['properties'][key] = item_schema
-    if required:
-      schema['required'] = required
-    return schema
-
-
 class M_Dict(MutableMapping):
 
-  def __init__(self, dtype, value = None, context = None):
+  def __init__(self, dtype, value=None, context=None):
     if value is None:
-      value = []
-    
+      value = dict()
+
     self._store = dict()
     self._type = dtype
     self._context = context
 
-    self._type.validate(value, context)
+    # self._type.validate(value, context) # already validated
 
     for key in value:
-      item_type = self._type.get_type_from_key(key)
-      v = item_type.set(value[key], self._context)
+      #item_type = self._type.get_type_from_key(key)
+      #v = item_type.set(value[key], self._context)
+      v = value[key]
       self._store[key] = v
       attach(self, v)
 
@@ -958,9 +847,130 @@ class M_Dict(MutableMapping):
 
   def __len__(self):
     return len(self._store)
-  
+
   def __str__(self):
     return str(self._store)
+
+
+class Dict(Type):
+
+  __synonyms__ = (Mapping, 'dict', 'OrderedDict', 'object')
+
+  @staticmethod
+  def __convert__(t):
+    if isinstance(t, Mapping):
+      mapping = {}
+      for key in t:
+        mapping[key] = convert_type(t[key])
+      return Dict(mapping = mapping)
+  
+  @staticmethod
+  def __convert_value__(v):
+    if isinstance(v, Mapping):
+      mapping = {}
+      for key in v:
+        mapping[key] = get_type_from_value(v[key])
+      return Dict(mapping = mapping)
+
+  def __init__(self, allow_extra=None, optionals=None, mapping = None, container_cls=M_Dict, **attributes):
+    super(Dict, self).__init__(**attributes)
+
+    if allow_extra is None:
+        allow_extra = bool(mapping is None)
+
+    self.allow_extra = allow_extra if isinstance(allow_extra, bool) else convert_type(allow_extra)
+    self.optionals = optionals or []
+    self.mapping = OrderedDict()
+    self.container_cls = container_cls
+    self.mapping_schema = dict()
+    if mapping is not None:
+      if isinstance(mapping, Mapping):
+        for k in mapping:
+          self.mapping[k], self.mapping_schema[k] = _convert_mapping_item(mapping[k])
+      elif isinstance(mapping, Sequence):
+        for item in mapping:
+          k = item['name']
+          self.mapping[k], self.mapping_schema[k] = _convert_mapping_item(item)
+      else:
+        raise Exception('invalid mapping argument: must be either a dict or a list')
+  
+  def get_type_from_key(self, key):
+    if key in self.mapping:
+      return self.mapping[key]
+    if self.allow_extra:
+      if isinstance(self.allow_extra, Type):
+        return self.allow_extra
+      return Basetype()
+    raise KeyError('invalid key %s' % key)
+  
+  def validate(self, data, context = None):
+    if not isinstance(data, Mapping):
+      raise ValueError('not an object, got %s' % type(data).__name__)
+    
+    for key in data:
+      self.get_type_from_key(key) # will throw an error if the key is invalid !
+
+    # check for missing keys
+    for key in self.mapping:
+      if key not in data:
+        if key not in self.optionals:
+          raise ValueError("the key '%s' is not present" % key)
+  
+  def set(self, value, context = None):
+    if not (isinstance(value, self.container_cls) and value._type is self):
+      self.validate(value, context)
+      _value = self.container_cls(self, context=context)
+      for k in value:
+        _value[k] = value[k]
+      return _value
+    else:
+      return value
+
+  def unserialize(self, data, context = None):
+    j = {}
+    for key in data:
+      item_type = self.get_type_from_key(key)
+      j[key] = item_type.unserialize(data.get(key), context)
+    return self.container_cls(self, j, context) # j
+  
+  def serialize(self, value, context = None):
+    j = {}
+    for key in value._store:
+      item_type = self.get_type_from_key(key)
+      j[key] = item_type.serialize(value._store[key], context)
+    return j
+  
+  def from_json(self, data, context = None):
+    self.validate(data, context)
+    j = {}
+    for key in data:
+      item_type = self.get_type_from_key(key)
+      j[key] = item_type.from_json(data.get(key), context)
+    return self.container_cls(self, j, context) # j
+  
+  def to_json(self, value, context = None):
+    j = {}
+    for key in value._store:
+      item_type = self.get_type_from_key(key)
+      j[key] = item_type.to_json(value._store[key], context)
+    return j
+  
+  def to_shema(self, context = None):
+    schema = super(Dict, self).to_shema(context)
+    schema['type'] = 'object'
+    schema['additionalProperties'] = self.allow_extra if isinstance(self.allow_extra, bool) else self.allow_extra.to_shema(context)
+    required = []
+    schema['properties'] = OrderedDict()
+    for key in self.mapping:
+      if key not in self.optionals:
+          required.append(key)
+      item_schema = self.mapping[key].to_shema(context)
+      if self.mapping_schema[key]:
+        item_schema.update(self.mapping_schema[key])
+      schema['properties'][key] = item_schema
+    if required:
+      schema['required'] = required
+    return schema
 
 
 class Id(String):

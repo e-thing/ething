@@ -12,7 +12,7 @@ from .light import Light
 from .dimmableLight import DimmableLight
 from .rgbwLight import RGBWLight
 
-from .sensor import Sensor
+from .sensor import Sensor, sensor_attr
 from .thermometer import Thermometer
 from .pressureSensor import PressureSensor
 from .humiditySensor import HumiditySensor

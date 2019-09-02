@@ -5,7 +5,7 @@ import time
 from .scanner import *
 
 
-INTERVAL = 30 # sec
+SCAN_INTERVAL = 30 # sec
 
 LOGGER = logging.getLogger(__name__)
 
@@ -80,7 +80,7 @@ def scan ():
 def _run():
     while True:
         scan()
-        time.sleep(INTERVAL)
+        time.sleep(SCAN_INTERVAL)
 
 
 _t = None

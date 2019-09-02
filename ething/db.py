@@ -868,7 +868,11 @@ class OS_item(object):
             self._ref[id] = obj
       except Exception as e:
           skipped += 1
-          LOGGER.error('unable to unserialize a %s id=%s name=%s type=%s (%s)' % (self._cls.__name__, doc.get(self._id_key), doc.get('name'), doc.get('type'), str(e)))
+          extra_info = list()
+          for k in [self._id_key, 'name', 'type']:
+              if k in doc:
+                  extra_info.append('%s=%s' % (k, doc.get(k)))
+          LOGGER.error('unable to unserialize a %s %s : %s' % (self._cls.__name__, ' '.join(extra_info), str(e)))
 
     LOGGER.debug('[%s] %d items loaded, %d skipped' % (self._cls.__name__, len(self._ref), skipped))
 
@@ -1140,3 +1144,49 @@ class DBLink(String):
         obj = self._db_get(value, context)
         self.check(obj)
         return value
+
+
+class WeakDBLink(DBLink):
+    """
+    Contrary to DBLink, return None, if the object does not exist anymore.
+    """
+
+    def get(self, value, context=None):
+        try:
+            return super(WeakDBLink, self).get(value, context)
+        except ValueError:
+            return None
+
+
+class M_Array_WeakDBLink(M_Array):
+
+    def __init__(self, *args, **kwargs):
+        self._llist = list()
+        self._lcheck = False
+        super(M_Array_WeakDBLink, self).__init__(*args, **kwargs)
+        self._lcheck = True
+
+    @property
+    def _list(self):
+        if self._lcheck:
+            for i in range(len(self._llist)):
+                id = self._llist[i]
+                try:
+                    self._type.item_type._db_get(id, self._context)
+                except KeyError:
+                    del self._llist[i]
+                    i -= 1
+        return self._llist
+
+    @_list.setter
+    def _list(self, value):
+        self._llist = value
+
+
+class WeakDBLinkArray (Array):
+
+    def __init__(self, typ, max_len=None, **attributes):
+        super(WeakDBLinkArray, self).__init__(typ, max_len=max_len, container_cls=M_Array_WeakDBLink, **attributes)
+
+
+

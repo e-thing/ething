@@ -4,6 +4,7 @@ from .utils.date import TzDate, utcnow
 from .reg import *
 from .Signal import ResourceSignal
 from .flow import ResourceNode
+from .env import get_option
 
 
 @meta(icon='mdi-battery-50')
@@ -144,3 +145,13 @@ class Device(Resource):
         super(Device, self).__db_save__(insert)
         if insert:
             self.notify('Device created: %s' % self.name, mode='success')
+
+
+@meta(icon='mdi-bluetooth')
+@attr('rssi', mode=READ_ONLY, default=None, description="The last received signal strength indicator of this device.")
+@attr('address', type=String(regex='^([0-9A-Fa-f]{2}[:-]){5}([0-9A-Fa-f]{2})$'), description='the address of the device')
+class BleDevice(Device):
+
+    @property
+    def hci(self):
+        return int(get_option('ble_hci', 0))

@@ -12,15 +12,11 @@ import argparse
 import sys
 import os
 import errno
-import time
-import json
-from io import open
 import logging
 from logging.handlers import RotatingFileHandler
 import signal
 import threading
-
-from .env import USER_DIR, LOG_FILE
+from .env import USER_DIR, LOG_FILE, _set_namespace, get_option
 
 
 def init_logger(console_log=False, file_log=True, debug=False):
@@ -72,10 +68,26 @@ parser.add_argument('--clear', action='store_true',
 parser.add_argument('--server-port', type=int, default=8000,
                     help='the port number the webserver is listening to')
 
-parser.add_argument('--scan', action='store', const=10, nargs='?', type=int,
-                    help='perform a scan of the system and exit')
+parser.add_argument('--scan', action='store', nargs='?', type=int, const=10,
+                    help='perform a scan of the system and exit', metavar='TIMEOUT')
+
+
+parsed, unknown = parser.parse_known_args() #this is an 'internal' method
+# which returns 'parsed', the same as what parse_args() would return
+# and 'unknown', the remainder of that
+# the difference to parse_args() is that it does not exit when it finds redundant arguments
+
+optional_args = set()
+for arg in unknown:
+    if arg.startswith(("-", "--")):
+        optional_args.add(arg.lstrip('-').split('=').pop(0).replace('-', '_'))
+        #you can pass any arguments to add_argument
+        parser.add_argument(arg, type=str, action='store', nargs='?', const=True, help='extra argument', metavar='VALUE')
 
 args = parser.parse_args()
+
+_set_namespace(args)
+
 
 if args.version:
     print("v%s" % __version__)

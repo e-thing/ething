@@ -34,6 +34,7 @@ install_requires = [
     "objectpath",
     "Jinja2",
     "zeroconf",
+    "btlewrap",
 
     # --webserver
     "Flask>=1.0.2",
@@ -58,6 +59,9 @@ install_requires = [
 
     # --zigate
     "zigate",
+
+    # --miflora
+    "miflora",
 ]
 
 if os.name != "nt":
