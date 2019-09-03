@@ -71,6 +71,7 @@ class SignalDispatcher(object):
 
     def dispatch(self, signal, sender=None, namespace=None):
         with self.r_lock:
+            # LOGGER.debug("dispatch signal: %s" % (str(signal), ))
             for weakref_handler_info in list(self.handlers):
                 _signal, handler, once, _sender, _, _ns_re, args = weakref_handler_info
                 if _signal == ANY or isinstance(signal, _signal):

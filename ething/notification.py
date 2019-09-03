@@ -1,13 +1,18 @@
 # coding: utf-8
 from .db import *
-from .utils.date import TzDate, utcnow
+from .utils.date import utcnow
+from .utils import generate_id
 from .Signal import Signal
 import datetime
+import logging
 
 
 __all__ = ['SUCCESS', 'INFO',
-           'WARNING', 'ERROR', 'MODES', 'NotificationSent', 'Notification',
-           'list_persistent_notifications', 'remove_persistent_notification', 'notify']
+           'WARNING', 'ERROR', 'MODES', 'NotificationSent',
+           'NotificationManager']
+
+
+LOGGER = logging.getLogger(__name__)
 
 
 SUCCESS = "success"
@@ -24,95 +29,94 @@ class NotificationSent(Signal):
     """
     is emitted each time a notification has been sent
     """
-    def __init__(self, notification):
-        super(NotificationSent, self).__init__(**notification.__json__()) # must be a dictionary
+    pass
 
 
-@attr('timeout', type=Integer(), default=3600, mode=READ_ONLY) # 0 means for ever, unit: seconds
-@attr('date', type=TzDate(), default=lambda _: utcnow(), mode=READ_ONLY)
-@attr('queue', type=Nullable(String(allow_empty=False)), mode=READ_ONLY, default=None) # if 2 notifications have the same queue id, only the last one will be kept
-@attr('source', type=Nullable(DBLink('resources/Resource')), mode=READ_ONLY, default=None) # the originator of this message
-@attr('title', type=Nullable(String(allow_empty=False)), default=None)
-@attr('mode', type=String(allow_empty=False), mode=READ_ONLY, default=INFO)
-@attr('message', type=String(allow_empty=False), mode=READ_ONLY)
-@uid()
-@db(table='notifications')
-class Notification(Entity):
+class NotificationManager(object):
 
-    def __str__(self):
-        msg = self.message
-        return '<Notification id=%s msg=%s>' % (self.id, msg[:32] + (msg[32:] and '...') )
+    def __init__(self, core, source=None):
+        self._core = core
+        self._source = source
+        self._table = core.db['notifications']
 
-    def __repr__(self):
-        return str(self)
+    def _clean(self):
+        now = utcnow()
 
+        for doc_id in list(self._table):
+            doc = self._table[doc_id]
+            timeout = doc.get('timeout', 0)
+            if timeout > 0 and now - doc['date'] > datetime.timedelta(seconds=timeout):
+                del self._table[doc_id]
 
-def list_persistent_notifications(core):
-    _clean(core)
-    notifications = core.db.os.find(Notification)
-    return notifications
+    def notify(self, message, mode=INFO, timeout=0, id=None, title=None, source=None):
+        self._clean()
 
+        if timeout < 0:
+            raise ValueError('timeout is < 0')
 
-def remove_persistent_notification(core, id):
-    notification = core.db.os.get(Notification, id)
-    if notification:
-        remove(notification)
-    else:
-        raise Exception('Notification not found id=%s' % id)
+        notification = None
 
+        to_be_removed = len(message)==0
 
-def _clean(core):
-    # remove obsolete notifications
-    queue_list = list()
-    for notification in core.db.os.find(Notification, sort='-date'):
+        if to_be_removed:
 
-        # queue
-        queue = notification.queue
-        if queue is not None:
-            if queue in queue_list:
-                remove(notification)
-                break
-            queue_list.append(queue)
+            if id is None:
+                LOGGER.error('no id given')
+                return
 
-        # out-dated
-        timeout = notification.timeout
-        if timeout > 0 and utcnow() - notification.date > datetime.timedelta(seconds=timeout):
-            remove(notification)
-            break
+            if id in self._table:
+                del self._table[id]
+                self._core.emit(NotificationSent(message='', id=id))
 
-        # source does not exists anymore
-        try:
-            notification.source
-        except ValueError:
-            remove(notification)
-            break
+        else:
 
+            # send a notification
 
-def notify(core, message, mode=INFO, persistant=False, **kwargs):
+            if source is None:
+                source = self._source
 
-    # sanitize mode
-    mode = mode or INFO
-    mode = mode.lower()
-    if mode == 'warn':
-        mode = 'warning'
-    if mode not in MODES:
-        mode = INFO
+            attr = {
+                'message': message,
+                'mode': mode,
+                'timeout': timeout,
+                'title': title,
+                'source': getattr(source, 'id', None) if source is not None else None,
+                'date': utcnow(),
+                'id': id or generate_id()
+            }
 
-    kwargs['message'] = message
-    kwargs['mode'] = mode
+            if id is not None:
+                if id in self._table:
+                    # update it
+                    self._table.update(attr)
+                    notification = self._table[id]
 
-    if not persistant:
-        kwargs.setdefault('timeout', 10)
+            if not notification:
+                # create it !
+                notification = self._table.insert(attr)
 
-    notification = create(Notification, kwargs, context = {
-        'core': core
-    })
+            self._core.emit(NotificationSent(**notification))
 
-    if persistant:
-        core.db.os.save(notification)
-        _clean(core)
+            return notification['id']
 
-    core.emit(NotificationSent(notification))
+    def success(self, message, timeout=0, id=None, title=None, source=None):
+        return self.notify(message, mode=SUCCESS, timeout=timeout, id=id, title=title, source=source)
 
-    return notification
+    def error(self, message, timeout=0, id=None, title=None, source=None):
+        return self.notify(message, mode=ERROR, timeout=timeout, id=id, title=title, source=source)
+
+    def info(self, message, timeout=0, id=None, title=None, source=None):
+        return self.notify(message, mode=INFO, timeout=timeout, id=id, title=title, source=source)
+
+    def warning(self, message, timeout=0, id=None, title=None, source=None):
+        return self.notify(message, mode=WARNING, timeout=timeout, id=id, title=title, source=source)
+
+    warn = warning
+
+    def remove(self, id):
+        self.notify('', id=id)
+
+    def find(self, filter=None):
+        self._clean()
+        return self._table.select(filter_fn=filter)
 

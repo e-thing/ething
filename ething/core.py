@@ -14,7 +14,7 @@ from .utils.ObjectPath import generate_filter, patch_all
 from .Resource import Resource
 from .flow import generate_event_nodes
 from .env import USER_DIR, LOG_FILE
-from .notification import *
+from .notification import NotificationManager
 import collections
 import logging
 import pytz
@@ -127,6 +127,8 @@ class Core(SignalEmitter):
 
         self.config = Config(self)
 
+        self._notification = NotificationManager(self)
+
         self.__instances.append(self)
 
         plugin_modules = import_plugins(None if plugins is True else plugins) if plugins else list()
@@ -162,7 +164,7 @@ class Core(SignalEmitter):
     @property
     def processes(self):
         """
-        the processes bind to this instance
+        the processes collection bind to this instance
         """
         return self._processes
 
@@ -172,6 +174,13 @@ class Core(SignalEmitter):
         the collection of plugins
         """
         return self._plugins_coll
+
+    @property
+    def notification(self):
+        """
+        the notification manager
+        """
+        return self._notification
 
     def use(self, something, **options):
         """
@@ -255,9 +264,6 @@ class Core(SignalEmitter):
 
         if hasattr(self, 'db'):
             self.db.disconnect()
-
-    def notify(self, message, mode=INFO, persistant=False, **kwargs):
-        return notify(self, message, mode, persistant, **kwargs)
 
     #
     # Resources

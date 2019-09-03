@@ -144,7 +144,7 @@ class Device(Resource):
     def __db_save__(self, insert):
         super(Device, self).__db_save__(insert)
         if insert:
-            self.notify('Device created: %s' % self.name, mode='success')
+            self.notification.success('Device created: %s' % self.name, timeout=10)
 
 
 @meta(icon='mdi-bluetooth')

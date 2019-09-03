@@ -7,6 +7,7 @@ from .utils.ObjectPath import evaluate
 from .utils.logger import NamedLoggerAdapter
 from .scheduler import *
 from .processes import *
+from .notification import NotificationManager
 from .dispatcher import SignalEmitter
 from collections import Mapping
 import inspect
@@ -190,6 +191,8 @@ class Resource(Entity, SignalEmitter):
 
         self._processes = ProcessCollection(parent=self)
 
+        self._notification = NotificationManager(self.core, self)
+
         """
         bind processes to this instance
         1 - look for __process__ attribute which can either be :
@@ -253,9 +256,12 @@ class Resource(Entity, SignalEmitter):
     def processes(self):
         return self._processes
 
-    def notify(self, message, mode=None, persistant=False, **kwargs):
-        kwargs['source'] = self
-        return self.core.notify(message, mode, persistant, **kwargs)
+    @property
+    def notification(self):
+        """
+        the notification manager
+        """
+        return self._notification
 
     def typeof(self, typename):
         """

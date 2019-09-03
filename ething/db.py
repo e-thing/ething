@@ -1173,7 +1173,7 @@ class M_Array_WeakDBLink(M_Array):
                 id = self._llist[i]
                 try:
                     self._type.item_type._db_get(id, self._context)
-                except KeyError:
+                except ValueError:
                     del self._llist[i]
                     i -= 1
         return self._llist

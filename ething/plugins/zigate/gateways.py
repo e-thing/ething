@@ -237,6 +237,7 @@ class ZigateBaseGateway(Device):
 
         dev_type = dz_instance.get_value('type')
         dev_name = dev_type or ('address: 0x%X' % dz_instance.addr)
+        notif_id = 'zigate.create.%s' % dz_instance.addr
 
         if not force and not dz_instance.discovery:
             # wait for the discovery process to complete
@@ -244,7 +245,7 @@ class ZigateBaseGateway(Device):
             if process_id not in self.processes:
                 self.logger.info('new device detected : %s', dz_instance)
                 if notify:
-                    self.notify('Pairing device: %s. Please wait...' % dev_name, timeout=DISCOVERY_TIMEOUT+DISCOVERY_TIMEOUT_EXTRA)
+                    self.notification.info('Pairing device: %s. Please wait...' % dev_name, timeout=DISCOVERY_TIMEOUT+DISCOVERY_TIMEOUT_EXTRA, id=notif_id)
                 self.core.processes.add(self._wait_device_discovery, name=process_id, args=(dz_instance, ))
             return
 
@@ -256,7 +257,7 @@ class ZigateBaseGateway(Device):
         if dev_type is None:
             self.logger.warning('no type found for device for %s , try to pair it again', dz_instance)
             if notify:
-                self.notify('incomplete discovery, try to pair it again', mode='warn')
+                self.notification.warning('incomplete discovery, try to pair it again', timeout=10, id=notif_id)
         else:
             devices = []
 
@@ -298,11 +299,12 @@ class ZigateBaseGateway(Device):
                             self.logger.exception('zigate cls isvalid_ep exception for class %s', cls)
 
             if devices:
+                self.notification.remove(notif_id)
                 return devices
 
             # self.black_listed_devices.append(ieee)
             if notify:
-                self.notify('unknown device: %s' % dev_name, mode='warn')
+                self.notification.warning('unknown device: %s' % dev_name, timeout=10, id=notif_id)
 
         self.logger.warning('unable to create any device for %s', dz_instance)
 
