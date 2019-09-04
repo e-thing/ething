@@ -150,6 +150,7 @@ class Device(Resource):
 @meta(icon='mdi-bluetooth')
 @attr('rssi', mode=READ_ONLY, default=None, description="The last received signal strength indicator of this device.")
 @attr('address', type=String(regex='^([0-9A-Fa-f]{2}[:-]){5}([0-9A-Fa-f]{2})$'), description='the address of the device')
+@abstract
 class BleDevice(Device):
 
     @property

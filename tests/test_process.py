@@ -1,6 +1,6 @@
 # coding: utf-8
 import pytest
-from ething.processes import Process, ProcessCollection
+from ething.processes import Process, ProcessCollection, process, processes
 import time
 
 
@@ -15,7 +15,7 @@ def test_process_start_stop():
             counter['index'] += 1
             time.sleep(0.1)
 
-    p = Process(name='foobar', target=count, args=(counter,))
+    p = Process(count, args=(counter,))
 
     assert not p.is_running
 
@@ -53,7 +53,7 @@ def test_process_wait():
     def sleep(sec):
         time.sleep(sec)
 
-    p = Process(target=sleep, args=(2, ), name='2sec')
+    p = Process(sleep, args=(2, ))
     p.start()
     p.join(timeout=3)
 
@@ -72,7 +72,7 @@ def test_process_collection():
     def sleep(sec):
         time.sleep(sec)
 
-    p = col.add(sleep, args=(2, ), name='2sec')
+    p = col.add(sleep, args=(2, ), id='2sec')
 
     assert p.is_running
     assert p.parent is parent
@@ -84,5 +84,30 @@ def test_process_collection():
     assert col['2sec'] is p
 
     del col['2sec']
+
+    assert not p.is_running
+
+
+def test_process_decorator():
+    counter = {
+        'index': 0
+    }
+
+    @process(id='foobar')
+    def count():
+        while True:
+            counter['index'] += 1
+            time.sleep(0.1)
+
+    p = processes['foobar']
+
+    assert p
+    assert p.is_running
+
+    time.sleep(0.5)
+
+    assert counter['index'] > 3
+
+    del processes['foobar']
 
     assert not p.is_running

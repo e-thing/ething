@@ -305,7 +305,7 @@ class FlaskApp(Flask):
 
 class WebServerProcess(Process):
     def __init__(self, app):
-        super(WebServerProcess, self).__init__(name='webserver')
+        super(WebServerProcess, self).__init__()
         self.app = app
 
     def terminate(self):

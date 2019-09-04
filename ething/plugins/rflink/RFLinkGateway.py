@@ -6,14 +6,11 @@ from ething.TransportProcess import TransportProcess, SerialTransport
 from .protocol import RFLinkProtocol
 
 
-CONTROLLER_NAME = 'rflink.controller'
-
-
 class RFLinkController(TransportProcess):
 
-    def __init__(self, gateway):
+    def __init__(self, gateway, id=None):
         super(RFLinkController, self).__init__(
-            CONTROLLER_NAME,
+            id=id,
             transport = SerialTransport(
                 port = gateway.port,
                 baudrate = gateway.baudrate
@@ -29,7 +26,6 @@ class RFLinkController(TransportProcess):
         return self.protocol.send(*args, **kwargs)
 
 
-@abstract
 @attr('version', default=None, mode=READ_ONLY, description="The version of the RFLink library used.")
 @attr('revision', default=None, mode=READ_ONLY, description="The revision number of the RFLink library used.")
 @attr('build', default=None, mode=READ_ONLY, description="The build number of the RFLink library used.")
@@ -54,17 +50,21 @@ class RFLinkGateway(Device):
                 break
 
     @property
+    def controler_id(self):
+        return 'rflink.controller.%s' % self.id
+
+    @property
     def controller(self):
-        return self.processes[CONTROLLER_NAME]
+        return self.processes[self.controler_id]
 
     def restart_controller(self):
         try:
             # kill any existing controller
-            del self.processes[CONTROLLER_NAME]
+            del self.processes[self.controler_id]
         except KeyError:
             pass
         # create a new one
-        self.processes.add(RFLinkController(self))
+        self.processes.add(RFLinkController(self, self.controler_id))
 
     def getNodes(self, filter=None):
         def _filter (r):

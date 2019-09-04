@@ -49,6 +49,7 @@ def install(core, options):
 
 
 @attr('firmware', default=None, mode=READ_ONLY, description="The firmware version of this device.")
+@meta(disable_creation=True)
 class Mijia(BleDevice, Thermometer, HumiditySensor):
 
 

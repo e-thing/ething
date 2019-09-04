@@ -5,6 +5,7 @@ from ething.utils.json import dumps
 import threading
 import paho.mqtt.client as mqttClient
 from ething.Signal import ResourceSignal
+from ething.dispatcher import bind, unbind
 import random
 import string
 import time
@@ -20,7 +21,7 @@ class MqttDispatcherService(Process):
     RECONNECT_DELAY = 30
 
     def __init__(self, core, host, port=1883, user=None, password=None, base_topic=None):
-        super(MqttDispatcherService, self).__init__(name='mqttDispatcher')
+        super(MqttDispatcherService, self).__init__()
         self.core = core
         self.host = host
         self.port = port
@@ -69,7 +70,7 @@ class MqttDispatcherService(Process):
 
         if rc == 0:
             LOGGER.info("connected")
-            self.core.bind('*', self.emit)
+            bind('*', self.emit, namespace=self.core.namespace)
         else:
             # unable to connect
             LOGGER.error("connection refused : %s" %
@@ -81,7 +82,7 @@ class MqttDispatcherService(Process):
             LOGGER.warning("Unexpected disconnection")
             self._mqttClient.reconnect()
 
-        self.core.unbind('*', self.emit)
+        unbind('*', self.emit)
 
     def emit(self, signal):
 

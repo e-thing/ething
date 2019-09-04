@@ -12,7 +12,6 @@ class Controller(TransportProcess):
 
     def __init__(self, device):
         super(Controller, self).__init__(
-            'yeelight.%s' % device.id,
             transport=NetTransport(
                 host=device.host,
                 port=PORT

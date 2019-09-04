@@ -4,7 +4,7 @@ from .MihomeSensorHT import MihomeSensorHT
 from .MihomeMagnet import MihomeMagnet
 from .MihomeButton import MihomeButton
 from ething.plugin import Plugin
-from ething.TransportProcess import TransportProcess, UdpTransport, ThreadedTransport
+from ething.TransportProcess import TransportProcess, UdpTransport
 from .helpers import *
 from .protocol import MihomeProtocol
 
@@ -19,7 +19,6 @@ class Controller(TransportProcess):
 
     def __init__(self, core):
         super(Controller, self).__init__(
-            'mihome',
             transport=UdpTransport(
                 host=MULTICAST_ADDRESS,
                 port=MULTICAST_PORT

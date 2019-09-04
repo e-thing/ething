@@ -753,10 +753,7 @@ class Array(Type):
   def set(self, value, context = None):
     if not (isinstance(value, self.container_cls) and value._type is self):
       self.validate(value, context)
-      _value = self.container_cls(self, context=context)
-      for i in range(len(value)):
-        _value[i] = value[i]
-      return _value
+      return self.container_cls(self, [self.item_type.set(v, context) for v in value], context=context)
     else:
       return value
 
@@ -919,10 +916,11 @@ class Dict(Type):
   def set(self, value, context = None):
     if not (isinstance(value, self.container_cls) and value._type is self):
       self.validate(value, context)
-      _value = self.container_cls(self, context=context)
-      for k in value:
-        _value[k] = value[k]
-      return _value
+      j = {}
+      for key in value:
+        item_type = self.get_type_from_key(key)
+        j[key] = item_type.set(value.get(key), context)
+      return self.container_cls(self, j, context)  # j
     else:
       return value
 

@@ -4,11 +4,12 @@ import socket
 import logging
 import time
 import threading
+import weakref
+import inspect
 from future.utils import string_types
 import requests
 from xml.etree import ElementTree
 from ..utils import etree_to_dict
-from ..utils.weak_ref import proxy_method, LostReferenceException
 from collections import Mapping
 from .scanner import *
 
@@ -278,7 +279,9 @@ def register(filter, callback):
     :param filter: a dictionary that describe a filter
     :param callback: a callable (is_alive, info)
     """
-    _registered_items.append((filter, proxy_method(callback)))
+    if inspect.ismethod(callback):
+        callback = weakref.WeakMethod(callback)
+    _registered_items.append((filter, callback))
     _update()
 
 
@@ -299,10 +302,12 @@ class _SSDP_Listener(object):
         pass
 
     def _run_handler(self, is_alive, device, handler):
+        if isinstance(handler, weakref.WeakMethod):
+            handler = handler()
+            if handler is None:  # lost reference
+                return
         try:
             handler(is_alive, device)
-        except LostReferenceException:
-            pass
         except:
             LOGGER.exception('[%s] exception in handler %s', device.ip, handler)
 

@@ -1,16 +1,10 @@
 (function(global){
 
-    EThingUI.extend('resources/RFLinkSerialGateway', {
+    EThingUI.extend('resources/RFLinkGateway', {
 
-        category: 'RFLink.Gateway',
+        category: 'RFLink',
 
         title: 'RFLink Gateway (serial)'
-
-    })
-
-    EThingUI.extend('resources/RFLinkNode', {
-
-        disableCreation: true,
 
     })
 

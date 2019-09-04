@@ -5,9 +5,8 @@ import time
 import datetime
 import logging
 import inspect
-
 import threading
-from .utils.weak_ref import weak_ref, proxy_method, LostReferenceException
+import weakref
 
 
 __all__ = [
@@ -53,7 +52,7 @@ class Task(object):
 
         self._params = params
 
-        self._target = proxy_method(target)
+        self._target = weakref.WeakMethod(target) if inspect.ismethod(target) else target
         if instance is None and hasattr(target, '__self__'):
             instance = target.__self__
 
@@ -65,7 +64,7 @@ class Task(object):
                 self._name = "%s.%s" % (type(instance).__name__, target.__name__)
             else:
                 self._name = target.__name__
-        self._instance = weak_ref(instance) if instance is not None else None
+        self._instance = weakref.ref(instance) if instance is not None else None
         self._condition = condition
         self._allow_multiple = allow_multiple
 
@@ -96,7 +95,7 @@ class Task(object):
 
     @property
     def target(self):
-        return self._target
+        return self._target() if isinstance(self._target, weakref.WeakMethod) else self._target
 
     @property
     def args(self):
@@ -153,9 +152,10 @@ class Task(object):
         raise NotImplementedError()
 
     def execute(self):
-        try:
-            self.target(*self.args, **self.kwargs)
-        except LostReferenceException:
+        target = self.target
+        if target is not None:
+            target(*self.args, **self.kwargs)
+        else:
             self._valid = False
 
 

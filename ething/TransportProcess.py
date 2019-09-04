@@ -38,6 +38,9 @@ class Transport(object):
     def is_open(self):
         return self._opened.is_set()
 
+    def wait_open(self, timeout=None):
+        return self._opened.wait(timeout)
+
 class SerialTransport(Transport):
 
     def __init__(self, port, baudrate):
@@ -274,8 +277,8 @@ class LineReader(Packetizer):
 
 class TransportProcess(Process):
 
-    def __init__(self, name, transport, protocol, reconnect = True, reconnect_delay = 15, open_state_changed_handler = None, **kwargs):
-        super(TransportProcess, self).__init__(name=name, **kwargs)
+    def __init__(self, transport, protocol, reconnect = True, reconnect_delay = 15, open_state_changed_handler = None, **kwargs):
+        super(TransportProcess, self).__init__(**kwargs)
         self.transport = transport
         self.protocol = protocol
         self.reconnect = reconnect
@@ -374,24 +377,21 @@ class QueueProtocol(Protocol):
 
 class ThreadedTransport(Transport):
 
-    def __init__(self, transport, manager, name = None, timeout=1):
+    def __init__(self, transport, timeout=1):
         super(ThreadedTransport, self).__init__()
         self._transport = transport
-        self._manager = manager
         self._q = Queue()
         self._thread = None
-        self._name = name or 'ThreadedTransport.%s' % type(transport).__name__
         self._timeout = timeout
 
     def open(self):
         if self._thread:
             raise Exception('already opened')
-        self._thread = TransportProcess(self._name, transport=self._transport, protocol=QueueProtocol(self._q), manager=self._manager)
+        self._thread = TransportProcess(transport=self._transport, protocol=QueueProtocol(self._q))
         self._thread.start()
         # wait for the Process to be opened
-        self._transport.opened.wait(5)
-
-        super(ThreadedTransport, self).open()
+        if self._transport.wait_open(5):
+            super(ThreadedTransport, self).open()
 
     def read(self):
         try:

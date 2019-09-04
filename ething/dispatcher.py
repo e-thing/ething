@@ -4,7 +4,8 @@ import logging
 import threading
 import time
 import re
-from .utils.weak_ref import proxy_method, LostReferenceException
+import weakref
+import inspect
 from queue import Queue, Empty
 
 
@@ -71,28 +72,35 @@ class SignalDispatcher(object):
 
     def dispatch(self, signal, sender=None, namespace=None):
         with self.r_lock:
-            # LOGGER.debug("dispatch signal: %s" % (str(signal), ))
-            for weakref_handler_info in list(self.handlers):
-                _signal, handler, once, _sender, _, _ns_re, args = weakref_handler_info
+            LOGGER.debug("dispatch signal: %s" % (str(signal), ))
+            for handler_info in list(self.handlers):
+                _signal, handler, once, _sender, _, _ns_re, args = handler_info
+
+                if isinstance(handler, weakref.WeakMethod):
+                    handler = handler()
+                    if handler is None: # lost reference
+                        self.handlers.remove(handler_info)
+                        continue
+
                 if _signal == ANY or isinstance(signal, _signal):
                     if _sender is None or _sender == sender:
                         if _ns_re is None or (namespace and _ns_re.match(namespace)):
-                            remove = False
                             try:
                                 handler(signal, *args)
-                            except LostReferenceException:
-                                # lost reference
-                                remove = True
                             except Exception as e:
                                 LOGGER.exception("Error calling signal handler with signal: %s handler: %s" % (str(signal), handler))
-                            if once or remove:
-                                self.handlers.remove(weakref_handler_info)
+                            if once:
+                                self.handlers.remove(handler_info)
 
     def bind(self, signal, handler, once = False, sender=None, args=(), namespace=None):
         """Adds an event listener for event name"""
         with self.r_lock:
             ns_re = re.compile(namespace + '(\.|$)') if namespace else None
-            self.handlers.append((signal, proxy_method(handler), once, sender, namespace, ns_re, args))
+
+            if inspect.ismethod(handler):
+                handler = weakref.WeakMethod(handler)
+
+            self.handlers.append((signal, handler, once, sender, namespace, ns_re, args))
 
     def unbind(self, signal=ANY, handler = None, sender=None, namespace=None):
         """removes previously added event listener"""
@@ -101,6 +109,11 @@ class SignalDispatcher(object):
         with self.r_lock:
             for handler_info in list(self.handlers):
                 _signal, _handler, once, _sender, _namespace, _, args = handler_info
+                if isinstance(_handler, weakref.WeakMethod):
+                    _handler = _handler()
+                    if _handler is None: # lost reference
+                        self.handlers.remove(handler_info)
+                        continue
                 if signal == ANY or issubclass(_signal, signal):
                     if handler is None or handler == _handler:
                         if sender is None or sender == _sender:

@@ -15,7 +15,6 @@ class MySensorsController(TransportProcess):
     def __init__(self, gateway, transport):
 
         super(MySensorsController, self).__init__(
-            'mysensors.%s' % gateway.id,
             transport=transport,
             protocol=MySensorsProtocol(gateway)
         )

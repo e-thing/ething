@@ -4,9 +4,9 @@ from ..Resource import Resource, ResourceType, ResourceTypeArray, ResourceCreate
 from ..reg import *
 from ..utils.jsonpath import jsonpath
 from ..utils.ObjectPath import ObjectPathExp, evaluate
-from ..utils.weak_ref import weak_ref
 from ..processes import Process
 from ..Signal import ResourceSignal
+from ..dispatcher import bind, unbind
 from queue import Queue
 import time
 import os
@@ -253,12 +253,12 @@ class SignalEventNode(Node):
             if self._filter(signal):
                 q.put(signal.__flow_msg__())
 
-        self.core.bind('*', push)
+        bind('*', push, namespace=self.core.namespace)
 
         while True:
             self.emit(q.get())
 
-        self.core.unbind('*', push)
+        unbind('*', push)
 
 
 connection_type = Dict(
@@ -288,7 +288,7 @@ class Flow(Resource, FlowBase):
         self.processes["flow.%s" % self.id].restart()
 
     def __process__(self):
-        return Process(name="flow.%s" % self.id, target=self.run, terminate=self.stop)
+        return Process(id="flow.%s" % self.id, target=self.run, terminate=self.stop)
 
     def on_attr_update(self, attr, new_value, old_value):
         super(Flow, self).on_attr_update(attr, new_value, old_value)

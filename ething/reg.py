@@ -1254,7 +1254,7 @@ def build_schema(cls, root=False, **kwargs):
       "type": "class",
       "properties": OrderedDict(),
       "additionalProperties": False,
-      "title": get_meta(cls, 'label')
+      "title": get_meta(cls, 'title') or get_meta(cls, 'label')
   }
 
   icon = get_meta(cls, 'icon')
@@ -1275,6 +1275,10 @@ def build_schema(cls, root=False, **kwargs):
   description = description.strip()
   if description:
     schema['description'] = description
+
+  disable_creation = get_meta(cls, 'disable_creation')
+  if disable_creation:
+      schema['disableCreation'] = disable_creation
 
   if not no_signals:
       signals = []

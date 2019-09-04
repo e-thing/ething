@@ -245,6 +245,7 @@ class Resource(Entity, SignalEmitter):
     def extends(self):
         return [get_definition_name(c) for c in type(self).__mro__ if issubclass(c, Resource)]
 
+    @property
     def namespace(self):
         return self.core.namespace + "." + self.id
 
@@ -318,13 +319,13 @@ class Resource(Entity, SignalEmitter):
 
     def __db_remove__(self):
         self.logger.info("Resource deleted")
-        self.core.emit(ResourceDeleted(self))
+        self.emit(ResourceDeleted(self))
 
     def __db_save__(self, insert):
         if insert:
             if getattr(self, '__destroyed__', False):
                 raise Exception('this object was previously destroyed')
-            self.core.emit(ResourceCreated(self))
+            self.emit(ResourceCreated(self))
             self.logger.info("Resource created")
             return
 
@@ -361,7 +362,7 @@ class Resource(Entity, SignalEmitter):
 
         self.on_update(dirty_keys)
 
-        self.core.emit(ResourceUpdated(self, dirty_keys))
+        self.emit(ResourceUpdated(self, dirty_keys))
 
     def on_update(self, dirty_keys):
         pass

@@ -18,7 +18,6 @@ class AdvertisementController(TransportProcess):
 
     def __init__(self, core):
         super(AdvertisementController, self).__init__(
-            'yeelight.adv',
             transport=UdpTransport(
                 host=MULTICAST_ADDRESS,
                 port=MULTICAST_PORT

@@ -2,7 +2,6 @@
 import logging
 import threading
 import gevent
-from .utils.weak_ref import weak_ref, proxy_method
 from .utils import generate_id, getmembers
 import inspect
 import weakref
@@ -25,7 +24,7 @@ LOGGER = logging.getLogger(__name__)
 class ProcessCollection(Mapping):
 
     def __init__(self, parent=None, weak=False):
-        self._processes = list()
+        self._processes = dict()
         self._parent = parent
         self._weak = weak
 
@@ -37,15 +36,15 @@ class ProcessCollection(Mapping):
         if self._weak:
             # filter the invalid ref
             ret = list()
-            for i in list(self._processes):
-                _i = i() # check weakref
+            for pid in list(self._processes):
+                _i = self._processes[pid]() # check weakref
                 if _i is not None:
                     ret.append(_i)
                 else:
-                    self._processes.remove(i)
+                    del self._processes[pid]
             return ret
         else:
-            return list(self._processes)
+            return list(self._processes.values())
 
     def add(self, process=None, start=True, **kwargs):
         parent = self.parent
@@ -74,7 +73,7 @@ class ProcessCollection(Mapping):
         if parent is not None:
             process.parent = parent
 
-        self._processes.append(weakref.ref(process) if self._weak else process)
+        self._processes[process.id] = (weakref.ref(process) if self._weak else process)
 
         if start:
             process.start()
@@ -97,10 +96,10 @@ class ProcessCollection(Mapping):
 
     def __getitem__(self, key):
         """
-        the key can either be a process instance, a process id or process name
+        the key can either be a process instance or a process id
         """
         for p in self._items():
-            if p == key or p.id == key or p.name == key:
+            if p == key or p.id == key:
                 return p
         raise KeyError
 
@@ -110,7 +109,7 @@ class ProcessCollection(Mapping):
     def __delitem__(self, key):
         p = self[key]
         p.stop()
-        self._processes.remove(p)
+        del self._processes[p.id]
 
 
 processes = ProcessCollection(weak=True)
@@ -152,36 +151,34 @@ class Process(object):
         process.start()
 
     """
-    def __init__(self, name=None, target=None, args=(), kwargs=None, terminate=None, parent=None):
+    def __init__(self, target=None, args=(), kwargs=None, terminate=None, parent=None, id=None):
         """
 
-        :param name: The name of the process.
         :param target: target is the callable object to be invoked by the run() method. Use either target or loop but not both.
         :param args: args is the argument tuple for the target or loop invocation. Defaults to ().
         :param kwargs: kwargs is a dictionary of keyword arguments for the target or loop invocation. Defaults to {}.
         :param terminate: a callable that is invoked on stop()
         :param parent: any object. If a process is provided, all child processes will be automatically killed when the parent process stop.
+        :param id: The id of the process. It can be useful to easily find a process in a collection. If not provided, the id will be automatically generated.
         """
         self._id = id or generate_id()
-        self._name = name or getattr(target, '__name__', None) or type(self).__name__ # ('process_%s' % self._id)
 
         self.parent = parent
 
         if kwargs is None:
             kwargs = {}
 
-        self._target = proxy_method(target)
+        self._target = weakref.WeakMethod(target) if inspect.ismethod(target) else target
         self._args = args
         self._kwargs = kwargs
-        self._terminate = proxy_method(terminate)
+        self._terminate = weakref.WeakMethod(terminate) if inspect.ismethod(terminate) else terminate
 
         self._reset()
 
-        processes.add(self, False)
+        if self._id in processes:
+            raise Exception('A process with the same id already exist ! Use Process.restart() method instead.')
 
-    @property
-    def name(self):
-        return self._name
+        processes.add(self, False)
 
     @property
     def id(self):
@@ -193,7 +190,7 @@ class Process(object):
 
     @parent.setter
     def parent(self, p):
-        self._parent = weak_ref(p) if p is not None else None
+        self._parent = weakref.ref(p) if p is not None else None
 
     @property
     def is_running(self):
@@ -203,7 +200,7 @@ class Process(object):
         return str(self)
 
     def __str__(self):
-        return '<%s id=%s name=%s running=%s>' % (type(self).__name__, self.id, self.name, self.is_running)
+        return '<%s id=%s running=%s>' % (type(self).__name__, self.id, self.is_running)
 
     def start(self):
         """
@@ -230,10 +227,14 @@ class Process(object):
 
             if self._terminate is not None:
                 # must be run anyway for clean exit
-                try:
-                    self._terminate()
-                except:
-                    pass
+                terminate = self._terminate
+                if isinstance(terminate, weakref.WeakMethod):
+                    terminate = terminate()
+                if terminate:
+                    try:
+                        terminate()
+                    except:
+                        pass
 
             if timeout > 0:
                 # wait for exit
@@ -309,7 +310,12 @@ class Process(object):
         Invoke the target callable. To be override if necessary.
         """
         if self._target:
-            return self._target(*self._args, **self._kwargs)
+            target = self._target
+            if isinstance(target, weakref.WeakMethod):
+                target = target()
+                if not target:
+                    return
+            return target(*self._args, **self._kwargs)
         else:
             raise Exception('empty process')
 
@@ -340,7 +346,8 @@ def process(*args, **kwargs):
             setattr(func, '_process', (args, kwargs))
         else:
             # function decorator
-            Process(target=func)
+            p = Process(func, *args, **kwargs)
+            p.start()
         return func
     return w
 
@@ -351,8 +358,7 @@ def generate_instance_processes(instance):
     for name, func in getmembers(instance, lambda x: hasattr(x, '_process')):
         f = getattr(instance, name)
         args, kwargs = getattr(f, '_process')
-        kwargs['target'] = f
-        processes.append(Process(*args, **kwargs))
+        processes.append(Process(f, *args, **kwargs))
     return processes
 
 

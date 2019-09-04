@@ -1,6 +1,7 @@
 # coding: utf-8
 from flask import Response, request
 from ething.Signal import ResourceSignal
+from ething.dispatcher import bind, unbind
 from queue import Queue, Empty
 
 
@@ -12,7 +13,7 @@ def on_signal_sio(signal, app):
 def install(core, app, auth, **kwargs):
 
     if hasattr(app, 'socketio'):
-        core.bind('*', on_signal_sio, args=(app,))
+        bind('*', on_signal_sio, args=(app,), namespace=core.namespace)
 
     def generate_events_flow(filter = None):
 
@@ -31,7 +32,7 @@ def install(core, app, auth, **kwargs):
                 if not filter or filter(signal):
                     q.put(signal)
 
-            core.bind('*', on_signal)
+            bind('*', on_signal, namespace=core.namespace)
 
             yield "event:init\ndata:\n\n"
 
@@ -55,7 +56,7 @@ def install(core, app, auth, **kwargs):
             except GeneratorExit:  # Or maybe use flask signals
                 pass
 
-            core.unbind('*', on_signal)
+            unbind('*', on_signal)
 
             core.log.debug('SSE: stop listener %s', remote_addr)
 

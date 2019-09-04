@@ -1,7 +1,8 @@
 # coding: utf-8
 
 from zeroconf import ServiceBrowser, Zeroconf, ZeroconfServiceTypes
-from ..utils.weak_ref import proxy_method, LostReferenceException
+import weakref
+import inspect
 import logging
 from future.utils import binary_type
 from .scanner import *
@@ -39,7 +40,9 @@ def _zc_update():
 
 def register_service(service_name, callback, device_name=None):
     _service_handlers.setdefault(service_name, set())
-    _service_handlers[service_name].add(proxy_method((callback, device_name)))
+    if inspect.ismethod(callback):
+        callback = weakref.WeakMethod(callback)
+    _service_handlers[service_name].add((callback, device_name))
     _update(service_name)
 
 
@@ -113,14 +116,16 @@ class ServiceListener(object):
 
         for item in list(handlers_items):
             h, dev_name = item
+            if isinstance(h, weakref.WeakMethod):
+                h = h()
+                if h is None: # lost reference
+                    handlers_items.remove(item)
+                    need_update = True
+                    continue
             if dev_name and not info['name'].startswith(dev_name):
                 continue
             try:
                 h(is_alive, info)
-            except LostReferenceException:
-                need_update = True
-                # remove
-                handlers_items.remove(item)
             except:
                 LOGGER.exception('[%s] exception in handler %s', self.service_name, h)
 
