@@ -51,7 +51,7 @@ if bluepy_imported:
             DefaultDelegate.__init__(self)
             self.queue = queue
 
-        def handleDiscovery(self, dev):
+        def handleDiscovery(self, dev, isNewDev, isNewData):
             LOGGER.debug('discover device %s', dev.addr)
             info = _device_to_dict(dev)
             self.queue.put(BleaScannerResult(info.get('mac'), info))
