@@ -19,6 +19,15 @@ import threading
 from .env import USER_DIR, LOG_FILE, _set_namespace, get_option
 
 
+import sys
+if sys.version_info <= (3, 4):
+    raise ValueError('this library requires at least Python 3.4. ' +
+                     'You\'re running version {}.{} from {}.'.format(
+                         sys.version_info.major,
+                         sys.version_info.minor,
+                         sys.executable))
+
+
 def init_logger(console_log=False, file_log=True, debug=False):
     from .utils.logger import ColoredFormatter
 
