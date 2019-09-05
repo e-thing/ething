@@ -72,7 +72,7 @@ class SignalDispatcher(object):
 
     def dispatch(self, signal, sender=None, namespace=None):
         with self.r_lock:
-            LOGGER.debug("dispatch signal: %s" % (str(signal), ))
+            # LOGGER.debug("dispatch signal: %s" % (str(signal), ))
             for handler_info in list(self.handlers):
                 _signal, handler, once, _sender, _, _ns_re, args = handler_info
 
