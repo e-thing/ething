@@ -62,9 +62,6 @@ install_requires = [
 
     # --miflora
     "miflora",
-
-    # --mijia
-    "mitemp_bt",
 ]
 
 if os.name != "nt":

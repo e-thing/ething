@@ -14,7 +14,7 @@ LOGGER = logging.getLogger(__name__)
 def is_avconv_installed ():
     version = 'unknown'
     try:
-        output = subprocess.check_output('avconv -version', shell=True, stderr=False)
+        output = subprocess.check_output('avconv -version', shell=True, stderr=subprocess.DEVNULL)
     except:
         return False
     else:
@@ -26,8 +26,13 @@ def is_avconv_installed ():
 
 
 def install(core, options):
-    if not is_avconv_installed():
-        LOGGER.warning('[RTSP] avconv is not installed')
+    version = is_avconv_installed()
+    if not version:
+        LOGGER.warning('[RTSP] the program "avconv" is not installed')
+        core.notification.warning('the program "avconv" is not installed', title='RTSP', id='rtsp.avconv.check')
+    else:
+        LOGGER.info('[RTSP] avconv version=%s', version)
+        core.notification.remove('rtsp.avconv.check')
 
 
 @pingable('url')

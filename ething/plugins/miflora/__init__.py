@@ -56,7 +56,7 @@ class MiFlora(BleDevice, Thermometer, LightSensor, MoistureSensor):
 
 
     def __init__(self, *args, **kwargs):
-        super(MiFlora).__init__(*args, **kwargs)
+        super(MiFlora, self).__init__(*args, **kwargs)
 
         self._poller = MiFloraPoller(
             self.address,

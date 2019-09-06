@@ -134,7 +134,7 @@ class ServiceListener(object):
 
     def remove_service(self, zeroconf, type, name):
         #
-        LOGGER.info("Service %s removed" % (name,))
+        LOGGER.debug("Service %s removed" % (name,))
 
         info = dict()
         info.setdefault('type', type)
@@ -145,7 +145,7 @@ class ServiceListener(object):
 
     def add_service(self, zeroconf, type, name):
         info = zeroconf.get_service_info(type, name)
-        LOGGER.info("Service %s added, service info: %s" % (name, info))
+        LOGGER.debug("Service %s added, service info: %s" % (name, info))
 
         if info is None:
             info = dict()

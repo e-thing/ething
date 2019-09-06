@@ -15,7 +15,24 @@ musicMap = ["Police siren", "Police siren 2", "Accident tone", "Missle countdown
 @attr('password', type=String(allow_empty=True), default="", description="The password of the gateway")
 @attr('token', mode=PRIVATE, default='')
 class MihomeGateway(MihomeBase, RGBWLight, LightSensor):
-
+    
+    def __init__(self, *args, **kwargs):
+        super(MihomeGateway, self).__init__(*args, **kwargs)
+        self._check_password(self.password)
+            
+    def _check_password (self, value):
+        if value:
+            self.notification.remove('mihome.%s.pwd.check' % self.id)
+            self.error = None
+        else:
+            self.notification.warning('no password set in the configuration', id='mihome.%s.pwd.check' % self.id)
+            self.error = 'no password set in the configuration'
+    
+    def __watch__(self, attr, value, old_value):
+        if attr.name == 'password':
+            self._check_password(value)
+        super(MihomeGateway, self).__watch__(attr, value, old_value)
+    
     def _get_gateway(self):
         return self
 

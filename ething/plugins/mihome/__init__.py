@@ -19,6 +19,7 @@ class Controller(TransportProcess):
 
     def __init__(self, core):
         super(Controller, self).__init__(
+            id='mihome',
             transport=UdpTransport(
                 host=MULTICAST_ADDRESS,
                 port=MULTICAST_PORT

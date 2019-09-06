@@ -7,6 +7,7 @@ from .helpers import attrMap
 
 
 @dynamic
+@meta(disable_creation=True)
 class RFLinkGenericSensor(RFLinkNode):
 
     def _handle_incoming_data(self, protocol, data):

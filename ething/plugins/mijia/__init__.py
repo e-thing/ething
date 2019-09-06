@@ -1,6 +1,6 @@
 # coding: utf-8
 
-from mitemp_bt.mitemp_bt_poller import MiTempBtPoller, MI_BATTERY, MI_TEMPERATURE, MI_HUMIDITY
+from .mitemp_bt_poller import MiTempBtPoller, MI_BATTERY, MI_TEMPERATURE, MI_HUMIDITY
 from ething.Device import BleDevice
 from ething.reg import *
 from ething.interfaces import Thermometer, HumiditySensor
@@ -54,7 +54,7 @@ class Mijia(BleDevice, Thermometer, HumiditySensor):
 
 
     def __init__(self, *args, **kwargs):
-        super(Mijia).__init__(*args, **kwargs)
+        super(Mijia, self).__init__(*args, **kwargs)
 
         self._poller = MiTempBtPoller(
             self.address,

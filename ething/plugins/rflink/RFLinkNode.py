@@ -9,7 +9,6 @@ from .helpers import *
 @attr('nodeId', type=String(allow_empty=False), mode = READ_ONLY, description="The hardware id of the node.")
 @attr('protocol', type=String(allow_empty=False), mode = READ_ONLY, description="The protocol name of the node.")
 @attr('createdBy', required=True)
-@meta(disable_creation=True)
 class RFLinkNode(Device):
     ACTIVITY_TIMEOUT = 1800
 

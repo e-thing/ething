@@ -61,7 +61,10 @@ if bluepy_imported:
 
         def scan(self, timeout):
             scanner = _Scanner(get_option('ble_hci', 0)).withDelegate(ScanDelegateForScanner(self.results))
-            scanner.scan(timeout=timeout)
+            try:
+                scanner.scan(timeout=timeout)
+            except BTLEException:
+                pass
 
 else:
 

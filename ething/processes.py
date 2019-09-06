@@ -5,6 +5,7 @@ import gevent
 from .utils import generate_id, getmembers
 import inspect
 import weakref
+import time
 from collections import Mapping, Sequence
 
 
@@ -85,11 +86,20 @@ class ProcessCollection(Mapping):
             obj = self[obj]
         elif obj not in self:
             raise KeyError('process not found')
-        obj.stop(timeout)
+        return obj.stop(timeout)
 
-    def stop_all(self):
-        for p in self:
-            self.stop(p)
+    def stop_all(self, timeout=3):
+        processes = list(self)
+        
+        for p in processes:
+            p.stop_async()
+        
+        t0 = time.time()
+        for p in processes:
+            time_left = timeout  - (time.time() - t0)
+            if time_left < 0:
+                time_left = 0
+            p.stop(timeout=time_left)
 
     def __iter__(self):
         return iter(self._items())
@@ -222,25 +232,30 @@ class Process(object):
         """
         if self.is_alive():
             # must be running
-
-            self._ask_stop = True
-
-            if self._terminate is not None:
-                # must be run anyway for clean exit
-                terminate = self._terminate
-                if isinstance(terminate, weakref.WeakMethod):
-                    terminate = terminate()
-                if terminate:
-                    try:
-                        terminate()
-                    except:
-                        pass
+            
+            if not self._ask_stop:
+                self._ask_stop = True # terminate only 1 time
+                
+                if self._terminate is not None:
+                    # must be run anyway for clean exit
+                    terminate = self._terminate
+                    if isinstance(terminate, weakref.WeakMethod):
+                        terminate = terminate()
+                    if terminate:
+                        try:
+                            terminate()
+                        except:
+                            pass
 
             if timeout > 0:
                 # wait for exit
 
                 if self._stopped.wait(timeout):
                     return
+            
+            if timeout == -1:
+                # async
+                return self._stopped
 
             # kill it !
             try:
@@ -249,6 +264,9 @@ class Process(object):
                 pass
 
             self._end()
+    
+    def stop_async(self):
+        return self.stop(timeout=-1)
 
     def join(self, timeout=None):
         """

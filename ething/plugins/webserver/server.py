@@ -96,7 +96,7 @@ class FlaskApp(Flask):
 
         CORS(self, resources={
             r"/api/*": cors_opt,
-            r"/auth/*": cors_opt
+            r"/auth/*": cors_opt,
         })
 
         # compress
@@ -109,7 +109,9 @@ class FlaskApp(Flask):
         # socketio
         socketio = SocketIO()
         socketio.init_app(
-            self, async_mode='gevent',
+            self,
+            async_mode='gevent',
+            cors_allowed_origins='*',
             logger=False,
             engineio_logger=False
             # logger=self.debug,
