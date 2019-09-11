@@ -1,14 +1,13 @@
 # coding: utf-8
 
-from .light import Light
-from .dimmable import Dimmable
+from .dimmableLight import DimmableLight
 from ..Interface import *
 
 
 @interface
 @attr('hue', type = Number(min=0, max=360), default = 0, mode = READ_ONLY, description = "the hue component of the light")
 @attr('saturation', type = Number(min=0, max=100), default = 100, mode = READ_ONLY, description = "the saturation component of the light")
-class RGBWLight (Light, Dimmable):
+class RGBWLight (DimmableLight):
 
     def setState(self, state):
         if not state:

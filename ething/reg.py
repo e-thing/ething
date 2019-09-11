@@ -466,6 +466,8 @@ class RegItemBase (MutableMapping):
 
       if 'label' in self and self['label']:
         schema['title'] = self.get('label')
+      else:
+        schema['title'] = self.name
 
       if 'icon' in self and self['icon']:
         schema['icon'] = self.get('icon')
