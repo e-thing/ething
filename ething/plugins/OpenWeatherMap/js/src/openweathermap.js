@@ -1,4 +1,5 @@
 import axios from 'axios'
+import weatherIcons from './statics/icons.json'
 
 export const OPEN_WEATHER_MAP_WEATHER_URL = 'https://api.openweathermap.org/data/2.5/weather?units=metric';
 export const OPEN_WEATHER_MAP_FORECAST_URL = 'https://api.openweathermap.org/data/2.5/forecast?units=metric';
@@ -62,6 +63,73 @@ export const weatherMap = [
     {id: '803', description: 'broken clouds', icon: ['04d', '04n']},
     {id: '804', description: 'overcast clouds', icon: ['04d', '04n']},
 ]
+
+export function toWeatherIcon(code, daynightInfo) {
+  var prefix = 'wi wi-';
+  var icon = weatherIcons[code].icon;
+
+  // If we are not in the ranges mentioned above, add a day/night prefix.
+  if (!(code > 699 && code < 800) && !(code > 899 && code < 1000)) {
+    var daynight = 'day-'
+    if (typeof daynightInfo === 'boolean') {
+      if (daynightInfo) daynight = 'night-'
+    } else { // openweathermap data
+      try {
+        if (daynightInfo.dt < daynightInfo.sys.sunrise || daynightInfo.dt > daynightInfo.sys.sunset) daynight = 'night-'
+      } catch (e) {}
+    }
+    icon = daynight + icon;
+  }
+
+  // Finally tack on the prefix.
+  return prefix + icon;
+}
+
+// clear sky -> worst
+const weatherConditionWeightMap = [
+    [800, 899], // Clear + Clouds
+    [700, 799], // Atmosphere
+    [300, 399], // Drizzle
+    [500, 599], // Rain
+    [200, 299], // Thunderstorm
+    [600, 699], // Snow
+]
+
+export function weightedWeatherCondition (weatherConditionId) {
+    for(var i in weatherConditionWeightMap) {
+
+        var minIndex = weatherConditionWeightMap[i][0];
+        var maxIndex = weatherConditionWeightMap[i][1];
+
+        if (weatherConditionId >= minIndex && weatherConditionId <= maxIndex) {
+            return i * 100 + (weatherConditionId - minIndex)
+        }
+
+    }
+    return 0
+}
+
+export function formatWindDirection (deg) {
+
+    if (typeof deg !== 'number') return ''
+
+    const windDirectionMap = ['N', 'N-E', 'E', 'S-E', 'S', 'S-O', 'O', 'N-O', 'N']
+    const windDirectionMapStep = 45
+
+    var selectedIndex = null
+    var diff = 0
+
+    for (var i in windDirectionMap) {
+        var ideg = i * windDirectionMapStep
+        var d = deg - ideg
+        if (selectedIndex===null || d < diff) {
+            selectedIndex = i
+            diff = d
+        }
+    }
+
+    return selectedIndex !== null ? windDirectionMap[selectedIndex] : ''
+}
 
 function apicall (url, appId, location, done) {
     var requestUrl = url + '&q=' + encodeURIComponent(location) + '&appid=' + encodeURIComponent(appId)

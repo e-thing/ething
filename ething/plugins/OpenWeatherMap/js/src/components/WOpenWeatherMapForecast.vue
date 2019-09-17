@@ -1,32 +1,79 @@
 <template>
-    <div class="column fit justify-center">
-        <div class="col-auto text-center">{{ city }} </div>
-        <div class="col-auto row">
-            <div v-for="item in items" class="col text-center">
-                <div class="date text-faded" v-if="mode!=='now'">
-                    <small>
-                        <template v-if="mode==='5d'">
-                            {{ item.weekday }}
-                        </template>
-                        <template v-else>
-                            {{ item.date.getHours() }}h
-                        </template>
-                    </small>
-                </div>
-                <img :src="item.iconUrl"/>
-                <div class="temperature text-faded text-no-wrap">{{ rounded(mode==='5d' ? item.maxTemperature : item.temperature) }}<small class="text-light">°C</small></div>
-                <div class="humidity text-faded text-no-wrap">{{ rounded(item.humidity) }}<small class="text-light">%</small></div>
-                <div class="pressure text-faded text-no-wrap" v-if="item.pressure">{{ rounded(item.pressure) }}<small class="text-light">Pa</small></div>
-                <div class="wind text-faded text-no-wrap" v-if="item.windSpeed"><template v-if="item.windDirection">{{ item.windDirection }}</template> {{ rounded(item.windSpeed) }}<small class="text-light">m/s</small></div>
-            </div>
+  <div class="column q-px-md q-pt-md no-wrap fit">
+    <template v-if="hasData">
+      <div class="col-auto cityname text-bold">
+        {{ city }}
+      </div>
+      <q-space/>
+      <div class="col-grow now text-center">
+        <div>
+          <i class="icon q-mr-md" :class="current.weatherIcon"></i>
+          <!--<q-icon class="icon" :name="current.weatherIcon"/>-->
+          <span class="value">{{ current.temperature }}</span>
+          <span class="unit">{{ temperatureUnit }}</span>
         </div>
-    </div>
+        <div class="label">
+          {{ current.weatherLabel }}
+        </div>
+      </div>
+      <div class="col-shrink">
+        <div class="today q-my-sm" v-if="today">
+          <div class="text-bold">{{ today.day }}</div>
+          <div class="row">
+            <div class="col-4">
+              <q-icon name="mdi-weather-sunset-up"/> {{ today.sunrise }}
+            </div>
+            <div class="col-3">
+              Max {{ today.temperatureMax }}{{ temperatureUnit }}
+            </div>
+            <div class="col-5">
+              <q-icon name="mdi-water"/> {{ today.humidity }} %
+            </div>
+          </div>
+          <div class="row">
+            <div class="col-4">
+              <q-icon name="mdi-weather-sunset-down"/> {{ today.sunset }}
+            </div>
+            <div class="col-3">
+              Min {{ today.temperatureMin }}{{ temperatureUnit }}
+            </div>
+            <div class="col-5">
+              <q-icon name="mdi-scale"/> {{ today.pressure }} {{ pressureUnit }}
+            </div>
+          </div>
+          <div class="row">
+            <div class="col-5 offset-7">
+              <q-icon name="mdi-weather-windy"/> {{ today.windDirection }} {{ today.windSpeed }} {{ windSpeedUnit }}
+            </div>
+          </div>
+        </div>
+        <template v-for="item in forecast" v-if="forecast && forecast.length>0">
+          <q-separator/>
+          <div class="forecast row q-my-sm items-center">
+            <div class="col-4 text-bold">
+              {{ item.day }}
+            </div>
+            <div class="col-3">
+              <i class="icon" :class="item.weatherIcon"></i>
+              <!--<q-icon class="icon" :name="item.weatherIcon" size="200%" />-->
+            </div>
+            <div class="col-3">
+              {{ item.temperatureMax }}{{ temperatureUnit }}
+            </div>
+            <div class="col-2">
+              {{ item.temperatureMin }}{{ temperatureUnit }}
+            </div>
+          </div>
+        </template>
+      </div>
+    </template>
+  </div>
 </template>
 
 <script>
 
 import EThingUI from 'ething-ui'
-import { getWeather, getWeatherForecast, iconPath, iconExt } from '../openweathermap'
+import { getWeather, getWeatherForecast, iconPath, iconExt, formatWindDirection, weightedWeatherCondition, toWeatherIcon  } from '../openweathermap'
 
 
 const weekdays = [
@@ -34,64 +81,14 @@ const weekdays = [
     'Thursday', 'Friday', 'Saturday'
 ]
 
-// clear sky -> worst
-const weatherConditionWeightMap = [
-    [800, 899], // Clear + Clouds
-    [700, 799], // Atmosphere
-    [300, 399], // Drizzle
-    [500, 599], // Rain
-    [200, 299], // Thunderstorm
-    [600, 699], // Snow
-]
-
-function weightedWeatherCondition (weatherConditionId) {
-    for(var i in weatherConditionWeightMap) {
-
-        var minIndex = weatherConditionWeightMap[i][0];
-        var maxIndex = weatherConditionWeightMap[i][1];
-
-        if (weatherConditionId >= minIndex && weatherConditionId <= maxIndex) {
-            return i * 100 + (weatherConditionId - minIndex)
-        }
-
-    }
-    return 0
-}
-
-function windDirection (deg) {
-
-    if (typeof deg !== 'number') return ''
-
-    const windDirectionMap = ['N', 'N-E', 'E', 'S-E', 'S', 'S-O', 'O', 'N-O', 'N']
-    const windDirectionMapStep = 45
-
-    var selectedIndex = null
-    var diff = 0
-
-    for (var i in windDirectionMap) {
-        var ideg = i * windDirectionMapStep
-        var d = deg - ideg
-        if (selectedIndex===null || d < diff) {
-            selectedIndex = i
-            diff = d
-        }
-    }
-
-    return selectedIndex !== null ? windDirectionMap[selectedIndex] : ''
-}
-
 
 export default {
     name: 'WOpenWeatherMapForecast',
 
-    extends: EThingUI.components.widgets.WWidget,
+    extends: EThingUI.components.widgets.Base,
 
     props: {
         location: String,
-        mode: {
-            type: String,
-            default: 'now'
-        }
     },
 
     data () {
@@ -103,188 +100,157 @@ export default {
 
         return {
             appid,
-            raw: {},
-            timerId: null
+            timerId: null,
+
+            weatherData: null,
+            forecastData: null,
+
+            temperatureUnit: '°C',
+            pressureUnit: 'hPa',
+            windSpeedUnit: 'km/h'
         }
     },
 
     computed: {
 
+        hasData () {
+          return this.weatherData && this.forecastData
+        },
         city () {
-            if (this.raw.city) return this.raw.city.name
-            if (this.raw.name) return this.raw.name
+          return this.weatherData.name
+        },
+        current () {
+          /*
+          {
+            temperature: 13,
+            weatherIcon: 'mdi-weather-cloudy',
+            weatherLabel: 'Partly Cloudy'
+          }
+          */
+          var weather = this.weatherData.weather[0] || {}
+          return {
+            temperature: Math.round(this.weatherData.main.temp),
+            humidity: Math.round(this.weatherData.main.humidity),
+            pressure: Math.round(this.weatherData.main.pressure),
+            weatherIcon: toWeatherIcon(weather.id, this.weatherData),  //'img:' + iconPath + '/' + weather.icon + '.' + iconExt,
+            weatherLabel: weather.description
+          }
         },
 
-        twentyFourHoursItems () {
-            var items = []
-            if (this.raw.list && this.raw.cnt) {
-                var now = Date.now()
-                var end = now + 24 * 3600 * 1000
-                this.raw.list.forEach(it => {
-                    var dt = it.dt * 1000
-                    if (dt <= end) {
-                        items.push({
-                            date: new Date(dt),
-                            temperature: it.main.temp,
-                            pressure: it.main.pressure,
-                            humidity: it.main.humidity,
-                            weather: it.weather.description,
-                            icon: it.weather[0].icon,
-                            iconUrl: iconPath + '/' + it.weather[0].icon + '.' + iconExt,
-                            windSpeed: it.wind.speed,
-                            windDirection: windDirection(it.wind.deg)
-                        })
-                    }
-                })
+        today () {
+          return {
+            day: this.dailyData[0].weekday,
+            sunrise: EThingUI.utils.formatDate(this.weatherData.sys.sunrise * 1000, 'HH:mm'),
+            sunset: EThingUI.utils.formatDate(this.weatherData.sys.sunset * 1000, 'HH:mm'),
+            temperatureMin: Math.round(this.dailyData[0].temperatureMin),
+            temperatureMax: Math.round(this.dailyData[0].temperatureMax),
+            humidity: Math.round(this.dailyData[0].humidityMax),
+            pressure: Math.round(this.dailyData[0].pressure),
+            windDirection: formatWindDirection(this.dailyData[0].windDirection),
+            windSpeed: Math.round(this.dailyData[0].windSpeedMax),
+          }
+        },
+
+        forecast () {
+          var forecast = []
+          this.dailyData.forEach((d,i) => {
+            if (i==0) return
+            if (d.len<6) return
+            forecast.push({
+              day: d.weekday,
+              weatherIcon: toWeatherIcon(d.weather.id), // d.weather.icon ? ('img:' + iconPath + '/' + d.weather.icon + '.' + iconExt) : null,
+              temperatureMin: Math.round(d.temperatureMin),
+              temperatureMax: Math.round(d.temperatureMax),
+            })
+          })
+          return forecast
+        },
+
+        dailyData () {
+          var dailyData = []
+          var tmpDataList = []
+          var tmpDay = null
+          this.forecastData.list.forEach(data => {
+            var day = data.dt_txt.split(' ')[0]
+            if (day !== tmpDay) {
+              if (tmpDataList.length>0) dailyData.push(tmpDataList)
+              tmpDataList = []
+              tmpDay = day
             }
-            return items
-        },
+            tmpDataList.push(data)
+          })
 
-        fiveDaysItems () {
-            var items = []
-            if (this.raw.list && this.raw.cnt) {
-                var midnight = new Date();
-                midnight.setHours(24,0,0,0);
-                midnight = midnight.getTime();
+          if (tmpDataList.length>0) {
+            dailyData.push(tmpDataList)
+          }
 
-                var item;
-                function initItem() {
-                    item = {
-                        cnt: 0,
-                        date: [],
-                        temperature: [],
-                        humidity: [],
-                        weatherConditionWeight: [],
-                        icon: [],
-                    }
+          // compile
+          return dailyData.map(dataList => {
+            var temperatureMin = null,
+              temperatureMax = null,
+              humidityMax = null,
+              pressure = 0,
+              windSpeedMax = null,
+              windDirection = 0, windDirectionCnt=0,
+              weather = {}, weatherWeight = null;
+
+            dataList.forEach(d => {
+              if (temperatureMin===null || d.main.temp < temperatureMin) temperatureMin = d.main.temp
+              if (temperatureMax===null || d.main.temp > temperatureMax) temperatureMax = d.main.temp
+              if (humidityMax===null || d.main.humidity > humidityMax) humidityMax = d.main.humidity
+              pressure += d.main.pressure
+              if (d.wind && typeof d.wind.speed === 'number') {
+                if (windSpeedMax===null || d.wind.speed > windSpeedMax) windSpeedMax = d.wind.speed
+              }
+              if (d.wind && typeof d.wind.deg === 'number') {
+                windDirection += d.wind.deg
+                windDirectionCnt += 1
+              }
+              if (d.weather && d.weather.length > 0) {
+                var w = weightedWeatherCondition(d.weather[0].id)
+                if (weatherWeight===null || w > weatherWeight) {
+                  weatherWeight = w
+                  weather = d.weather[0]
                 }
-                function endItem() {
-                    var sum = (accumulator, currentValue) => accumulator + currentValue
-                    var min = (accumulator, currentValue) => (accumulator < currentValue ? accumulator : currentValue)
-                    var max = (accumulator, currentValue) => (accumulator > currentValue ? accumulator : currentValue)
-                    if (item.cnt >= 1) {
+              }
+            })
 
-                        item.minTemperature = item.temperature.reduce(min)
-                        item.maxTemperature = item.temperature.reduce(max)
-                        item.temperature = item.temperature.reduce(sum) / item.cnt
-                        item.humidity = item.humidity.reduce(sum) / item.cnt
+            pressure /= dataList.length
 
-                        // select only hour beetween 9h and 18h(excluded)
-                        var startd = new Date(item.date[0])
-                        startd.setHours(9,0,0,0)
-                        startd = startd.getTime()
-                        var endd = new Date(item.date[0])
-                        endd.setHours(17,0,0,0)
-                        endd = endd.getTime()
+            windDirection = windDirectionCnt>0 ? windDirection/windDirectionCnt : null
 
-                        var selectedIcon = null
-                        var selectedW = null
-                        for (var i in item.date) {
-                            var dt = item.date[i]
-                            if (dt >= startd && dt < endd) {
-                                var w = item.weatherConditionWeight[i]
-                                if (selectedW===null || selectedW > w) {
-                                    selectedW = w
-                                    selectedIcon = item.icon[i]
-                                }
-                            }
-                        }
+            var date = new Date(dataList[0].dt * 1000)
+            var weekday = weekdays[date.getDay()]
 
-                        if (selectedW===null) {
-                            for (var i in item.date) {
-                                var w = item.weatherConditionWeight[i]
-                                if (selectedW===null || selectedW > w) {
-                                    selectedW = w
-                                    selectedIcon = item.icon[i]
-                                }
-                            }
-                        }
-
-                        item.date = new Date(item.date[0])
-                        item.weekday = weekdays[item.date.getDay()]
-
-                        if (selectedW!==null && items.length < 5) {
-                            item.icon = selectedIcon
-                            item.weatherConditionWeight = selectedW
-                            item.iconUrl = iconPath + '/' + item.icon + '.' + iconExt
-                            items.push(item)
-                        }
-                    }
-                }
-                initItem()
-
-                this.raw.list.forEach(it => {
-                    var dt = it.dt * 1000
-
-                    if (dt > midnight) {
-                        midnight += 24 * 3600 * 1000
-                        endItem()
-                        // new day
-                        initItem()
-                    }
-
-                    item.cnt += 1
-                    item.date.push(dt)
-                    item.temperature.push(it.main.temp)
-                    item.humidity.push(it.main.humidity)
-                    item.weatherConditionWeight.push(weightedWeatherCondition(it.weather[0].id))
-                    item.icon.push(it.weather[0].icon)
-
-                })
-
-                endItem()
+            return {
+              temperatureMin,
+              temperatureMax,
+              humidityMax,
+              pressure,
+              windSpeedMax,
+              windDirection,
+              weather,
+              weekday,
+              len: dataList.length
             }
-            return items
+          })
+
         },
-
-        nowItems () {
-            var items = []
-            if (this.raw.main) {
-                items.push(
-                    {
-                        date: new Date(this.raw.dt * 1000),
-                        temperature: this.raw.main.temp,
-                        pressure: this.raw.main.pressure,
-                        humidity: this.raw.main.humidity,
-                        weather: this.raw.weather.description,
-                        icon: this.raw.weather[0].icon,
-                        iconUrl: iconPath + '/' + this.raw.weather[0].icon + '.' + iconExt,
-                        windSpeed: this.raw.wind.speed,
-                        windDirection: windDirection(this.raw.wind.deg)
-                    }
-                )
-            }
-            return items
-        },
-
-        items () {
-            if (this.mode === '24h') {
-                return this.twentyFourHoursItems
-            }
-            if (this.mode === '5d') {
-                return this.fiveDaysItems
-            }
-            if (this.mode === 'now') {
-                return this.nowItems
-            }
-            return []
-        }
 
     },
 
     methods: {
 
         load () {
-            var fncall = this.mode === 'now' ? getWeather : getWeatherForecast
-
-            fncall(this.appid, this.location, data => {
-                this.raw = data
+            getWeather(this.appid, this.location, data => {
+              console.log('getWeather', data)
+              this.weatherData = data
+            })
+            getWeatherForecast(this.appid, this.location, data => {
+              console.log('getWeatherForecast', data)
+              this.forecastData = data
             })
         },
-
-        rounded (value, digits = 0) {
-            return parseFloat(value).toFixed(digits);
-        }
 
     },
 
@@ -307,3 +273,25 @@ export default {
 }
 
 </script>
+
+<style lang="stylus" scoped>
+
+.light
+  filter: brightness(110%)
+
+.cityname
+  font-size: 150%
+
+.now .value
+  font-size: 400%
+
+.now .icon
+  font-size: 400%
+
+.now .label
+  font-size: 150%
+
+.today > .row
+  font-size: 80%
+
+</style>
