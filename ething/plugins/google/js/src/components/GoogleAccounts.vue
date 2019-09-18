@@ -25,13 +25,9 @@
 </template>
 
 <script>
-import EThingUI from 'ething-ui'
-
 
 export default {
-    name: 'WGoogleAccounts',
-
-    extends: EThingUI.components.widgets.Base,
+    name: 'GoogleAccounts',
 
     data () {
         return {
@@ -46,15 +42,21 @@ export default {
       },
 
       googleAccountLogoutClick (user) {
-        this.$ething.request('google/logout/'+user.id)
+        return this.$ething.request('google/logout/'+user.id).then(() => {
+          return this.load()
+        })
+      },
+
+      load () {
+        return this.$ething.request('google/users').then(users => {
+          this.users = users
+        })
       }
 
     },
 
     mounted () {
-        this.$ething.request('google/users').then(users => {
-          this.users = users
-        })
+        this.load()
     },
 }
 

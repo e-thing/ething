@@ -30,11 +30,14 @@ class CronNode(Node):
         if local_tz != 'UTC':
             local_ts = pytz.utc.localize(local_ts).astimezone(pytz.timezone(local_tz))
 
+        self.logger.debug('start cron node with expression %s', self.expression)
         iter = croniter(self.expression, local_ts, day_or=False)
 
         while True:
             next_ts = iter.get_next()
-            time.sleep(next_ts - time.time())
+            time_to_wait = next_ts - time.time()
+            self.logger.debug('wait: %s sec, next: %s', time_to_wait, next_ts)
+            time.sleep(time_to_wait)
             self.emit({
                 'payload': time.time()
             })

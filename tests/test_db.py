@@ -170,7 +170,7 @@ def test_db_entity(core):
             self.watch_map = {}
 
         @classmethod
-        def __instantiate__(cls, data, context):
+        def __instantiate__(cls, data, data_src, context):
             return cls(data['name'], data['nickname'])
 
         def __watch__(self, attr, val, old_val):

@@ -174,7 +174,7 @@ class ZigateBaseGateway(Device):
 
         if signal == CONNECTED:
             # run in a new process because it is blocking
-            self.core.processes.add(self._controller_init, name="zigate.setup", target=self._controller_init)
+            self.core.processes.add(self._controller_init, id="zigate.setup", target=self._controller_init)
             return
 
         if 'device' in kwargs:
@@ -337,7 +337,7 @@ class WrapperConnection(BaseTransport):
         self._is_open = False
         self.reconnect_delay = 15
 
-        self.gateway.processes.add(name="zigate.transport", target=self.main, terminate=self._stop)
+        self.gateway.processes.add(id="zigate.transport", target=self.main, terminate=self._stop)
 
     def is_connected(self):
         return self._is_open

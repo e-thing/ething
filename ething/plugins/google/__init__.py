@@ -2,6 +2,9 @@
 
 from ething.plugin import Plugin
 from ething.reg import *
+from ething import Device
+from ething.utils.date import TzDate, utcnow
+from ething.scheduler import set_interval
 
 from authlib.client import OAuth2Session
 import google.oauth2.credentials
@@ -19,10 +22,14 @@ AUTHORIZATION_URL = 'https://accounts.google.com/o/oauth2/v2/auth?access_type=of
 
 AUTHORIZATION_SCOPE ='openid email profile https://www.googleapis.com/auth/calendar.readonly'
 
-AUTH_TOKEN_KEY = 'auth_token'
 AUTH_STATE_KEY = 'auth_state'
-
 USERS_KEY = 'google_users'
+
+CALENDAR_POLL_INTERVAL = 60
+
+
+class GoogleUserNotLoggedException(Exception):
+    pass
 
 @attr('client_secret', label="client secret", type=String(), default='')
 @attr('client_id', label="client id", type=String(), default='')
@@ -132,7 +139,10 @@ class Google(Plugin):
         if not self.client_id or not self.client_secret:
             raise Exception('no client_id or client_secret set')
 
-        if isinstance(oauth2_tokens, GoogleUser):
+        if isinstance(oauth2_tokens, string_types): # user id
+            oauth2_tokens = self.find_user(oauth2_tokens)
+
+        if isinstance(oauth2_tokens, GoogleUser): # user instance
             oauth2_tokens = oauth2_tokens.tokens
 
         if not oauth2_tokens:
@@ -156,21 +166,39 @@ class Google(Plugin):
 
         self.save()
 
-    def _remove_user(self, user_id):
-        if user_id in self.users:
-            self.users.remove(user_id)
+    def _remove_user(self, user):
+        if user in self.users:
+            self.users.remove(user)
         self.save()
 
     def save(self):
         self.core.db.store[USERS_KEY] = pickle.dumps(self.users)
 
     def find_user(self, user_id):
-        i = self.users.index(user_id)
-        return self.users[i]
+        if user_id in self.users:
+            i = self.users.index(user_id)
+            return self.users[i]
+        else:
+            raise GoogleUserNotLoggedException()
 
     def get_calendar_service(self, user):
         credentials = self._build_credentials(user)
         return googleapiclient.discovery.build('calendar', 'v3', credentials=credentials)
+
+    def get_calendar_default_attributes(self, user):
+        service = self.get_calendar_service(user)
+        result = service.calendars().get(calendarId='primary').execute()
+        description = result.get('description', '')
+        summary = result.get('summary', '')
+
+        ret = {}
+
+        if description:
+            ret['description'] = description
+        if summary:
+            ret['name'] = summary
+
+        return ret
 
 
 class GoogleUser(object):
@@ -197,3 +225,69 @@ class GoogleUser(object):
 
     def __json__(self):
         return self._user_info
+
+
+class GoogleUserType(String):
+    def __init__(self, **attr):
+        super(GoogleUserType, self).__init__(allow_empty=False, **attr)
+
+    def to_shema(self, context = None):
+        s = super(GoogleUserType, self).to_shema(context)
+        s['$component'] = 'GoogleUserForm'
+        return s
+
+
+@attr('user', type=GoogleUserType())
+class GoogleBaseDevice(Device):
+
+    @property
+    def _plugin(self):
+        return self.core.plugins['google']
+
+    @property
+    def user_obj(self):
+        return self._plugin.find_user(self.user)
+
+
+# https://developers.google.com/resources/api-libraries/documentation/calendar/v3/python/latest/calendar_v3.events.html#list
+
+@meta(icon="mdi-calendar")
+@attr('events', mode=PRIVATE, default=[])
+@attr('contentModifiedDate', type=TzDate(), default=lambda _: utcnow(), mode=READ_ONLY, description="Last time the content of this calendar was modified (formatted RFC 3339 timestamp).")
+class GoogleCalendar(GoogleBaseDevice):
+
+    @classmethod
+    def __instantiate__(cls, data, data_src, context):
+        if not data.get('description'):
+            defaults = context['core'].plugins['google'].get_calendar_default_attributes(data['user'])
+            if defaults.get('description'):
+                data['description'] = defaults['description']
+        return super(GoogleCalendar, cls).__instantiate__(data, data_src, context)
+
+    @property
+    def _service(self):
+        return self._plugin.get_calendar_service(self.user)
+
+    @set_interval(CALENDAR_POLL_INTERVAL, name="GoogleCalendar.poll")
+    def _update(self):
+        now = datetime.datetime.utcnow().isoformat() + 'Z'  # 'Z' indicates UTC time
+        events_result = self._service.events().list(calendarId='primary', timeMin=now,
+                                              maxResults=10, singleEvents=True,
+                                              orderBy='startTime').execute()
+        LOGGER.debug('calendar result: %s', events_result)
+
+        if not self.description:
+            description = events_result.get('description', '')
+            if description:
+                self.description = description
+
+        events = events_result.get('items', [])
+        LOGGER.debug('calendar events: %s', events)
+
+        with self:
+            self.events = events
+            self.contentModifiedDate = utcnow()
+
+    @method
+    def list_events(self):
+        return self.events

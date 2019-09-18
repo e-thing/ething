@@ -1496,7 +1496,7 @@ def create(cls, data=None, context=None, data_src=None):
   d = _set(cls, data, context, True, data_src)
 
   if hasattr(cls, '__instantiate__'):
-    instance = cls.__instantiate__(d, context)
+    instance = cls.__instantiate__(d, data_src, context)
   else:
     instance = cls()
   
@@ -1524,7 +1524,7 @@ def dynamic(cls):
             '_REGISTER_': False
         })
 
-    def _instantiate(cls_, data, context):
+    def _instantiate(cls_, data, data_src, context):
         if cls_ is cls:
             dyn_cls = _create_dynamic_class(*data.get('_bases', []))
             return dyn_cls(data, context)
@@ -1731,7 +1731,7 @@ class Entity(with_metaclass(MetaReg, object)):
         super(Entity, self).__init__()
 
     @classmethod
-    def __instantiate__(cls, data, context):
+    def __instantiate__(cls, data, data_src, context):
       return cls(data, context)
     
     def __getattr__( self, name):
