@@ -3,6 +3,10 @@ from flask import Response, request
 from ething.Signal import ResourceSignal
 from ething.dispatcher import bind, unbind
 from queue import Queue, Empty
+import logging
+
+
+LOGGER = logging.getLogger(__name__)
 
 
 def on_signal_sio(signal, app):
@@ -22,7 +26,7 @@ def install(core, app, auth, **kwargs):
 
         remote_addr = request.remote_addr
 
-        core.log.debug('SSE: new listener %s', remote_addr)
+        LOGGER.debug('SSE: new listener %s', remote_addr)
 
         def gen():
 
@@ -58,7 +62,7 @@ def install(core, app, auth, **kwargs):
 
             unbind('*', on_signal)
 
-            core.log.debug('SSE: stop listener %s', remote_addr)
+            LOGGER.debug('SSE: stop listener %s', remote_addr)
 
         return gen()
 

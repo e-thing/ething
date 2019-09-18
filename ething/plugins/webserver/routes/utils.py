@@ -8,7 +8,7 @@ import random
 import string
 from collections import OrderedDict
 
-from ething.reg import build_schema_definitions, Entity, build_schema
+from ething.reg import build_schema_definitions, Entity, get_definition_name
 
 from ..Scope import list as scope_list
 
@@ -75,18 +75,8 @@ def install(core, app, auth, **kwargs):
     @app.route('/api/utils/info')
     @auth.required()
     def info():
-
-        resp = {
+        return app.jsonify({
             "scopes": scope_list,
             "info": get_info(core),
-            "plugins": OrderedDict(),
-        }
-
-        for plugin in core.plugins:
-            resp['plugins'][plugin.name] = {
-                'js_index': plugin.is_js_index_valid(),
-                'package': plugin.PACKAGE,
-                'schema': build_schema(plugin)
-            }
-
-        return app.jsonify(resp)
+            "plugins": [get_definition_name(plugin) for plugin in core.plugins],
+        })

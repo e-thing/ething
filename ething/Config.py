@@ -1,6 +1,19 @@
 # coding: utf-8
 from pytz import common_timezones
 from .reg import *
+from .Signal import Signal
+import logging
+
+
+LOGGER = logging.getLogger(__name__)
+
+
+@meta(icon='mdi-settings')
+class SettingsUpdated(Signal):
+    """
+    is emitted each time settings are updated
+    """
+    pass
 
 
 @attr('timezone', type=Enum(common_timezones), default='UTC', description="Set the application timezone.")
@@ -21,7 +34,9 @@ class Config(Entity):
             self.core.db.store['config'] = serialize(self)
             clean(self)
 
-            self.core.log.info('config updated: %s' % updated_keys)
+            LOGGER.info('config updated: %s' % updated_keys)
+
+            self.core.emit(SettingsUpdated(attributes=updated_keys))
 
     def __str__(self):
         return '<config>'

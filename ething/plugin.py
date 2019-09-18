@@ -2,6 +2,7 @@
 from future.utils import string_types
 from .reg import *
 from .utils import generate_id
+from .Config import SettingsUpdated
 import logging
 import inspect
 import os
@@ -30,6 +31,7 @@ class PluginMetaClass(MetaReg):
 
 @abstract
 @namespace('plugins')
+@meta(description='')
 class Plugin(with_metaclass(PluginMetaClass, Entity)):
     """
     To create a new plugin, just override this class.
@@ -50,8 +52,6 @@ class Plugin(with_metaclass(PluginMetaClass, Entity)):
                 self.options.get('foo')
 
     """
-
-    _REGISTER_ = False
 
     # if this plugin come from a package, this attribute will contain his name
     PACKAGE = dict()
@@ -91,11 +91,15 @@ class Plugin(with_metaclass(PluginMetaClass, Entity)):
 
     def __transaction_end__(self):
         if is_dirty(self):
-
-            self.on_config_change([a.name for a in list_dirty_attr(self)])
+            updated_keys = [a.name for a in list_dirty_attr(self)]
+            self.on_config_change(updated_keys)
 
             self.core.db.store['config.%s' % self.name] = serialize(self)
             clean(self)
+
+            LOGGER.info('config updated: %s', updated_keys)
+
+            self.core.emit(SettingsUpdated(plugin=self.name, attributes=updated_keys))
 
     @property
     def name(self):
@@ -147,6 +151,13 @@ class Plugin(with_metaclass(PluginMetaClass, Entity)):
         Is called once the core has been destroyed. Used to free up the memory.
         """
         pass
+
+    @classmethod
+    def __schema__(cls, schema, context=None):
+        schema['js_index'] = cls.is_js_index_valid()
+        schema['package'] = cls.PACKAGE
+        schema['title'] = cls.get_name()
+        return schema
 
 
 def get_package_info(mod):
@@ -231,19 +242,22 @@ def _is_in_module(mod_name, base_mod_name):
 
 
 def extract_plugin_from_module(mod):
+    name = mod.__name__.split('.').pop()
+
     for attr_name in dir(mod):
         attr = getattr(mod, attr_name, None)
         if inspect.isclass(attr) and issubclass(attr, Plugin) and attr is not Plugin and _is_in_module(getattr(attr, '__module__', None), mod.__name__):
+            set_meta(attr, 'name', name)
             return attr
     else:
         install_func = getattr(mod, 'install', None)
         if install_func and callable(install_func):
-            return install_func_to_plugin(install_func)
+            return install_func_to_plugin(install_func, name)
 
     # raise Exception('module "%s" has no plugin install function found nor plugin class found' % mod)
 
     # no install found -> EmptyPlugin
-    return type(generate_plugin_name('EmptyPlugin'), (Plugin,), {})
+    return type(name or generate_plugin_name('EmptyPlugin'), (Plugin,), {})
 
 
 def search_plugin_cls(something):

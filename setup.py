@@ -62,6 +62,11 @@ install_requires = [
 
     # --miflora
     "miflora",
+
+    # --google
+    "authlib",
+    "google-api-python-client",
+    "google-auth",
 ]
 
 if os.name != "nt":

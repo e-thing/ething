@@ -22,7 +22,6 @@ EThingUI.registerWidget('OpenWeatherMapForecast', {
     minHeight: 120
 })
 
-
 EThingUI.extend('resources/OpenWeatherMapDevice', {
 
     icon: 'mdi-weather-partlycloudy',

@@ -243,11 +243,11 @@ export default {
 
         load () {
             getWeather(this.appid, this.location, data => {
-              console.log('getWeather', data)
+              //console.log('getWeather', data)
               this.weatherData = data
             })
             getWeatherForecast(this.appid, this.location, data => {
-              console.log('getWeatherForecast', data)
+              //console.log('getWeatherForecast', data)
               this.forecastData = data
             })
         },

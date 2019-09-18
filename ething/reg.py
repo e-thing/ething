@@ -1157,8 +1157,8 @@ class MetaReg(ABCMeta):
         setattr(cls, a.name, a)
 
       # look for computed attributes
-      for name in dct:
-          member = dct.get(name)
+      for n in dct:
+          member = dct.get(n)
           if isinstance(member, ComputedAttr):
             if member.cls is None:
               member.cls = cls
@@ -1186,7 +1186,8 @@ class MetaReg(ABCMeta):
           'signals': extended_signals,
           'abstract': False,
           'description': extract_from_docstring(cls.__doc__),
-          'label': format_label(cls.__name__)
+          'label': format_label(name),
+          'name': name
       })
 
       if 'namespace_parent' in inherited_meta:
@@ -1225,7 +1226,7 @@ def get_definition_name(cls):
   """
   returns the definition name for the given class or instance (e.g. "resources/Resource")
   """
-  name = cls.__name__
+  name = get_meta(cls, 'name')
   ns = get_meta(cls, 'namespace')
   if ns:
       return '%s/%s' % (ns, name)
@@ -1381,6 +1382,7 @@ def build_schema_definitions(**kwargs):
         continue
 
     ns = get_meta(cls, 'namespace')
+    name = get_meta(cls, 'name')
 
     schema = build_schema(cls, **kwargs)
 
@@ -1391,7 +1393,7 @@ def build_schema_definitions(**kwargs):
           rel_def[ns_item] = OrderedDict()
         rel_def = rel_def[ns_item]
     
-    rel_def[cls.__name__] = schema
+    rel_def[name] = schema
   
   return definitions
 
