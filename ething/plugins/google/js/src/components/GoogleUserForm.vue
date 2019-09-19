@@ -1,7 +1,7 @@
 <template>
   <form-schema-layout class="form-schema-google-user-select">
 
-    <select
+    <q-select
       v-model="model"
       :error="!!error"
       hide-bottom-space
@@ -28,7 +28,7 @@
       <template v-slot:append>
         <q-icon name="add" class="cursor-pointer" @click.prevent.stop="addGoogleAccountClick" />
       </template>
-    </select>
+    </q-select>
   </form-schema-layout>
 </template>
 

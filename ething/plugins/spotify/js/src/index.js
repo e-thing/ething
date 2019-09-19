@@ -9,18 +9,35 @@ EThingUI.extend('resources/SpotifyAccount', {
 
     icon: 'mdi-spotify',
 
-    widgets: {
-      'spotify': {
-        in: ['devicePage', 'dashboard'],
-        component: SpotifyWidget,
-        title: 'Spotify widget',
-        description: 'play music on your device',
-        minHeight: 250,
-        minWidth: 500
-      },
-      'main': {
-        in: 'devicePage',
-        component: MainComponent
+    components (resource) {
+      return {
+        'spotify': {
+          component: 'widget',
+          title: 'Spotify',
+          description: 'play music on your device',
+          attributes () {
+            return {
+              widget: 'spotify',
+              height: '300px'
+            }
+          }
+        },
+        'main': {
+          title: 'Account',
+          component: MainComponent
+        }
+      }
+    },
+
+    widgets (resource) {
+      return {
+        'spotify': {
+          component: SpotifyWidget,
+          title: 'Spotify',
+          description: 'play music on your device',
+          minHeight: 250,
+          minWidth: 500
+        }
       }
     }
 

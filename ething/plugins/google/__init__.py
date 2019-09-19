@@ -12,6 +12,7 @@ import googleapiclient.discovery
 
 import logging
 import pickle
+import requests
 
 
 LOGGER = logging.getLogger(__name__)
@@ -59,7 +60,7 @@ class Google(Plugin):
         app = webserver_plugin.app
         auth = app.auth
 
-        from flask import request, redirect, url_for, session
+        from flask import request, redirect, url_for, Response
 
         @app.route('/api/google/login')
         @auth.required()
@@ -134,6 +135,21 @@ class Google(Plugin):
         @auth.required()
         def list_users():
             return app.jsonify(self.users)
+
+        @app.route('/api/google/news')
+        @auth.required()
+        def list_news():
+            # https://news.google.com/news/rss
+            hl = request.args.get('hl')
+            gl = request.args.get('gl')
+            params = {}
+            if hl:
+                params['hl'] = hl
+            if gl:
+                params['gl'] = gl
+            r = requests.get("https://news.google.com/rss", params=params)
+            LOGGER.debug('google/news => %s', r.url)
+            return Response(r.text, mimetype='text/xml')
 
     def _build_credentials(self, oauth2_tokens):
         if not self.client_id or not self.client_secret:
@@ -270,6 +286,7 @@ class GoogleCalendar(GoogleBaseDevice):
 
     @set_interval(CALENDAR_POLL_INTERVAL, name="GoogleCalendar.poll")
     def _update(self):
+        LOGGER.debug('calendar poll')
         now = datetime.datetime.utcnow().isoformat() + 'Z'  # 'Z' indicates UTC time
         events_result = self._service.events().list(calendarId='primary', timeMin=now,
                                               maxResults=10, singleEvents=True,
@@ -288,6 +305,6 @@ class GoogleCalendar(GoogleBaseDevice):
             self.events = events
             self.contentModifiedDate = utcnow()
 
-    @method
+    @method.return_type('object')
     def list_events(self):
         return self.events

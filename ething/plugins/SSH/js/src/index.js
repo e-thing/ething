@@ -6,11 +6,14 @@ require('./shell.js')
 EThingUI.extend('resources/SSH', {
     icon: 'mdi-console',
 
-    widgets: {
+    components (resource) {
+      return {
         'main': {
-            in: 'devicePage',
-            component: MainComponent
+            component: MainComponent,
+            title: 'Command prompt',
+            icon: 'mdi-console',
         }
+      }
     },
 
 })

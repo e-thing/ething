@@ -24,6 +24,8 @@ except ImportError:
 
 
 # todo: auto refresh
+# see https://stackoverflow.com/questions/26726165/python-spotify-oauth-flow
+# see https://github.com/plamere/spotipy/blob/master/docs/index.rst
 
 OAUTH_AUTHORIZE_URL = 'https://accounts.spotify.com/authorize'
 OAUTH_TOKEN_URL = 'https://accounts.spotify.com/api/token'

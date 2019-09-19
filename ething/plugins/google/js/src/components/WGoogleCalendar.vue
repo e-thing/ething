@@ -4,10 +4,11 @@
     <resource-observable :resource="this.resource" attribute="contentModifiedDate" @change="load()"/>
 
     <q-list>
-      <template v-for="daily in dailyData">
-        <q-item-label header>{{ daily.date }}</q-item-label>
-        <q-item v-for="event in daily.events" :key="event.id">
-          <q-item-section side class="text-white bg-primary">
+      <template v-for="(daily, index) in dailyEvents">
+        <q-separator v-if="index>0" />
+        <q-item-label header class="q-py-sm">{{ daily.date }}</q-item-label>
+        <q-item v-for="event in daily.events" :key="event.id" clickable v-ripple @click="link(event)">
+          <q-item-section class="text-white col-auto q-px-md text-center" style="min-width: 100px;" :style="{backgroundColor: color}">
             <q-item-label>{{ formatTime(event) }}</q-item-label>
           </q-item-section>
 
@@ -15,12 +16,8 @@
             <q-item-label>{{ event.summary }}</q-item-label>
             <q-item-label caption lines="2" v-if="event.description">{{ event.description }}</q-item-label>
           </q-item-section>
-
-          <q-item-section side>
-            <q-btn flat icon="mdi-link-variant" @click="link(event)" />
-          </q-item-section>
-        </template>
-      </q-item>
+        </q-item>
+      </template>
     </q-list>
   </div>
 </template>
@@ -62,7 +59,7 @@ export default {
 
       load () {
         return this.resource.execute('list_events', events => {
-          this.events = events
+          this.events = events || []
         })
       },
 

@@ -1,8 +1,7 @@
 import WOpenWeatherMapDevice from './components/WOpenWeatherMapDevice'
 import WOpenWeatherMapForecast from './components/WOpenWeatherMapForecast'
 import EThingUI from 'ething-ui'
-import WeatherIcon from '../src';
-import 'weather-icons/css/weather-icons.css'
+import "./statics/css/weather-icons.css"
 
 
 // register globally this widget
