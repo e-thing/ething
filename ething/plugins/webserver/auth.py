@@ -72,7 +72,7 @@ class Auth(object):
 
     def check(self, permissions = None):
 
-        authctx = self.check_localhost() or self.check_session() or self.check_apikey() or self.check_basic() or self.check_public()
+        authctx = self.check_localhost() or self.check_session() or self.check_apikey() or self.check_basic()
 
         if authctx and isinstance(authctx, AuthContext):
             g.auth = authctx
@@ -115,20 +115,6 @@ class Auth(object):
                 return AuthContext('basic')
             else:
                 raise ServerException('invalid credentials', 401)
-
-    def check_public(self):
-        matches = re.search(
-            '^/api/([^/]+)/([a-zA-Z0-9_-]{7})($|/|\\?)', str(request.path))
-
-        if matches:
-            id = matches.group(2)
-            resource = self.core.get(id)
-            if resource:
-                public = resource.public
-                if public == 'readonly':
-                    return AuthContext('public', scope='resource:read')
-                elif public == 'readwrite':
-                    return AuthContext('public', scope='resource:read resource:write device:execute')
 
 
 def install_auth(app):

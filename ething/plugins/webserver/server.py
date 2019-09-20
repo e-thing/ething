@@ -29,6 +29,7 @@ from ething.reg import get_registered_class, from_json, get_definition_name
 from ething.Resource import Resource
 from ething.env import USER_DIR
 from collections import OrderedDict
+from authlib.flask.client import OAuth
 
 
 LOGGER = logging.getLogger(__name__)
@@ -128,6 +129,10 @@ class FlaskApp(Flask):
         def disconnect_handler():
             LOGGER.info('[SocketIO] client disconnected %s', request.sid)
 
+        #Oauth
+        self.secret_key = os.urandom(24)
+        self.oauth = OAuth(self)
+
         #logging
         logging.getLogger('werkzeug').setLevel(logging.ERROR)
 
@@ -144,27 +149,22 @@ class FlaskApp(Flask):
         # routes
         install_routes(core=self.core, app=self, auth=self.auth, debug=self.debug)
 
-    @property
-    def conf(self):
-        # config is already used by Flask class
-        return self._config
-
-    def run(self):
-        port = self.conf.get('port', 80)
+        self.port = self.conf.get('port', 80)
 
         # ssl context
         ssl_args = {}
         ssl_enabled = False
         if self.conf.get('ssl'):
             try:
-                ssl_path=os.path.join(USER_DIR, 'ssl')
-                if not ( os.path.exists(ssl_path + '.crt') and os.path.exists(ssl_path + '.key') ):
+                ssl_path = os.path.join(USER_DIR, 'ssl')
+                if not (os.path.exists(ssl_path + '.crt') and os.path.exists(ssl_path + '.key')):
                     make_ssl_devcert(ssl_path)
                 ssl_args['keyfile'] = ssl_path + '.key'
                 ssl_args['certfile'] = ssl_path + '.crt'
                 ssl_enabled = True
             except:
                 LOGGER.exception('unable to create ssl certificate')
+        self.ssl_args = ssl_args
 
         # retrieve current ip:
         current_ip = None
@@ -176,12 +176,21 @@ class FlaskApp(Flask):
         except:
             pass
 
-        LOGGER.info("web server started at http%s://%s:%d" % ('s' if ssl_enabled else '', current_ip or 'localhost', port))
+        self.base_url = 'http%s://%s:%d' % ('s' if ssl_enabled else '', current_ip or 'localhost', self.port)
+
+    @property
+    def conf(self):
+        # config is already used by Flask class
+        return self._config
+
+    def run(self):
+
+        LOGGER.info("web server started at %s" % self.base_url)
         LOGGER.info("web server root path = %s" % self.root_path)
 
         self.running.set()
 
-        self.socketio.run(self, host='0.0.0.0', port=port, use_reloader=False, **ssl_args)
+        self.socketio.run(self, host='0.0.0.0', port=self.port, use_reloader=False, **self.ssl_args)
 
     def stop(self):
         self.running.clear()

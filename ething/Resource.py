@@ -112,7 +112,6 @@ class RDict(Dict):
 
 @abstract
 @throw(ResourceCreated, ResourceDeleted, ResourceUpdated)
-@attr('public', type=Enum([False, 'readonly', 'readwrite']), default=False, description="False: this resource is not publicly accessible. 'readonly': this resource is accessible for reading by anyone. 'readwrite': this resource is accessible for reading and writing by anyone.")
 @attr('description', type=String(), default='', description="A description of this resource.")
 @attr('data', type=RDict(allow_extra=True), default={}, description="A collection of arbitrary key-value pairs.")
 @attr('createdBy', type=Nullable(ResourceType()), mode=READ_ONLY, default=None, description="The id of the resource responsible of the creation of this resource, or null.")

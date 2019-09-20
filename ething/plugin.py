@@ -11,6 +11,7 @@ import importlib
 import pkg_resources
 from email.parser import FeedParser
 from .plugins import import_builtin_plugins
+from .scheduler import bind_instance
 
 
 LOGGER = logging.getLogger(__name__)
@@ -88,6 +89,8 @@ class Plugin(with_metaclass(PluginMetaClass, Entity)):
         super(Plugin, self).__init__(config, {
             'core': core
         }, data_src='db')
+
+        bind_instance(self)
 
     def __transaction_end__(self):
         if is_dirty(self):

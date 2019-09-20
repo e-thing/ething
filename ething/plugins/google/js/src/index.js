@@ -1,24 +1,7 @@
 import EThingUI from 'ething-ui'
-import GoogleAccounts from './components/GoogleAccounts'
-import GoogleUserForm from './components/GoogleUserForm'
 import WGoogleCalendar from './components/WGoogleCalendar'
 import WGoogleNews from './components/WGoogleNews'
 
-
-EThingUI.extend('plugins/google', {
-
-    components (plugin) {
-      return {
-        'accounts': {
-            component: GoogleAccounts,
-            title: 'accounts',
-        }
-      }
-    },
-
-})
-
-EThingUI.form.registerForm(GoogleUserForm)
 
 EThingUI.extend('resources/GoogleCalendar', {
 
