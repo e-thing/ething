@@ -140,17 +140,19 @@ class GoogleAccount(Account):
 @meta(icon="mdi-calendar")
 @attr('events', mode=PRIVATE, default=[])
 @attr('contentModifiedDate', type=TzDate(), default=lambda _: utcnow(), mode=READ_ONLY, description="Last time the content of this calendar was modified (formatted RFC 3339 timestamp).")
-@attr('account', type=ResourceType(accepted_types=('resources/GoogleAccount',)))
+@attr('createdBy', label="account", type=ResourceType(accepted_types=('resources/GoogleAccount',)), mode=None, required=True)
 class GoogleCalendar(Device):
+
+    @property
+    def account(self):
+        return self.createdBy
 
     @set_interval(CALENDAR_POLL_INTERVAL, name="GoogleCalendar.poll")
     def _update(self):
-        LOGGER.debug('calendar poll')
         now = datetime.datetime.utcnow().isoformat() + 'Z'  # 'Z' indicates UTC time
         events_result = self.account.get_calendar_service().events().list(calendarId='primary', timeMin=now,
                                               maxResults=10, singleEvents=True,
                                               orderBy='startTime').execute()
-        LOGGER.debug('calendar result: %s', events_result)
 
         if not self.description:
             description = events_result.get('description', '')
