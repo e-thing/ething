@@ -29,7 +29,6 @@ from ething.reg import get_registered_class, from_json, get_definition_name
 from ething.Resource import Resource
 from ething.env import USER_DIR
 from collections import OrderedDict
-from authlib.flask.client import OAuth
 
 
 LOGGER = logging.getLogger(__name__)
@@ -128,10 +127,6 @@ class FlaskApp(Flask):
         @socketio.on('disconnect')
         def disconnect_handler():
             LOGGER.info('[SocketIO] client disconnected %s', request.sid)
-
-        #Oauth
-        self.secret_key = os.urandom(24)
-        self.oauth = OAuth(self)
 
         #logging
         logging.getLogger('werkzeug').setLevel(logging.ERROR)

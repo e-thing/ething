@@ -67,6 +67,9 @@ install_requires = [
     "authlib",
     "google-api-python-client",
     "google-auth",
+
+    # --spotipy
+    "spotipy",
 ]
 
 if os.name != "nt":

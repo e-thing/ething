@@ -4,27 +4,19 @@ from ething.plugin import Plugin
 from ething.account import Account
 from ething.reg import *
 from ething.scheduler import set_interval
-from ething.env import USER_DIR
 import logging
-import pickle
-from spotipy.oauth2 import SpotifyOAuth
-import os
+import spotipy
 
 
 LOGGER = logging.getLogger(__name__)
 
 
-class SpotifyOAuth_(SpotifyOAuth):
-
-    def get_authorize_url(self, redirect_uri=None):
-        if redirect_uri:
-            self.redirect_uri = redirect_uri
+class SpotifyOAuth_(spotipy.oauth2.SpotifyOAuth):
+    def get_authorize_url(self):
         return super(SpotifyOAuth_, self).get_authorize_url() + '&show_dialog=true'
 
-    def get_access_token(self, code, redirect_uri=None):
-        if redirect_uri:
-            self.redirect_uri = redirect_uri
-        return super(SpotifyOAuth_, self).get_access_token(code)
+    def _warn(self, msg):
+        LOGGER.warning(msg)
 
 
 class Spotify(Plugin):
@@ -52,7 +44,7 @@ class Spotify(Plugin):
         def spotify_login():
             account = self.core.get(request.args.get('resource'))
             redirect_uri = re.sub('/api/spotify/login.*$', '/api/spotify/auth', request.url)
-            authorize_url = account.oauth.get_authorize_url(redirect_uri)
+            authorize_url = account.oauth(redirect_uri).get_authorize_url()
             LOGGER.debug('login authorize_url=%s', authorize_url)
             self._current_account = account
             return redirect(authorize_url, code=302)
@@ -61,13 +53,15 @@ class Spotify(Plugin):
         @auth.required()
         def spotify_authorize():
             redirect_uri = re.sub('/api/spotify/auth.*$', '/api/spotify/auth', request.url)
-            token_info = self._current_account.oauth.get_access_token(request.args.get("code"), redirect_uri) # auto saved in cache
+            token_info = self._current_account.oauth(redirect_uri).get_access_token(request.args.get("code"))
             LOGGER.debug('auth token_info=%s', token_info)
-            self._current_account.logged = True
+            if token_info:
+                self._current_account.token = dict(token_info)
             self._current_account = None
             return redirect(url_for('root_client'), code=302)
 
 
+@attr('_token', mode=PRIVATE, default=None)
 @attr('client_secret', label="client secret", type=String(allow_empty=False))
 @attr('client_id', label="client id", type=String(allow_empty=False))
 @meta(icon="mdi-spotify", loginUrl='/spotify/login')
@@ -75,16 +69,106 @@ class SpotifyAccount(Account):
 
     def __init__(self, *args, **kwargs):
         super(SpotifyAccount, self).__init__(*args, **kwargs)
+        self.logged = bool(self.token)
+        self._player = None
 
-        self.oauth = SpotifyOAuth_(
+    def oauth(self, redirect_uri = None):
+        return SpotifyOAuth_(
             self.client_id,
             self.client_secret,
-            None,
+            redirect_uri,
             scope='user-read-email playlist-read-private user-read-playback-state user-read-currently-playing user-modify-playback-state',
-            cache_path=os.path.abspath(os.path.join(USER_DIR, 'spotify_%s.json' % self.id)),
         )
 
-        token_info = self.oauth.get_cached_token()
-        self.logged = bool(token_info)
+    @property
+    def token(self):
+        return self._token
 
+    @token.setter
+    def token(self, value):
+        with self:
+            self._token = value
+            self._player = None # reset the player
+            self.logged = bool(value)
+
+    @set_interval(60, name="spotify.refresh_token")
+    def refresh_token(self, force=False):
+        token = self.token
+        if not token:
+            return
+        # refresh only if necessary
+        oauth = self.oauth()
+        if force or oauth._is_token_expired(token):
+            self.token = oauth.refresh_access_token(token['refresh_token'])
+
+    @property
+    def player(self):
+        if self._player is None:
+            kwargs = {}
+            token = self.token
+            if token:
+                kwargs['auth'] = token.get("access_token")
+            self._player = spotipy.Spotify(**kwargs)
+        return self._player
+
+    @method.return_type('object')
+    def current_user(self):
+        return self.player.current_user()
+
+    @method.return_type('object')
+    def current_user_playing_track(self):
+        return self.player.current_user_playing_track()
+
+    @method.return_type('object')
+    def current_user_playlists(self, limit=50, offset=0):
+        return self.player.current_user_playlists(limit, offset)
+
+    @method.return_type('object')
+    def current_user_saved_albums(self, limit=20, offset=0):
+        return self.player.current_user_saved_albums(limit, offset)
+
+    @method.return_type('object')
+    def current_user_top_artists(self, limit=20, offset=0):
+        return self.player.current_user_top_artists(limit, offset)
+
+    @method.return_type('object')
+    def devices(self):
+        return self.player.devices()
+
+    @method.attr('device_id', type=Nullable(String(allow_empty=False)), default=None)
+    def next_track(self, device_id=None):
+        return self.player.next_track(device_id)
+
+    @method.attr('device_id', type=Nullable(String(allow_empty=False)), default=None)
+    def pause_playback(self, device_id=None):
+        return self.player.pause_playback(device_id)
+
+    @method.attr('uris', type=Nullable(Array(String(allow_empty=False))), default=None)
+    @method.attr('context_uri', type=Nullable(String(allow_empty=False)), default=None)
+    @method.attr('device_id', type=Nullable(String(allow_empty=False)), default=None)
+    def start_playback(self, device_id=None, context_uri=None, uris=None):
+        return self.player.start_playback(device_id, context_uri, uris)
+
+    @method.attr('device_id', type=Nullable(String(allow_empty=False)), default=None)
+    def previous_track(self, device_id=None):
+        return self.player.previous_track(device_id)
+
+    @method.attr('device_id', type=Nullable(String(allow_empty=False)), default=None)
+    @method.attr('state', type=Enum(('track', 'context', 'off')))
+    def repeat(self, state, device_id=None):
+        return self.player.repeat(state, device_id)
+
+    @method.attr('device_id', type=Nullable(String(allow_empty=False)), default=None)
+    @method.attr('state', type=Boolean())
+    def shuffle(self, state, device_id=None):
+        return self.player.shuffle(state, device_id)
+
+    @method.attr('device_id', type=String(allow_empty=False))
+    def transfer_playback(self, device_id, force_play=True):
+        return self.player.transfer_playback(device_id, force_play)
+
+    @method.attr('device_id', type=Nullable(String(allow_empty=False)))
+    @method.attr('volume_percent', type=Number(min=0, max=100))
+    def volume(self, volume_percent, device_id=None):
+        return self.player.volume(volume_percent, device_id)
 
