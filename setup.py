@@ -69,7 +69,7 @@ install_requires = [
     "google-auth",
 
     # --spotipy
-    "spotipy",
+    "spotipy-homeassistant",
 ]
 
 if os.name != "nt":

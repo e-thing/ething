@@ -6,14 +6,15 @@ from ething.reg import *
 from ething.scheduler import set_interval
 import logging
 import spotipy
+import spotipy.oauth2
 
 
 LOGGER = logging.getLogger(__name__)
 
 
 class SpotifyOAuth_(spotipy.oauth2.SpotifyOAuth):
-    def get_authorize_url(self):
-        return super(SpotifyOAuth_, self).get_authorize_url() + '&show_dialog=true'
+    def get_authorize_url(self, state=None):
+        return super(SpotifyOAuth_, self).get_authorize_url(state) + '&show_dialog=true'
 
     def _warn(self, msg):
         LOGGER.warning(msg)
@@ -61,6 +62,13 @@ class Spotify(Plugin):
             return redirect(url_for('root_client'), code=302)
 
 
+@attr('title', mode=READ_ONLY, default=None)
+@attr('artist', mode=READ_ONLY, default=None)
+@attr('album', mode=READ_ONLY, default=None)
+@attr('user', mode=READ_ONLY, default=None)
+@attr('shuffle', mode=READ_ONLY, default=None)
+@attr('volume', mode=READ_ONLY, default=None)
+@attr('current_device', mode=READ_ONLY, default=None)
 @attr('_token', mode=PRIVATE, default=None)
 @attr('client_secret', label="client secret", type=String(allow_empty=False))
 @attr('client_id', label="client id", type=String(allow_empty=False))
@@ -98,7 +106,7 @@ class SpotifyAccount(Account):
             return
         # refresh only if necessary
         oauth = self.oauth()
-        if force or oauth._is_token_expired(token):
+        if force or spotipy.oauth2.is_token_expired(token):
             self.token = oauth.refresh_access_token(token['refresh_token'])
 
     @property
@@ -116,8 +124,12 @@ class SpotifyAccount(Account):
         return self.player.current_user()
 
     @method.return_type('object')
-    def current_user_playing_track(self):
-        return self.player.current_user_playing_track()
+    def current_playback(self):
+        return self.player.current_playback()
+
+    @method.return_type('object')
+    def currently_playing(self):
+        return self.player.currently_playing()
 
     @method.return_type('object')
     def current_user_playlists(self, limit=50, offset=0):
