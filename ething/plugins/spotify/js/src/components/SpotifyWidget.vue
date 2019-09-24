@@ -1,447 +1,326 @@
 <template>
+  <div class="fit">
+    <q-resize-observer @resize="onResize" />
 
-      <div class="fit column justify-center items-stretch">
-        <div class="col-auto overflow-hidden q-ma-md">
-          <div class="row gutter-sm items-center">
-            <div class="col">
-              <q-select
-                v-model="selectedPlaylistId"
-               :options="playlistOptions"
-               placeholder="playlist"
-              />
-            </div>
-            <div class="col">
-              <q-select
-                v-model="selectedDeviceId"
-               :options="deviceOptions"
-               placeholder="device"
-              />
+    <div v-if="__layout=='xs'" class="fit relative-position">
+      <q-img
+          :src="image_url"
+          :ratio="1"
+          class="fit"
+        />
+      <div class="absolute-bottom full-width">
+        <q-btn-group spread stretch flat>
+          <q-btn icon="mdi-skip-previous" @click="prev()" />
+          <q-btn :icon="resource.attr('state')=='playing' ? 'mdi-pause' : 'mdi-play'" @click="toggle()" />
+          <q-btn icon="mdi-skip-next" @click="next()"/>
+        </q-btn-group>
+      </div>
+    </div>
+    <template v-else>
+      <div class="row">
+        <div class="col-auto">
+          <q-img
+              :src="image_url"
+              :ratio="1"
+              :style="__imgStyle"
+            />
+        </div>
+
+        <div class="col column">
+            <div class="col q-px-sm full-width">
+              <div class="text-h5 ellipsis">{{ __title }}</div>
+              <div class="text-subtitle1 row no-wrap q-gutter-x-sm items-center">
+                <q-icon class="col-auto" name="mdi-artist"/>
+                <span class="col-auto ellipsis" style="max-width: 250px;">{{ __artist }}</span>
+                <span class="col-auto"> - </span>
+                <q-icon class="col-auto"name="mdi-album"/>
+                <span class="col ellipsis">{{ __album }}</span>
+              </div>
+              <div class="text-subtitle1 ellipsis" v-show="height>150"><q-icon name="mdi-speaker" style="vertical-align: baseline;" class="q-mr-sm"/>{{ resource.attr('current_device') }}</div>
             </div>
             <div class="col-auto">
-              <q-btn color="primary" label="play" @click="playSelected"/>
+              <q-btn-group spread stretch flat>
+                <q-btn icon="mdi-skip-previous" @click="prev()" />
+                <q-btn :icon="resource.attr('state')=='playing' ? 'mdi-pause' : 'mdi-play'" @click="toggle()" />
+                <q-btn icon="mdi-skip-next" @click="next()"/>
+                <div class="row">
+                  <q-btn icon="mdi-volume-minus" flat @click="volume(__volume-10)"/>
+                  <div class="q-pt-sm">
+                    {{ __volume }}%
+                  </div>
+                  <q-btn icon="mdi-volume-plus" flat @click="volume(__volume+10)"/>
+                </div>
+              </q-btn-group>
             </div>
-          </div>
-        </div>
-        <div class="col-auto text-center q-ma-md">
-          <div v-if="currentItem.name" class="text-faded ellipsis">
-            {{ currentItem.name }}
-            <span v-if="currentItem.album"> - {{ currentItem.album.name }}</span>
-          </div>
-          <small v-if="currentDevice.name" class="text-faded">{{ currentDevice.name }}</small>
-        </div>
-        <div class="col-auto q-ma-md">
-
-          <div class="row gutter-sm items-center">
-            <div class="col text-right">
-              <span v-if="time" class="text-faded">{{ time }}</span>
-            </div>
-
-            <div class="col-auto">
-              <q-btn icon="mdi-skip-previous" round @click="prev"/>
-              <q-btn :icon="state.is_playing ? 'mdi-pause' : 'mdi-play'" color="primary" round size="xl" @click="playpause"/>
-              <q-btn icon="mdi-skip-next" round @click="next"/>
-            </div>
-
-            <div class="col">
-              <q-btn icon="mdi-shuffle-variant" :color="state.shuffle_state ? 'primary' : ''" round size="sm" @click="setShuffle(!state.shuffle_state)"/>
-              <q-btn icon="mdi-repeat" :color="state.repeat_state=='off' ? '' : 'primary'" round size="sm" @click="setRepeat(state.repeat_state=='off'?'context':'off')"/>
-              <q-btn icon="mdi-volume-low" round size="sm" @click="setVolume('down')"/>
-              <q-btn icon="mdi-volume-high" round size="sm" @click="setVolume('up')"/>
-            </div>
-          </div>
         </div>
       </div>
+      <div v-if="__layout!='wide'" class="row">
+        <q-scroll-area :style="{height: (height - __imgSize) + 'px'}" :class="context ? 'col-6' : 'col-12'">
+          <q-list>
+            <q-item-label header>Playlists</q-item-label>
+            <q-item
+              v-for="item in playlists"
+              :key="item.id"
+              clickable
+              v-ripple
+              @click="play(item.uri)"
+              :active="item.uri === __contextUri"
+              active-class="text-orange"
+            >
+              <q-item-section top avatar>
+                <q-avatar rounded>
+                  <img :src="item.imageUrl">
+                </q-avatar>
+              </q-item-section>
+
+              <q-item-section>
+                <q-item-label>{{ item.name }}</q-item-label>
+                <q-item-label caption>{{ item.owner }}</q-item-label>
+              </q-item-section>
+            </q-item>
+          </q-list>
+        </q-scroll-area>
+        <q-scroll-area :style="{height: (height - __imgSize) + 'px'}" class="col-6" v-if="context">
+          <q-list>
+            <q-item-label header>Tracks</q-item-label>
+            <q-item
+              v-for="item in context.tracks"
+              :key="item.id"
+              clickable
+              v-ripple
+              @click="item.play()"
+              :active="item.name === __title"
+              active-class="text-orange"
+            >
+              <q-item-section top avatar>
+                <q-avatar rounded>
+                  <img :src="item.imageUrl">
+                </q-avatar>
+              </q-item-section>
+
+              <q-item-section>
+                <q-item-label>{{ item.name }}</q-item-label>
+                <q-item-label caption>{{ item.artists }}</q-item-label>
+              </q-item-section>
+            </q-item>
+          </q-list>
+        </q-scroll-area>
+      </div>
+    </template>
+
+  </div>
 
 </template>
 
 <script>
 
 import EThingUI from 'ething-ui'
-var Spotify = require('spotify-web-api-js');
-
-
-function pad(n, width, z) {
-  z = z || '0';
-  n = n + '';
-  return n.length >= width ? n : new Array(width - n.length + 1).join(z) + n;
-}
 
 
 export default {
     name: 'WSpotify',
 
-    extends: EThingUI.components.widgets.WResource,
+    extends: EThingUI.components.widgets.Base,
 
     data () {
         return {
-          spotify: new Spotify(),
-          devices: [],
+          height: 32,
+          width: 32,
           playlists: [],
-          selectedDeviceId: null,
-          selectedPlaylistId: null,
-          refreshing: false,
-          state: {
-            is_playing: false,
-            device: {},
-            item: {},
-            shuffle_state: false,
-            repeat_state: false
-          },
-          stateFetchTs: null,
-          p_currentReq: null,
-          p_timer: null,
-          p_cnt: 0,
-          time: null,
-          p_observer: null
+          context: null,
+          contextData: null
         }
     },
 
     computed: {
 
-        accessToken () {
-          return this.resource.attr('access_token')
+        image_url () {
+          return this.resource.attr('image_url')
         },
 
-        playlistOptions () {
-          return this.playlists.map(item => {
-            return {
-              label: item.name,
-              value: item.id
+        __layout () {
+          if (this.width < 300) {
+            return 'xs'
+          } else {
+            if (this.width > 3*this.height && this.height < 300) {
+              return 'wide'
+            } else {
+
             }
-          })
-        },
-
-        deviceOptions () {
-          return this.devices.map(item => {
-            return {
-              label: item.name,
-              value: item.id,
-              // icon: item.type
-            }
-          })
-        },
-
-        selectedPlaylist () {
-          if (this.selectedPlaylistId) {
-            return this.getPlaylistById(this.selectedPlaylistId)
           }
         },
 
-        selectedDevice () {
-          if (this.selectedDeviceId) {
-            return this.getDeviceById(this.selectedDeviceId)
+        __imgSize () {
+          return this.__layout === 'wide' ? this.height : 130
+        },
+
+        __imgStyle () {
+          return {
+            height: this.__imgSize + 'px',
+            width: this.__imgSize + 'px',
           }
         },
 
-        currentDevice () {
-          return this.state.device || {}
+        __title () {
+          return this.resource.attr('title')
         },
 
-        currentItem () {
-          return this.state.item || {}
+        __album () {
+          return this.resource.attr('album')
         },
 
-        currentTrackEstimatedProgress: {
-          cache: false,
-          get: function () {
-            if (!this.stateFetchTs) return 0
-            var readProgress = this.state.progress_ms || 0
-            var deltaT = this.state.is_playing ? (Date.now() - this.stateFetchTs) : 0
-            return readProgress + deltaT
-          }
+        __artist () {
+          return this.resource.attr('artist')
         },
 
-        currentTrackEstimatedProgressPercent () {
-          var progress = this.currentTrackEstimatedProgress
-          var duration = this.currentItem.duration_ms
-          return duration ? (100 * progress / duration) : 0
+        __volume () {
+          return this.resource.attr('volume')
         },
 
-        pollingActivated () {
-          return this.p_timer !== null
-        }
+        __contextUri () {
+          if (this.contextData) return this.contextData.uri
+        },
 
     },
 
     watch: {
-
-      'accessToken': {
-        handler (val, oldVal) {
-          this.spotify.setAccessToken(val)
+      __title: {
+        handler (val) {
+          if (val) {
+            // get context
+            this.loadContext()
+          } else {
+            // remove context
+            this.context = null
+          }
         },
         immediate: true
       },
-
+      __contextUri: {
+        handler (uri) {
+          if (uri) {
+            // update context
+            var contextData = this.contextData;
+            if (contextData.type === 'playlist') {
+              this.loadPlaylistInfo(contextData.uri).then(playlistData => {
+                this.context = Object.assign(contextData, {
+                  tracks: playlistData.tracks.items.map(trackItemData => trackItemData.track).map(item => {
+                    var imageUrl = null, artists = null;
+                    if (item.album && item.album.images && item.album.images.length>0) {
+                      imageUrl = item.album.images[0].url
+                    }
+                    if (item.artists) {
+                      artists = item.artists.map(artist => artist.name).join(', ')
+                    }
+                    return {
+                      imageUrl,
+                      artists,
+                      name: item.name,
+                      id: item.id,
+                      uri: item.uri,
+                      play: () => {
+                        this.play(contextData.uri, {
+                          uri: item.uri
+                        })
+                      }
+                    }
+                  })
+                })
+              })
+            } else {
+              this.context = null
+            }
+          }
+        },
+        immediate: true
+      },
     },
 
     methods: {
+      onResize (size) {
+        this.height = size.height
+        this.width = size.width
+      },
 
-        getDeviceById (id) {
-          for(var i in this.devices) {
-            var device = this.devices[i]
-            if (device.id === id) {
-              return device
+      prev () {
+        return this.resource.execute('previous_track').catch(err => {
+
+        })
+      },
+
+      next () {
+        return this.resource.execute('next_track').catch(err => {
+
+        })
+      },
+
+      toggle () {
+        return this.resource.execute(this.resource.attr('state')=='playing' ? 'pause_playback' : 'start_playback').catch(err => {
+
+        })
+      },
+
+      loadPlaylists () {
+        return this.resource.execute('current_user_playlists', {limit: 20}).then(playlists => {
+          this.playlists = playlists.items.map(item => {
+            var imageUrl = null;
+            if (item.images && item.images.length>0) {
+              imageUrl = item.images[0].url
             }
-          }
-        },
-
-        getPlaylistById (id) {
-          for(var i in this.playlists) {
-            var playlist = this.playlists[i]
-            if (playlist.id === id) {
-              return playlist
-            }
-          }
-        },
-
-        refresh () {
-          this.refreshing = true
-
-          var p0 = this.spotify.getMyDevices((err, data) => {
-            if (err) console.error(err);
-            else {
-              console.log('Devices:', data);
-              this.devices = data.devices
-
-              // get active device
-              for(var i in this.devices) {
-                if (this.devices[i].is_active) {
-                  if (!this.selectedDeviceId) this.selectedDeviceId = this.state.device.id
-                  break;
-                }
-              }
-            }
-          })
-
-          var p1 = this.spotify.getUserPlaylists((err, data) => {
-            if (err) console.error(err);
-            else {
-              console.log('Playlists:', data);
-              this.playlists = data.items
+            return {
+              imageUrl,
+              owner: item.owner.display_name,
+              name: item.name,
+              id: item.id,
+              uri: item.uri
             }
           })
+        }).catch(err => {
 
-          Promise.all([p0, p1]).finally( () => {
-            this.refreshing = false
-          })
-        },
+        })
+      },
 
-        prev () {
-          this.spotify.skipToPrevious((err, data) => {
-            if (err) console.error(err);
-            else {
-              this.current(true)
-            }
-          })
-        },
+      play (uri, offset) {
+        return this.resource.execute('start_playback', {
+          context_uri: uri,
+          offset: offset
+        }).catch(err => {
 
-        playpause () {
+        })
+      },
 
-          if (this.state.is_playing) {
-            this.spotify.pause((err, data) => {
-              if (err) console.error(err);
-              else {
-                this.state.is_playing = false
-                this.current(true)
-              }
-            })
-          } else {
-            this.spotify.play((err, data) => {
-              if (err) console.error(err);
-              else {
-                this.state.is_playing = true
-                this.current(true)
-              }
-            })
-          }
-        },
+      loadContext () {
+        return this.resource.execute('current_playback').then(data => {
+          this.contextData = data.context
+        }).catch(err => {
 
-        next () {
-          this.spotify.skipToNext((err, data) => {
-            if (err) console.error(err);
-            else {
-              this.current(true)
-            }
-          })
-        },
+        })
+      },
 
-        playSelected () {
-          var options = {}
+      loadPlaylistInfo (playlistId) {
+        return this.resource.execute('current_user_playlist', {
+          playlist_id: playlistId.split(':').pop()
+        }).catch(err => {
 
-          if (this.selectedPlaylist) {
-            options.context_uri = this.selectedPlaylist.uri
-          }
+        })
+      },
 
-          if (this.selectedDevice) {
-            options.device_id = this.selectedDevice.id
-          }
+      volume (vol) {
+        if (vol < 0) vol = 0;
+        if (vol > 100) vol = 100;
 
-          if (Object.keys(options).length) {
-            this.spotify.play(options, (err, data) => {
-              if (err) console.error(err);
-              else {
-                this.state.is_playing = true
-                this.current(true)
-              }
-            })
-          }
-        },
+        return this.resource.execute('set_volume', {
+          volume_percent: vol
+        }).catch(err => {
 
-        _current () {
-
-          // abort previous request, if any
-          if (this.p_currentReq) {
-            this.p_currentReq.abort();
-          }
-
-          this.p_currentReq = this.spotify.getMyCurrentPlaybackState((err, data) => {
-
-            // clean the promise so it doesn't call abort
-            this.p_currentReq = null;
-
-            if (err) console.error(err);
-            else {
-              this.stateFetchTs = Date.now()
-              Object.assign(this.state, data)
-            }
-          })
-
-          return this.p_currentReq
-        },
-
-        current (delay) {
-          if (delay) {
-            setTimeout(() => {
-              this._current()
-            }, 500)
-          } else {
-            this._current()
-          }
-        },
-
-        setShuffle (state) {
-          state = !!state
-          this.spotify.setShuffle(state, (err, data) => {
-            if (err) console.error(err);
-            else {
-              this.$set(this.state, 'shuffle_state', state)
-              this.current(true)
-            }
-          })
-        },
-
-        setRepeat (state) {
-          this.spotify.setRepeat(state, (err, data) => {
-            if (err) console.error(err);
-            else {
-              this.$set(this.state, 'repeat_state', state)
-              this.current(true)
-            }
-          })
-        },
-
-        setVolume (volume) {
-
-          var current_volume = 0
-
-          current_volume = this.currentDevice.volume_percent || 0
-
-          if (volume=='mute') {
-            volume = 0
-          } else if (volume=='up') {
-            volume = current_volume + 5
-          }  else if (volume=='down') {
-            volume = current_volume - 5
-          }
-
-          if (volume < 0) volume = 0
-          if (volume > 100) volume = 100
-
-          this.spotify.setVolume(volume, (err, data) => {
-            if (err) console.error(err);
-            else {
-              if (this.state.device) {
-                this.$set(this.state.device, 'volume_percent', volume)
-              }
-              this.current(true)
-            }
-          })
-        },
-
-        currentTrackTimeToString () {
-          var progress = this.currentTrackEstimatedProgress
-          var duration = this.currentItem.duration_ms
-
-          if (duration) {
-
-            function toString (msec) {
-              var sec = parseInt(msec / 1000)
-              var min = Math.floor(sec / 60)
-              sec -= min * 60
-              return pad(min, 2) + ":" + pad(sec, 2)
-            }
-
-            if (progress > duration) progress = duration
-
-            return toString(progress) + "/" + toString(duration)
-          }
-        },
-
-        _installPolling () {
-          if (this.p_timer === null) {
-            this.current()
-            this.p_cnt = 0
-            this.p_timer = setInterval(this._pollFunc, 1000)
-          }
-        },
-
-        _uninstallPolling () {
-          if(this.p_timer !== null) {
-            clearInterval(this.p_timer)
-            this.p_timer = null
-          }
-        },
-
-        _pollFunc () {
-          this.p_cnt = (this.p_cnt || 0) + 1
-
-          if ((this.p_cnt % 5) == 0) {
-            this.current()
-          }
-
-          if (this.currentTrackEstimatedProgressPercent >= 100) {
-            this.current()
-          }
-
-          this.time = this.currentTrackTimeToString()
-        }
+        })
+      }
 
     },
 
     mounted () {
-
-      this._installPolling()
-
-      this.refresh()
-
-      this.p_observer = new EThingUI.utils.VisibilityObserver((visible, reason) => {
-        if (visible) {
-          this._installPolling()
-        } else {
-          this._uninstallPolling()
-        }
-      }, this.$el, {
-        'waitHidden': 10000
-      })
+      this.loadPlaylists()
     },
-
-    beforeDestroy () {
-      if (this.p_observer) {
-        this.p_observer.destroy()
-      }
-
-      this._uninstallPolling()
-    }
 }
 
 </script>

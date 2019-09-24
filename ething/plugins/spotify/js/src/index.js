@@ -13,7 +13,7 @@ EThingUI.extend('resources/SpotifyAccount', {
           attributes () {
             return {
               widget: 'spotify',
-              height: '300px'
+              height: '400px'
             }
           }
         },

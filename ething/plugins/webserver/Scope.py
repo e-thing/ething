@@ -22,8 +22,8 @@ list = {
     'table:write': {
         'description': 'modify the content of any table'
     },
-    'device:execute': {
-        'description': 'execute a device command'
+    'resource:execute': {
+        'description': 'execute a resource command'
     },
     'settings:read': {
         'description': 'read the settings'

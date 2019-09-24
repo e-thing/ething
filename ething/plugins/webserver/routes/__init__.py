@@ -3,7 +3,6 @@
 from . import static
 from . import file
 from . import table
-from . import device
 from . import flow
 from . import utils
 from . import event
@@ -21,7 +20,6 @@ def install_routes(**kwargs):
     static.install(**kwargs)
     file.install(**kwargs)
     table.install(**kwargs)
-    device.install(**kwargs)
     flow.install(**kwargs)
     utils.install(**kwargs)
     event.install(**kwargs)

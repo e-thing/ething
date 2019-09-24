@@ -3,13 +3,17 @@
 from ething.plugin import Plugin
 from ething.account import Account
 from ething.reg import *
-from ething.scheduler import set_interval
+from ething.scheduler import set_interval, delay
 import logging
 import spotipy
 import spotipy.oauth2
 
 
 LOGGER = logging.getLogger(__name__)
+
+
+UPDATE_INTERVAL = 30
+UPDATE_DELAY = 0.5
 
 
 class SpotifyOAuth_(spotipy.oauth2.SpotifyOAuth):
@@ -62,6 +66,8 @@ class Spotify(Plugin):
             return redirect(url_for('root_client'), code=302)
 
 
+@attr('image_url', mode=READ_ONLY, default=None)
+@attr('uri', mode=READ_ONLY, default=None)
 @attr('title', mode=READ_ONLY, default=None)
 @attr('artist', mode=READ_ONLY, default=None)
 @attr('album', mode=READ_ONLY, default=None)
@@ -69,6 +75,7 @@ class Spotify(Plugin):
 @attr('shuffle', mode=READ_ONLY, default=None)
 @attr('volume', mode=READ_ONLY, default=None)
 @attr('current_device', mode=READ_ONLY, default=None)
+@attr('state', type=Enum(('playing', 'paused', 'idle')), default='idle', mode=READ_ONLY, description="current state")
 @attr('_token', mode=PRIVATE, default=None)
 @attr('client_secret', label="client secret", type=String(allow_empty=False))
 @attr('client_id', label="client id", type=String(allow_empty=False))
@@ -107,7 +114,68 @@ class SpotifyAccount(Account):
         # refresh only if necessary
         oauth = self.oauth()
         if force or spotipy.oauth2.is_token_expired(token):
+            self.logger.debug('refresh_access_token')
             self.token = oauth.refresh_access_token(token['refresh_token'])
+
+    @set_interval(UPDATE_INTERVAL, name="spotify.poll")
+    def update(self):
+        if not self.user:
+            user_info = self.player.current_user()
+            if user_info:
+                self.user = {
+                    'name': user_info.get('display_name'),
+                    'email': user_info.get('email'),
+                    'uri': user_info.get('uri'),
+                }
+
+        self.update_state()
+
+    def update_state(self):
+
+        self.logger.debug('update_state')
+
+        playback = self.current_playback()
+
+        with self:
+
+            if playback:
+                # something is playing
+
+                device = playback.get('device')
+
+                if device:
+                    self.state = 'playing' if playback.get("is_playing") else 'paused'
+                    self.volume = device.get('volume_percent', 100)
+                    self.current_device = device.get('name', 'unknown')
+                else:
+                    self.state = 'idle'
+
+                item = playback.get("item")
+
+                if item:
+                    self.album = item.get("album").get("name")
+                    self.title = item.get("name")
+                    self.artist = ", ".join(
+                        [artist.get("name") for artist in item.get("artists")]
+                    )
+                    self.uri = item.get("uri")
+                    images = item.get("album").get("images")
+                    self.image_url = images[0].get("url") if images else None
+                else:
+                    self.album = None
+                    self.artist = None
+                    self.title = None
+                    self.uri = None
+                    self.image_url = None
+
+            else:
+                self.state = 'idle'
+                self.album = None
+                self.artist = None
+                self.title = None
+                self.uri = None
+                self.image_url = None
+
 
     @property
     def player(self):
@@ -125,11 +193,14 @@ class SpotifyAccount(Account):
 
     @method.return_type('object')
     def current_playback(self):
+        """
+        Get information about the user’s current playback state, including track, track progress, and active device.
+        """
         return self.player.current_playback()
 
-    @method.return_type('object')
-    def currently_playing(self):
-        return self.player.currently_playing()
+    #@method.return_type('object')
+    #def currently_playing(self): # better use current_playback()
+    #    return self.player.currently_playing()
 
     @method.return_type('object')
     def current_user_playlists(self, limit=50, offset=0):
@@ -145,42 +216,60 @@ class SpotifyAccount(Account):
 
     @method.return_type('object')
     def devices(self):
+        """
+        Get information about a user’s available devices.
+        """
         return self.player.devices()
 
-    @method.attr('device_id', type=Nullable(String(allow_empty=False)), default=None)
+    @method.arg('device_id', type=Nullable(String(allow_empty=False)), default=None)
     def next_track(self, device_id=None):
-        return self.player.next_track(device_id)
+        self.player.next_track(device_id)
+        delay(UPDATE_DELAY, self.update_state)
 
-    @method.attr('device_id', type=Nullable(String(allow_empty=False)), default=None)
+    @method.arg('device_id', type=Nullable(String(allow_empty=False)), default=None)
     def pause_playback(self, device_id=None):
-        return self.player.pause_playback(device_id)
+        self.player.pause_playback(device_id)
+        delay(UPDATE_DELAY, self.update_state)
 
-    @method.attr('uris', type=Nullable(Array(String(allow_empty=False))), default=None)
-    @method.attr('context_uri', type=Nullable(String(allow_empty=False)), default=None)
-    @method.attr('device_id', type=Nullable(String(allow_empty=False)), default=None)
-    def start_playback(self, device_id=None, context_uri=None, uris=None):
-        return self.player.start_playback(device_id, context_uri, uris)
+    @method.arg('offset', type=Nullable(Dict()), default=None)
+    @method.arg('uris', type=Nullable(Array(String(allow_empty=False))), default=None)
+    @method.arg('context_uri', type=Nullable(String(allow_empty=False)), default=None)
+    @method.arg('device_id', type=Nullable(String(allow_empty=False)), default=None)
+    def start_playback(self, device_id=None, context_uri=None, uris=None, offset=None):
+        if offset is not None:
+            offset = dict(offset)
+        self.player.start_playback(device_id, context_uri, uris, offset)
+        delay(UPDATE_DELAY, self.update_state)
 
-    @method.attr('device_id', type=Nullable(String(allow_empty=False)), default=None)
+    @method.arg('device_id', type=Nullable(String(allow_empty=False)), default=None)
     def previous_track(self, device_id=None):
-        return self.player.previous_track(device_id)
+        self.player.previous_track(device_id)
+        delay(UPDATE_DELAY, self.update_state)
 
-    @method.attr('device_id', type=Nullable(String(allow_empty=False)), default=None)
-    @method.attr('state', type=Enum(('track', 'context', 'off')))
-    def repeat(self, state, device_id=None):
-        return self.player.repeat(state, device_id)
+    @method.arg('device_id', type=Nullable(String(allow_empty=False)), default=None)
+    @method.arg('state', type=Enum(('track', 'context', 'off')))
+    def set_repeat(self, state, device_id=None):
+        self.player.repeat(state, device_id)
+        delay(UPDATE_DELAY, self.update_state)
 
-    @method.attr('device_id', type=Nullable(String(allow_empty=False)), default=None)
-    @method.attr('state', type=Boolean())
-    def shuffle(self, state, device_id=None):
-        return self.player.shuffle(state, device_id)
+    @method.arg('device_id', type=Nullable(String(allow_empty=False)), default=None)
+    @method.arg('state', type=Boolean())
+    def set_shuffle(self, state, device_id=None):
+        self.player.shuffle(state, device_id)
+        delay(UPDATE_DELAY, self.update_state)
 
-    @method.attr('device_id', type=String(allow_empty=False))
+    @method.arg('device_id', type=String(allow_empty=False))
     def transfer_playback(self, device_id, force_play=True):
-        return self.player.transfer_playback(device_id, force_play)
+        self.player.transfer_playback(device_id, force_play)
+        delay(UPDATE_DELAY, self.update_state)
 
-    @method.attr('device_id', type=Nullable(String(allow_empty=False)))
-    @method.attr('volume_percent', type=Number(min=0, max=100))
-    def volume(self, volume_percent, device_id=None):
-        return self.player.volume(volume_percent, device_id)
+    @method.arg('device_id', type=Nullable(String(allow_empty=False)))
+    @method.arg('volume_percent', type=Number(min=0, max=100))
+    def set_volume(self, volume_percent, device_id=None):
+        self.player.volume(volume_percent, device_id)
+        delay(UPDATE_DELAY, self.update_state)
 
+    @method.arg('playlist_id', type=String(allow_empty=False))
+    @method.return_type('object')
+    def current_user_playlist(self, playlist_id):
+        return self.player.user_playlist('me', playlist_id)
