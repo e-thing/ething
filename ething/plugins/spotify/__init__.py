@@ -24,6 +24,16 @@ class SpotifyOAuth_(spotipy.oauth2.SpotifyOAuth):
         LOGGER.warning(msg)
 
 
+class Spotify_(spotipy.Spotify):
+
+    def _append_device_id(self, path, device_id):
+        # replace the buggy version
+        if device_id:
+            path += '&' if ('?' in path) else '?'
+            path += "device_id=%s" % device_id
+        return path
+
+
 class Spotify(Plugin):
 
     JS_INDEX = './js/index.js'
@@ -72,8 +82,8 @@ class Spotify(Plugin):
 @attr('artist', mode=READ_ONLY, default=None)
 @attr('album', mode=READ_ONLY, default=None)
 @attr('user', mode=READ_ONLY, default=None)
-@attr('shuffle', mode=READ_ONLY, default=None)
-@attr('volume', mode=READ_ONLY, default=None)
+@attr('repeat', mode=READ_ONLY, default='off')
+@attr('shuffle', mode=READ_ONLY, default=False)
 @attr('current_device', mode=READ_ONLY, default=None)
 @attr('state', type=Enum(('playing', 'paused', 'idle')), default='idle', mode=READ_ONLY, description="current state")
 @attr('_token', mode=PRIVATE, default=None)
@@ -106,7 +116,6 @@ class SpotifyAccount(Account):
             self._player = None # reset the player
             self.logged = bool(value)
 
-    @set_interval(60, name="spotify.refresh_token")
     def refresh_token(self, force=False):
         token = self.token
         if not token:
@@ -119,6 +128,8 @@ class SpotifyAccount(Account):
 
     @set_interval(UPDATE_INTERVAL, name="spotify.poll")
     def update(self):
+        self.refresh_token()
+
         if not self.user:
             user_info = self.player.current_user()
             if user_info:
@@ -145,10 +156,16 @@ class SpotifyAccount(Account):
 
                 if device:
                     self.state = 'playing' if playback.get("is_playing") else 'paused'
-                    self.volume = device.get('volume_percent', 100)
-                    self.current_device = device.get('name', 'unknown')
+                    self.current_device = {
+                        'name': device.get('name', 'unknown'),
+                        'id': device.get('id'),
+                        'volume': device.get('volume_percent', 100)
+                    }
                 else:
                     self.state = 'idle'
+
+                self.shuffle = playback.get('shuffle_state', False)
+                self.repeat = playback.get('repeat_state', 'off')
 
                 item = playback.get("item")
 
@@ -184,7 +201,7 @@ class SpotifyAccount(Account):
             token = self.token
             if token:
                 kwargs['auth'] = token.get("access_token")
-            self._player = spotipy.Spotify(**kwargs)
+            self._player = Spotify_(**kwargs)
         return self._player
 
     @method.return_type('object')
@@ -238,6 +255,8 @@ class SpotifyAccount(Account):
     def start_playback(self, device_id=None, context_uri=None, uris=None, offset=None):
         if offset is not None:
             offset = dict(offset)
+        if device_id is None and self.current_device:
+            device_id = self.current_device.get('id')
         self.player.start_playback(device_id, context_uri, uris, offset)
         delay(UPDATE_DELAY, self.update_state)
 
