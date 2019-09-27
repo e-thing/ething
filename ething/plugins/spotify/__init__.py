@@ -1,7 +1,7 @@
 # coding: utf-8
 
 from ething.plugin import Plugin
-from ething.account import Account
+from ething.Device import Device
 from ething.reg import *
 from ething.scheduler import set_interval, delay
 import logging
@@ -89,12 +89,20 @@ class Spotify(Plugin):
 @attr('_token', mode=PRIVATE, default=None)
 @attr('client_secret', label="client secret", type=String(allow_empty=False))
 @attr('client_id', label="client id", type=String(allow_empty=False))
-@meta(icon="mdi-spotify", loginUrl='/spotify/login')
-class SpotifyAccount(Account):
+@meta(icon="mdi-spotify", description="""
+1. Login to [Spotify Developer](https://developer.spotify.com/dashboard)
+2. Select **Create An App**. Enter any name and description. Once your application is created, view it and copy your **Client ID** and **Client Secret**.
+3. Add a Redirect URI in one of the following forms:
+```
+# replace <ething-server-ip> by the ip address of your ething server.
+http://<ething-server-ip>:8000/api/spotify/auth
+```
+""")
+class SpotifyAccount(Device):
 
     def __init__(self, *args, **kwargs):
         super(SpotifyAccount, self).__init__(*args, **kwargs)
-        self.logged = bool(self.token)
+        self.connected = bool(self.token)
         self._player = None
 
     def oauth(self, redirect_uri = None):
@@ -114,7 +122,7 @@ class SpotifyAccount(Account):
         with self:
             self._token = value
             self._player = None # reset the player
-            self.logged = bool(value)
+            self.connected = bool(value)
 
     def refresh_token(self, force=False):
         token = self.token
@@ -148,6 +156,8 @@ class SpotifyAccount(Account):
         playback = self.current_playback()
 
         with self:
+
+            self.refresh_connect_state(True)
 
             if playback:
                 # something is playing

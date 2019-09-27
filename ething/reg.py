@@ -169,6 +169,8 @@ def is_abstract(cls):
 
 READ_ONLY = 2
 PRIVATE = 4
+CREATE_ONLY = 8
+CREATE_ONLY_PRIVATE = 16
 
 
 # context
@@ -1454,7 +1456,7 @@ def _set_json(cls, data=None, context=None, init=False):
             name = attribute.name
             if name in data:
                 mode = attribute.get('mode')
-                if mode == PRIVATE or (not init and mode == READ_ONLY):
+                if mode == PRIVATE or (not init and (mode == READ_ONLY or mode == CREATE_ONLY or mode == CREATE_ONLY_PRIVATE)):
                     raise AttributeError('attribute "%s" is not writable' % name)
                 d[attribute] = attribute.__from_json__(data[name], context)
 
@@ -1583,7 +1585,8 @@ def unserialize(cls, data=None, context=None):
 def to_json(obj, context=None):
   j = {}
   for attribute in list_registered_attr(obj):
-    if attribute.get('mode') == PRIVATE:
+    mode = attribute.get('mode')
+    if mode == PRIVATE or mode == CREATE_ONLY_PRIVATE:
       continue
     name = attribute.name
     j[name] = attribute.__get_json__(obj, context)

@@ -1,9 +1,7 @@
 # coding: utf-8
 
 from ething.plugin import Plugin
-from ething.account import Account
-from ething.Resource import ResourceType
-from ething.reg import *
+from ething.db import *
 from ething import Device
 from ething.utils.date import TzDate, utcnow
 from ething.scheduler import set_interval
@@ -38,6 +36,7 @@ class Google(Plugin):
         self.session = dict()
 
     def setup(self):
+
         # install specific http routes
         self._webserver_install()
 
@@ -53,7 +52,7 @@ class Google(Plugin):
         @app.route('/api/google/login')
         @auth.required()
         def google_login():
-            account = self.core.get(request.args.get('resource'))
+            account = self.core.db.os.get(GoogleAccount, request.args.get('account')) # account id
             redirect_uri = re.sub('/api/google/login.*$', '/api/google/auth', request.url)
 
             account.oauth.redirect_uri = redirect_uri
@@ -82,11 +81,43 @@ class Google(Plugin):
 
             oauth2_tokens = account.oauth.fetch_access_token(ACCESS_TOKEN_URI, authorization_response=request.url)
 
-            with account:
-                account.token = dict(oauth2_tokens)
-                account.logged = True
+            account.token = dict(oauth2_tokens)
+
+            account.fetch_user_info()
 
             return redirect(url_for('root_client'), code=302)
+
+        @app.route('/api/google/accounts')
+        @auth.required()
+        def list_accounts():
+            return app.jsonify(self.core.db.os.find(GoogleAccount))
+
+        @app.route('/api/google/accounts', methods=['POST'])
+        @auth.required()
+        def create_account():
+            attr = request.get_json()
+
+            if isinstance(attr, dict):
+                account = self.core.db.os.create(GoogleAccount, attr)
+
+                if account:
+                    response = app.jsonify(account)
+                    response.status_code = 201
+                    return response
+                else:
+                    raise Exception('Unable to create the account')
+
+            raise Exception('Invalid request')
+
+        @app.route('/api/google/accounts/<id>', methods=['DELETE'])
+        @auth.required()
+        def delete_account(id):
+            account = self.core.db.os.get(GoogleAccount, id)
+            if account:
+                remove(account)
+                return '', 204
+            else:
+                raise Exception('Not found')
 
         @app.route('/api/google/news')
         @auth.required()
@@ -105,15 +136,33 @@ class Google(Plugin):
 
 
 @attr('token', mode=PRIVATE, default=None)
-@attr('client_secret', label="client secret", type=String(allow_empty=False))
-@attr('client_id', label="client id", type=String(allow_empty=False))
-@meta(icon="mdi-google", loginUrl='/google/login')
-class GoogleAccount(Account):
+@attr('user', mode=READ_ONLY, default={})
+@attr('client_secret', label="client secret", type=String(allow_empty=False), mode=CREATE_ONLY_PRIVATE)
+@attr('client_id', label="client id", type=String(allow_empty=False), mode=CREATE_ONLY_PRIVATE)
+@attr('name', type=String(allow_empty=False), description="an arbitrary name for that account")
+@uid()
+@meta(icon="mdi-google", description="""
+1. Go to the [Google API Console](https://console.developers.google.com)
+2. Select a project, or create a new one.
+3. On the Credentials page, select **Create credentials**, then **OAuth client ID**.
+4. Under **Application type**, choose **Web application**.
+5. Under Authorized redirect URIs, add a line with:
+```
+# replace <ething-server-ip> by the ip address of your ething server.
+http://<ething-server-ip>:8000/api/google/auth
+```
+6.  Click  **Create**.
+7.  On the page that appears, take note of the  **client ID**  and  **client secret**.""")
+@db(table='googleaccounts')
+class GoogleAccount(Entity):
 
     def __init__(self, *args, **kwargs):
         super(GoogleAccount, self).__init__(*args, **kwargs)
         self.oauth = OAuth2Session(self.client_id, self.client_secret, scope=AUTHORIZATION_SCOPE, token=self.token)
-        self.logged = bool(self.token)
+
+    @attr()
+    def logged(self):
+        return bool(self.token)
 
     def _build_credentials(self):
         token = self.token
@@ -133,19 +182,46 @@ class GoogleAccount(Account):
 
         return credentials
 
+    def fetch_user_info(self):
+        # fetch user information
+        oauth2_client = googleapiclient.discovery.build(
+            'oauth2', 'v2',
+            credentials=self._build_credentials())
+
+        user_info = oauth2_client.userinfo().get().execute()
+        self.user = dict(user_info)
+
     def get_calendar_service(self):
         return googleapiclient.discovery.build('calendar', 'v3', credentials=self._build_credentials())
+
+
+class GoogleUserType(String):
+    def __init__(self, **attr):
+        super(GoogleUserType, self).__init__(allow_empty=False, **attr)
+
+    def to_shema(self, context = None):
+        s = super(GoogleUserType, self).to_shema(context)
+        s['$component'] = 'GoogleUserForm'
+        return s
+
+    def set(self, value, context=None):
+        if isinstance(value, GoogleAccount):
+            value = value.id
+        return super(GoogleUserType, self).set(value, context)
+
+    def get(self, value, context=None):
+        return context['core'].db.os.get(GoogleAccount, value)
+
+
+@attr('account', type=GoogleUserType())
+class GoogleBaseDevice(Device):
+    pass
 
 
 @meta(icon="mdi-calendar")
 @attr('events', mode=PRIVATE, default=[])
 @attr('contentModifiedDate', type=TzDate(), default=lambda _: utcnow(), mode=READ_ONLY, description="Last time the content of this calendar was modified (formatted RFC 3339 timestamp).")
-@attr('createdBy', label="account", type=ResourceType(accepted_types=('resources/GoogleAccount',)), mode=None, required=True)
-class GoogleCalendar(Device):
-
-    @property
-    def account(self):
-        return self.createdBy
+class GoogleCalendar(GoogleBaseDevice):
 
     @set_interval(CALENDAR_POLL_INTERVAL, name="GoogleCalendar.poll")
     def _update(self):

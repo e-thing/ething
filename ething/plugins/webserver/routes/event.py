@@ -2,6 +2,8 @@
 from flask import Response, request
 from ething.Signal import ResourceSignal
 from ething.dispatcher import bind, unbind
+from ething.Resource import ResourceCreated, ResourceUpdated
+from ething.utils import filter_obj
 from queue import Queue, Empty
 import logging
 
@@ -11,7 +13,15 @@ LOGGER = logging.getLogger(__name__)
 
 def on_signal_sio(signal, app):
     signal_name = type(signal).__name__
-    app.socketio.emit(signal_name, app.to_json(signal.__dict__), namespace="/events") # send the full signal object, necessary for the webui to operate
+
+    data = signal.__json__()
+
+    if isinstance(signal, ResourceCreated):
+        data['resource'] = signal.resource.__json__() # send the full signal object, necessary for the webui to operate
+    elif isinstance(signal, ResourceUpdated): # send only the attributes that changed
+        data['resource'] = filter_obj(signal.resource.__json__(), data['data']['attributes'] + ['id'])
+
+    app.socketio.emit(signal_name, app.to_json(data), namespace="/events") # send the full signal object, necessary for the webui to operate
 
 
 def install(core, app, auth, **kwargs):

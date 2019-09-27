@@ -51,7 +51,7 @@ class Signal(with_metaclass(MetaReg, Mapping)):
         }
 
     def __json__(self):
-        return self.__dict__
+        return self.__dict__.copy()
 
 
 @abstract
@@ -87,6 +87,6 @@ class ResourceSignal(Signal):
 
     def __json__(self):
         # do not send the whole resource instance
-        cpy = self.__dict__.copy()
+        cpy = super(ResourceSignal, self).__json__()
         cpy['resource']=self.resource.id
         return cpy

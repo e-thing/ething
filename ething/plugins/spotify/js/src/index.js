@@ -30,6 +30,24 @@ EThingUI.extend('resources/SpotifyAccount', {
           minWidth: 500
         }
       }
-    }
+    },
 
+    created (resource) {
+      window.location = EThing.toApiUrl('spotify/login' + '?resource=' + resource.id(), true);
+    },
+
+    actions (resource) {
+      if (!resource.attr('connected')) {
+        return {
+          'login': {
+            label: 'login',
+            forceLabel: true,
+            icon: 'mdi-login',
+            click: () => {
+              window.location = EThing.toApiUrl('spotify/login' + '?resource=' + account.id(), true);
+            }
+          }
+        }
+      }
+    }
 })

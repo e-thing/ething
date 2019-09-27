@@ -44,6 +44,7 @@ export default {
         this.events.forEach(event => {
           var date = this.$ethingUI.utils.date.formatDate(event.start.dateTime || event.start.date, 'dddd, MMMM D')
           if (date !== prevDate) {
+            prevDate = date
             dailyData.push({
               date,
               events: []
