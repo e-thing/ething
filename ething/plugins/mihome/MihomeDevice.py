@@ -58,5 +58,8 @@ class MihomeDevice(with_metaclass(MihomeDeviceMetaClass, MihomeBase)):
                     self.voltage = voltage
                     self.battery = round(percent)
                 else:
-                    self.process_attr(k, value)
+                    try:
+                        self.process_attr(k, value)
+                    except:
+                        self.logger.exception('unable to parse %s', response['data'])
 
