@@ -240,7 +240,7 @@ climate_mode_type = Enum(['away', 'home'])
 
 
 @attr('mode', type=climate_mode_type, default='home')
-class ZigateClimateDevice(ZigateBaseDevice, Climate):
+class ZigateClimateDevice(ZigateBaseDevice, Thermostat, Thermometer):
 
     @classmethod
     def isvalid_ep(cls, gateway, zdev, endpoint):

@@ -6,15 +6,15 @@ from .thermometer import Thermometer
 from ..Device import Device
 
 
-mode_type = String(allow_empty=False)
+mode_type = Enum(['away', 'home'])
 
 @interface
-@meta(icon='mdi-home-thermometer')
+@meta(icon='mdi-thermostat')
 @attr('target_temperature', type=Number(), mode=READ_ONLY, default=0, unit="°C", description='the target temperature.', icon="mdi-thermometer")
 @attr('mode', type=mode_type, mode=READ_ONLY, description='the current mode of the climate.')
-class Climate(Thermometer):
+class Thermostat(Device):
 
-    @method.arg('mode', type=Number(), description='the target temperature')
+    @method.arg('temperature', type=Number(), description='the target temperature')
     def set_target_temperature(self, temperature):
         """
         Set new target temperatures of the current mode

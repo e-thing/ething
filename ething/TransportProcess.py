@@ -324,13 +324,17 @@ class TransportProcess(Process):
                 try:
                     # used mainly for regular check such as timeout...
                     self.protocol.loop()
-                    
+                except Exception as e:
+                    LOGGER.exception('exception in protocol.loop()')
+                    error = e
+
+                try:
                     # read all that is there or wait for one byte (blocking)
                     data = self.transport.read()
                 except Exception as e:
                     # probably some I/O problem such as disconnected USB serial
                     # adapters -> exit
-                    LOGGER.exception('exception in transport')
+                    LOGGER.exception('exception in transport.read()')
                     error = e
                 else:
                     if data:

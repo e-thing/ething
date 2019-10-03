@@ -29,5 +29,5 @@ from .camera import Camera
 
 from .cover import Cover
 
-from .climate import Climate
+from .thermostat import Thermostat
 

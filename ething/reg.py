@@ -474,6 +474,9 @@ class RegItemBase (MutableMapping):
       if 'icon' in self and self['icon']:
         schema['icon'] = self.get('icon')
 
+      if 'unit' in self and self['unit']:
+        schema['unit'] = self.get('unit')
+
       schema_mod = self.get('schema_mod')
       if schema_mod:
           schema_mod(self, schema)

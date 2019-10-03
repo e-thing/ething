@@ -14,7 +14,6 @@ class SensorValueChanged(ResourceSignal):
 
 def schema_mod(attr, schema):
     schema['sensor'] = True
-    schema['unit'] = attr.get('unit')
     schema['history'] = attr.get('history')
 
 
