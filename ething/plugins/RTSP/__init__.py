@@ -23,7 +23,7 @@ def is_avconv_installed ():
     return version
 
 
-def install(core):
+def install(core, options):
     if not is_avconv_installed():
         core.log.warning('[RTSP] avconv is not installed')
 

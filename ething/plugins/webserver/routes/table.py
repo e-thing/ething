@@ -28,7 +28,7 @@ def install(core, app, auth, **kwargs):
     }
 
     @app.route('/api/tables/<id>', methods=['GET', 'PUT', 'POST'])
-    @use_multi_args(GET=(table_get_args, ('query',)), PUT=(table_put_args, ('query',)), POST=(table_post_args, ('query',)))
+    @use_multi_args(GET=(table_get_args, 'query'), PUT=(table_put_args, 'query'), POST=(table_post_args, 'query'))
     @auth.required(GET='resource:read table:read', PUT='resource:write table:write', POST='resource:write table:write')
     def table(args, id):
         """
@@ -223,7 +223,8 @@ def install(core, app, auth, **kwargs):
     }
 
     @app.route('/api/tables/<id>/remove', methods=['POST'])
-    @use_args(table_action_remove_args, locations=('query', 'form'))
+    @use_args(table_action_remove_args, location='query')
+    @use_args(table_action_remove_args, location='form')
     @auth.required('table:write')
     def table_delete_rows(args, id):
         """
@@ -274,7 +275,7 @@ def install(core, app, auth, **kwargs):
     }
 
     @app.route('/api/tables/<id>/replace', methods=['POST'])
-    @use_args(table_action_replace_args, locations=('query',))
+    @use_args(table_action_replace_args, location='query')
     @auth.required('table:write')
     def table_replace_rows(args, id):
         """
@@ -308,7 +309,7 @@ def install(core, app, auth, **kwargs):
 
     @app.route('/api/tables/<id>/statistics')
     @auth.required('resource:read table:read')
-    @use_args(table_statistics_args, locations=('query',))
+    @use_args(table_statistics_args, location='query')
     def table_statistics(args, id):
         """
         ---
@@ -336,7 +337,7 @@ def install(core, app, auth, **kwargs):
     }
 
     @app.route('/api/tables/<id>/id/<doc_id>', methods=['GET', 'DELETE', 'PATCH'])
-    @use_multi_args(PATCH=(table_cell_id_patch_args, ('query',)))
+    @use_multi_args(PATCH=(table_cell_id_patch_args, 'query'))
     @auth.required(GET='resource:read table:read', DELETE='resource:write table:write', PATCH='resource:write table:write')
     def table_cell_id(args, id, doc_id):
 
