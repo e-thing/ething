@@ -309,7 +309,7 @@ class Resource(Entity, SignalEmitter):
         # clear internal __dict__ entries: free memory
         # necessary to remove all refs to other objects
         for k in list(self.__dict__):
-            if k is not '__reg__': # no need to remove this one
+            if k != '__reg__': # no need to remove this one
                 self.__dict__.pop(k)
 
         # flag it as destroyed

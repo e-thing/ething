@@ -15,7 +15,7 @@ def install(core, app, auth, **kwargs):
     }
 
     @app.route('/api/files/<id>', methods=['GET', 'PUT'])
-    @use_multi_args(PUT=(file_put_args, ('query',)))
+    @use_multi_args(PUT=(file_put_args, 'query'))
     @auth.required(GET='resource:read file:read', PUT='resource:write file:write')
     def file(args, id):
         """

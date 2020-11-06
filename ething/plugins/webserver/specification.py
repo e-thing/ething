@@ -307,10 +307,10 @@ def generate(app, specification='stdout', documentation=None):
                             else:
                                 converter = swagger.fields2parameters
 
-                            locations = options.pop(
-                                'locations', ['query'])  # default to query
-                            if locations:
-                                options['default_in'] = locations[0]
+                            location = options.pop(
+                                'location', 'query')  # default to query
+                            if location:
+                                options['default_in'] = location
                             if parse_version(apispec.__version__) < parse_version('0.20.0'):
                                 options['dump'] = False
 

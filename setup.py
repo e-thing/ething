@@ -72,8 +72,9 @@ install_requires = [
     "spotipy-homeassistant",
 ]
 
-if os.name != "nt":
-    install_requires.append("bluepy")
+ble_require = [
+    "bluepy",
+]
 
 tests_require = [
     "pytest>=3.6",  # unit test
@@ -89,7 +90,8 @@ docs_require = [
 
 extras_require = {
     "docs": docs_require,
-    "tests": tests_require
+    "tests": tests_require,
+    "ble": ble_require,
 }
 
 setup(

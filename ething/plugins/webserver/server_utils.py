@@ -49,11 +49,11 @@ def use_args(args, **kwargs):
                     'options': kwargs
                 }
             }
-        else:
-            raise Exception(
-                'two or more successive call of "use_args" has been made for the view %s' % str(view))
 
-        setattr(view, 'webargs', webargs)
+            setattr(view, 'webargs', webargs)
+        else:
+            # two or more successive call of "use_args" has been made for the view. Ignore it.
+            pass
 
         return webargs_use_args(args, **kwargs)(view)
 
@@ -85,7 +85,7 @@ def use_multi_args(**kwargs):
                         if isinstance(args, dict):
                             options = args[1]
                         else:
-                            options['locations'] = args[1]
+                            options['location'] = args[1]
                 else:
                     schema = args
 

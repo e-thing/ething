@@ -6,7 +6,7 @@ from ething import Device
 from ething.utils.date import TzDate, utcnow
 from ething.scheduler import set_interval
 
-from authlib.client import OAuth2Session
+from authlib.integrations.requests_client import OAuth2Session
 import google.oauth2.credentials
 import googleapiclient.discovery
 

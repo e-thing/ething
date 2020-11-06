@@ -15,7 +15,7 @@ def install(core, app, auth, **kwargs):
     }
 
     @app.route('/api/resources', methods=['GET'])
-    @use_args(resources_args, locations=("querystring",))
+    @use_args(resources_args, location="querystring")
     @auth.required('resource:read')
     def resources_get(args):
         """list the resources
