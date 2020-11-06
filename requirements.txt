@@ -14,7 +14,7 @@ commonmark==0.8.1
 coverage==4.5.2
 coveralls==1.6.0
 croniter==0.3.26
-cryptography==2.4.2
+cryptography==3.2
 dateparser==0.7.0
 decorator==4.3.0
 docopt==0.6.2
