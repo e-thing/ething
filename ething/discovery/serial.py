@@ -46,6 +46,7 @@ def _port_info_to_dict(port):
     info = dict()
     for attr in port_attr_list:
         info[attr] = getattr(port, attr, None)
+    return info
 
 
 def scan ():

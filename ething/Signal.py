@@ -2,7 +2,7 @@
 
 from .reg import *
 from future.utils import with_metaclass
-from collections import Mapping
+from collections.abc import Mapping
 import time
 
 
@@ -89,4 +89,29 @@ class ResourceSignal(Signal):
         # do not send the whole resource instance
         cpy = super(ResourceSignal, self).__json__()
         cpy['resource']=self.resource.id
+        return cpy
+
+
+
+@abstract
+class PluginSignal(Signal):
+    """
+    Any signal emitted by a plugin must override this class.
+    """
+    def __init__(self, plugin, **data):
+        super(PluginSignal, self).__init__(**data)
+        self.plugin = plugin
+
+    def __str__(self):
+        return "<signal %s plugin=%s>" % (self.type, self.plugin.name)
+
+    def __flow_msg__(self):
+        msg = super(PluginSignal, self).__flow_msg__()
+        msg['plugin'] = self.plugin.name
+        return msg
+
+    def __json__(self):
+        # do not send the whole resource instance
+        cpy = super(PluginSignal, self).__json__()
+        cpy['plugin']=self.plugin.name
         return cpy

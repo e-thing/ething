@@ -6,7 +6,7 @@ from .utils import generate_id, getmembers
 import inspect
 import weakref
 import time
-from collections import Mapping, Sequence
+from collections.abc import Mapping, Sequence
 
 
 __all__ = [

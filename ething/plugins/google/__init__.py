@@ -1,10 +1,11 @@
 # coding: utf-8
 
-from ething.plugin import Plugin
+from ething.plugin import Plugin, PluginSignal
 from ething.db import *
 from ething import Device
 from ething.utils.date import TzDate, utcnow
 from ething.scheduler import set_interval
+from ething.utils import deep_eq
 
 from authlib.integrations.requests_client import OAuth2Session
 import google.oauth2.credentials
@@ -28,17 +29,51 @@ ACCOUNT_KEY = 'current_account'
 CALENDAR_POLL_INTERVAL = 60
 
 
+class GoogleCalendarUpdated(PluginSignal):
+    """
+    is emitted each time a the google calendar has been updated
+    """
+    pass
+
+
+@throw(GoogleCalendarUpdated)
 class Google(Plugin):
 
     JS_INDEX = './js/index.js'
 
     def load(self):
         self.session = dict()
+        self.calendar_events = []
 
     def setup(self):
 
         # install specific http routes
         self._webserver_install()
+
+    @set_interval(CALENDAR_POLL_INTERVAL, name="GoogleCalendar.poll")
+    def _update_calendar(self):
+        now = datetime.datetime.utcnow().isoformat() + 'Z'  # 'Z' indicates UTC time
+        accounts = self.core.db.os.find(GoogleAccount)
+
+        events = []
+        for account in accounts:
+            events_result = account.get_calendar_service().events().list(calendarId='primary', timeMin=now,
+                                                                              maxResults=10, singleEvents=True,
+                                                                              orderBy='startTime').execute()
+            events += events_result.get('items', [])
+
+        LOGGER.debug('calendar events: %s', events)
+
+        prev_events = self.calendar_events
+
+        if deep_eq(events, prev_events):
+            self.emit(GoogleCalendarUpdated(self))
+
+        self.calendar_events = events
+
+    @method.return_type('object')
+    def list_calendar_events(self):
+        return self.calendar_events
 
     def _webserver_install(self):
 
@@ -213,35 +248,36 @@ class GoogleUserType(String):
         return context['core'].db.os.get(GoogleAccount, value)
 
 
+@abstract
 @attr('account', type=GoogleUserType())
 class GoogleBaseDevice(Device):
     pass
 
-
-@meta(icon="mdi-calendar")
-@attr('events', mode=PRIVATE, default=[])
-@attr('contentModifiedDate', type=TzDate(), default=lambda _: utcnow(), mode=READ_ONLY, description="Last time the content of this calendar was modified (formatted RFC 3339 timestamp).")
-class GoogleCalendar(GoogleBaseDevice):
-
-    @set_interval(CALENDAR_POLL_INTERVAL, name="GoogleCalendar.poll")
-    def _update(self):
-        now = datetime.datetime.utcnow().isoformat() + 'Z'  # 'Z' indicates UTC time
-        events_result = self.account.get_calendar_service().events().list(calendarId='primary', timeMin=now,
-                                              maxResults=10, singleEvents=True,
-                                              orderBy='startTime').execute()
-
-        if not self.description:
-            description = events_result.get('description', '')
-            if description:
-                self.description = description
-
-        events = events_result.get('items', [])
-        LOGGER.debug('calendar events: %s', events)
-
-        with self:
-            self.events = events
-            self.contentModifiedDate = utcnow()
-
-    @method.return_type('object')
-    def list_events(self):
-        return self.events
+# # deprecated (moved in plugin)
+# @meta(icon="mdi-calendar")
+# @attr('events', mode=PRIVATE, default=[])
+# @attr('contentModifiedDate', type=TzDate(), default=lambda _: utcnow(), mode=READ_ONLY, description="Last time the content of this calendar was modified (formatted RFC 3339 timestamp).")
+# class GoogleCalendar(GoogleBaseDevice):
+#
+#     @set_interval(CALENDAR_POLL_INTERVAL, name="GoogleCalendar.poll")
+#     def _update(self):
+#         now = datetime.datetime.utcnow().isoformat() + 'Z'  # 'Z' indicates UTC time
+#         events_result = self.account.get_calendar_service().events().list(calendarId='primary', timeMin=now,
+#                                               maxResults=10, singleEvents=True,
+#                                               orderBy='startTime').execute()
+#
+#         if not self.description:
+#             description = events_result.get('description', '')
+#             if description:
+#                 self.description = description
+#
+#         events = events_result.get('items', [])
+#         LOGGER.debug('calendar events: %s', events)
+#
+#         with self:
+#             self.events = events
+#             self.contentModifiedDate = utcnow()
+#
+#     @method.return_type('object')
+#     def list_events(self):
+#         return self.events

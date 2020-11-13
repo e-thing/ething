@@ -52,7 +52,7 @@ def scan():
     """
 
     bulbs = {}
-    package = "M-SEARCH * HTTP/1.1\r\nST:wifi_bulb\r\nMAN:\"ssdp:discover\"\r\n"
+    package = b"M-SEARCH * HTTP/1.1\r\nST:wifi_bulb\r\nMAN:\"ssdp:discover\"\r\n"
     s = None
 
     try:
@@ -72,7 +72,7 @@ def scan():
                     if not buf:
                         break
 
-                    if buf[:15] == "HTTP/1.1 200 OK":
+                    if buf[:15] == b"HTTP/1.1 200 OK":
 
                         bulb = {
                             'ip': remote_ip_port[0],
@@ -81,7 +81,7 @@ def scan():
 
                         for line in buf.splitlines():
 
-                            matches = re.search('^([^:]+):\s*(.+)\s*$', line)
+                            matches = re.search('^([^:]+):\s*(.+)\s*$', line.decode("utf-8"))
                             if matches:
 
                                 value = matches.group(2)

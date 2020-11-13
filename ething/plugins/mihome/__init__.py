@@ -7,7 +7,9 @@ from ething.plugin import Plugin
 from ething.TransportProcess import TransportProcess, UdpTransport
 from .helpers import *
 from .protocol import MihomeProtocol
+import logging
 
+LOGGER = logging.getLogger(__name__)
 
 class Mihome(Plugin):
 
@@ -24,8 +26,8 @@ class Controller(TransportProcess):
                 host=MULTICAST_ADDRESS,
                 port=MULTICAST_PORT
             ),
-
             protocol=MihomeProtocol(core),
+            logger=LOGGER
         )
         self.core = core
 

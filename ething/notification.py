@@ -75,12 +75,18 @@ class NotificationManager(object):
             if source is None:
                 source = self._source
 
+            source_id = None
+            if source is not None:
+                source_id = getattr(source, 'id', None) # resource
+                if source_id is None:
+                    source_id = getattr(source, 'type', None) # plugin
+
             attr = {
                 'message': message,
                 'mode': mode,
                 'timeout': timeout,
                 'title': title,
-                'source': getattr(source, 'id', None) if source is not None else None,
+                'source': source_id,
                 'date': utcnow(),
                 'id': id or generate_id()
             }

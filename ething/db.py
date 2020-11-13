@@ -4,7 +4,8 @@ from future.utils import string_types
 from queue import Queue, Empty
 from .reg import *
 from .utils import object_sort, generate_id
-from collections import OrderedDict, MutableMapping, Iterable
+from collections import OrderedDict
+from collections.abc import MutableMapping, Iterable
 import copy
 from time import time
 import inspect

@@ -1,11 +1,12 @@
 # coding: utf-8
 from .dataflow import Flow as FlowBase, Node as NodeBase, Debugger, Message
 from ..Resource import Resource, ResourceType, ResourceTypeArray, ResourceCreated
+from ..plugin import PluginUpdated, PluginType
 from ..reg import *
 from ..utils.jsonpath import jsonpath
 from ..utils.ObjectPath import ObjectPathExp, evaluate
 from ..processes import Process
-from ..Signal import ResourceSignal
+from ..Signal import ResourceSignal, PluginSignal
 from ..dispatcher import bind, unbind
 from queue import Queue
 import time
@@ -203,9 +204,7 @@ class Descriptor(OneOf):
 @discriminate(key='type')
 @attr('id', mode=READ_ONLY, type=String(allow_empty=False), description='the id of the node')
 class Node(Entity, NodeBase):
-    """
-    The base element of a flow.
-    """
+
     INPUTS = None
     OUTPUTS = None
 
@@ -338,7 +337,13 @@ class Flow(Resource, FlowBase):
 
 
 def _generate_event_node_cls(signal_cls):
-    is_resource_signal = issubclass(signal_cls, ResourceSignal)
+    is_resource_signal = False
+    is_plugin_signal = False
+
+    if issubclass(signal_cls, ResourceSignal):
+        is_resource_signal = True
+    elif issubclass(signal_cls, PluginSignal):
+        is_plugin_signal = True
 
     base_cls = SignalEventNode
 
@@ -396,6 +401,17 @@ def _generate_event_node_cls(signal_cls):
             source_type = OneOf(OneOf_Items, **dict((('$inline', True), )))
 
             attr('source', type=source_type, default={'type': 'any'}, description="Select the resources that emit the signal")(node_cls)
+
+        elif is_plugin_signal:
+            if signal_cls is PluginUpdated:
+                OneOf_Items = [
+                    ('any',),
+                    ('plugin', PluginType(must_throw=signal_cls)),
+                ]
+
+                source_type = OneOf(OneOf_Items, **dict((('$inline', True),)))
+
+                attr('source', type=source_type, default={'type': 'any'}, description="Select the plugin that emit the signal")(node_cls)
 
         return node_cls
     except Exception as e:

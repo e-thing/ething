@@ -2,7 +2,8 @@
 from future.utils import string_types, integer_types
 from .reg import Type, convert_type, get_type_from_value, set_dirty, attach, detach
 from .utils import id_re
-from collections import MutableSequence, Sequence, MutableMapping, Mapping, OrderedDict
+from collections import OrderedDict
+from collections.abc import MutableSequence, Sequence, MutableMapping, Mapping
 import re
 import datetime
 from dateutil.parser import parse
@@ -499,7 +500,8 @@ class AllOfItemData(object):
   def value(self):
     if self._type is None:
       raise AttributeError()
-    return self._type.get(self._value, self._context)
+    #BUG return self._type.get(self._value, self._context)
+    return self._value
 
   @value.setter
   def value(self, val):

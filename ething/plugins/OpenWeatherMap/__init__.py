@@ -30,17 +30,17 @@ class OpenWeatherMapPlugin(Plugin):
     def setup(self):
         if not self.appid:
             LOGGER.warning('no appid set in the configuration')
-            self.core.notification.warning('no appid set in the configuration', title='Open Weather Map', id='owm.appid.check')
+            self.notification.warning('no appid set in the configuration', title='Open Weather Map', id='owm.appid.check')
         else:
-            self.core.notification.remove('owm.appid.check')
+            self.notification.remove('owm.appid.check')
 
     def on_config_change(self, dirty_attributes):
         if not self.appid:
             LOGGER.warning('no appid set in the configuration')
-            self.core.notification.warning('no appid set in the configuration', title='Open Weather Map', id='owm.appid.check')
+            self.notification.warning('no appid set in the configuration', title='Open Weather Map', id='owm.appid.check')
         else:
             # refresh all devices
-            self.core.notification.remove('owm.appid.check')
+            self.notification.remove('owm.appid.check')
             LOGGER.debug('appid changed in the configuration')
             for d in self.core.find(OpenWeatherMapDevice):
                 d.refresh()

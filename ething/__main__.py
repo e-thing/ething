@@ -16,7 +16,9 @@ import logging
 from logging.handlers import RotatingFileHandler
 import signal
 import threading
-from .env import USER_DIR, LOG_FILE, _set_namespace, get_option
+from .env import USER_DIR, LOG_FILE, CONF_FILE, init_env
+from shutil import copy
+from .plugins import build_plugins_conf
 
 
 import sys
@@ -81,26 +83,32 @@ parser.add_argument('--scan', action='store', nargs='?', type=int, const=10,
                     help='perform a scan of the system and exit', metavar='TIMEOUT')
 
 
-parsed, unknown = parser.parse_known_args() #this is an 'internal' method
-# which returns 'parsed', the same as what parse_args() would return
-# and 'unknown', the remainder of that
-# the difference to parse_args() is that it does not exit when it finds redundant arguments
-
-optional_args = set()
-for arg in unknown:
-    if arg.startswith(("-", "--")):
-        optional_args.add(arg.lstrip('-').split('=').pop(0).replace('-', '_'))
-        #you can pass any arguments to add_argument
-        parser.add_argument(arg, type=str, action='store', nargs='?', const=True, help='extra argument', metavar='VALUE')
 
 args = parser.parse_args()
-
-_set_namespace(args)
 
 
 if args.version:
     print("v%s" % __version__)
     sys.exit()
+
+if not os.path.exists(USER_DIR):
+    # first start
+    # some setup can be done here !
+    print("first startup, initializing...")
+    os.makedirs(USER_DIR)
+
+    # build default conf file
+    with open(CONF_FILE, "w") as fconf:
+        # core conf
+        default_ini_file = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'default.cfg')
+        if os.path.exists(default_ini_file):
+            with open(default_ini_file) as f:
+                for line in f:
+                    fconf.write(line)
+        # plugins conf
+        build_plugins_conf(fconf)
+
+init_env()
 
 if args.scan is not None:
     from .discovery import scan
@@ -109,12 +117,6 @@ if args.scan is not None:
     print('scanning ... timeout=%d' % timeout)
     scan(timeout=timeout, printer=print)
     sys.exit()
-
-if not os.path.exists(USER_DIR):
-    # first start
-    # some settup can be done here !
-    print("first startup, initializing...")
-    os.makedirs(USER_DIR)
 
 logger = init_logger(console_log=not getattr(args, 'quiet', False), file_log=True, debug=args.debug)
 

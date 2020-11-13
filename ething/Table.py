@@ -29,6 +29,8 @@ class TableDataAdded(ResourceSignal):
 @meta(icon='mdi-table-row-plus-after', category="storage")
 @attr('resource', type=ResourceType(accepted_types=('resources/Table',)))
 class AppendData(ResourceNode):
+    """ Append data in a table """
+
     INPUTS = ['default']
 
     def main(self, **inputs):
@@ -47,6 +49,25 @@ class AppendData(ResourceNode):
 
         if data:
             table.insert(data)
+
+
+@meta(icon='mdi-table-row', category="storage")
+@attr('query', type=String(allow_empty=True), default="", description="An ObjectPath query filter. Leave empty if not used.")
+@attr('sort', type=String(allow_empty=True), default="", description="A string containing the sort field name (prepended by '-' if you want the sort to be in descending order). eg: '-date'. Leave empty if not used.")
+@attr('length', type=Integer(min=0), default=0, description="If length is given and is positive, the selection returned will contain at most length lines beginning from start. If length is omitted, the selection starting from start until the end of the table will be returned.")
+@attr('start', type=Integer(), default=0, description="If start is non-negative, the returned selection will start at the start'th position in the table, counting from zero. If start is negative, the returned selection will start at the start'th position from the end of the table.")
+@attr('resource', type=ResourceType(accepted_types=('resources/Table',)))
+class TableSelect(ResourceNode):
+    """ Select data of a table """
+
+    INPUTS = ['default']
+    OUTPUTS = ['default']
+
+    def main(self, **inputs):
+        msg = inputs.get('default')
+        table = self.resource
+        content = table.select(self.start, self.length, sort = self.sort, query = self.query)
+        self.emit(content)
 
 
 @throw(TableDataAdded)
@@ -429,7 +450,7 @@ class Table(Resource):
         :param date_format: "timestamp" or "timestamp_ms" or "rfc3339" or None(default). The format of the date field.
         :return: Array of row
         """
-        if sort is None:
+        if sort is None or sort == '':
             # always sort by date
             sort = ('date', True)
 
@@ -443,6 +464,8 @@ class Table(Resource):
                 sort = None
 
         # define the start point and the length of the returning set
+        if length is not None and length <= 0:
+            length = None
         if start < 0:
             start = self.length + start
             if start < 0:

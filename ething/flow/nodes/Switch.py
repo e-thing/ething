@@ -103,9 +103,9 @@ class Switch(Node):
                 elif t=='boolean':
                     res = isinstance(val, bool)
                 elif t=='array':
-                    res = isinstance(val, collections.Sequence)
+                    res = isinstance(val, collections.abc.Sequence)
                 elif t=='object':
-                    res = isinstance(val, collections.Mapping)
+                    res = isinstance(val, collections.abc.Mapping)
                 elif t=='none':
                     res = val is None
             elif filter_type == 'empty':

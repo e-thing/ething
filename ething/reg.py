@@ -1,6 +1,7 @@
 # coding: utf-8
 from future.utils import with_metaclass, string_types, integer_types, text_type, binary_type
-from collections import MutableMapping, OrderedDict, Mapping
+from collections import OrderedDict
+from collections.abc import MutableMapping, Mapping
 import copy
 import inspect
 from abc import ABCMeta

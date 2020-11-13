@@ -1,6 +1,6 @@
 # coding: utf-8
 
-from zeroconf import ServiceBrowser, Zeroconf, ZeroconfServiceTypes
+from zeroconf import ServiceBrowser, Zeroconf, ZeroconfServiceTypes, ServiceListener
 import weakref
 import inspect
 import logging
@@ -62,7 +62,7 @@ def _update(service_name):
         # start the service
         zeroconf = _zc()
         LOGGER.debug('[%s] start service', service_name)
-        browser = ServiceBrowser(zeroconf, service_name, ServiceListener(service_name))
+        browser = ServiceBrowser(zeroconf, service_name, MdnsServiceListener(service_name))
         _browsers[service_name] = browser
         return
 
@@ -101,7 +101,7 @@ def _convert_service_info(info):
 
     return _info
 
-class ServiceListener(object):
+class MdnsServiceListener(ServiceListener):
 
     def __init__(self, service_name):
         self._service_name = service_name
@@ -155,6 +155,9 @@ class ServiceListener(object):
             info = _convert_service_info(info)
 
         self._run_handlers(True, info)
+
+    def update_service(self, zeroconf, type, name):
+        pass
 
 
 class MdnsScanner(Scanner):

@@ -55,7 +55,7 @@ class WebServer(Plugin):
     def setup(self):
         # clients
         install_clients_manager(self.app)
-        self.core.processes.add(WebServerProcess(self.app))
+        self.processes.add(WebServerProcess(self.app))
 
 
 class FlaskApp(Flask):
@@ -213,13 +213,6 @@ class FlaskApp(Flask):
         return Response(json.dumps(error), status=error['code'], mimetype='application/json')
 
     def jsonify(self, obj, **kwargs):
-
-        fields = request.args.get('fields')
-
-        if fields is not None:
-            fields = fields.replace(' ', ',').replace(
-                ';', ',').replace('|', ',').split(',')
-
         return Response(self.to_json(obj, **kwargs), mimetype='application/json')
 
     def to_json(self, obj, fields=None, **kwargs):

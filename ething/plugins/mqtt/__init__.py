@@ -48,7 +48,7 @@ class Mqtt(Plugin):
             self.service = None
         if self.host and self.publish_event.get('enable'):
             self.service = MqttDispatcherService(self.core, self.host, self.port, self.user, self.password, self.publish_event.get('base_topic'))
-            self.core.processes.add(self.service)
+            self.processes.add(self.service)
 
 
 class MqttTransport(Transport):

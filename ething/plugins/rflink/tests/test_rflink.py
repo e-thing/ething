@@ -7,28 +7,25 @@ from  ething.interfaces import Relay, Thermometer, HumiditySensor
 
 def test_rflink_controller(core):
 
-    gateway = core.create('resources/RFLinkGateway', {
-        'name': 'gateway',
-        'port': '?'
-    })
+    plugin = core.plugins['rflink']
 
-    assert gateway
+    assert plugin
 
-    protocol = RFLinkProtocol(gateway)
+    protocol = RFLinkProtocol(plugin)
 
     assert protocol
 
-    gateway.inclusion = True
+    plugin.inclusion = True
 
     protocol.handle_line(
         u'20;00;Nodo RadioFrequencyLink - RFLink Gateway V1.1 - R46;')
-    assert gateway.version == "1.1"
-    assert gateway.revision == "46"
+    assert plugin.version == "1.1"
+    assert plugin.revision == "46"
 
     # switch/relay
     protocol.handle_line(u'20;06;NewKaku;ID=008440e6;SWITCH=1;CMD=ON;')
 
-    switch = gateway.children(lambda r: r.nodeId == '008440e6')[0]
+    switch = core.find_one(lambda r: r.nodeId == '008440e6')
 
     assert switch
     assert isinstance(switch, Relay)
@@ -47,7 +44,7 @@ def test_rflink_controller(core):
     # generic sensor
     protocol.handle_line(u'20;05;Cresta;ID=2801;TEMP=00af;HUM=53;BAT=OK;')
 
-    th_sensor = gateway.children(lambda r: r.nodeId == '2801')[0]
+    th_sensor = core.find_one(lambda r: r.nodeId == '2801')
 
     assert th_sensor
 

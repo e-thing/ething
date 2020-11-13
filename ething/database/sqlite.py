@@ -127,6 +127,9 @@ class SQLiteDriver(Driver_Base):
                 delattr(self, 'db')
 
     def load_table_data(self, table_name):
+        if not hasattr(self, 'db'):
+            return []
+
         with self._lock:
             c = self.db.cursor()
             c.execute("SELECT data FROM '%s'" % (table_name,))

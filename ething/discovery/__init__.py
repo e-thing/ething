@@ -48,9 +48,9 @@ def pprint_scan_results(results, printer=None):
             d[type] = dict()
 
         if key not in d[type]:
-            d[type][key] = dict()
+            d[type][key] = list()
 
-        d[type][key].update(data)
+        d[type][key].append(data)
 
     # print it !
     if len(d) == 0:
@@ -58,8 +58,8 @@ def pprint_scan_results(results, printer=None):
     for type in d:
         printer('+ %s [len:%d] :' % (type, len(d[type])))
         for key in d[type]:
-            printer('    + %s :' % (key, ))
-            data = d[type][key]
-            for k, v in data.items():
-                printer('        - %s : %s' % (k, v))
+            for data in d[type][key]:
+                printer('    + %s :' % (key, ))
+                for k, v in data.items():
+                    printer('        - %s : %s' % (k, v))
 

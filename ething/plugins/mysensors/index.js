@@ -48,23 +48,6 @@
       'S_UNK': { icon: 'mdi-help' },
     }
 
-
-    EThingUI.extend('resources/MySensorsEthernetGateway', {
-
-        category: 'MySensors.Gateway',
-
-        title: 'MySensors Gateway (ethernet)'
-
-    })
-
-    EThingUI.extend('resources/MySensorsSerialGateway', {
-
-        category: 'MySensors.Gateway',
-
-        title: 'MySensors Gateway (serial)'
-
-    })
-
     EThingUI.extend('resources/MySensorsNode', {
 
         disableCreation: true,

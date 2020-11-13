@@ -21,11 +21,11 @@ class MySensorsNode(Device):
 
     @property
     def controller(self):
-        return self.gateway.controller
+        return self.plugin.controller
 
     @property
-    def gateway(self):
-        return self.createdBy
+    def plugin(self):
+        return self.core.plugins['mysensors']
 
     def _save(self, dirty_attrs):
         super(MySensorsNode, self)._save(dirty_attrs)
@@ -63,7 +63,7 @@ class MySensorsNode(Device):
         """
         kwargs.setdefault('smartSleep', self.smartSleep)
         kwargs.setdefault('ack', self.ackEnabled)
-        return self.gateway.send(self.nodeId, sensorId, type, subtype, payload, **kwargs)
+        return self.plugin.send(self.nodeId, sensorId, type, subtype, payload, **kwargs)
 
     @method
     def reboot(self):

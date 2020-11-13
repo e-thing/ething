@@ -4,7 +4,7 @@ from .utils.date import TzDate, utcnow
 from .reg import *
 from .Signal import ResourceSignal
 from .flow import ResourceNode
-from .env import get_option
+from .env import get_options
 
 
 @meta(icon='mdi-battery-50')
@@ -32,11 +32,14 @@ class DeviceDisconnected(ResourceSignal):
     pass
 
 
-@meta(icon='mdi-play', category='function')
+@meta(icon='mdi-play', category='function', label="Run device command")
 @attr('args', type=Dict(allow_extra = True), default={}, description="The arguments passed to the method")
 @attr('method', type=String(), description="The method name")
 @attr('resource', type=ResourceType(accepted_types=('resources/Device',)), description="The device on which the action is executed")
 class ExecuteDevice(ResourceNode):
+    """
+    Run a command of a device.
+    """
     INPUTS = ['default']
     OUTPUTS = ['default']
 
@@ -155,4 +158,4 @@ class BleDevice(Device):
 
     @property
     def hci(self):
-        return int(get_option('ble_hci', 0))
+        return int(get_options().get('ble_hci', 0))

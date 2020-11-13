@@ -11,7 +11,15 @@ from ething.reg import *
 @attr('port', type=Number(min=1, max=65535), default=587)
 @attr('host', type=String(allow_empty=False), default="smtp.gmail.com")
 class Mail(Plugin):
-    pass
+
+    def send (self, to, subject, message=""):
+        mailer = SmtpMail(host=self.host, port=self.port, user=self.user, password=self.password)
+        mailer.send(subject=subject, message=message or "", to=to)
+        self.logger.debug('email "%s" send to %s', subject, to)
+
+    @method.arg('to', type=String(allow_empty=False))
+    def test (self, to):
+        self.send(to, "ething", "test")
 
 
 @meta(icon='mdi-email', category="notification")
@@ -35,7 +43,5 @@ class SendEmail(Node):
         message = self.message.get(**_context)
 
         mail_plugin = self.core.plugins['mail']
-        mailer = SmtpMail(host=mail_plugin.host, port=mail_plugin.port, user=mail_plugin.user, password=mail_plugin.password)
-        mailer.send(subject=subject, message=message, to=to)
-        self.logger.debug('email "%s" send to %s', subject, to)
+        mail_plugin.send(to, subject, message)
 

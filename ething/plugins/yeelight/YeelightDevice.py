@@ -16,7 +16,8 @@ class Controller(TransportProcess):
                 host=device.host,
                 port=PORT
             ),
-            protocol=YeelightProtocol(device)
+            protocol=YeelightProtocol(device),
+            logger=device.logger
         )
         self.device = device
 

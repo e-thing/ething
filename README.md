@@ -62,7 +62,11 @@ See [ething-node-red repository](//github.com/e-thing/ething-node-red).
 ```bash
 git clone https://github.com/e-thing/ething
 cd ething
-python setup.py install
+# no BLE support :
+pip install .
+# for BLE support :
+sudo apt-get install libglib2.0-dev
+pip install .[ble]
 ```
 
 

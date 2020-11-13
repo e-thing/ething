@@ -10,7 +10,7 @@ from future.utils import string_types
 import requests
 from xml.etree import ElementTree
 from ..utils import etree_to_dict
-from collections import Mapping
+from collections.abc import Mapping
 from .scanner import *
 
 
@@ -201,7 +201,7 @@ class SSDP_Service(object):
     def run(self):
         t = self._t
 
-        if t is not None and t.isAlive():
+        if t is not None and t.is_alive():
             # already running
             return
 

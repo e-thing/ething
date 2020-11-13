@@ -6,14 +6,14 @@ from .reg import get_registered_class, get_definition_name
 from .Config import Config
 from .version import __version__
 from .plugin import search_plugin_cls, import_plugins
-from .scheduler import set_interval
+from .scheduler import set_interval, global_instance
 from .dispatcher import SignalEmitter
 from .processes import ProcessCollection
 from .utils import get_info
 from .utils.ObjectPath import generate_filter, patch_all
 from .Resource import Resource
 from .flow import generate_event_nodes
-from .env import USER_DIR, LOG_FILE
+from .env import USER_DIR, LOG_FILE, CONF_FILE
 from .notification import NotificationManager
 import collections
 import logging
@@ -29,7 +29,7 @@ LOGGER = logging.getLogger(__name__)
 
 
 
-class _PluginCollection(collections.Mapping):
+class _PluginCollection(collections.abc.Mapping):
 
     def __init__(self, core):
         self._plugins = core._plugins
@@ -48,6 +48,12 @@ class _PluginCollection(collections.Mapping):
 
     def __len__(self):
         return len(self._plugins)
+
+    def get_from_type (self, typename):
+        for p in self._plugins:
+            if get_definition_name(p) == typename:
+                return p
+        raise KeyError
 
 
 class Core(SignalEmitter):
@@ -110,6 +116,7 @@ class Core(SignalEmitter):
         LOGGER.info('CLI_ARGS   : %s', ' '.join(sys.argv[1:]))
         LOGGER.info('USER_DIR   : %s', USER_DIR)
         LOGGER.info('LOG_FILE   : %s', LOG_FILE)
+        LOGGER.info('CONF_FILE   : %s', CONF_FILE)
         info = get_info(self)
         LOGGER.info("ETHING     : version=%s", info.get('VERSION'))
         python_info = info.get('python', {})
@@ -136,18 +143,16 @@ class Core(SignalEmitter):
         generate_event_nodes()
 
         for p in plugin_modules:
-            opt = dict()
-            prefix = p.__name__ + '_'
-            for k in plugins_options:
-                if k.startswith(prefix):
-                    opt[k[len(prefix):]] = plugins_options[k]
-            self.use(p, **opt)
+            self.use(p)
 
         # load all resources
         self.db.os[Resource].load()
 
         # setup plugins
         self._plugins_call('setup')
+
+        # start the scheduler
+        global_instance().run()
 
         # devices activity timeout
         def devices_activity_check():
@@ -182,12 +187,11 @@ class Core(SignalEmitter):
         """
         return self._notification
 
-    def use(self, something, **options):
+    def use(self, something):
         """
         Load a plugin.
 
         :param something: A plugin. Either a Plugin class, a module or an install function.
-        :param options: Some paramaters to pass to the plugin.load(...) method.
         :return: The plugin instance.
         """
 
@@ -201,7 +205,7 @@ class Core(SignalEmitter):
 
         # instanciate:
         try:
-            plugin = plugin_cls(self, options)
+            plugin = plugin_cls(self)
             plugin.load()
         except:
             LOGGER.exception('plugin %s: unable to load' % plugin_name)
@@ -286,7 +290,7 @@ class Core(SignalEmitter):
 
         if query is not None:
 
-            if not isinstance(query, collections.Sequence):
+            if not isinstance(query, collections.abc.Sequence):
                 query = [query]
 
             def _mapper(q):

@@ -277,7 +277,7 @@ class LineReader(Packetizer):
 
 class TransportProcess(Process):
 
-    def __init__(self, transport, protocol, reconnect = True, reconnect_delay = 15, open_state_changed_handler = None, **kwargs):
+    def __init__(self, transport, protocol, reconnect = True, reconnect_delay = 15, open_state_changed_handler = None, logger = LOGGER, **kwargs):
         super(TransportProcess, self).__init__(**kwargs)
         self.transport = transport
         self.protocol = protocol
@@ -285,10 +285,15 @@ class TransportProcess(Process):
         self.reconnect_delay = reconnect_delay
         self._is_open = False
         self._open_state_changed_handler = open_state_changed_handler
+        self._logger = logger
 
     @property
     def is_open(self):
         return self._is_open
+
+    @property
+    def logger(self):
+        return self._logger
 
     def on_open_state_changed(self):
         # the state is given by self.is_open
@@ -306,13 +311,13 @@ class TransportProcess(Process):
             try:
                 self.transport.open()
             except Exception as e:
-                LOGGER.exception('exception in transport.open()')
+                self.logger.exception('exception in transport.open()')
                 error = e
 
             try:
                 self.protocol.connection_made()
             except Exception as e:
-                LOGGER.exception('exception in protocol.connection_made()')
+                self.logger.exception('exception in protocol.connection_made()')
                 error = e
 
             while not error and self.is_running and self.transport.is_open:
@@ -325,7 +330,7 @@ class TransportProcess(Process):
                     # used mainly for regular check such as timeout...
                     self.protocol.loop()
                 except Exception as e:
-                    LOGGER.exception('exception in protocol.loop()')
+                    self.logger.exception('exception in protocol.loop()')
                     error = e
 
                 try:
@@ -334,7 +339,7 @@ class TransportProcess(Process):
                 except Exception as e:
                     # probably some I/O problem such as disconnected USB serial
                     # adapters -> exit
-                    LOGGER.exception('exception in transport.read()')
+                    self.logger.exception('exception in transport.read()')
                     error = e
                 else:
                     if data:
@@ -342,7 +347,7 @@ class TransportProcess(Process):
                         try:
                             self.protocol.data_received(data)
                         except Exception as e:
-                            LOGGER.exception('exception in protocol.data_received()')
+                            self.logger.exception('exception in protocol.data_received()')
                             error = e
 
             self._is_open = False
@@ -352,12 +357,12 @@ class TransportProcess(Process):
                 try:
                     self.transport.close()
                 except Exception as e:
-                    LOGGER.exception('exception in transport.close()')
+                    self.logger.exception('exception in transport.close()')
 
             try:
                 self.protocol.connection_lost(error)
             except Exception as e:
-                LOGGER.exception('exception in protocol.connection_lost()')
+                self.logger.exception('exception in protocol.connection_lost()')
 
             
             if not self.reconnect:
@@ -367,7 +372,7 @@ class TransportProcess(Process):
                 t_end = time.time() + self.reconnect_delay
                 while self.is_running and time.time() < t_end:
                     time.sleep(1.)
-                LOGGER.debug('reconnecting...')
+                self.logger.debug('reconnecting...')
 
 
 class QueueProtocol(Protocol):

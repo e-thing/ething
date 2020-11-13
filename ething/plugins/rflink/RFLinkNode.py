@@ -14,11 +14,11 @@ class RFLinkNode(Device):
 
     @property
     def controller(self):
-        return self.gateway.controller
+        return self.plugin.controller
 
     @property
-    def gateway(self):
-        return self.createdBy
+    def plugin(self):
+        return self.core.plugins['rflink']
 
     def _send(self, **data):
         return self.controller.send(format_transmitted_data(self.protocol, ID = self.id, **data))

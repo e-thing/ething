@@ -1,8 +1,6 @@
 # coding: utf-8
-from future.utils import string_types
-from flask import request, Response
 from ..server_utils import *
-from ething.reg import update, get_registered_methods
+from ething.reg import update
 
 
 def install(core, app, auth, **kwargs):
@@ -247,38 +245,4 @@ def install(core, app, auth, **kwargs):
               description: The response of the resource.
         """
         r = app.getResource(id)
-
-        method = get_registered_methods(r, operationId)
-
-        args = []
-        kwargs = {}
-
-        if request.method == 'GET':
-
-            for arg_name in list(set(list(request.args)).intersection(list(method.get('args', {})))):
-                kwargs[arg_name] = request.args[arg_name]
-
-        elif request.method == 'POST':
-            try:
-                data = request.get_json()
-                if isinstance(data, dict):
-                    kwargs = data
-                elif isinstance(data, list):
-                    args = data
-                elif data is not None:  # empty content with content-type set to application/json will return None
-                    args.append(data)
-            except:
-                pass
-
-        return_type = method.get('return_type')
-
-        if return_type:
-
-            if isinstance(return_type, string_types) and re.search('^[^/]+/[^/]+$', return_type):
-                return Response(method.call(r, *args, **kwargs), mimetype=return_type)
-            else:
-                return app.jsonify(method.call(r, *args, **kwargs))
-
-        else:
-            method.call(r, *args, **kwargs)
-            return '', 204
+        return entity_api_call(app, r, operationId)

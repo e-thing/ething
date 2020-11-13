@@ -24,12 +24,12 @@ class MySensorsSensor (with_metaclass(MySensorsSensorMetaClass, Device)):
         return self.node.nodeId
 
     @property
-    def gateway(self):
-        return self.node.gateway
+    def plugin(self):
+        return self.node.plugin
 
     @property
     def controller(self):
-        return self.gateway.controller
+        return self.plugin.controller
 
     def send(self, type, subtype, payload=None, **kwargs):
         """

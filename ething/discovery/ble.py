@@ -12,7 +12,7 @@ bluepy_imported = False
 
 
 try:
-    from bluepy.btle import Scanner as _Scanner, DefaultDelegate, BTLEException
+    from bluepy.btle import Scanner as _Scanner, DefaultDelegate, BTLEException, BTLEManagementError
     bluepy_imported = True
 except ImportError:
     LOGGER.error('BLE scanner is not available: bluepy is bot installed')
@@ -22,7 +22,7 @@ if bluepy_imported:
 
     from queue import Queue, Empty
     from .scanner import *
-    from ..env import get_option
+    from ..env import get_options
 
 
     def _device_to_dict(dev):
@@ -50,20 +50,33 @@ if bluepy_imported:
         def __init__(self, queue):
             DefaultDelegate.__init__(self)
             self.queue = queue
+            self.mac_list = list()
+
+        def reset(self):
+            self.mac_list = list()
 
         def handleDiscovery(self, dev, isNewDev, isNewData):
-            LOGGER.debug('discover device %s', dev.addr)
-            info = _device_to_dict(dev)
-            self.queue.put(BleaScannerResult(info.get('mac'), info))
+            if dev.addr not in self.mac_list:
+                self.mac_list.append(dev.addr)
+                LOGGER.debug('discover device %s', dev.addr)
+                info = _device_to_dict(dev)
+                self.queue.put(BleaScannerResult(info.get('mac'), info))
 
 
     class BleaScanner(Scanner):
 
+        def __init__(self):
+            super(BleaScanner, self).__init__()
+            self._scanner = _Scanner(int(get_options().get('ble_hci', 0))).withDelegate(ScanDelegateForScanner(self.results))
+
         def scan(self, timeout):
-            scanner = _Scanner(get_option('ble_hci', 0)).withDelegate(ScanDelegateForScanner(self.results))
+            self._scanner.delegate.reset()
             try:
-                scanner.scan(timeout=timeout)
-            except BTLEException:
+                self._scanner.scan(timeout=timeout)
+            except BTLEManagementError:
+                pass
+            except BTLEException as e:
+                LOGGER.exception(e)
                 pass
 
 else:
@@ -108,8 +121,8 @@ def _call_handlers(is_alive, info):
 
 
 def _run():
+    scanner = BleaScanner()
     while True:
-        scanner = BleaScanner()
         scanner.scan(3)
 
         results = [res.data for res in scanner.get_results()]

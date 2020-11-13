@@ -6,12 +6,15 @@ from ething.plugin import Plugin
 from ething.TransportProcess import TransportProcess, UdpTransport
 from .protocol import YeelightAdvertisementProtocol
 from .yeelight import MULTICAST_ADDRESS, MULTICAST_PORT
+import logging
+
+LOGGER = logging.getLogger(__name__)
 
 
 class Yeelight(Plugin):
 
     def setup(self):
-        self.core.processes.add(AdvertisementController(self.core))
+        self.processes.add(AdvertisementController(self.core))
 
 
 class AdvertisementController(TransportProcess):
@@ -23,7 +26,8 @@ class AdvertisementController(TransportProcess):
                 port=MULTICAST_PORT
             ),
             protocol=YeelightAdvertisementProtocol(core),
-            reconnect_delay=60
+            reconnect_delay=60,
+            logger=LOGGER
         )
 
     def search(self, *args, **kwargs):

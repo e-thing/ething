@@ -1,8 +1,5 @@
 <template>
   <div class="fit scroll">
-
-    <resource-observable :resource="this.resource" attribute="contentModifiedDate" @change="load()"/>
-
     <q-list>
       <template v-for="(daily, index) in dailyEvents">
         <q-separator v-if="index>0" />
@@ -59,7 +56,7 @@ export default {
     methods: {
 
       load () {
-        return this.resource.execute('list_events', events => {
+        return this.$ethingUI.findPlugin('google').execute('list_calendar_events', events => {
           this.events = events || []
         })
       },
@@ -77,7 +74,13 @@ export default {
 
     mounted () {
         this.load()
+
+        this.$ething.on('signals/GoogleCalendarUpdated', this.load)
     },
+
+    beforeDestroy () {
+      this.$ething.off('signals/GoogleCalendarUpdated', this.load)
+    }
 }
 
 </script>

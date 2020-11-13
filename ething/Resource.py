@@ -9,7 +9,7 @@ from .scheduler import *
 from .processes import *
 from .notification import NotificationManager
 from .dispatcher import SignalEmitter
-from collections import Mapping
+from collections.abc import Mapping
 import inspect
 import logging
 

@@ -16,10 +16,10 @@ class RFLinkProtocol(LineReader):
 
     RESPONSE_TIMEOUT = 10  # seconds
 
-    def __init__(self, gateway):
+    def __init__(self, plugin):
         super(RFLinkProtocol, self).__init__()
-        self.gateway = gateway
-        self.core = gateway.core
+        self.plugin = plugin
+        self.core = plugin.core
         # response management
         self._responseListeners = []
 
@@ -41,7 +41,7 @@ class RFLinkProtocol(LineReader):
     def handle_line(self, line):
         LOGGER.debug('read: %s', line)
 
-        gateway = self.gateway
+        plugin = self.plugin
 
         # keep only messages destined to the gateway
         if not line.startswith('20;'):
@@ -66,17 +66,16 @@ class RFLinkProtocol(LineReader):
                             return r.switchId == data['SWITCH']
                         return True
 
-                device = gateway.getNode(filter)
+                device = plugin.getNode(filter)
 
                 if not device:
 
-                    if gateway.inclusion:
+                    if plugin.inclusion:
 
                         attributes = {
                             'nodeId': data['ID'],
                             'protocol': protocol,
-                            'name': data['ID'],
-                            'createdBy': gateway.id
+                            'name': data['ID']
                         }
 
                         device = self.create_device(protocol, data, attributes)
@@ -94,19 +93,19 @@ class RFLinkProtocol(LineReader):
             matches = re.search(
                 'Nodo RadioFrequencyLink - RFLink Gateway V([\d\.]+) - R([\d]+)', parts[2])
             if matches:
-                with gateway:
-                    gateway.version = matches.group(1)
-                    gateway.revision = matches.group(2)
+                with plugin:
+                    plugin.version = matches.group(1)
+                    plugin.revision = matches.group(2)
                 LOGGER.info("RFLink: ver:%s rev:%s" %
                               (matches.group(1), matches.group(2)))
             else:
                 matches = re.search(
                     ';VER=([\d\.]+);REV=([\d]+);BUILD=([0-9a-fA-F]+);', line)
                 if matches:
-                    with gateway:
-                        gateway.version = matches.group(1)
-                        gateway.revision = matches.group(2)
-                        gateway.build = matches.group(3)
+                    with plugin:
+                        plugin.version = matches.group(1)
+                        plugin.revision = matches.group(2)
+                        plugin.build = matches.group(3)
                     LOGGER.info("RFLink: ver:%s rev:%s build:%s" % (
                         matches.group(1), matches.group(2), matches.group(3)))
 

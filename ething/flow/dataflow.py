@@ -5,7 +5,7 @@ import logging
 from ..utils import generate_id
 from ..utils.logger import NamedLoggerAdapter
 import gevent
-from collections import MutableMapping, Mapping
+from collections.abc import MutableMapping, Mapping
 from queue import Queue, Empty
 import copy
 from abc import ABCMeta, abstractmethod

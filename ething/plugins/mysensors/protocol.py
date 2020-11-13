@@ -80,10 +80,10 @@ class Result(AsyncResult):
 class MySensorsProtocol(LineReader):
     TIMEOUT = 10  # seconds (maybe float number)
 
-    def __init__(self, gateway):
+    def __init__(self, plugin):
         super(MySensorsProtocol, self).__init__(terminator = b'\n')
-        self.gateway = gateway
-        self.core = gateway.core
+        self.plugin = plugin
+        self.core = plugin.core
 
         self.gatewayReady = False
         self.gatewayLibVersion = False
@@ -97,12 +97,11 @@ class MySensorsProtocol(LineReader):
         set_interval(1, self.check_timeout)
 
     def createNode(self, nodeId):
-        gateway = self.gateway
+        plugin = self.plugin
 
         node = self.core.create('resources/MySensorsNode', {
             'nodeId': nodeId,
-            'name': 'node-%d' % (nodeId, ),
-            'createdBy': gateway.id
+            'name': 'node-%d' % (nodeId, )
         })
 
         if not node:
@@ -148,9 +147,7 @@ class MySensorsProtocol(LineReader):
 
         r = True
 
-        with self.gateway as gateway:
-
-            gateway.refresh_connect_state(True)
+        with self.plugin as plugin:
 
             nodeId = message.nodeId
             sensorId = message.childSensorId
@@ -160,7 +157,7 @@ class MySensorsProtocol(LineReader):
 
             # automatically create unknown node and sensor
             if nodeId > 0 and nodeId != BROADCAST_ADDRESS:
-                node = gateway.getNode(nodeId)
+                node = plugin.getNode(nodeId)
                 if not node:
                     node = self.createNode(nodeId)
 
@@ -269,7 +266,7 @@ class MySensorsProtocol(LineReader):
 
                             elif message.subType == I_VERSION:
                                 self.gatewayLibVersion = message.value
-                                gateway.libVersion = message.value
+                                plugin.libVersion = message.value
                                 LOGGER.info(
                                     "MySensors: gateway version = %s" % self.gatewayLibVersion)
 
@@ -283,14 +280,14 @@ class MySensorsProtocol(LineReader):
                                 # return M (metric) or I (Imperial)
                                 response = Message(
                                     message.nodeId, message.childSensorId, INTERNAL, I_CONFIG,
-                                    'M' if gateway.isMetric else 'I')
+                                    'M' if plugin.isMetric else 'I')
                                 self.send(response)
 
                             elif message.subType == I_ID_REQUEST:
                                 # get a free node id
 
                                 f = None
-                                occupied_node_id = [n.nodeId for n in gateway.getNodes()]
+                                occupied_node_id = [n.nodeId for n in plugin.getNodes()]
                                 for i in range(1, 255):
                                     if i not in occupied_node_id:
                                         self.send(Message(

@@ -1,6 +1,7 @@
 # coding: utf-8
 from future.utils import string_types
 from .reg import *
+from .env import get_options, get_env
 from .utils import generate_id
 from .Config import SettingsUpdated
 import logging
@@ -12,13 +13,84 @@ import pkg_resources
 from email.parser import FeedParser
 from .plugins import import_builtin_plugins
 from .scheduler import bind_instance
+from .Signal import Signal
+from .dispatcher import SignalEmitter
+from .notification import NotificationManager
+from .processes import ProcessCollection
+from .Signal import PluginSignal
 
 
 LOGGER = logging.getLogger(__name__)
 
 
+@meta(icon='mdi-update')
+class PluginUpdated(PluginSignal):
+    """
+    is emitted each time a plugin attribute has been updated
+    """
+    def __init__(self, plugin, attributes):
+        super(PluginUpdated, self).__init__(plugin, attributes=attributes)
+
+    @property
+    def attributes(self):
+        return self.data['attributes']
+
+
 def generate_plugin_name(suffix):
     return "%s_%s" % (suffix, generate_id())
+
+
+class PluginType(String):
+
+    def __init__(self, must_throw=None, **attributes):
+        super(PluginType, self).__init__(allow_empty=False, **attributes)
+        self.must_throw = must_throw
+        if isinstance(self.must_throw, string_types):
+            self.must_throw = get_registered_class(self.must_throw)
+
+    def check(self, plugin):
+        if self.must_throw:
+            signals_thrown_by_plugin = [s.signal for s in list_registered_signals(plugin)]
+            signal = self.must_throw
+            if signal not in signals_thrown_by_plugin:
+                raise ValueError("the plugin %s does not throw the signal : %s" % (
+                    plugin.name, get_definition_name(signal)))
+
+    def _get_plugin(self, plugin_typename, context):
+        try:
+            plugin = context['core'].plugins.get_from_type(plugin_typename)
+        except KeyError:
+            raise ValueError('the plugin %s does not exist' % plugin_typename)
+
+        return plugin
+
+    def get(self, value, context=None):
+        return self._get_plugin(value, context)
+
+    def set(self, value, context=None):
+        if isinstance(value, string_types):
+            value = super(PluginType, self).set(value, context)
+            self.check(self._get_plugin(value, context))
+        else: # plugin instance
+            self.check(value)
+            value = get_definition_name(value)
+        return value
+
+    def from_json(self, value, context=None):
+        value = super(PluginType, self).from_json(value, context)
+        # check the plugin exist !
+        self.check(self._get_plugin(value, context))
+        return value
+
+    def serialize(self, value, context=None):
+        return value
+
+    def to_shema(self, context = None):
+        schema = super(PluginType, self).to_shema(context)
+        schema['$component'] = 'ething.plugin'
+        if self.must_throw:
+            schema['$must_throw'] = get_definition_name(self.must_throw)
+        return schema
 
 
 class PluginMetaClass(MetaReg):
@@ -32,8 +104,9 @@ class PluginMetaClass(MetaReg):
 
 @abstract
 @namespace('plugins')
+@throw(PluginUpdated)
 @meta(description='')
-class Plugin(with_metaclass(PluginMetaClass, Entity)):
+class Plugin(with_metaclass(PluginMetaClass, Entity, SignalEmitter)):
     """
     To create a new plugin, just override this class.
 
@@ -64,7 +137,7 @@ class Plugin(with_metaclass(PluginMetaClass, Entity)):
     def get_name(cls):
         return getattr(cls, 'PACKAGE', {}).get('name', cls.__name__)
 
-    def __init__(self, core, options):
+    def __init__(self, core):
         """
 
         .. attribute:: core
@@ -73,15 +146,11 @@ class Plugin(with_metaclass(PluginMetaClass, Entity)):
 
             :type: :class:`ething.Core`
 
-        .. attribute:: options
-
-            A dictionary that contains extra options. Extra options might be passed this way::
-
-                core.use(MyPlugin, foo='bar')
-
         """
+        self._processes = ProcessCollection(parent=self)
+        self._notification = NotificationManager(core, self)
 
-        self.options = options
+        self.options = get_options(self.name)
 
         # get the config from the core db
         config = core.db.store.get('config.%s' % self.name, None)
@@ -91,6 +160,17 @@ class Plugin(with_metaclass(PluginMetaClass, Entity)):
         }, data_src='db')
 
         bind_instance(self)
+
+    @property
+    def processes(self):
+        return self._processes
+
+    @property
+    def notification(self):
+        """
+        the notification manager
+        """
+        return self._notification
 
     def __transaction_end__(self):
         if is_dirty(self):
@@ -102,12 +182,17 @@ class Plugin(with_metaclass(PluginMetaClass, Entity)):
 
             LOGGER.info('config updated: %s', updated_keys)
 
-            self.core.emit(SettingsUpdated(plugin=self.name, attributes=updated_keys))
+            self.emit(PluginUpdated(self, updated_keys))
 
     @property
     def name(self):
         """the name of this plugin"""
         return self.get_name()
+
+    @property
+    def logger(self):
+        """the name of this plugin"""
+        return self.LOGGER
 
     @classmethod
     def js_index(cls):
@@ -161,6 +246,13 @@ class Plugin(with_metaclass(PluginMetaClass, Entity)):
         schema['package'] = cls.PACKAGE
         schema['title'] = cls.get_name()
         return schema
+
+    def __json__(self):
+        # do not send the options as it may contain some secret information
+        j = super(Plugin, self).__json__()
+        j['name'] = self.name
+        j['type'] = get_definition_name(self)
+        return j
 
 
 def get_package_info(mod):
@@ -303,17 +395,28 @@ def find_plugins():
 def import_plugins(white_list=None):
     modules = []
 
+    # disabled plugins
+    disabled = set()
+    env = get_env()
+    for section in env:
+        if section != 'core':
+            if env[section].get('disable', 'no').lower() in ('y', 'yes', 'true', '1'):
+                disabled.add(section)
+
     # builtin plugins
-    modules += import_builtin_plugins(white_list)
+    modules += import_builtin_plugins(white_list, disabled)
 
     # installed plugins as package
     for module_name in find_plugins():
-        if white_list is None or module_name[7:] in white_list:
-            try:
-                mod = importlib.import_module(module_name)
-                modules.append(mod)
-            except:
-                LOGGER.exception('unable to import %s' % module_name)
+        if disabled is None or module_name[7:] not in disabled:
+            if white_list is None or module_name[7:] in white_list:
+                try:
+                    mod = importlib.import_module(module_name)
+                    modules.append(mod)
+                except:
+                    LOGGER.exception('unable to import %s' % module_name)
+        else:
+            LOGGER.info('plugin %s disabled' % module_name)
 
     return modules
 

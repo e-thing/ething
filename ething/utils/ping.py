@@ -52,6 +52,9 @@ def pingable(attr='host', interval=PING_DEFAULT_INTERVAL):
                         self.logger.error('ping() raises an exception: %s' % str(e))
                         return False
 
+                    if not online:
+                        self.logger.warning('host %s is not online', host)
+
                 self.logger.debug('ping %s, online=%s', host, online)
 
             with self:

@@ -16,6 +16,7 @@ __all__ = [
     'set_interval',
     'delay',
     'at',
+    'global_instance'
 ]
 
 
@@ -312,7 +313,7 @@ class ThreadingScheduler(Scheduler):
 
     """
 
-    def __init__(self, auto_start=True):
+    def __init__(self, auto_start=False):
         super(ThreadingScheduler, self).__init__()
         self._t = None
         if auto_start:
@@ -334,7 +335,7 @@ class ThreadingScheduler(Scheduler):
     def run(self):
         t = self._t
 
-        if t is not None and t.isAlive():
+        if t is not None and t.is_alive():
             # already running
             return
 

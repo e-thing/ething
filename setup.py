@@ -73,7 +73,7 @@ install_requires = [
 ]
 
 ble_require = [
-    "bluepy",
+    "bluepy", # on most Debian-based systems : sudo apt-get install libglib2.0-dev , see https://github.com/IanHarvey/bluepy
 ]
 
 tests_require = [

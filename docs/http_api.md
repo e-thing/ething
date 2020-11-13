@@ -104,20 +104,6 @@ You can also simply pass the key as a URL query parameter when making Web servic
 curl http://localhost:8000/api/resources?api_key=<YOUR_API_KEY>
 ```
 
-### Partial response
-
-By default, the server sends back the full representation of a resource after processing requests.
-For better performance, you can ask the server to send only the fields you really need and get a partial response instead.
-
-To request a partial response, use the fields request parameter to specify the fields you want returned.
-You can use this parameter with any request that returns response data.
-
-example:
-
-This request will return the meta-data representation containing only the specified keys of a resource
-
-`/resources/56731_a?fields=id,name`
-
 ### Filter resource or table data
 
 You can search or filter resources or table's rows using a search query based on [ObjectPath query language](http://objectpath.org).

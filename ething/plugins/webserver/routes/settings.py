@@ -42,21 +42,7 @@ def install(core, app, auth, **kwargs):
 
             data = request.get_json()
 
-            for k in data:
-                d = data[k]
-                if k == 'global':
-                    with core.config:
-                        update(core.config, d)
-                else:
-                    p = core.plugins.get(k)
-                    if p is not None:
-                        with p:
-                            update(p, d)
+            with core.config:
+                update(core.config, data)
 
-        data = {
-            'global': core.config
-        }
-        for p in core.plugins:
-            data[p.name] = p
-
-        return app.jsonify(data)
+        return app.jsonify(core.config)

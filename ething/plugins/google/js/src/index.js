@@ -20,7 +20,8 @@ EThingUI.extend('plugins/google', {
 
 EThingUI.form.registerForm(GoogleUserForm)
 
-
+/*
+// deprecated, moved in global widget
 EThingUI.extend('resources/GoogleCalendar', {
 
     components (resource) {
@@ -51,6 +52,15 @@ EThingUI.extend('resources/GoogleCalendar', {
       }
     },
 
+})*/
+
+EThingUI.registerWidget('GoogleCalendar', {
+  component: WGoogleCalendar,
+  title: 'Calendar',
+  icon: 'mdi-calendar',
+  description: 'display the events',
+  minHeight: 250,
+  zIndex: 100
 })
 
 EThingUI.registerWidget('GoogleNews', {

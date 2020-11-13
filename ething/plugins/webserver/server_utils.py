@@ -1,9 +1,12 @@
 # coding: utf-8
+from future.utils import string_types
 from flask import request, Response, g
 import re
 import traceback
 import sys
 import os
+
+from ething.reg import get_registered_methods
 
 from webargs.flaskparser import use_args as webargs_use_args
 from marshmallow.fields import Field
@@ -202,3 +205,40 @@ def parse_multipart_data(stream, boundary):
         headers, body = stack.pop()
         yield headers, b''.join(body)
 
+
+def entity_api_call (app, entity, operationId) :
+
+    method = get_registered_methods(entity, operationId)
+
+    args = []
+    kwargs = {}
+
+    if request.method == 'GET':
+
+        for arg_name in list(set(list(request.args)).intersection(list(method.get('args', {})))):
+            kwargs[arg_name] = request.args[arg_name]
+
+    elif request.method == 'POST':
+        try:
+            data = request.get_json()
+            if isinstance(data, dict):
+                kwargs = data
+            elif isinstance(data, list):
+                args = data
+            elif data is not None:  # empty content with content-type set to application/json will return None
+                args.append(data)
+        except:
+            pass
+
+    return_type = method.get('return_type')
+
+    if return_type:
+
+        if isinstance(return_type, string_types) and re.search('^[^/]+/[^/]+$', return_type):
+            return Response(method.call(entity, *args, **kwargs), mimetype=return_type)
+        else:
+            return app.jsonify(method.call(entity, *args, **kwargs))
+
+    else:
+        method.call(entity, *args, **kwargs)
+        return '', 204

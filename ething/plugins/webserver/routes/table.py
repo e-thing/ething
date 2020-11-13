@@ -16,6 +16,7 @@ def install(core, app, auth, **kwargs):
         'query': fields.Str(data_key="q", load_from="q", description="Query string for filtering results"),
         'date_format': fields.Str(data_key="datefmt", load_from="datefmt", validate=lambda val: val.lower() in date_fmts, missing='rfc3339', description="the format of the date field (default to RFC3339) : %s" % ','.join(date_fmts)),
         'fmt': fields.Str(validate=validate.OneOf(table_fmts), missing='json', description="the output format (default to JSON) : %s" % ','.join(table_fmts)),
+        'fields': fields.DelimitedList(fields.Str(), description="the fields to be returned"),
     }
 
     table_put_args = {
@@ -179,18 +180,11 @@ def install(core, app, auth, **kwargs):
             resp = None
 
             if fmt == "json":
-                resp = app.jsonify(r.select(**args))
+                resp = app.jsonify(r.select(**args), )
             elif fmt == "json_pretty":
                 resp = app.jsonify(r.select(**args), indent=4)
             elif fmt == "csv" or fmt == "csv_no_header":
                 args['show_header'] = (fmt == "csv")
-
-                fields = request.args.get('fields')
-                if fields is not None:
-                    fields = fields.replace(' ', ',').replace(
-                        ';', ',').replace('|', ',').split(',')
-                    args['fields'] = fields
-
                 resp = Response(r.writeCSV(**args), mimetype='text/csv')
 
             if resp is not None:

@@ -29,7 +29,7 @@ class GlobField(Accessor):
         m = cls.re_field.match(path)
         if m:
             def build(obj):
-                if isinstance(obj, collections.MutableMapping):
+                if isinstance(obj, collections.abc.MutableMapping):
                     return [Field(obj, a, 'index') for a in obj]
                 elif not isinstance(obj, Field.attr_lookup_black_list):
                     return [Field(obj, a, 'attr') for a in obj.__dict__]
@@ -48,7 +48,7 @@ class Field(Accessor):
         if m:
             def build(obj):
                 field = m.group(0)[1:]
-                if isinstance(obj, collections.MutableMapping):
+                if isinstance(obj, collections.abc.MutableMapping):
                     return cls(obj, field, 'index')
                 elif not isinstance(obj, Field.attr_lookup_black_list):
                     return cls(obj, field, 'attr')
@@ -86,7 +86,7 @@ class Index(Accessor):
         m = cls.re_index.match(path)
         if m:
             def build(obj):
-                if isinstance(obj, collections.MutableSequence):
+                if isinstance(obj, collections.abc.MutableSequence):
                     return cls(obj, int(m.group(1)))
 
             return m.group(0), build

@@ -30,7 +30,7 @@ class ZigateBaseDevice(with_metaclass(ZigateDeviceMetaClass, Device)):
 
     @property
     def z(self):
-        return self.createdBy.z
+        return self.core.plugins['zigate'].z
 
     @property
     def zdevice(self):
@@ -93,7 +93,7 @@ class ZigateBaseDevice(with_metaclass(ZigateDeviceMetaClass, Device)):
         pass
 
     @classmethod
-    def create_device(cls, gateway, zdevice, endpoint=None, **kwargs):
+    def create_device(cls, plugin, zdevice, endpoint=None, **kwargs):
         name = zdevice.get_property_value('type', cls.__name__)
         #if endpoint is not None:
         #    name = '%s #%d' % (name, endpoint)
@@ -109,7 +109,6 @@ class ZigateBaseDevice(with_metaclass(ZigateDeviceMetaClass, Device)):
             'addr': zdevice.addr,
             'lqi': zdevice.lqi_percent,
             'endpoint': endpoint,
-            'createdBy': gateway.id,
             'description': zdevice.get_property_value('description', ''),
             'typename': zdevice.get_property_value('type', ''),
             'manufacturer': zdevice.get_property_value('manufacturer', ''),
@@ -118,9 +117,9 @@ class ZigateBaseDevice(with_metaclass(ZigateDeviceMetaClass, Device)):
 
         attrs.update(kwargs)
 
-        gateway.logger.debug('create device %s %s', cls.__name__, attrs)
+        plugin.logger.debug('create device %s %s', cls.__name__, attrs)
 
-        dev = gateway.core.create(cls, attrs)
+        dev = plugin.core.create(cls, attrs)
 
         if dev:
             dev.init_state()
@@ -144,7 +143,7 @@ class ZMihomeMagnet(ZigateBaseDevice, DoorSensor):
     """
 
     @classmethod
-    def isvalid(cls, gateway, zigate_device_instante):
+    def isvalid(cls, plugin, zigate_device_instante):
         return zigate_device_instante.get_property_value('type') in ['lumi.sensor_magnet', 'lumi.sensor_magnet.aq2']
 
     def process_attr(self, name, value, attribute):
@@ -158,7 +157,7 @@ class ZMihomeSwitch(ZigateBaseDevice, Switch):
     """
 
     @classmethod
-    def isvalid(cls, gateway, zigate_device_instante):
+    def isvalid(cls, plugin, zigate_device_instante):
         return zigate_device_instante.get_property_value('type') in ['lumi.ctrl_ln1', 'lumi.sensor_86sw1']
 
     def process_attr(self, name, value, attribute):
@@ -172,7 +171,7 @@ class ZMihomeButton(ZigateBaseDevice, Button):
     """
 
     @classmethod
-    def isvalid(cls, gateway, zigate_device_instante):
+    def isvalid(cls, plugin, zigate_device_instante):
         return zigate_device_instante.get_property_value('type') in ['lumi.sensor_switch', 'lumi.sensor_switch.aq2', 'lumi.sensor_switch.aq3', 'lumi.remote.b1acn01', 'lumi.remote.b286acn01']
 
     def process_attr(self, name, value, attribute):
@@ -209,7 +208,7 @@ class ZMihomeButton(ZigateBaseDevice, Button):
 class ZigateCoverDevice(ZigateBaseDevice, Cover):
 
     @classmethod
-    def isvalid_ep(cls, gateway, zdev, endpoint):
+    def isvalid_ep(cls, plugin, zdev, endpoint):
         actions = zdev.available_actions(endpoint).get(endpoint)
         return zigate.ACTIONS_COVER in actions
 
@@ -243,7 +242,7 @@ climate_mode_type = Enum(['away', 'home'])
 class ZigateClimateDevice(ZigateBaseDevice, Thermostat, Thermometer):
 
     @classmethod
-    def isvalid_ep(cls, gateway, zdev, endpoint):
+    def isvalid_ep(cls, plugin, zdev, endpoint):
         actions = zdev.available_actions(endpoint).get(endpoint)
         return zigate.ACTIONS_THERMOSTAT in actions
 
@@ -288,7 +287,7 @@ class ZigateClimateDevice(ZigateBaseDevice, Thermostat, Thermometer):
 class ZigateGenericColourDimmableLightDevice(ZigateBaseDevice, RGBWLight):
 
     @classmethod
-    def isvalid_ep(cls, gateway, zdev, endpoint):
+    def isvalid_ep(cls, plugin, zdev, endpoint):
         device_id = zdev.endpoints[endpoint].get('device', 0xffff)
         # 0x0102: Colour Dimmable Light
         if device_id == 0x0102:
@@ -341,7 +340,7 @@ class ZigateGenericColourDimmableLightDevice(ZigateBaseDevice, RGBWLight):
 class ZigateGenericDimmableLightDevice(ZigateBaseDevice, DimmableLight):
 
     @classmethod
-    def isvalid_ep(cls, gateway, zdev, endpoint):
+    def isvalid_ep(cls, plugin, zdev, endpoint):
         device_id = zdev.endpoints[endpoint].get('device', 0xffff)
         # 0x0101: Dimmable Light
         if device_id == 0x0101:
@@ -381,7 +380,7 @@ class ZigateGenericDimmableLightDevice(ZigateBaseDevice, DimmableLight):
 class ZigateGenericLightDevice(ZigateBaseDevice, Light):
 
     @classmethod
-    def isvalid_ep(cls, gateway, zdev, endpoint):
+    def isvalid_ep(cls, plugin, zdev, endpoint):
         device_id = zdev.endpoints[endpoint].get('device', 0xffff)
         # 0x0100: ON/OFF Light
         if device_id == 0x0100:
@@ -408,7 +407,7 @@ class ZigateGenericLightDevice(ZigateBaseDevice, Light):
 class ZigateGenericDimmerDevice(ZigateBaseDevice, Dimmer):
 
     @classmethod
-    def isvalid_ep(cls, gateway, zdev, endpoint):
+    def isvalid_ep(cls, plugin, zdev, endpoint):
 
         device_id = zdev.endpoints[endpoint].get('device', 0xffff)
         if device_id == 0x0104: # 0x0104: Dimmer Switch
@@ -435,7 +434,7 @@ class ZigateGenericDimmerDevice(ZigateBaseDevice, Dimmer):
 class ZigateGenericSensorDevice(ZigateBaseDevice):
 
     @classmethod
-    def isvalid_ep(cls, gateway, zdev, endpoint):
+    def isvalid_ep(cls, plugin, zdev, endpoint):
 
         actions = zdev.available_actions(endpoint).get(endpoint)
         if len(actions) > 0:
@@ -478,7 +477,7 @@ class ZigateGenericSensorDevice(ZigateBaseDevice):
 class ZigateOccupencySensorDevice(ZigateBaseDevice, OccupencySensor):
 
     @classmethod
-    def isvalid_ep(cls, gateway, zdev, endpoint):
+    def isvalid_ep(cls, plugin, zdev, endpoint):
 
         actions = zdev.available_actions(endpoint).get(endpoint)
         if len(actions) > 0:
@@ -504,7 +503,7 @@ class ZigateOccupencySensorDevice(ZigateBaseDevice, OccupencySensor):
 class ZigateGenericBinarySensorDevice(ZigateBaseDevice, Switch):
 
     @classmethod
-    def isvalid_ep(cls, gateway, zdev, endpoint):
+    def isvalid_ep(cls, plugin, zdev, endpoint):
 
         actions = zdev.available_actions(endpoint).get(endpoint)
         if len(actions) > 0:
@@ -530,7 +529,7 @@ class ZigateGenericBinarySensorDevice(ZigateBaseDevice, Switch):
 class ZigateGenericRelayDevice(ZigateBaseDevice, Relay):
 
     @classmethod
-    def isvalid_ep(cls, gateway, zdev, endpoint):
+    def isvalid_ep(cls, plugin, zdev, endpoint):
         actions = zdev.available_actions(endpoint).get(endpoint)
         return zigate.ACTIONS_ONOFF in actions
 

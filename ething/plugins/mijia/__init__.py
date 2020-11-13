@@ -58,8 +58,8 @@ class Mijia(BleDevice, Thermometer, HumiditySensor):
 
         self._poller = MiTempBtPoller(
             self.address,
-            adapter='hci%d' % self.hci,
-            backend=backend,
+            backend,
+            adapter=('hci%d' % self.hci)
         )
 
     @scheduler.set_interval(READ_INTERVAL, name="mijia.update")

@@ -30,14 +30,13 @@ def __main():
 
 res = __main()
 if res is not None:
-  if isinstance(res, collections.Sequence):
+  if isinstance(res, collections.abc.Sequence):
     for r in res:
       emit(r)
   else:
     emit(res)
 
 """
-            print(self.emit)
             exec(formatted, {
                 'msg': msg,
                 'logger': self.logger,
