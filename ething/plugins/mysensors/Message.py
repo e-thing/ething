@@ -1,56 +1,55 @@
 # coding: utf-8
 from future.utils import string_types, integer_types, binary_type, text_type
 
-
 from .helpers import *
 
 
 class Message(object):
 
-    def __init__(self, nodeId, childSensorId, messageType, subType, value=None, payload=None, ack = None):
-        
+    def __init__(self, nodeId, childSensorId, messageType, subType, value=None, payload=None, ack=None):
+
         self.nodeId = nodeId
         self.childSensorId = childSensorId
         self.messageType = messageType
         self.subType = subType
         self.ack = ack if ack is not None else False
         self.ack_set = (ack is not None)
-        
+
         self.payload = b''
 
         if value is not None:
             self.value = value
         elif payload is not None:
             self.payload = payload
-    
+
     @property
     def nodeId(self):
         return self._nodeId
-    
+
     @nodeId.setter
     def nodeId(self, value):
         self._nodeId = int(value)
-    
+
     @property
     def childSensorId(self):
         return self._childSensorId
-    
+
     @childSensorId.setter
     def childSensorId(self, value):
         self._childSensorId = int(value)
-    
+
     @property
     def messageType(self):
         return self._messageType
-    
+
     @messageType.setter
     def messageType(self, value):
         self._messageType = int(value)
-    
+
     @property
     def subType(self):
         return self._subType
-    
+
     @subType.setter
     def subType(self, value):
         if isinstance(value, integer_types):
@@ -74,15 +73,23 @@ class Message(object):
 
             else:
                 raise Exception('invalid subType value : %s' % str(value))
-    
+
     @property
     def ack(self):
         return self._ack
-    
+
     @ack.setter
     def ack(self, value):
         self._ack = int(value)
-    
+
+    def to_dict(self):
+        return {
+            'command': self.messageType,
+            'type': self.subType,
+            'ack': self.ack,
+            'payload': self.value
+        }
+
     @staticmethod
     def parse(message, encoding='utf8'):
 
@@ -99,11 +106,11 @@ class Message(object):
                 parts[1],
                 parts[2],
                 parts[4],
-                ack = parts[3],
-                payload = parts[5]
+                ack=parts[3],
+                payload=parts[5]
             )
         else:
-            raise Exception('invalid message')
+            raise Exception('invalid message: %s' % message.decode(encoding))
 
     def raw(self):
         p = u"%d;%d;%d;%d;%d;" % (
@@ -138,7 +145,8 @@ class Message(object):
         if not subTypeStr:
             subTypeStr = str(self.subType)
 
-        return u"%d;%d;%s;%d;%s;%s" % (self.nodeId, self.childSensorId, messageTypeStr, self.ack, subTypeStr, self.payload.decode('utf8'))
+        return u"%d;%d;%s;%d;%s;%s" % (
+        self.nodeId, self.childSensorId, messageTypeStr, self.ack, subTypeStr, self.payload.decode('utf8'))
 
     def __str__(self):
         return self.stringify()
@@ -155,7 +163,7 @@ class Message(object):
             "subType": self.subType,
             "payload": self.payload
         }
-    
+
     @property
     def value(self):
         if self.messageType == SET or self.messageType == REQ:
@@ -177,7 +185,7 @@ class Message(object):
                         return False if (self.payload == b'0' or len(self.payload) == 0) else True
 
         return self.payload.decode('utf8') if len(self.payload) else None
-    
+
     @value.setter
     def value(self, value):
         if self.messageType == SET or self.messageType == REQ:

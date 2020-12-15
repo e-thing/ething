@@ -335,6 +335,7 @@ def format_transmitted_data(protocol, **data):
 
     return '10;%s;%s' % (protocol, formatter.write(protocol, **data))
 
+
 def parse_incoming_data(protocol, message):
 
     if protocol in data_formatters:
@@ -343,7 +344,6 @@ def parse_incoming_data(protocol, message):
         formatter = default_data_formatter
 
     return formatter.parse(protocol, message)
-
 
 
 def is_protocol(protocol):

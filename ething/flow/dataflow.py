@@ -10,12 +10,9 @@ from queue import Queue, Empty
 import copy
 from abc import ABCMeta, abstractmethod
 
-
 _LOGGER = logging.getLogger(__name__)
 
-
 id_types = string_types + integer_types
-
 
 STOPPED = 'stopped'
 RUNNING = 'running'
@@ -61,7 +58,7 @@ class Flow(object):
 
             if isinstance(dest, tuple):
                 node = dest[0]
-                if len(dest)>1:
+                if len(dest) > 1:
                     port = dest[1]
             elif isinstance(dest, Node):
                 node = dest
@@ -216,7 +213,7 @@ class Flow(object):
 
             while True:
                 evt = self._event.get()
-                #self._logger.debug("process event=%s" % evt)
+                # self._logger.debug("process event=%s" % evt)
 
                 node = evt.node
                 evt_name = evt.name
@@ -241,7 +238,8 @@ class Flow(object):
                         connected_endpoints = self.get_connected_endpoints(endpoint)
                         connected_nodes = set()
                         for ep in connected_endpoints:
-                            self._nodes_data[ep.node.id]['inputs'][ep.port] = self._nodes_data[ep.node.id]['inputs']['__last'] = msg.clone()
+                            self._nodes_data[ep.node.id]['inputs'][ep.port] = self._nodes_data[ep.node.id]['inputs'][
+                                '__last'] = msg.clone()
                             connected_nodes.add(ep.node)
 
                         for n in connected_nodes:
@@ -345,6 +343,7 @@ class Flow(object):
 INPUT = 'input'
 OUTPUT = 'output'
 
+
 class Endpoint(object):
     def __init__(self, node, type, port=None):
         self.node = node
@@ -362,7 +361,6 @@ class Endpoint(object):
         if isinstance(other, Endpoint):
             return self.node is other.node and self.port == other.port and self.type == other.type
         return False
-
 
 
 class Connection(object):
@@ -387,7 +385,6 @@ def _get_pid():
 
 
 class Node(with_metaclass(ABCMeta, object)):
-
     INPUTS = None
     OUTPUTS = None
 
@@ -399,7 +396,7 @@ class Node(with_metaclass(ABCMeta, object)):
         self._emitted = False
         self._stop_on_error = stop_on_error
 
-        if flow is  not None:
+        if flow is not None:
             flow.add_node(self)
 
     @property
@@ -527,7 +524,7 @@ class Event(object):
 class Message(MutableMapping):
     def __init__(self, data=None):
         self._id = generate_id()
-        #self._src = node
+        # self._src = node
         self._ts = time.time()
         self.payload = None
         if data is not None:
@@ -578,5 +575,4 @@ class Debugger(object):
         return str(self)
 
     def __str__(self):
-        return '<%s>' % (type(self).__name__, )
-
+        return '<%s>' % (type(self).__name__,)

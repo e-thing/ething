@@ -23,6 +23,7 @@ class Signal(with_metaclass(MetaReg, Mapping)):
         my_signal.data['foo'] # = "bar"
 
     """
+
     def __init__(self, **data):
         self.type = get_definition_name(type(self))
         self.ts = time.time()
@@ -73,6 +74,7 @@ class ResourceSignal(Signal):
         my_signal.resource # Resource object
 
     """
+
     def __init__(self, resource, **data):
         super(ResourceSignal, self).__init__(**data)
         self.resource = resource
@@ -88,9 +90,8 @@ class ResourceSignal(Signal):
     def __json__(self):
         # do not send the whole resource instance
         cpy = super(ResourceSignal, self).__json__()
-        cpy['resource']=self.resource.id
+        cpy['resource'] = self.resource.id
         return cpy
-
 
 
 @abstract
@@ -98,6 +99,7 @@ class PluginSignal(Signal):
     """
     Any signal emitted by a plugin must override this class.
     """
+
     def __init__(self, plugin, **data):
         super(PluginSignal, self).__init__(**data)
         self.plugin = plugin
@@ -113,5 +115,5 @@ class PluginSignal(Signal):
     def __json__(self):
         # do not send the whole resource instance
         cpy = super(PluginSignal, self).__json__()
-        cpy['plugin']=self.plugin.name
+        cpy['plugin'] = self.plugin.name
         return cpy

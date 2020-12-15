@@ -13,7 +13,6 @@ from collections.abc import Mapping
 import inspect
 import logging
 
-
 LOGGER = logging.getLogger(__name__)
 
 
@@ -38,6 +37,7 @@ class ResourceUpdated(ResourceSignal):
     """
     is emitted each time a resource attribute has been updated
     """
+
     def __init__(self, resource, attributes):
         super(ResourceUpdated, self).__init__(resource, attributes=attributes)
 
@@ -80,7 +80,7 @@ class ResourceType(WeakDBLink):
                 raise ValueError("the resource %s does not throw the signal : %s" % (
                     r, get_definition_name(signal)))
 
-    def to_shema(self, context = None):
+    def to_shema(self, context=None):
         schema = super(ResourceType, self).to_shema(context)
         schema['$component'] = 'ething.resource'
         if self.accepted_types:
@@ -90,11 +90,12 @@ class ResourceType(WeakDBLink):
         return schema
 
 
-class ResourceTypeArray (WeakDBLinkArray):
+class ResourceTypeArray(WeakDBLinkArray):
 
     def __init__(self, accepted_types=None, must_throw=None, max_len=None, **attributes):
         attributes.setdefault('$component', 'ething.resource')
-        super(ResourceTypeArray, self).__init__(ResourceType(accepted_types=accepted_types, must_throw=must_throw), max_len=max_len, **attributes)
+        super(ResourceTypeArray, self).__init__(ResourceType(accepted_types=accepted_types, must_throw=must_throw),
+                                                max_len=max_len, **attributes)
 
 
 class RDict(Dict):
@@ -108,16 +109,19 @@ class RDict(Dict):
         return j
 
 
-
-
 @abstract
 @throw(ResourceCreated, ResourceDeleted, ResourceUpdated)
 @attr('description', type=String(), default='', description="A description of this resource.")
 @attr('data', type=RDict(allow_extra=True), default={}, description="A collection of arbitrary key-value pairs.")
-@attr('createdBy', type=Nullable(ResourceType()), mode=READ_ONLY, default=None, description="The id of the resource responsible of the creation of this resource, or null.")
-@attr('modifiedDate', type=TzDate(), default=lambda _: utcnow(), mode=READ_ONLY, description="Last time this resource was modified")
-@attr('createdDate', type=TzDate(), default=lambda _: utcnow(), mode=READ_ONLY, description="Create time for this resource")
-@attr('name', type=String(allow_empty=False, regex='^[a-zA-Z0-9 !#$%&\'()+,\-.;=@^_`{    ]+(\\/[a-zA-Z0-9 !#$%&\'()+,\-.;=@^_`{    ]+)*$'), description="The name of the resource")
+@attr('createdBy', type=Nullable(ResourceType()), mode=READ_ONLY, default=None,
+      description="The id of the resource responsible of the creation of this resource, or null.")
+@attr('modifiedDate', type=TzDate(), default=lambda _: utcnow(), mode=READ_ONLY,
+      description="Last time this resource was modified")
+@attr('createdDate', type=TzDate(), default=lambda _: utcnow(), mode=READ_ONLY,
+      description="Create time for this resource")
+@attr('name', type=String(allow_empty=False,
+                          regex='^[a-zA-Z0-9 !#$%&\'()+,\-.;=@^_`{    ]+(\\/[a-zA-Z0-9 !#$%&\'()+,\-.;=@^_`{    ]+)*$'),
+      description="The name of the resource")
 @discriminate('type', description="The type of the resource")
 @uid(description="The id of the resource")
 @db(table='resources')
@@ -283,7 +287,8 @@ class Resource(Entity, SignalEmitter):
         :param filter: a callable to filter the returned children set
         :return: a list of :class:`Resource`
         """
-        def _filter (r):
+
+        def _filter(r):
             if r.createdBy == self:
                 if filter:
                     return filter(r)
@@ -309,7 +314,7 @@ class Resource(Entity, SignalEmitter):
         # clear internal __dict__ entries: free memory
         # necessary to remove all refs to other objects
         for k in list(self.__dict__):
-            if k != '__reg__': # no need to remove this one
+            if k != '__reg__':  # no need to remove this one
                 self.__dict__.pop(k)
 
         # flag it as destroyed
@@ -357,7 +362,7 @@ class Resource(Entity, SignalEmitter):
 
         for table_name in history_data:
             history_data_item = history_data[table_name]
-            self.store(table_name, history_data_item['data'], table_length = history_data_item['length'])
+            self.store(table_name, history_data_item['data'], table_length=history_data_item['length'])
 
         self.on_update(dirty_keys)
 
@@ -369,7 +374,7 @@ class Resource(Entity, SignalEmitter):
     def on_attr_update(self, attr, new_value, old_value):
         pass
 
-    def store(self, table_name, data, name = None, table_length = 5000):
+    def store(self, table_name, data, name=None, table_length=5000):
         """
         Store data in a table that is linked to this resource.
 
@@ -414,4 +419,3 @@ class Resource(Entity, SignalEmitter):
         :return: boolean
         """
         return bool(evaluate(expression, self.__json__()))
-

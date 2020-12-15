@@ -1,6 +1,7 @@
 # coding: utf-8
 from .RFLinkSwitch import RFLinkSwitch
 from .RFLinkGenericSensor import RFLinkGenericSensor
+from .RFLinkNode import RFLinkMsgReceived
 from ething.TransportProcess import LineReader
 from ething.scheduler import set_interval, unbind
 from .helpers import parse_incoming_data, is_protocol, Result
@@ -8,12 +9,10 @@ import time
 import re
 import logging
 
-
 LOGGER = logging.getLogger(__name__)
 
 
 class RFLinkProtocol(LineReader):
-
     RESPONSE_TIMEOUT = 10  # seconds
 
     def __init__(self, plugin):
@@ -52,7 +51,7 @@ class RFLinkProtocol(LineReader):
 
         parts = line.split(';', 3)
 
-        if len (parts) == 4 and is_protocol(parts[2]):
+        if len(parts) == 4 and is_protocol(parts[2]):
 
             _, packet_counter, protocol, message = parts
 
@@ -60,8 +59,9 @@ class RFLinkProtocol(LineReader):
 
             if 'ID' in data:
 
-                def filter (r):
-                    if r.typeof('resources/RFLinkNode') and r.nodeId == data['ID'] and r.protocol == protocol and r.createdBy == self:
+                def filter(r):
+                    if r.typeof('resources/RFLinkNode') and r.nodeId == data[
+                        'ID'] and r.protocol == protocol and r.createdBy == self:
                         if 'SWITCH' in data:
                             return r.switchId == data['SWITCH']
                         return True
@@ -88,6 +88,10 @@ class RFLinkProtocol(LineReader):
                         device.refresh_connect_state(True)
                         device._handle_incoming_data(protocol, data)
 
+                        if device.debug:
+                            device.store('debug', data)
+                        device.emit(RFLinkMsgReceived(device, data))
+
         else:
 
             matches = re.search(
@@ -97,7 +101,7 @@ class RFLinkProtocol(LineReader):
                     plugin.version = matches.group(1)
                     plugin.revision = matches.group(2)
                 LOGGER.info("RFLink: ver:%s rev:%s" %
-                              (matches.group(1), matches.group(2)))
+                            (matches.group(1), matches.group(2)))
             else:
                 matches = re.search(
                     ';VER=([\d\.]+);REV=([\d]+);BUILD=([0-9a-fA-F]+);', line)
@@ -117,7 +121,6 @@ class RFLinkProtocol(LineReader):
                 responseListener.resolve(line)
                 self._responseListeners.pop(i)
                 i -= 1
-
 
     def create_device(self, protocol, data, attributes):
 
@@ -140,21 +143,20 @@ class RFLinkProtocol(LineReader):
         if len(interfaces) > 0:
             return self.core.create(RFLinkGenericSensor.create_dynamic_class(*interfaces), attributes)
 
-
     # $message message to send
     # $callback (optional) function(error, messageSent, messageReceived = None)
     # $waitResponse (optional) true|false wait for a response or not
-    def send(self, message, done = None, err = None, response = None):
+    def send(self, message, done=None, err=None, response=None):
 
         LOGGER.debug("RFLink: send message '%s'", message)
 
-        result = Result(response, message, done = done, err = err)
+        result = Result(response, message, done=done, err=err)
 
         self.write_line(message)
 
         if not response:
             result.resolve()
-        else :
+        else:
             self._responseListeners.append(result)
 
         return result
@@ -184,7 +186,3 @@ class RFLinkProtocol(LineReader):
                 responseListener.reject('response timeout')
 
             i += 1
-    
-
-
-

@@ -4,7 +4,7 @@ from .. import *
 
 
 @meta(icon='mdi-function', category="function")
-@attr('script', type=Text(lang='python'), description="The Python script.")
+@attr('script', type=Text(lang='python'), description="The Python script. The message is accessible using the variable 'msg', get the message's payload by 'msg['payload']'. Call the function 'emit({\"payload\":...})' to emit a message from this node.")
 class Function(Node):
     """Execute a python script"""
 
