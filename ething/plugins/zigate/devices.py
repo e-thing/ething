@@ -27,6 +27,7 @@ class ZigateDeviceMetaClass(MetaReg):
 @attr('typename', type=String(), default='', mode = READ_ONLY, description="The type name of the device")
 @attr('manufacturer', type=String(), default='', mode = READ_ONLY, description="The manufacturer of the device")
 class ZigateBaseDevice(with_metaclass(ZigateDeviceMetaClass, Device)):
+    ACTIVITY_TIMEOUT = 1800
 
     @property
     def z(self):
@@ -238,7 +239,7 @@ class ZigateCoverDevice(ZigateBaseDevice, Cover):
 climate_mode_type = Enum(['away', 'home'])
 
 
-@attr('mode', type=climate_mode_type, default='home')
+@attr('mode', type=climate_mode_type, default='home', description='the mode of the climate')
 class ZigateClimateDevice(ZigateBaseDevice, Thermostat, Thermometer):
 
     @classmethod

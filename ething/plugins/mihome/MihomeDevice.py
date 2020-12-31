@@ -20,6 +20,7 @@ class MihomeDeviceMetaClass(MetaReg):
 
 
 @abstract
+@meta(disable_creation=True)
 @attr('voltage', type=Number(), mode=READ_ONLY, default=0, description = 'the voltage of the battery if any')
 class MihomeDevice(with_metaclass(MihomeDeviceMetaClass, MihomeBase)):
     """

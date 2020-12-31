@@ -1,5 +1,6 @@
 # coding: utf-8
 
+from . import core
 from . import static
 from . import file
 from . import table
@@ -16,7 +17,7 @@ from . import notification
 
 
 def install_routes(**kwargs):
-
+    core.install(**kwargs)
     static.install(**kwargs)
     file.install(**kwargs)
     table.install(**kwargs)

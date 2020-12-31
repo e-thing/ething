@@ -35,6 +35,7 @@ install_requires = [
     "Jinja2",
     "zeroconf",
     "btlewrap",
+    "psutil",
 
     # --webserver
     "Flask>=1.0.2",

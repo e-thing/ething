@@ -492,6 +492,22 @@ def valueTypeInt(valueType):
         return valueTypes[valueType][0]
 
 
+def typeToInt(typeStr):
+    if isinstance(typeStr, integer_types):
+        return typeStr
+    if isinstance(typeStr, string_types):
+        if typeStr.startswith('S_'):
+            if typeStr in sensorTypes:
+                return sensorTypes[typeStr][0]
+        if typeStr.startswith('V_'):
+            if typeStr in valueTypes:
+                return valueTypes[typeStr][0]
+        if typeStr.startswith('I_'):
+            return internalTypes.get(typeStr)
+        if typeStr.startswith('ST_'):
+            return streamTypes.get(typeStr)
+
+
 mysensors_sensor_classes = list()
 
 

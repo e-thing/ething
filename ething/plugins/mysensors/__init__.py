@@ -10,14 +10,14 @@ from ething.reg import *
 from ething.TransportProcess import TransportProcess, NetTransport, SerialTransport
 import logging
 
-
 LOGGER = logging.getLogger(__name__)
 
 
 @attr('isMetric', type=Boolean(), default=True, description="Set the unit to Metric(default) instead of Imperial.")
 @attr('libVersion', default=None, mode=READ_ONLY, description="The version of the MySensors library used.")
-@attr('connected', type=Boolean(), default=False, mode=READ_ONLY, description="Set to true when connected to the MySensors gateway.")
-class MySensorsPlugin (Plugin):
+@attr('connected', type=Boolean(), default=False, mode=READ_ONLY,
+      description="Set to true when connected to the MySensors gateway.")
+class MySensorsPlugin(Plugin):
 
     def setup(self):
         self.controller = None
@@ -27,14 +27,16 @@ class MySensorsPlugin (Plugin):
             # ethernet
             if not self.options.get('host'):
                 self.logger.warning("no host set in the configuration file")
-                self.notification.warning('no host set in the configuration file', title='MySensors', id='mysensors.check')
+                self.notification.warning('no host set in the configuration file', title='MySensors',
+                                          id='mysensors.check')
             else:
                 self.controller = MySensorsEthernetController(self)
         else:
             # serial
             if not self.options.get('serial_port'):
                 self.logger.warning("no serial_port set in the configuration file")
-                self.notification.warning('no serial_port set in the configuration file', title='MySensors', id='mysensors.check')
+                self.notification.warning('no serial_port set in the configuration file', title='MySensors',
+                                          id='mysensors.check')
             else:
                 self.controller = MySensorsSerialController(self)
 
@@ -46,7 +48,7 @@ class MySensorsPlugin (Plugin):
 
     def getNodes(self, filter=None):
 
-        def _filter (r):
+        def _filter(r):
             if r.typeof('resources/MySensorsNode'):
                 if filter:
                     return filter(r)
@@ -58,7 +60,8 @@ class MySensorsPlugin (Plugin):
     def getNode(self, nodeId):
         return self.core.find_one(lambda r: r.typeof('resources/MySensorsNode') and r.nodeId == nodeId)
 
-    def send(self, nodeId, sensorId, type, subtype, payload=None, value=None, ack=None, smartSleep=None, done=None, err=None, response=None):
+    def send(self, nodeId, sensorId, type, subtype, payload=None, value=None, ack=None, smartSleep=None, done=None,
+             err=None, response=None):
         """
         send a message and wait for the response.
         note: not all request has a response !
@@ -91,7 +94,6 @@ class MySensorsPlugin (Plugin):
 
         return result
 
-
     @method.arg('nodeId', type=Integer(min=0, max=255), required=True)
     @method.arg('sensorId', type=Integer(min=0, max=255), required=True)
     @method.arg('type', type=Integer(min=0, max=4), required=True)
@@ -109,7 +111,7 @@ class MySensorsPlugin (Plugin):
         """
         request gateway version.
         """
-        result = self.send(GATEWAY_ADDRESS, INTERNAL_CHILD, INTERNAL, I_VERSION, response = {'subType': I_VERSION})
+        result = self.send(GATEWAY_ADDRESS, INTERNAL_CHILD, INTERNAL, I_VERSION, response={'subType': I_VERSION})
         return result.data.value
 
     @method
@@ -120,19 +122,23 @@ class MySensorsPlugin (Plugin):
         self.send(GATEWAY_ADDRESS, INTERNAL_CHILD, INTERNAL, I_REBOOT)
 
     def ping(self):
-        result = self.send(GATEWAY_ADDRESS, INTERNAL_CHILD, INTERNAL, I_PING, response = {'subType': I_PONG})
+        result = self.send(GATEWAY_ADDRESS, INTERNAL_CHILD, INTERNAL, I_PING, response={'subType': I_PONG})
         return
 
-    @method
+    @method.return_type('object')
     def heartbeat(self):
-        result = self.send(GATEWAY_ADDRESS, INTERNAL_CHILD, INTERNAL, I_HEARTBEAT_REQUEST, response = {'subType': I_HEARTBEAT_RESPONSE})
+        result = self.send(GATEWAY_ADDRESS, INTERNAL_CHILD, INTERNAL, I_HEARTBEAT_REQUEST,
+                           response={'subType': I_HEARTBEAT_RESPONSE})
         return result.data.value
+
+    @method
+    def include(self):
+        self.send(GATEWAY_ADDRESS, INTERNAL_CHILD, INTERNAL, I_INCLUSION_MODE, '1')
 
 
 class MySensorsController(TransportProcess):
 
     def __init__(self, plugin, transport):
-
         super(MySensorsController, self).__init__(
             transport=transport,
             protocol=MySensorsProtocol(plugin),
@@ -167,5 +173,3 @@ class MySensorsSerialController(MySensorsController):
             port=port,
             baudrate=baudrate
         ))
-
-

@@ -169,7 +169,7 @@ class MySensorsProtocol(LineReader):
                         else:
                             LOGGER.warning(
                                 'unable to create sensor (node=%s sensor=%s), waiting for a presentation packet, restart the node' % (
-                                nodeId, sensorId))
+                                    nodeId, sensorId))
                             node_err = 'restart of the node needed'
 
                 if not node:
@@ -221,7 +221,7 @@ class MySensorsProtocol(LineReader):
                                         except:
                                             LOGGER.exception(
                                                 'error in sensor._set_data for sensor %s and datatype=%s' % (
-                                                sensor, datatype))
+                                                    sensor, datatype))
 
                                     else:
                                         LOGGER.warning(
@@ -241,7 +241,7 @@ class MySensorsProtocol(LineReader):
                                         except:
                                             LOGGER.exception(
                                                 'error in sensor._get_data for sensor %s and datatype=%s' % (
-                                                sensor, datatype))
+                                                    sensor, datatype))
                                             value = None
 
                                         if value is not None:
@@ -296,6 +296,7 @@ class MySensorsProtocol(LineReader):
                                     occupied_node_id = [n.nodeId for n in plugin.getNodes()]
                                     for i in range(1, 255):
                                         if i not in occupied_node_id:
+                                            LOGGER.info("id request => id=%d" % (i,))
                                             self.send(Message(
                                                 BROADCAST_ADDRESS, INTERNAL_CHILD, INTERNAL, I_ID_RESPONSE, i))
                                             break
@@ -374,11 +375,9 @@ class MySensorsProtocol(LineReader):
                                     ok = True
 
                                     if isinstance(response_filter, dict):
-                                        if 'messageType' in response_filter and response_filter[
-                                            'messageType'] != message.messageType:
+                                        if 'messageType' in response_filter and response_filter['messageType'] != message.messageType:
                                             ok = False
-                                        if 'subType' in response_filter and response_filter[
-                                            'subType'] != message.subType:
+                                        if 'subType' in response_filter and typeToInt(response_filter['subType']) != message.subType:
                                             ok = False
 
                                     if ok:
@@ -414,6 +413,7 @@ class MySensorsProtocol(LineReader):
 
 
         except Exception as e:
+            LOGGER.error('unable to parse %s' % (line,))
             LOGGER.exception(e)
 
     def send(self, message, smartSleep=None, done=None, err=None, response=None):

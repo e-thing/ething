@@ -6,6 +6,7 @@ from ..Interface import *
 
 @interface
 @meta(icon='mdi-water-percent')
-@sensor_attr('humidity', type = Number(min = 0, max = 100), default = 0, description = "the humidity measured by the sensor in percent.", unit="%", icon="mdi-water-percent")
+@sensor_attr('humidity', type=Number(min=0, max=100), default=0,
+             description="the humidity measured by the sensor in percent.", unit="%", icon="mdi-water-percent")
 class HumiditySensor(Sensor):
     pass

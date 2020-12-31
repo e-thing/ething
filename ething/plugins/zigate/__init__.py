@@ -22,6 +22,7 @@ if zigate_lib_imported:
     from ething.plugin import Plugin
     from ething.env import USER_DIR
     from ething import scheduler
+    from ething.core import PairingUpdated
     import os
     import time
     import json
@@ -59,6 +60,15 @@ if zigate_lib_imported:
             if not os.path.exists(PERSISTENT_FILE):
                 with open(PERSISTENT_FILE, 'w') as fp:
                     fp.write("{}")
+
+            self.core.bind(PairingUpdated, self._on_pairing_updated)
+
+        def _on_pairing_updated(self, signal):
+            pairing = signal.data['state']
+            if pairing:
+                self.start_pairing_mode()
+            else:
+                self.stop_pairing_mode()
 
         def _connect(self, **kwargs):
             wifi_version = self.options.get('wifi_version', 'no').lower()
@@ -267,7 +277,7 @@ if zigate_lib_imported:
                     if notify:
                         self.notification.info('Pairing device: %s. Please wait...' % dev_name,
                                                timeout=DISCOVERY_TIMEOUT + DISCOVERY_TIMEOUT_EXTRA, id=notif_id)
-                    self.processes.add(self._wait_device_discovery, name=process_id, args=(dz_instance,))
+                    self.processes.add(self._wait_device_discovery, id=process_id, args=(dz_instance,))
                 return
 
             # print some info here
@@ -330,15 +340,13 @@ if zigate_lib_imported:
 
             self.logger.warning('unable to create any device for %s', dz_instance)
 
-        @method
-        def start_pairing_mode(self):
+        def start_pairing_mode(self, duration=60):
             """
             start pairing mode for 60 seconds
             """
             if self.z:
-                self.z.permit_join(60)
+                self.z.permit_join(duration)
 
-        @method
         def stop_pairing_mode(self):
             """
             stop pairing mode

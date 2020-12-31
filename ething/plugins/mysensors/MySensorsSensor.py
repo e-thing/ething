@@ -55,8 +55,10 @@ class MySensorsSensor(with_metaclass(MySensorsSensorMetaClass, Device)):
         return self.node.send(self.sensorId, SET, subtype, payload)
 
     @method.arg('subtype', type=Enum(list(valueTypes)))
+    @method.return_type('object')
     def get_data(self, subtype):
-        return self.node.send(self.sensorId, SET, subtype, None)
+        result = self.node.send(self.sensorId, REQ, subtype, None, response={'subType': subtype})
+        return result.data.value
 
     def _set_data(self, datatype, value):
         """
@@ -337,10 +339,24 @@ class MySensorsPower(MySensorsSensor, PowerMeter):
 
 
 # S_HEATER;14;Heater device;V_HVAC_SETPOINT_HEAT, V_HVAC_FLOW_STATE, V_TEMP, V_STATUS
-# todo
 @attr('name', default='Heater device')
-class MySensorsHeater(MySensorsSensor):
+class MySensorsHeater(MySensorsSensor, Thermostat):
     S = S_HEATER
+
+    def _set_data(self, datatype, value):
+        if datatype == V_HVAC_SETPOINT_HEAT:
+            self.target_temperature = value
+        else:  # default
+            super()._set_data(datatype, value)
+
+    def _get_data(self, datatype):
+        if datatype == V_HVAC_SETPOINT_HEAT:
+            return self.target_temperature
+        else:  # default
+            super()._get_data(datatype)
+
+    def set_target_temperature(self, temperature):
+        self.send(SET, V_HVAC_SETPOINT_HEAT, value=temperature, done=lambda _: setattr(self, 'target_temperature', temperature))
 
 
 # S_DISTANCE;15;Distance sensor;V_DISTANCE, V_UNIT_PREFIX
@@ -573,8 +589,24 @@ class MySensorsColorSensor(MySensorsSensor, GenericSensor):
 # S_HVAC;29;Thermostat/HVAC device;V_STATUS, V_TEMP, V_HVAC_SETPOINT_HEAT, V_HVAC_SETPOINT_COOL, V_HVAC_FLOW_STATE, V_HVAC_FLOW_MODE, V_HVAC_SPEED
 # todo
 @attr('name', default='HVAC')
-class MySensorsHVAC(MySensorsSensor):
+class MySensorsHVAC(MySensorsSensor, Thermostat):
     S = S_HVAC
+
+    def _set_data(self, datatype, value):
+        if datatype == V_HVAC_SETPOINT_HEAT:
+            self.target_temperature = value
+        else:  # default
+            super()._set_data(datatype, value)
+
+    def _get_data(self, datatype):
+        if datatype == V_HVAC_SETPOINT_HEAT:
+            return self.target_temperature
+        else:  # default
+            super()._get_data(datatype)
+
+    def set_target_temperature(self, temperature):
+        self.send(SET, V_HVAC_SETPOINT_HEAT, value=temperature,
+                  done=lambda _: setattr(self, 'target_temperature', temperature))
 
 
 # S_MULTIMETER;30;Multimeter device;V_VOLTAGE, V_CURRENT, V_IMPEDANCE

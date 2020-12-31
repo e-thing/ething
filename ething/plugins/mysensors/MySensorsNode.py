@@ -27,14 +27,17 @@ class MySensorsNode(Device):
     def plugin(self):
         return self.core.plugins['mysensors']
 
-    def _save(self, dirty_attrs):
-        super(MySensorsNode, self)._save(dirty_attrs)
+    def on_attr_update(self, attr, new_value, old_value):
+        super(MySensorsNode, self).on_attr_update(attr, new_value, old_value)
 
-        if get_registered_attr(self, 'battery') in dirty_attrs:
+        if attr == 'battery':
             # update the battery value to the attached sensors too
             for sensor in self.getSensors():
                 sensor.battery = self.battery
-                sensor.save()
+        elif attr == 'location':
+            # update the location to the attached sensors too
+            for sensor in self.getSensors():
+                sensor.location = self.location
 
     def getSensors(self, filter=None):
 

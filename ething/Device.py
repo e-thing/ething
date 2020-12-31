@@ -3,7 +3,7 @@ from .Resource import Resource, ResourceType
 from .utils.date import TzDate, utcnow
 from .reg import *
 from .Signal import ResourceSignal
-from .flow import ResourceNode
+from .flow import ResourceNode, Descriptor
 from .env import get_options
 
 
@@ -12,6 +12,7 @@ class BatteryLevelChanged(ResourceSignal):
     """
     is emitted each time the battery level changed
     """
+
     def __init__(self, resource, new_value):
         super(BatteryLevelChanged, self).__init__(resource, battery=new_value)
 
@@ -33,9 +34,10 @@ class DeviceDisconnected(ResourceSignal):
 
 
 @meta(icon='mdi-play', category='function', label="Run device command")
-@attr('args', type=Dict(allow_extra = True), default={}, description="The arguments passed to the method")
+@attr('args', type=Dict(allow_extra=True), default={}, description="The arguments passed to the method")
 @attr('method', type=String(), description="The method name")
-@attr('resource', type=ResourceType(accepted_types=('resources/Device',)), description="The device on which the action is executed")
+@attr('resource', type=ResourceType(accepted_types=('resources/Device',)),
+      description="The device on which the action is executed")
 class ExecuteDevice(ResourceNode):
     """
     Run a command of a device.
@@ -49,7 +51,27 @@ class ExecuteDevice(ResourceNode):
         if device is None:
             raise Exception("the device has been removed")
 
-        res = getattr(device, self.method)(**self.args)
+        # get arguments
+        _msg = inputs['default']
+        _context = {
+            'msg': _msg,
+            'flow': self.flow
+        }
+
+        true_args = dict()
+
+        for k in self.args:
+            arg = self.args[k]
+            type = arg['type'] # msg, glob ... or value
+            value = arg['value'] # the actual value
+
+            if type == 'value':
+                # no transformation needed
+                true_args[k] = value
+            else:
+                true_args[k] = Descriptor.parse_value(type, value, **_context)
+
+        res = getattr(device, self.method)(**true_args)
 
         self.emit({
             'payload': res
@@ -59,15 +81,17 @@ class ExecuteDevice(ResourceNode):
 @abstract
 @throw(BatteryLevelChanged, DeviceConnected, DeviceDisconnected)
 # 0-100 : the battery level, if None it means that no battery information is provided
-@attr('battery', type=Nullable(Number(min=0, max=100)), mode=READ_ONLY, default=None, description="The battery level of this device (must be between 0 (empty) and 100 (full) , or null if the device has no battery information).")
+@attr('battery', type=Nullable(Number(min=0, max=100)), mode=READ_ONLY, default=None,
+      description="The battery level of this device (must be between 0 (empty) and 100 (full) , or null if the device has no battery information).")
 @attr('location', type=String(), default='', description="The location of this device.")
-#@attr('connected', type=Boolean(), default=True, mode=READ_ONLY, force_watch=True, description="Set to true when this device is connected.")
-@attr('connected', type=Boolean(), default=True, mode=READ_ONLY, description="Set to true when this device is connected.")
-@attr('lastSeenDate', type=Nullable(TzDate()), mode=READ_ONLY, default=None, description="The last time this device was reached or made a request.")
+# @attr('connected', type=Boolean(), default=True, mode=READ_ONLY, force_watch=True, description="Set to true when this device is connected.")
+@attr('connected', type=Boolean(), default=True, mode=READ_ONLY,
+      description="Set to true when this device is connected.")
+@attr('lastSeenDate', type=Nullable(TzDate()), mode=READ_ONLY, default=None,
+      description="The last time this device was reached or made a request.")
 @attr('error', type=Nullable(String()), mode=READ_ONLY, default=None, description="Any error concerning this device.")
 @meta(description='')
 class Device(Resource):
-
     """
     The base class of any device (Switch, light, sensor, controller, ...).
 
@@ -105,8 +129,7 @@ class Device(Resource):
     BATTERY_HALF = 50
     BATTERY_FULL = 100
 
-    ACTIVITY_TIMEOUT = None # number of seconds after which the device is automatically detected as not connected
-
+    ACTIVITY_TIMEOUT = None  # number of seconds after which the device is automatically detected as not connected
 
     # def __watch__(self, attr, value, old_value):
     #     if attr == 'connected' and value:
@@ -139,9 +162,9 @@ class Device(Resource):
             for dev in self.children(lambda r: r.typeof(Device)):
                 dev.refresh_connect_state(state)
 
-
     def check_activity(self):
-        if self.ACTIVITY_TIMEOUT and self.connected and utcnow() - self.lastSeenDate > datetime.timedelta(seconds=self.ACTIVITY_TIMEOUT):
+        if self.ACTIVITY_TIMEOUT and self.connected and utcnow() - self.lastSeenDate > datetime.timedelta(
+                seconds=self.ACTIVITY_TIMEOUT):
             self.refresh_connect_state(False)
 
     def __db_save__(self, insert):
@@ -152,7 +175,8 @@ class Device(Resource):
 
 @meta(icon='mdi-bluetooth')
 @attr('rssi', mode=READ_ONLY, default=None, description="The last received signal strength indicator of this device.")
-@attr('address', type=String(regex='^([0-9A-Fa-f]{2}[:-]){5}([0-9A-Fa-f]{2})$'), description='the address of the device')
+@attr('address', type=String(regex='^([0-9A-Fa-f]{2}[:-]){5}([0-9A-Fa-f]{2})$'),
+      description='the address of the device')
 @abstract
 class BleDevice(Device):
 

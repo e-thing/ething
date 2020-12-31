@@ -2,9 +2,9 @@
 from .. import *
 
 
-
 @meta(icon='mdi-function', category="function")
-@attr('script', type=Text(lang='python'), description="The Python script. The message is accessible using the variable 'msg', get the message's payload by 'msg['payload']'. Call the function 'emit({\"payload\":...})' to emit a message from this node.")
+@attr('script', type=Text(lang='python'),
+      description="The Python script. The message is accessible using the variable 'msg', get the message's payload by 'msg['payload']'. Call the function 'emit({\"payload\":...})' to emit a message from this node. The core instance is available through 'core'.")
 class Function(Node):
     """Execute a python script"""
 
@@ -17,8 +17,8 @@ class Function(Node):
 
         try:
             formatted = []
-            for l in self.script.splitlines():
-                formatted.append('  ' + l)
+            for line in self.script.splitlines():
+                formatted.append('  ' + line)
 
             formatted = '\n'.join(formatted)
 
@@ -37,15 +37,19 @@ if res is not None:
     emit(res)
 
 """
+            resource = None
+            if 'resource' in msg:
+                resource = self.core.get(msg['resource'])
+
             exec(formatted, {
                 'msg': msg,
                 'logger': self.logger,
                 'core': self.core,
                 'debug': self.debug,
                 'emit': self.emit,
-                'context': context
+                'context': context,
+                'resource': resource,
             })
 
         except Exception as e:
             raise e
-            pass

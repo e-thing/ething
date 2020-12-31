@@ -13,7 +13,8 @@ class LevelChanged(ResourceSignal):
 @throw(LevelChanged)
 @interface
 @meta(icon='mdi-contrast-circle')
-@attr('level', type = Range(0, 100), default = 0, mode = READ_ONLY, history = True, force_watch = True, description = "the level of this dimmer")
+@attr('level', type=Range(0, 100), default=0, mode=READ_ONLY, history=True, force_watch=True,
+      description="the level of this dimmer")
 class Dimmer(Device):
 
     def on_attr_update(self, attr, new_value, old_value):

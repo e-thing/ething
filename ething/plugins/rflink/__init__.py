@@ -6,6 +6,7 @@ from .RFLinkGenericSensor import RFLinkGenericSensor
 from ething.reg import *
 from ething.plugin import Plugin
 from ething.TransportProcess import TransportProcess, SerialTransport
+from ething.core import PairingUpdated
 from .protocol import RFLinkProtocol
 
 
@@ -38,7 +39,7 @@ class RFLinkController(TransportProcess):
 @attr('version', default=None, mode=READ_ONLY, description="The version of the RFLink library used.")
 @attr('revision', default=None, mode=READ_ONLY, description="The revision number of the RFLink library used.")
 @attr('build', default=None, mode=READ_ONLY, description="The build number of the RFLink library used.")
-@attr('inclusion', default=False, type=Boolean(),  description="If true, new devices will be automatically created.")
+@attr('inclusion', default=False, type=Boolean(),  mode=PRIVATE, description="If true, new devices will be automatically created.")
 @attr('connected', type=Boolean(), default=False, mode=READ_ONLY, description="Set to true when connected to the RFLink gateway.")
 class RFLink(Plugin):
 
@@ -55,6 +56,12 @@ class RFLink(Plugin):
         self.notification.remove('rflink.check')
         self.controller = RFLinkController(self, 'rflink.controller')
         self.processes.add(self.controller)
+
+        self.core.bind(PairingUpdated, self._on_pairing_updated)
+
+    def _on_pairing_updated(self, signal):
+        pairing = signal.data['state']
+        self.inclusion = pairing
 
     def getNodes(self, filter=None):
         def _filter (r):

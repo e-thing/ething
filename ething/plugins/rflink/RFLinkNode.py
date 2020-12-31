@@ -14,6 +14,7 @@ class RFLinkMsgReceived(ResourceSignal):
 
 
 @abstract
+@meta(disable_creation=True)
 @attr('nodeId', type=String(allow_empty=False), mode = READ_ONLY, description="The hardware id of the node.")
 @attr('protocol', type=String(allow_empty=False), mode = READ_ONLY, description="The protocol name of the node.")
 @attr('createdBy', required=True)

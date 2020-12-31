@@ -2,11 +2,11 @@
 
 from ething.scheduler import set_interval
 from multiping import multi_ping
+
 try:
     from urllib.parse import urlparse
 except ImportError:
     from urlparse import urlparse
-
 
 PING_DEFAULT_INTERVAL = 60
 
@@ -46,8 +46,12 @@ def pingable(attr='host', interval=PING_DEFAULT_INTERVAL):
                 if host == 'localhost' or host == '127.0.0.1':
                     online = True
                 else:
+                    retry = 2 if self.connected else 1  # avoid some deconnection if the first ping fail
                     try:
-                        online = ping(host)
+                        for i in range(retry):
+                            online = ping(host)
+                            if online:
+                                break
                     except Exception as e:
                         self.logger.error('ping() raises an exception: %s' % str(e))
                         return False
@@ -66,8 +70,3 @@ def pingable(attr='host', interval=PING_DEFAULT_INTERVAL):
         return cls
 
     return d
-
-
-
-
-

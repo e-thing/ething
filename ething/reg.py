@@ -65,10 +65,10 @@ def meta(**metadata):
 def set_meta(class_or_instance, key, value=None):
     if not inspect.isclass(class_or_instance):
         class_or_instance = type(class_or_instance)
-    
+
     if not hasattr(class_or_instance, '__meta'):
       setattr(class_or_instance, '__meta', dict())
-    
+
     meta = getattr(class_or_instance, '__meta')
 
     if isinstance(key, Mapping) and value is None:
@@ -80,7 +80,7 @@ def set_meta(class_or_instance, key, value=None):
 def get_meta(class_or_instance, key=None, default=None):
   if not inspect.isclass(class_or_instance):
       class_or_instance = type(class_or_instance)
-  
+
   if key is None:
       return getattr(class_or_instance, '__meta', {})
 
@@ -193,7 +193,7 @@ def get_context(obj, context=None):
         ctx.update(context)
     else:
       ctx = context
-    
+
     return BoundedContext(ctx) if ctx is not None else BoundedContext()
 
 def set_context(obj, *args, **kwargs):
@@ -216,21 +216,21 @@ class RegObject(object):
   @property
   def context(self):
     return self._context
-  
+
   def update_context(self, key, value=None):
     if isinstance(key, string_types):
       self._context[key] = value
     else:
       self._context.update(key)
-  
+
   @property
   def parents(self):
     return self._parents
-  
+
   @property
   def children(self):
     return self._children
-  
+
   def attach(self, child):
     if child is None or isinstance(child, scalar_types): return
     try:
@@ -238,7 +238,7 @@ class RegObject(object):
         self._children.append(child)
     except AttributeError:
         return
-  
+
   def detach(self, child):
     reg = install(child, True)
     if reg is None: return
@@ -248,13 +248,13 @@ class RegObject(object):
   @property
   def dirty(self):
     return self._dirty
-  
+
   def set_dirty(self, child=None):
     self._dirty = True
     # notify the parent
     for p in self._parents:
       set_dirty(p, child=self.obj)
-  
+
   def clean(self):
     if self._dirty:
       self._dirty = False
@@ -269,11 +269,11 @@ class RegObjectWithAttr(RegObject):
     super(RegObjectWithAttr, self).__init__(obj)
     self._children = dict()
     self._dirty_attr = set()
-  
+
   @property
   def children(self):
     return self._children.values()
-  
+
   def attach(self, child, attr):
     if child is None or isinstance(child, scalar_types): return
     try:
@@ -281,7 +281,7 @@ class RegObjectWithAttr(RegObject):
         self._children[attr] = child
     except AttributeError:
         return
-  
+
   def detach(self, child, attr):
     reg = install(child, True)
     if reg is None: return
@@ -302,13 +302,13 @@ class RegObjectWithAttr(RegObject):
             attr.__watch__(self.obj, child, child)
     elif attr is not None:
       self._dirty_attr.add(attr)
-    
+
     super(RegObjectWithAttr, self).set_dirty(child=child)
-  
+
   def clean(self):
     self._dirty_attr.clear()
     super(RegObjectWithAttr, self).clean()
-  
+
   def list_dirty_attr(self):
     return self._dirty_attr
 
@@ -367,21 +367,21 @@ NO_VALUE = _NO_VALUE()
 
 
 class RegItemBase (MutableMapping):
-    
+
     def __init__(self, name, props=None):
         self._name = name
         self._props = dict()
         if props is not None:
             self.update(props)
-    
+
     @property
     def properties (self):
       return self._props
-    
+
     @property
     def name (self):
       return self._name
-    
+
     @property
     def required (self):
       return 'default' not in self
@@ -423,7 +423,7 @@ class RegItemBase (MutableMapping):
       if isinstance(other, RegItemBase):
         return self.name == other.name
       return self.name == other
-    
+
     def make_default(self, *args, **kwargs):
       if 'default' not in self:
         raise AttributeError('%s: no default set' % self._name)
@@ -433,7 +433,7 @@ class RegItemBase (MutableMapping):
       else:
         default_val = copy.deepcopy(default_val)
       return default_val
-    
+
     def _make_default(self, *args, **kwargs):
       context = kwargs.pop('context', None)
       d = self.make_default(*args, **kwargs)
@@ -441,7 +441,7 @@ class RegItemBase (MutableMapping):
       if data_type:
         d = data_type.set(d, context=context)
       return d
-    
+
     def to_shema(self, cls, **kwargs):
 
       data_type = self.get('type')
@@ -450,7 +450,7 @@ class RegItemBase (MutableMapping):
         schema = data_type.to_shema(context=kwargs)
       else:
         schema = {}
-      
+
       if 'default' in self:
         try:
           d = self._make_default(cls, context=kwargs)
@@ -481,12 +481,12 @@ class RegItemBase (MutableMapping):
       schema_mod = self.get('schema_mod')
       if schema_mod:
           schema_mod(self, schema)
-      
+
       return schema
 
 
 class Attribute (RegItemBase):
-    
+
     def __init__(self, name, cls=None, props=None):
       super(Attribute, self).__init__(name, props)
       self.cls = cls
@@ -515,7 +515,7 @@ class Attribute (RegItemBase):
                 # on python 2 : AttributeError: attribute '__doc__' of 'type' objects is not writable
                 pass
 
-    
+
     def __get_raw__(self, obj, objtype, context=None):
       if obj is None:
         # return default
@@ -529,7 +529,7 @@ class Attribute (RegItemBase):
           d[self._name] = v
         val = d[self._name]
       return val
-    
+
     def __get__(self, obj, objtype=None):
       if objtype is None:
         objtype = type(obj)
@@ -538,23 +538,23 @@ class Attribute (RegItemBase):
 
       val = self.__get_raw__(obj, objtype, context=context)
       return self.__get_post__(val, context)
-    
+
     def __get_post__(self, val, context=None):
       data_type = self.get('type')
       if data_type:
         val = data_type.get(val, context)
       return val
-    
+
     def __get_json__(self, obj, context=None):
       context = get_context(obj, context)
       val = self.__get_raw__(obj, type(obj), context)
-      
+
       data_type = self.get('type')
       if data_type:
         val = data_type.to_json(val, context)
-      
+
       return val
-    
+
     def __set_raw__(self, obj, val, context=None):
       reg = install(obj, cls=RegObjectWithAttr)
       context = get_context(obj, context)
@@ -571,7 +571,7 @@ class Attribute (RegItemBase):
           # print('__set_raw__', val, old_val, type(val), type(old_val), val is not old_val, val != old_val)
           reg.set_dirty(attr=self)
           self.__watch__(obj, val, old_val, context)
-    
+
     def __watch__(self, obj, val, old_val, context=None):
       try:
         watcher = object.__getattribute__(obj, '__watch__')
@@ -599,7 +599,7 @@ class Attribute (RegItemBase):
       context = get_context(obj)
       val = self.__set_pre__(val, context)
       self.__set_raw__(obj, val, context)
-    
+
     def __set_pre__(self, val, context=None):
       data_type = self.get('type')
       if data_type:
@@ -616,15 +616,15 @@ class Attribute (RegItemBase):
       data_type = self.get('type')
       if data_type:
         val = data_type.serialize(val, context)
-      
+
       return val
-    
+
     def __unserialize__(self, val, context=None):
       data_type = self.get('type')
       if data_type:
         val = data_type.unserialize(val, context)
       return val
-    
+
     def __from_json__(self, val, context=None):
       data_type = self.get('type')
       if data_type:
@@ -633,18 +633,18 @@ class Attribute (RegItemBase):
 
     def __str__(self):
       return "<attr name=%s cls=%s>" % (self.name, self.cls.__name__ if self.cls else None)
-    
+
     def __repr__(self):
       return str(self)
-    
+
     def clone(self, new_cls):
       copy = type(self)(self.name, new_cls, self._props.copy())
       return copy
-      
+
 
 
 class ComputedAttr(Attribute):
-  
+
   def __init__(self, func, name=None, cls=None, props=None):
     if name is None:
       if isinstance(func, (staticmethod, classmethod)):
@@ -657,7 +657,7 @@ class ComputedAttr(Attribute):
     props.setdefault('description', extract_from_docstring(func.__doc__))
     super(ComputedAttr, self).__init__(name, cls, props)
     self._func = func
-  
+
   def __get_raw__(self, obj, objtype, context=None):
       if isinstance(self._func, staticmethod):
         val = self._func.__func__()
@@ -669,7 +669,7 @@ class ComputedAttr(Attribute):
         else:
           val = self._func(obj)
       return val
-  
+
   def __set_raw__(self, obj, val, context=None):
       raise ValueError('[%s] computed attributes are read only' % self._name)
 
@@ -724,7 +724,7 @@ def random_string(length=7, alphabet=default_alphabet):
 def uid(key='id', generator=None, **extra):
   if generator is None:
     generator = random_string
-  
+
   def d(cls):
     attr(key, type=String(allow_empty=False), mode=READ_ONLY, default=lambda _: generator(), **extra)(cls)
     return cls
@@ -740,7 +740,7 @@ def list_registered_attr(class_or_instance):
   else:
     cls_dict = type(class_or_instance).__dict__.copy()
     cls_dict.update(getattr(class_or_instance, '__dict__', {}))
-  
+
   attributes = []
   for name in cls_dict:
     attr = cls_dict[name]
@@ -792,7 +792,7 @@ def throw(*args):
             signals[i] = signal_ # replace
         else:
             signals.append(signal_)
-    
+
     set_meta(cls, 'signals', signals)
 
     return cls
@@ -854,7 +854,7 @@ class MethodDecorator(object):
         def d(func):
             func = self._init(func)
             args = func.properties['args']
-            
+
             if not kwargs.get('enable', True):
                 args.pop(name, None)
             else:
@@ -891,25 +891,25 @@ class Method(RegItemBase):
           name = getattr(func, '__name__')
         else:
           name = getattr(func, '__func__').__name__
-      
+
       super(Method, self).__init__(name, props=self._parse(func))
       self._func = func
       self._cls = None
-    
+
     @property
     def cls (self):
       return self._cls
-    
+
     @property
     def func (self):
       return self._func
-    
+
     def __str__(self):
       return "<method name=%s cls=%s>" % (self.name, self.cls.__name__ if self.cls else None)
-    
+
     def __repr__(self):
       return str(self)
-    
+
     def __get__(self, obj, objtype=None):
       def handler(*args, **kwargs):
         _kwargs = self._parse_args(args, kwargs, context=get_context(obj))
@@ -918,7 +918,7 @@ class Method(RegItemBase):
 
     def call(self, obj, *args, **kwargs):
         return self.__get__(obj)(*args, **kwargs)
-    
+
     def _parse_args(self, args, kwargs, context=None):
       _args = self.get('args')
       arg_dict = OrderedDict()
@@ -929,7 +929,7 @@ class Method(RegItemBase):
           raise ValueError("%s() takes at most %d arguments" % (self.name, len(_args_list)))
         arg_name = _args_list[argi]
         arg_dict[arg_name] = args[argi]
-      
+
       for arg_name in kwargs:
         if arg_name not in _args_list:
             raise ValueError("%s(): invalid argument '%s'" % (self.name, arg_name))
@@ -956,7 +956,7 @@ class Method(RegItemBase):
           else:
             if arg.get('required', False):
               raise ValueError("%s(): missing argument '%s'" % (self.name, arg_name))
-      
+
       return arg_dict
 
     def to_shema(self, **kwargs):
@@ -1009,7 +1009,7 @@ class Method(RegItemBase):
             schema['return'] = return_type
 
         return schema
-  
+
     @staticmethod
     def inherit(func, orig):
       """
@@ -1018,7 +1018,7 @@ class Method(RegItemBase):
       func = method._init(func)
       _setdefaults(func.properties, orig.properties)
       return func
-    
+
     @staticmethod
     def _parse(func):
         """
@@ -1059,7 +1059,7 @@ class Method(RegItemBase):
               default = var_defaults[i - default_offset] if has_default else None
               arg_meta['default'] = default
               arg_meta['type'] = get_type_from_value(default)
-            
+
             meta['args'][arg_name] = Argument(arg_name, arg_meta)
 
         if description:
@@ -1216,7 +1216,7 @@ class MetaReg(ABCMeta):
 
             if member is b_m:
               continue # inherited from parent, no modification done
-            
+
             # overloading
             member = Method.inherit(member, b_m)
             setattr(cls, b_m.name, member)
@@ -1313,13 +1313,13 @@ def build_schema(cls, root=False, **kwargs):
     if mode != READ_ONLY:
         if 'default' not in attr_schema:
           required.append(name)
-    
+
     if callable(helper):
       if helper(schema=attr_schema, name=name, attribute=attribute) is False:
         continue
-    
+
     schema['properties'][name] = attr_schema
-  
+
   schema['required'] = required
 
   if not no_methods:
@@ -1351,13 +1351,13 @@ def build_schema(cls, root=False, **kwargs):
         all_of.append({
           '$ref': '#/' + get_definition_name(b)
         })
-    
+
     if len(all_of) > 0:
       all_of.append(schema)
       schema = {
         'allOf': all_of
       }
-  
+
   if is_abstract(cls):
     schema['virtual'] = True
 
@@ -1398,9 +1398,9 @@ def build_schema_definitions(**kwargs):
         if ns_item not in rel_def:
           rel_def[ns_item] = OrderedDict()
         rel_def = rel_def[ns_item]
-    
+
     rel_def[name] = schema
-  
+
   return definitions
 
 
@@ -1410,7 +1410,7 @@ class InternalData(Mapping):
     self.__d = d
     self.__context = context
     self.__applied = False
-  
+
   def set_to(self, obj):
     if not self.__applied:
       for attr in self.__d:
@@ -1491,27 +1491,31 @@ def _set(cls, data=None, context=None, init=False, data_src=None):
 
 
 def create(cls, data=None, context=None, data_src=None):
-  if isinstance(cls, string_types):
-    cls = get_registered_class(cls)
+    if isinstance(cls, string_types):
+        cls = get_registered_class(cls)
 
-  cls = _discriminate_cls(cls, data)
+    if data is None:
+        data = {}
 
-  if data is None:
-    data = {}
-  
-  d = _set(cls, data, context, True, data_src)
+    cls = _discriminate_cls(cls, data)
 
-  if hasattr(cls, '__instantiate__'):
-    instance = cls.__instantiate__(d, data_src, context)
-  else:
-    instance = cls()
-  
-  if context is not None:
-    set_context(instance, context)
+    # dynamic class or something special
+    if hasattr(cls, '__class_instantiate__'):
+        cls = cls.__class_instantiate__(data, data_src, context)
 
-  d.set_to(instance)
+    d = _set(cls, data, context, True, data_src)
 
-  return instance
+    if hasattr(cls, '__instantiate__'):
+        instance = cls.__instantiate__(d, data_src, context)
+    else:
+        instance = cls()
+
+    if context is not None:
+        set_context(instance, context)
+
+    d.set_to(instance)
+
+    return instance
 
 
 def dynamic(cls):
@@ -1530,15 +1534,14 @@ def dynamic(cls):
             '_REGISTER_': False
         })
 
-    def _instantiate(cls_, data, data_src, context):
+    def _class_instanciate(cls_, data, data_src, context):
         if cls_ is cls:
-            dyn_cls = _create_dynamic_class(*data.get('_bases', []))
-            return dyn_cls(data, context)
+            return _create_dynamic_class(*data.get('_bases', []))
         else:
-            return cls_(data, context)
+            return cls_
 
     setattr(cls, 'create_dynamic_class', staticmethod(_create_dynamic_class))
-    setattr(cls, '__instantiate__', classmethod(_instantiate))
+    setattr(cls, '__class_instantiate__', classmethod(_class_instanciate))
 
     return cls
 
@@ -1613,31 +1616,31 @@ class TypeMetaclass(type):
 
 
 class Type (with_metaclass(TypeMetaclass, object)):
-  
+
   def __init__(self, **attributes):
     self._attributes = attributes
-  
+
   def __getattr__(self, name):
     return self._attributes.get(name)
-  
+
   def set(self, value, context = None):
     return value
 
   def get(self, value, context = None):
     return value
-  
+
   def to_json(self, value, context = None):
     return value
-  
+
   def from_json(self, value, context = None):
     return value
-  
+
   def serialize(self, value, context = None):
     return value
-  
+
   def unserialize(self, value, context = None):
     return value
-  
+
   def to_shema(self, context = None):
     s = {}
     for prop in self._attributes:
@@ -1650,15 +1653,15 @@ class Class(Type):
   def __init__(self, cls, **attributes):
     super(Class, self).__init__(**attributes)
     self.cls = cls
-  
+
   def set(self, value, context = None):
     if not isinstance(value, self.cls):
       raise ValueError('%s not an instance of %s' % (value, self.cls.__name__))
     return value
-  
+
   def unserialize(self, data, context = None):
     return unserialize(self.cls, data, context)
-  
+
   def serialize(self, value, context = None):
     return serialize(value, context)
 
@@ -1667,7 +1670,7 @@ class Class(Type):
 
   def to_json(self, value, context = None):
     return to_json(value, context)
-  
+
   def to_shema(self, context = None):
     if context is None:
       context = {}
@@ -1684,12 +1687,12 @@ def convert_type(t):
 
   if isinstance(t, Type):
     return t
-  
+
   for regtype in registered_types:
     if hasattr(regtype, '__synonyms__'):
       if t in regtype.__synonyms__:
         return regtype()
-  
+
   if inspect.isclass(t):
     return Class(t)
 
@@ -1701,7 +1704,7 @@ def convert_type(t):
           return res
       except:
         pass
-  
+
   raise Exception('unknown type "%s"' % str(t))
 
 
@@ -1726,21 +1729,21 @@ class Entity(with_metaclass(MetaReg, object)):
     def __init__(self, value=None, context=None, data_src=None):
         if value is None:
             value = {}
-        
+
         install(self)
 
         if context is not None:
           self.__reg__.update_context(context)
-        
+
         init(self, value, data_src=data_src)
-        
+
         # call parent constructor
         super(Entity, self).__init__()
 
     @classmethod
     def __instantiate__(cls, data, data_src, context):
       return cls(data, context)
-    
+
     def __getattr__( self, name):
       context = self.__reg__.context
       if name in context:

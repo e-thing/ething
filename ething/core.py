@@ -13,20 +13,21 @@ from .utils import get_info
 from .utils.ObjectPath import generate_filter, patch_all
 from .Resource import Resource
 from .flow import generate_event_nodes
-from .env import USER_DIR, LOG_FILE, CONF_FILE
+from .env import USER_DIR, LOG_FILE, CONF_FILE, get_options
 from .notification import NotificationManager
+from .Signal import Signal
+from .discovery.ble import start_pairing, stop_pairing
 import collections
 import logging
 import pytz
 import inspect
 import sys
-
+import time
 
 DEFAULT_COMMIT_INTERVAL = 5
 DEFAULT_GARBAGE_COLLECTOR_PERIOD = 300
 
 LOGGER = logging.getLogger(__name__)
-
 
 
 class _PluginCollection(collections.abc.Mapping):
@@ -49,11 +50,20 @@ class _PluginCollection(collections.abc.Mapping):
     def __len__(self):
         return len(self._plugins)
 
-    def get_from_type (self, typename):
+    def get_from_type(self, typename):
         for p in self._plugins:
             if get_definition_name(p) == typename:
                 return p
         raise KeyError
+
+
+class PairingUpdated(Signal):
+    """
+    Is emitted each time the pairing status changed.
+    """
+
+    def __init__(self, state):
+        super(PairingUpdated, self).__init__(state=state)
 
 
 class Core(SignalEmitter):
@@ -86,7 +96,8 @@ class Core(SignalEmitter):
                 if instance.name == name:
                     return instance
 
-    def __init__(self, name=None, debug=False, database=None, clear_db=False, commit_interval=None, garbage_collector_period=None, plugins=True, **plugins_options):
+    def __init__(self, name=None, debug=False, database=None, clear_db=False, commit_interval=None,
+                 garbage_collector_period=None, plugins=True, **plugins_options):
         """
 
         :param name: the name of the core instance. Default to None.
@@ -107,10 +118,11 @@ class Core(SignalEmitter):
         patch_all(self)
 
         self.name = name
+        self._pairing = False
         self._plugins = list()
         self._plugins_coll = _PluginCollection(self)
         self.debug = debug
-        
+
         self._processes = ProcessCollection(parent=self, weak=True)
 
         LOGGER.info('CLI_ARGS   : %s', ' '.join(sys.argv[1:]))
@@ -130,7 +142,8 @@ class Core(SignalEmitter):
         LOGGER.info("DEBUG      : %s", debug)
 
         # load db
-        self._init_database(database, clear_db=clear_db, commit_interval=commit_interval, garbage_collector_period=garbage_collector_period)
+        self._init_database(database, clear_db=clear_db, commit_interval=commit_interval,
+                            garbage_collector_period=garbage_collector_period)
 
         self.config = Config(self)
 
@@ -161,11 +174,19 @@ class Core(SignalEmitter):
 
         set_interval(60, devices_activity_check)
 
+        def pairing_update():
+            if self.is_pairing:
+                pairing_timeout = int(get_options().get('pairing_timeout', 60))
+                if pairing_timeout and (time.time() - self._pairing) > pairing_timeout:
+                    self.stop_pairing()
+
+        set_interval(5, pairing_update)
+
     @property
-    def local_tz (self):
+    def local_tz(self):
         local_tz = self.config.timezone
         return pytz.timezone(local_tz)
-    
+
     @property
     def processes(self):
         """
@@ -250,7 +271,8 @@ class Core(SignalEmitter):
             # commit every x secondes
             if commit_interval is None:
                 commit_interval = DEFAULT_COMMIT_INTERVAL
-            set_interval(commit_interval, self.db.commit, condition=lambda _: self.db.connected and self.db.need_commit())
+            set_interval(commit_interval, self.db.commit,
+                         condition=lambda _: self.db.connected and self.db.need_commit())
 
         # run garbage collector regularly
         if garbage_collector_period is None:
@@ -268,6 +290,24 @@ class Core(SignalEmitter):
 
         if hasattr(self, 'db'):
             self.db.disconnect()
+
+    def start_pairing(self):
+        if not self._pairing:
+            self._pairing = time.time()
+            LOGGER.info('start pairing')
+            start_pairing()
+            self.emit(PairingUpdated(self.is_pairing))
+
+    def stop_pairing(self):
+        if self._pairing:
+            stop_pairing()
+            self._pairing = False
+            LOGGER.info('stop pairing')
+            self.emit(PairingUpdated(self.is_pairing))
+
+    @property
+    def is_pairing(self):
+        return bool(self._pairing)
 
     #
     # Resources
@@ -296,7 +336,7 @@ class Core(SignalEmitter):
             def _mapper(q):
                 if isinstance(q, string_types):
                     # expression
-                    return generate_filter(q, converter=lambda r:r.__json__())
+                    return generate_filter(q, converter=lambda r: r.__json__())
                 elif inspect.isclass(q):
                     return lambda r: r.typeof(q)
                 else:
@@ -317,7 +357,7 @@ class Core(SignalEmitter):
 
             query = fn
 
-        return self.db.os.find(Resource, query = query, limit = limit, skip = skip, sort = sort)
+        return self.db.os.find(Resource, query=query, limit=limit, skip=skip, sort=sort)
 
     def find_one(self, query=None):
         """
@@ -362,4 +402,3 @@ class Core(SignalEmitter):
                 getattr(p, method)(*args, **kwargs)
             except:
                 LOGGER.exception("plugin %s: error while executing '%s'" % (p.name, method))
-

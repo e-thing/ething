@@ -3,6 +3,7 @@ from ething.reg import *
 from ething.utils.ping import pingable
 from ething.interfaces import Relay
 from ething.discovery import mdns
+from ething.scheduler import set_interval
 import requests
 import xmltodict
 
@@ -31,12 +32,16 @@ class Denon(Relay):
 
     def setState(self, state):
         self.sendCmd('PWON' if state else 'PWSTANDBY')
+        self._update()
 
-    def getState(self):
+    @set_interval(30, name="denon.update")
+    def _update(self):
+        # fetch the status
         status = self.getStatus()
         if status:
-            return status.get('item', {}).get('Power', {}).get('value') == 'ON'
-        return False
+            self.state = status.get('item', {}).get('Power', {}).get('value') == 'ON'
+        else:
+            self.state = False
 
     @method
     def setVolumeUp(self):

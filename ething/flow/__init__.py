@@ -195,6 +195,14 @@ class Descriptor(OneOf):
         attributes['$inline'] = True
         super(Descriptor, self).__init__(items, **attributes)
 
+    @classmethod
+    def parse_value(cls, mode_name, value, **context):
+        mode_cls = cls.MODES.get(mode_name)
+        if mode_cls is None:
+            raise Exception('unknow mode %s' % mode_name)
+        inst = mode_cls(mode_name, mode_cls.value_type, value)
+        return inst.get(**context)
+
 
 @namespace('nodes')
 @attr('y', type=Number(), default=0, description='y component of the node position')

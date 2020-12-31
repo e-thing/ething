@@ -73,11 +73,31 @@ if bluepy_imported:
             self._scanner.delegate.reset()
             try:
                 self._scanner.scan(timeout=timeout)
-            except BTLEManagementError:
+            except BTLEManagementError as e:
+                LOGGER.exception(e)
                 pass
             except BTLEException as e:
                 LOGGER.exception(e)
                 pass
+
+
+    import psutil
+
+    def check_bluepy_high_cpu_load():
+        # at some moment, the process bluepy-helper get stuck in infinite loop causing high CPU load.
+        # This bug is known, but no fix has been release now.
+        # So this thread kill these process if necessary
+        LOGGER.info('bluepy-helper high cpu load detection enabled')
+        while True:
+            for proc in psutil.process_iter(['name', 'cpu_percent']):
+                if proc.name() == 'bluepy-helper':
+                    if proc.cpu_percent(0.5) >= 60:
+                        LOGGER.warning('bluepy-helper: high CPU load detected => kill')
+                        proc.kill()
+            time.sleep(60)
+
+    _check_bluepy_high_cpu_load_thread = threading.Thread(target=check_bluepy_high_cpu_load, daemon=True)
+    _check_bluepy_high_cpu_load_thread.start()
 
 else:
 
@@ -87,6 +107,7 @@ else:
 
 _registered_callbacks = list()
 _t = None
+_t_pair = False
 _prev_devs = list()
 
 
@@ -102,14 +123,28 @@ def register(callback):
     :param callback: a callable (is_alive, info)
     """
     _registered_callbacks.append(callback)
-    _update()
+    # _update() # deprecated since pairing mode
 
 
-def _update():
-    global _t
-    if _t is None and len(_registered_callbacks) > 0 and BleaScanner is not None:
-        _t = threading.Thread(target=_run, daemon=True)
-        _t.start()
+# deprecated
+# def _update():
+#     global _t
+#     if _t is None and len(_registered_callbacks) > 0 and BleaScanner is not None:
+#         _t = threading.Thread(target=_run, daemon=True)
+#         _t.start()
+
+
+def start_pairing():
+    global _t_pair
+    if not _t_pair and BleaScanner is not None:
+        _t_pair = True
+        t = threading.Thread(target=_pair, daemon=True)
+        t.start()
+
+
+def stop_pairing():
+    global _t_pair
+    _t_pair = False
 
 
 def _call_handlers(is_alive, info):
@@ -120,6 +155,39 @@ def _call_handlers(is_alive, info):
             LOGGER.exception('exception in callback %s', cb)
 
 
+def _pair():
+    global _t_pair
+
+    scanner = BleaScanner()
+    devs = list()
+
+    LOGGER.info('pairing... start')
+
+    while _t_pair:
+        scanner.scan(5)
+
+        results = [res.data for res in scanner.get_results()]
+
+        for data in results:
+            mac = data.get('mac')
+
+            # just connected ?
+            for d in devs:
+                if d.get('mac') == mac:
+                    d.update(data)
+                    break
+            else:
+                # appear
+                LOGGER.info('device connected %s', data)
+                devs.append(data)
+                _call_handlers(True, data)
+
+        time.sleep(5)
+
+    LOGGER.info('pairing... stop')
+
+
+# deprecated
 def _run():
     scanner = BleaScanner()
     while True:
@@ -133,14 +201,12 @@ def _run():
         for d in list(_prev_devs):
             if d.get('mac') not in mac_list:
                 # not found
-                LOGGER.debug('device disconnected %s', d)
+                LOGGER.info('device disconnected %s', d)
                 _call_handlers(False, d)
                 _prev_devs.remove(d)
 
         for data in results:
             mac = data.get('mac')
-
-            mac_list.append(mac)
 
             # just connected ?
             for d in _prev_devs:
@@ -149,11 +215,10 @@ def _run():
                     break
             else:
                 # appear
-                LOGGER.debug('device connected %s', data)
+                LOGGER.info('device connected %s', data)
                 _prev_devs.append(data)
 
         for d in _prev_devs:
             _call_handlers(True, d)
-
 
         time.sleep(SCAN_INTERVAL)
