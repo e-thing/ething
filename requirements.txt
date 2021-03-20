@@ -29,7 +29,7 @@ greenlet==0.4.15
 idna==2.8
 imagesize==1.1.0
 itsdangerous==1.1.0
-Jinja2==2.10
+Jinja2==2.11.3
 jsonpath-rw==1.4.0
 jsonschema==2.6.0
 m2r==0.2.1
