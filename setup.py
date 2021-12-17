@@ -42,7 +42,7 @@ install_requires = [
     "flask-cors",
     "flask-compress",
     "flask_socketio",
-    "PyJWT",
+    "PyJWT==1.7.1",
     "netaddr",
     "webargs",
 
