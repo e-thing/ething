@@ -1,0 +1,1 @@
+.sticky-table{height:calc(100% - 113px)}thead tr:first-child th{position:-webkit-sticky;position:sticky;top:0;z-index:1000;background:#fff;opacity:1!important}
