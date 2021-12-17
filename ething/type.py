@@ -822,6 +822,8 @@ class M_Dict(MutableMapping):
     return item_type.get(self._store[key], self._context)
 
   def __setitem__(self, key, value):
+    if not isinstance(key, string_types):
+      raise KeyError("the key '%s' is not a string" % key)
     if key in self._store:
       detach(self, self._store[key])
     item_type = self._type.get_type_from_key(key)

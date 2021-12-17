@@ -51,6 +51,11 @@ class OpenWeatherMapPlugin(Plugin):
 @attr('location', type=String(allow_empty=False), default=NO_VALUE, description='a city\'s name. See https://openweathermap.org/find')
 class OpenWeatherMapDevice(Thermometer, PressureSensor, HumiditySensor, Anemometer):
 
+    def on_attr_update(self, attr, new_value, old_value):
+        super(OpenWeatherMapDevice, self).on_attr_update(attr, new_value, old_value)
+        if attr == 'location':
+            self.processes.add(self.refresh)
+
     @set_interval(REFRESH_INTERVAL)
     def refresh(self):
         location = self.location
@@ -63,13 +68,11 @@ class OpenWeatherMapDevice(Thermometer, PressureSensor, HumiditySensor, Anemomet
             self.error = None
             self.logger.debug('fetch weather data')
             r = requests.get(url=API_WEATHER_URL, params=dict(q=location, APPID=appid, units='metric'))
-            try:
-                r.raise_for_status()
-            except requests.HTTPError as e:
-                self.refresh_connect_state(False)
-                raise e
-            else:
+
+            if r.status_code == requests.codes.ok:
+
                 data = r.json()
+
                 if data:
                     with self:
                         self.refresh_connect_state(True)
@@ -98,6 +101,19 @@ class OpenWeatherMapDevice(Thermometer, PressureSensor, HumiditySensor, Anemomet
                             if 'speed' in wind:
                                 self.wind_speed = wind.get('speed')
                                 self.wind_direction = wind.get('deg', None)
+
+            else:
+                # invalid request
+                self.refresh_connect_state(False)
+                try:
+                    data = r.json()
+                    # get some error code
+                    if 'message' in data:
+                        self.error = data.get('message')
+                except:
+                    pass
+
+                r.raise_for_status()
         else:
             self.error = 'no appid set'
             self.refresh_connect_state(False)

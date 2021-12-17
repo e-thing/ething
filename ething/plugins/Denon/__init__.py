@@ -43,6 +43,18 @@ class Denon(Relay):
         else:
             self.state = False
 
+    def _request(self, path):
+        r = None
+        online = True
+        try:
+            r = requests.get(
+                "http://%s/%s" % (self.host, path))
+        except requests.exceptions.ConnectionError:
+            online = False
+
+        self.refresh_connect_state(online)
+        return r
+
     @method
     def setVolumeUp(self):
         """
@@ -90,9 +102,9 @@ class Denon(Relay):
         """
         get the radio cover
         """
-        r = requests.get("http://%s/NetAudio/art.asp-jpg" % self.host)
+        r = self._request("NetAudio/art.asp-jpg")
 
-        if r.ok:
+        if r is not None and r.ok:
             return r.content
 
     @method.return_type('object')
@@ -100,10 +112,9 @@ class Denon(Relay):
         """
         return the device status
         """
-        r = requests.get(
-            "http://%s/goform/formMainZone_MainZoneXmlStatus.xml" % self.host)
+        r = self._request("goform/formMainZone_MainZoneXmlStatus.xml")
 
-        if r.ok:
+        if r is not None and r.ok:
             return xmltodict.parse(r.text)
 
     @method.return_type('object')
@@ -148,9 +159,11 @@ class Denon(Relay):
 
     @method.arg('cmd', type='string')
     def sendCmd(self, cmd):
-        r = requests.get(
-            "http://%s/goform/formiPhoneAppDirect.xml?%s" % (self.host, cmd))
-        return r.ok
+        r = self._request("goform/formiPhoneAppDirect.xml?%s" % cmd)
+        if r is not None:
+            return r.ok
+        else:
+            return False
 
     """
     GetSourceStatus
@@ -174,8 +187,15 @@ class Denon(Relay):
 
         body += '</tx>'
 
-        r = requests.post("http://%s/goform/AppCommand.xml" %
-                          self.host, data=body.encode('utf8'))
+        online = True
+        r = None
+        try:
+            r = requests.post("http://%s/goform/AppCommand.xml" %
+                              self.host, data=body.encode('utf8'))
+        except requests.exceptions.ConnectionError:
+            online = False
 
-        if r.ok:
+        self.refresh_connect_state(online)
+
+        if r is not None and r.ok:
             return r.text

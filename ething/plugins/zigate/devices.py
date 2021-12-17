@@ -470,7 +470,7 @@ class ZigateGenericSensorDevice(ZigateBaseDevice):
         elif 'humidity' in name and self.typeof(PressureSensor):
             self.humidity = value
         elif 'pressure' in name and self.typeof(HumiditySensor):  # mbar
-            self.pressure = value * 100.
+            self.pressure = round(value * 100.)
         elif 'luminosity' in name and self.typeof(LightSensor):  # lm
             self.light_level = value
 

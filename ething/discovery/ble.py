@@ -89,11 +89,19 @@ if bluepy_imported:
         # So this thread kill these process if necessary
         LOGGER.info('bluepy-helper high cpu load detection enabled')
         while True:
-            for proc in psutil.process_iter(['name', 'cpu_percent']):
-                if proc.name() == 'bluepy-helper':
-                    if proc.cpu_percent(0.5) >= 60:
-                        LOGGER.warning('bluepy-helper: high CPU load detected => kill')
-                        proc.kill()
+            try:
+                for proc in psutil.process_iter(['name', 'cpu_percent']):
+                    if proc.name() == 'bluepy-helper':
+                        cpu = proc.cpu_percent(0.5)
+                        LOGGER.debug('bluepy-helper cpu load : %f' % cpu)
+                        if cpu >= 60:
+                            LOGGER.warning('bluepy-helper: high CPU load detected => kill')
+                            proc.kill()
+            except psutil.NoSuchProcess:
+                pass
+            except Exception as e:
+                LOGGER.error(e)
+                pass
             time.sleep(60)
 
     _check_bluepy_high_cpu_load_thread = threading.Thread(target=check_bluepy_high_cpu_load, daemon=True)
