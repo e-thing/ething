@@ -98,7 +98,7 @@ extras_require = {
 setup(
     name=NAME,
 
-    version='0.1.3',
+    version='0.1.4',
 
     description='A home automation project',
 
