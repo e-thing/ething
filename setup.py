@@ -41,7 +41,9 @@ install_requires = [
     "Flask>=1.0.2",
     "flask-cors",
     "flask-compress",
-    "flask_socketio",
+    "flask_socketio==3.1.2",
+    "python-socketio==4.6.0",
+    "python-engineio==3.13.2",
     "PyJWT==1.7.1",
     "netaddr",
     "webargs",
@@ -137,7 +139,7 @@ setup(
 
     entry_points={
         'console_scripts': [
-            'ething=ething.main:main',
+            'ething=ething.__main__:main',
         ],
     },
 

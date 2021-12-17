@@ -61,119 +61,125 @@ def remove_logger(logger):
 
 
 
-parser = argparse.ArgumentParser(
-    description='Launch EThing home automation server.')
+def main():
 
-parser.add_argument('-v', '--version', action='store_true',
-                    help='return the version number and exit')
+    parser = argparse.ArgumentParser(
+        description='Launch EThing home automation server.')
 
-parser.add_argument('-q', '--quiet', action='store_true',
-                    help='Quiet mode, disable log messages written to the terminal')
+    parser.add_argument('-v', '--version', action='store_true',
+                        help='return the version number and exit')
 
-parser.add_argument('--debug', action='store_true',
-                    help='activate the debug mode')
+    parser.add_argument('-q', '--quiet', action='store_true',
+                        help='Quiet mode, disable log messages written to the terminal')
 
-parser.add_argument('--clear', action='store_true',
-                    help='clear all the database and the configuration')
+    parser.add_argument('--debug', action='store_true',
+                        help='activate the debug mode')
 
-parser.add_argument('--server-port', type=int, default=8000,
-                    help='the port number the webserver is listening to')
+    parser.add_argument('--clear', action='store_true',
+                        help='clear all the database and the configuration')
 
-parser.add_argument('--scan', action='store', nargs='?', type=int, const=10,
-                    help='perform a scan of the system and exit', metavar='TIMEOUT')
+    parser.add_argument('--server-port', type=int, default=8000,
+                        help='the port number the webserver is listening to')
 
-
-
-args = parser.parse_args()
+    parser.add_argument('--scan', action='store', nargs='?', type=int, const=10,
+                        help='perform a scan of the system and exit', metavar='TIMEOUT')
 
 
-if args.version:
-    print("v%s" % __version__)
-    sys.exit()
 
-if not os.path.exists(USER_DIR):
-    # first start
-    # some setup can be done here !
-    print("first startup, initializing...")
-    os.makedirs(USER_DIR)
+    args = parser.parse_args()
 
-    # build default conf file
-    with open(CONF_FILE, "w") as fconf:
-        # core conf
-        default_ini_file = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'default.cfg')
-        if os.path.exists(default_ini_file):
-            with open(default_ini_file) as f:
-                for line in f:
-                    fconf.write(line)
-        # plugins conf
-        build_plugins_conf(fconf)
 
-init_env()
+    if args.version:
+        print("v%s" % __version__)
+        sys.exit()
 
-if args.scan is not None:
-    from .discovery import scan
-    init_logger(console_log=True, file_log=False, debug=args.debug)
-    timeout = args.scan
-    print('scanning ... timeout=%d' % timeout)
-    scan(timeout=timeout, printer=print)
-    sys.exit()
+    if not os.path.exists(USER_DIR):
+        # first start
+        # some setup can be done here !
+        os.makedirs(USER_DIR)
+    
+    if not os.path.isfile(CONF_FILE):
+        # build default conf file
+        with open(CONF_FILE, "w") as fconf:
+            # core conf
+            default_ini_file = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'default.cfg')
+            if os.path.exists(default_ini_file):
+                with open(default_ini_file) as f:
+                    for line in f:
+                        fconf.write(line)
+            # plugins conf
+            build_plugins_conf(fconf)
 
-logger = init_logger(console_log=not getattr(args, 'quiet', False), file_log=True, debug=args.debug)
+    init_env()
 
-from .core import Core
-from .processes import processes
+    if args.scan is not None:
+        from .discovery import scan
+        init_logger(console_log=True, file_log=False, debug=args.debug)
+        timeout = args.scan
+        print('scanning ... timeout=%d' % timeout)
+        scan(timeout=timeout, printer=print)
+        sys.exit()
 
-core = Core(clear_db=bool(args.clear), debug=args.debug, webserver_port= args.server_port)
+    logger = init_logger(console_log=not getattr(args, 'quiet', False), file_log=True, debug=args.debug)
 
-if args.debug:
-    from .green import install_debugger
-    install_debugger()
+    from .core import Core
+    from .processes import processes
 
-exit_code = 0
+    core = Core(clear_db=bool(args.clear), debug=args.debug, webserver_port= args.server_port)
 
-stop_evt = threading.Event()
+    if args.debug:
+        from .green import install_debugger
+        install_debugger()
 
-def stop(signum, frame):
-    logger.warning('signal received %d' % signum)
-    stop_evt.set()
+    exit_code = 0
 
-signal.signal(signal.SIGINT, stop)
-signal.signal(signal.SIGTERM, stop)
+    stop_evt = threading.Event()
 
-try:
-    stop_evt.wait()
-except KeyboardInterrupt:
-    logger.warning("killed ething from Terminal")
-except OSError as e:
+    def stop(signum, frame):
+        logger.warning('signal received %d' % signum)
+        stop_evt.set()
 
-    if e.errno == errno.EACCES or e.errno == errno.EPERM:
-        logger.exception(
-            "Permission denied: you may need to execute this program with sudo")
-        exit_code = 3
-    elif e.errno == errno.EINTR:
-        logger.warning("interrupted")
-        exit_code = 1
-    else:
+    signal.signal(signal.SIGINT, stop)
+    signal.signal(signal.SIGTERM, stop)
+
+    try:
+        stop_evt.wait()
+    except KeyboardInterrupt:
+        logger.warning("killed ething from Terminal")
+    except OSError as e:
+
+        if e.errno == errno.EACCES or e.errno == errno.EPERM:
+            logger.exception(
+                "Permission denied: you may need to execute this program with sudo")
+            exit_code = 3
+        elif e.errno == errno.EINTR:
+            logger.warning("interrupted")
+            exit_code = 1
+        else:
+            logger.exception("unexpected error")
+            exit_code = 2
+
+    except:
         logger.exception("unexpected error")
         exit_code = 2
 
-except:
-    logger.exception("unexpected error")
-    exit_code = 2
+    finally:
+        core.close()
 
-finally:
-    core.close()
+        try:
+            processes.stop_all()
+        except Exception as e:
+            logger.exception("exception in processes.stop_all()")
 
-    try:
-        processes.stop_all()
-    except Exception as e:
-        logger.exception("exception in processes.stop_all()")
+        try:
+            remove_logger(logger)
+        except Exception as e:
+            print("exception in remove_logger(): %s" % str(e))
 
-    try:
-        remove_logger(logger)
-    except Exception as e:
-        print("exception in remove_logger(): %s" % str(e))
+    return exit_code
 
-sys.exit(exit_code)
+
+if __name__ == "__main__":
+    sys.exit(main())
 
 
