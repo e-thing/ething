@@ -42,7 +42,7 @@ netaddr==0.7.19
 objectpath==0.6.1
 packaging==19.0
 paho-mqtt==1.4.0
-paramiko==2.4.2
+paramiko==2.10.1
 Pillow==5.4.1
 pluggy==0.8.1
 ply==3.11
