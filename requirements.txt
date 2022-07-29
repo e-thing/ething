@@ -35,7 +35,7 @@ jsonschema==2.6.0
 m2r==0.2.1
 MarkupSafe==1.1.0
 marshmallow==2.18.0
-mistune==0.8.4
+mistune==2.0.3
 more-itertools==5.0.0
 multiping==1.1.2
 netaddr==0.7.19
