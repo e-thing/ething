@@ -46,7 +46,7 @@ install_requires = [
     "python-engineio==3.13.2",
     "PyJWT==1.7.1",
     "netaddr",
-    "webargs",
+    "webargs==6.1.0",
 
     # --ssh
     "paramiko",
@@ -73,6 +73,9 @@ install_requires = [
 
     # --spotipy
     "spotipy-homeassistant",
+
+    # --orno
+    "minimalmodbus",
 ]
 
 ble_require = [
