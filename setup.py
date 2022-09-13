@@ -76,6 +76,9 @@ install_requires = [
 
     # --orno
     "minimalmodbus",
+
+    # --SomfyHomeAlarm
+    "somfy-protect-api",
 ]
 
 ble_require = [

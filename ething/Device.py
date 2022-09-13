@@ -7,14 +7,16 @@ from .flow import ResourceNode, Descriptor
 from .env import get_options
 
 
-@meta(icon='mdi-battery-50')
-class BatteryLevelChanged(ResourceSignal):
+
+
+@meta(icon='mdi-battery-00')
+class BatteryLevelLow(ResourceSignal):
     """
-    is emitted each time the battery level changed
+    is emitted when the battery level goes below 30%
     """
 
     def __init__(self, resource, new_value):
-        super(BatteryLevelChanged, self).__init__(resource, battery=new_value)
+        super(BatteryLevelLow, self).__init__(resource, battery=new_value)
 
 
 @meta(icon='mdi-lan-connect')
@@ -79,10 +81,12 @@ class ExecuteDevice(ResourceNode):
 
 
 @abstract
-@throw(BatteryLevelChanged, DeviceConnected, DeviceDisconnected)
+@throw(BatteryLevelLow, DeviceConnected, DeviceDisconnected)
 # 0-100 : the battery level, if None it means that no battery information is provided
 @attr('battery', type=Nullable(Number(min=0, max=100)), mode=READ_ONLY, default=None,
       description="The battery level of this device (must be between 0 (empty) and 100 (full) , or null if the device has no battery information).")
+@attr('rlink_quality', type=Nullable(Number(min=0, max=100)), mode=READ_ONLY, default=None,
+      description="The signal quality level of this device (must be between 0 (too far) and 100 (excellent) , or null if the device is wired connected).")
 @attr('location', type=String(), default='', description="The location of this device.")
 # @attr('connected', type=Boolean(), default=True, mode=READ_ONLY, force_watch=True, description="Set to true when this device is connected.")
 @attr('connected', type=Boolean(), default=True, mode=READ_ONLY,
@@ -140,7 +144,8 @@ class Device(Resource):
         super(Device, self).on_attr_update(attr, new_value, old_value)
 
         if attr == 'battery':
-            self.emit(BatteryLevelChanged(self, new_value))
+            if new_value <= 30 and old_value > 30:
+                self.emit(BatteryLevelLow(self, new_value))
         elif attr == 'connected':
             if new_value:
                 self.logger.debug("device connected %s", self)
