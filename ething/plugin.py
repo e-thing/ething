@@ -406,7 +406,7 @@ def import_plugins(white_list=None):
     # builtin plugins
     modules += import_builtin_plugins(white_list, disabled)
 
-    # installed plugins as package
+    # installed plugins as package, must start with "ething_"
     for module_name in find_plugins():
         if disabled is None or module_name[7:] not in disabled:
             if white_list is None or module_name[7:] in white_list:

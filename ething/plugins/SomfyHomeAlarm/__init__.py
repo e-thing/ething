@@ -2,7 +2,7 @@
 from ething.Device import *
 from ething.plugin import Plugin
 from ething.scheduler import set_interval
-from ething.interfaces import Thermometer
+from ething.interfaces import Thermometer, OccupencySensor
 import logging
 from dateutil.parser import parse
 from somfy_protect_api.api.somfy_protect_api import SomfyProtectApi
@@ -45,19 +45,19 @@ class SomfyHomeAlarmSecurityLevelChanged(ResourceSignal):
     def __init__(self, resource):
         super(SomfyHomeAlarmSecurityLevelChanged, self).__init__(resource, security_level=resource.security_level)
 
-
-class SomfyHomeAlarmKeyFobOut(ResourceSignal):
-    """
-    is emitted each time a key fob was tagged out
-    """
-    pass
-
-
-class SomfyHomeAlarmKeyFobIn(ResourceSignal):
-    """
-    is emitted each time a key fob was tagged in
-    """
-    pass
+# # deprecated: moved in OccupencySensor interface
+# class SomfyHomeAlarmKeyFobOut(ResourceSignal):
+#     """
+#     is emitted each time a key fob was tagged out
+#     """
+#     pass
+#
+# # deprecated: moved in OccupencySensor interface
+# class SomfyHomeAlarmKeyFobIn(ResourceSignal):
+#     """
+#     is emitted each time a key fob was tagged in
+#     """
+#     pass
 
 
 @attr('email', type=Email(), default='', description='email used on Somfy Protect Mobile App.')
@@ -131,6 +131,8 @@ class SomfyHomeAlarm(Plugin):
         if not self.api:
             return
 
+        LOGGER.debug('refreshing ...')
+
         # List Sites
         try:
             sites = self.api.get_sites()
@@ -138,6 +140,8 @@ class SomfyHomeAlarm(Plugin):
             # no internet connection maybe
             # requests.exceptions.ConnectionError
             return
+
+        LOGGER.debug('%d site(s) found', len(sites))
 
         for site in sites:
             # check if the current site is already created !
@@ -279,7 +283,7 @@ class SomfyHomeAlarmSite(SomfyHomeAlarmBase):
 class SomfyHomeAlarmDevice(SomfyHomeAlarmBase):
 
     def __init__(self, *args, **kvargs):
-        super(SomfyHomeAlarmInfraredSensor, self).__init__(*args, **kvargs)
+        super(SomfyHomeAlarmDevice, self).__init__(*args, **kvargs)
         self._last_last_status_at = None
 
     @property
@@ -386,11 +390,11 @@ class SomfyHomeAlarmIntelliTag(SomfyHomeAlarmDevice):
 # status: {'device_lost': True, 'battery_level': 100, 'battery_level_state': 'ok', 'rlink_state': 0, 'rlink_quality': -72, 'last_status_at': None, 'last_check_in_state': '2022-08-26T17:16:55.000000Z', 'last_check_out_state': '2022-08-26T17:28:21.000000Z', 'keep_alive': 0}
 # diagnosis: {'is_everything_ok': True, 'problems': []}
 # settings: {'object': 'DeviceSettings', 'global': {'user_id': '3Q01fAEWzd73sE4SXQWC2kdjNpHOAwjP', 'enabled': True}, 'disarmed': None, 'partial': None, 'armed': None}
-@throw(SomfyHomeAlarmKeyFobIn, SomfyHomeAlarmKeyFobOut)
+# @throw(SomfyHomeAlarmKeyFobIn, SomfyHomeAlarmKeyFobOut) # moved in OccupencySensor interface
 @attr('at_home', type=Boolean(), default=False, mode=READ_ONLY, description='Tells if the key fob is at home or not')
 @attr('last_check_in', type=Nullable(TzDate()), default=None, mode=READ_ONLY, description='last time the key fob enter home')
 @attr('last_check_out', type=Nullable(TzDate()), default=None, mode=READ_ONLY, description='last time the key fob leave home')
-class SomfyHomeAlarmKeyFob(SomfyHomeAlarmDevice):
+class SomfyHomeAlarmKeyFob(SomfyHomeAlarmDevice, OccupencySensor):
 
     def refresh_with(self, device_obj):
         if super(SomfyHomeAlarmKeyFob, self).refresh_with(device_obj):
@@ -424,26 +428,27 @@ class SomfyHomeAlarmKeyFob(SomfyHomeAlarmDevice):
 
                 self.last_check_out = last_check_out_state
                 self.last_check_in = last_check_in_state
-                self.at_home = is_at_home
+                self.presence = is_at_home
 
-    def on_attr_update(self, attr, new_value, old_value):
-        super(SomfyHomeAlarmKeyFob, self).on_attr_update(attr, new_value, old_value)
-
-        if attr == 'at_home':
-            if new_value:
-                if self.last_check_in:
-                    self.emit(SomfyHomeAlarmKeyFobIn(self))
-                    self.store('presence', {
-                        'date': self.last_check_in,
-                        'at_home': True
-                    })
-            else:
-                if self.last_check_out:
-                    self.emit(SomfyHomeAlarmKeyFobOut(self))
-                    self.store('presence', {
-                        'date': self.last_check_out,
-                        'at_home': False
-                    })
+    # deprecated: moved in OccupencySensor interface
+    # def on_attr_update(self, attr, new_value, old_value):
+    #     super(SomfyHomeAlarmKeyFob, self).on_attr_update(attr, new_value, old_value)
+    #
+    #     if attr == 'presence':
+    #         if new_value:
+    #             if self.last_check_in:
+    #                 self.emit(SomfyHomeAlarmKeyFobIn(self))
+    #                 self.store('presence', {
+    #                     'date': self.last_check_in,
+    #                     'at_home': True
+    #                 })
+    #         else:
+    #             if self.last_check_out:
+    #                 self.emit(SomfyHomeAlarmKeyFobOut(self))
+    #                 self.store('presence', {
+    #                     'date': self.last_check_out,
+    #                     'at_home': False
+    #                 })
 
 
 # id: 6XLjLKReGr34wC2t0tfdAwVZdaBNuu37
@@ -488,3 +493,5 @@ class SomfyHomeAlarmLink(SomfyHomeAlarmDevice):
 
 class SomfyHomeAlarmUnknown(SomfyHomeAlarmDevice):
     pass
+
+

@@ -134,7 +134,7 @@ class Orno_WE_514 (PowerMeter):
             if delay < (86400 + 120) and delay > (86400 - 120):
                 consumption = current - last
                 # add it to the table
-                self.store("consumption_daily", consumption, name="value")
+                self.store("consumption_daily", consumption, name="value", table_length=None)
 
         with self:
             self.last_daily_index = current

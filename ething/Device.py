@@ -9,7 +9,7 @@ from .env import get_options
 
 
 
-@meta(icon='mdi-battery-00')
+@meta(icon='mdi-battery-alert')
 class BatteryLevelLow(ResourceSignal):
     """
     is emitted when the battery level goes below 30%
