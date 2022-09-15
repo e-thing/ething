@@ -7,6 +7,7 @@ import logging
 from dateutil.parser import parse
 from somfy_protect_api.api.somfy_protect_api import SomfyProtectApi
 from somfy_protect_api.api import model
+import unidecode
 
 LOGGER = logging.getLogger(__name__)
 
@@ -60,8 +61,8 @@ class SomfyHomeAlarmSecurityLevelChanged(ResourceSignal):
 #     pass
 
 
-@attr('email', type=Email(), default='', description='email used on Somfy Protect Mobile App.')
-@attr('password', type=String(), default='', description='password used on Somfy Protect Mobile App.')
+@attr('email', type=String(), default='', description='email used on Somfy Protect Mobile App.')
+@attr('password', type=String(password=True), default='', description='password used on Somfy Protect Mobile App.')
 @attr('connected', type=Boolean(), default=False, mode=READ_ONLY,
       description="Set to true when connected.")
 @attr('token', mode=PRIVATE, default=None)
@@ -148,8 +149,9 @@ class SomfyHomeAlarm(Plugin):
             resource = self.core.find_one(lambda r: r.typeof('resources/SomfyHomeAlarmSite') and r.site_id == site.id)
             if resource is None:
                 # not found, create it !
+                LOGGER.info('new site %s found', site.label)
                 resource = self.core.create('resources/SomfyHomeAlarmSite', {
-                    'name': site.label,
+                    'name': unidecode.unidecode(site.label),
                     'site_id': site.id,
                 })
 
@@ -225,9 +227,11 @@ class SomfyHomeAlarmSite(SomfyHomeAlarmBase):
             resource = self.core.find_one(
                 lambda r: r.typeof('resources/SomfyHomeAlarmDevice') and r.device_id == device.id)
             if resource is None or resource.typeof('resources/SomfyHomeAlarmUnknown'):
+
                 # not found, create it !
                 type_str = getattr(device, 'device_definition', dict()).get('device_definition_id')
                 if type_str:
+                    LOGGER.info('new device %s [%s] found', device.label, type_str)
                     clsname = TYPE_TO_CLASSNAME.get(type_str)
                     if clsname:
                         if resource: # must be of type SomfyHomeAlarmUnknown
@@ -242,7 +246,7 @@ class SomfyHomeAlarmSite(SomfyHomeAlarmBase):
                         clsname = 'SomfyHomeAlarmUnknown'
 
                     resource = self.core.create("resources/%s" % clsname, {
-                        'name': device.label,
+                        'name': unidecode.unidecode(device.label),
                         'device_id': device.id,
                         'createdBy': self,
                     })
