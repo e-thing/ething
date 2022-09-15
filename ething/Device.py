@@ -144,8 +144,9 @@ class Device(Resource):
         super(Device, self).on_attr_update(attr, new_value, old_value)
 
         if attr == 'battery':
-            if new_value <= 30 and old_value > 30:
-                self.emit(BatteryLevelLow(self, new_value))
+            if new_value is not None:
+                if new_value <= 30 and (old_value is None or old_value > 30):
+                    self.emit(BatteryLevelLow(self, new_value))
         elif attr == 'connected':
             if new_value:
                 self.logger.debug("device connected %s", self)

@@ -36,6 +36,7 @@ install_requires = [
     "zeroconf",
     "btlewrap",
     "psutil",
+    "unidecode",
 
     # --webserver
     "Flask>=1.0.2",

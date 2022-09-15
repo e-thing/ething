@@ -1,8 +1,9 @@
 # coding: utf-8
 from ething.Device import *
 from ething.plugin import Plugin
-from ething.scheduler import set_interval
+from ething.scheduler import set_interval, delay
 from ething.interfaces.thermometer import Thermometer
+from ething.interfaces.occupencySensor import OccupencySensor
 
 import time
 
@@ -11,7 +12,7 @@ import time
 
 
 # define your plugin here (see plugin.py for more details)
-@attr('interval', type=Integer(min=1), default=5, description="interval in second between 2 log print")
+@attr('interval', type=Integer(min=1), default=300, description="interval in second between 2 log print")
 class Example(Plugin):
     # the path of your Javascript index file, this file describe how your plugin should be integrated into the web interface.
     # remove it if not used
@@ -42,12 +43,33 @@ class Example(Plugin):
                 'name': 'random thermometer'
             })
 
+        if len(self.core.find(RandomOccupencySensor)) == 0:
+            self.core.create(RandomOccupencySensor, {
+                'name': 'random occupency sensor'
+            })
+
+        if len(self.core.find(NotConnectedDevice)) == 0:
+            self.core.create(NotConnectedDevice, {
+                'name': 'not connected device'
+            })
+
+        if len(self.core.find(ErrorDevice)) == 0:
+            self.core.create(ErrorDevice, {
+                'name': 'device with error'
+            })
+
+        if len(self.core.find(lambda r: r.typeof('resources/File') and r.name == "example_file.txt")) == 0:
+            f = self.core.create('resources/File', {
+                'name': 'example_file.txt'
+            })
+            f.write("hello world !")
+
+
     # see the setup function
     def background_process (self):
         while (True):
-            # count the RandomThermometer device that has been created
-            count = len(self.core.find(RandomThermometer))
-            self.logger.info('number of RandomThermometer = %d' % count)
+            # do something
+            self.logger.debug('hello')
             time.sleep(self.interval)
 
     def on_config_change(self, dirty_attributes):
@@ -69,13 +91,33 @@ class Example(Plugin):
 class RandomThermometer (Thermometer):
 
     # set_interval is a utility function that execute automatically a method periodically (see scheduler.py)
-    @set_interval(5)
+    @set_interval(30)
     def refresh(self):
         self.temperature = random.randint(-10, 40)
 
 
 
+class RandomOccupencySensor (OccupencySensor):
 
+    @set_interval(30)
+    def refresh(self):
+        self.presence = bool(random.getrandbits(1))
+
+    @set_interval(60)
+    def refresh_nat(self):
+        self.battery = random.randint(5, 100)
+        self.rlink_quality = random.randint(5, 100)
+
+
+class NotConnectedDevice (Thermometer):
+    @delay(1)
+    def refresh(self):
+        self.refresh_connect_state(False)
+
+class ErrorDevice (Thermometer):
+    @delay(1)
+    def refresh(self):
+        self.error = "<test> some error occured"
 
 
 

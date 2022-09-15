@@ -82,8 +82,8 @@ class File(Resource):
         with self:
             if isinstance(bytes, text_type):
                 if encoding is None:
-                    raise Exception('No encoding specified')
-                bytes = bytes.encode(encoding)
+                    encoding='UTF-8'
+                bytes = bytes.encode(encoding, errors='replace')
 
             if append:
                 bytes = self.read() + bytes
