@@ -29,6 +29,7 @@ class Controller(TransportProcess):
 
 
 @abstract
+@meta(disable_creation=True)
 @attr('_support', default=[], mode=PRIVATE)
 @attr('fw_ver', type=String(), mode=READ_ONLY, description="The firmware version of the device.")
 @attr('model', type=String(), mode=READ_ONLY, description="The model of the device.")

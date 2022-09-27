@@ -48,15 +48,7 @@
       'S_UNK': { icon: 'mdi-help' },
     }
 
-    EThingUI.extend('resources/MySensorsNode', {
-
-        disableCreation: true,
-
-    })
-
     EThingUI.extend('resources/MySensorsSensor', {
-
-        disableCreation: true,
 
         properties: {
             sensorType: {

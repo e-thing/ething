@@ -19,6 +19,7 @@ class ZigateDeviceMetaClass(MetaReg):
 
 
 @abstract
+@meta(disable_creation=True)
 @meta(icon='mdi-alpha-z-box')
 @attr('lqi', type=Number(), default=0, mode = READ_ONLY, description="percentage of link quality indicator")
 @attr('endpoint', type=Nullable(Integer()), mode = READ_ONLY, default=None, description="If set, this device is only bind to a single endpoint")

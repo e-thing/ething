@@ -5,6 +5,7 @@ from ething.reg import *
 from .helpers import *
 
 
+@meta(disable_creation=True)
 @attr('nodeId', type=Integer(min=1, max=254), description="The id of the node.")
 @attr('sketchName', default='', mode=READ_ONLY, description="The name of the sketch uploaded.")
 @attr('sketchVersion', default='', mode=READ_ONLY, description="The version of the sketch uploaded.")

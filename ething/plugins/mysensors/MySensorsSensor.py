@@ -16,6 +16,7 @@ class MySensorsMsgReceived(ResourceSignal):
 
 @abstract
 @throw(MySensorsMsgReceived)
+@meta(disable_creation=True)
 @attr('name', default='sensor')
 @attr('sensorId', type=Integer(min=0, max=254), description="The id of the sensor.")
 @attr('sensorType', mode=READ_ONLY, description="The type of the sensor.")

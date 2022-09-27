@@ -180,6 +180,7 @@ class SomfyHomeAlarm(Plugin):
 
 
 @abstract
+@meta(disable_creation=True)
 class SomfyHomeAlarmBase(Device):
 
     ACTIVITY_TIMEOUT = 600
@@ -284,6 +285,7 @@ class SomfyHomeAlarmSite(SomfyHomeAlarmBase):
 @abstract
 @attr('device_id', type=String(), mode=READ_ONLY, description='Id to identify the current device.')
 @attr('version', type=String(), default='none', mode=READ_ONLY, description='The current version of the device')
+@attr('createdBy', required=True)
 class SomfyHomeAlarmDevice(SomfyHomeAlarmBase):
 
     def __init__(self, *args, **kvargs):

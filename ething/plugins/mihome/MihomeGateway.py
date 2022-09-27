@@ -11,6 +11,7 @@ musicMap = ["Police siren", "Police siren 2", "Accident tone", "Missle countdown
             "Hilarious", "Alarm clock", "MiMix", "Enthusiastic", "GuitarClassic", "IceWorldPiano", "LeisureTime", "Childhood", "MorningStreamlet", "MusicBox", "Orange", "Thinker"]
 
 
+@meta(disable_creation=True)
 @attr('ip', type=String(allow_empty=False), description="The IP address of the gateway")
 @attr('password', type=String(allow_empty=True), default="", description="The password of the gateway")
 @attr('token', mode=PRIVATE, default='')

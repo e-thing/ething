@@ -50,7 +50,7 @@ install_requires = [
     "webargs==6.1.0",
 
     # --ssh
-    "paramiko",
+    "paramiko==2.11.0",
 
     # --mqtt
     "paho-mqtt",
