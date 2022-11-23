@@ -226,7 +226,7 @@ def test_db_link(core):
 
 def test_cache():
 
-    db = Db(Dummy_Driver(), auto_commit=True)
+    db = Db(DummyDriver(), auto_commit=True)
 
     table = db.table_create('toto')
 

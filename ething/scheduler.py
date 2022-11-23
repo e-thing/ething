@@ -7,6 +7,7 @@ import logging
 import inspect
 import threading
 import weakref
+import asyncio
 
 
 __all__ = [
@@ -74,6 +75,8 @@ class Task(object):
         self._valid = True
         self._t0 = time.time()
 
+        self._aio_tasks = list()
+
         scheduler.add(self)
 
     def __getattr__(self, item):
@@ -81,6 +84,12 @@ class Task(object):
             return self._params[item]
         else:
             raise AttributeError()
+
+    def __repr__(self):
+        return str(self)
+
+    def __str__(self):
+        return '<scheduler.task %s>' % (self._name, )
 
     @property
     def id(self):
@@ -114,7 +123,24 @@ class Task(object):
     def allow_multiple(self):
         return self._allow_multiple
 
+    def is_running(self):
+        self._clean_aio_tasks()
+        return len(self._aio_tasks) != 0
+
+    def _clean_aio_tasks(self):
+        # remove asyncio tasks that are done
+        self._aio_tasks[:] = [t for t in self._aio_tasks if not t.done()]
+
     def run(self):
+
+        if not self.is_valid():
+            return False
+
+        if not self._allow_multiple:
+            # check if already being executed and not yet finished
+            if self.is_running():
+                return False
+
         target = self.target
         if target is not None:
 
@@ -123,12 +149,9 @@ class Task(object):
                 if instance is None:
                     # the instance has been destroyed
                     self._valid = False
-                    return
+                    return False
             else:
                 instance = None
-
-            self._last_run = time.time()
-            self._executed_count += 1
 
             if self._condition is not None:
                 try:
@@ -137,14 +160,25 @@ class Task(object):
                 except:
                     return False
 
-            try:
-                self._scheduler.execute(self)
-            except:
-                LOGGER.exception('exception in task "%s"' % self._name)
+            async def _wrapper():
+                LOGGER.debug("running task '%s'" % self._name)
+                self._last_run = time.time()
+                self._executed_count += 1
+
+                try:
+                    await target(*self.args, **self.kwargs)
+                except asyncio.CancelledError:
+                    LOGGER.exception("task '%s' cancelled" % self._name)
+                except:
+                    LOGGER.exception("exception in task '%s'" % self._name)
+
+            self._aio_tasks.append(asyncio.create_task(_wrapper(), name=str(self)))
 
             return True
         else:  # lost reference
             self._valid = False
+
+        return False
 
     def is_valid(self):
         return self._valid
@@ -152,12 +186,17 @@ class Task(object):
     def is_time_to_run(self, t):
         raise NotImplementedError()
 
-    def execute(self):
-        target = self.target
-        if target is not None:
-            target(*self.args, **self.kwargs)
-        else:
-            self._valid = False
+    async def cancel(self):
+        # cancel all running asyncio tasks
+        for t in self._aio_tasks:
+            if not t.done():
+                t.cancel()
+                try:
+                    await t
+                except asyncio.CancelledError:
+                    pass # handled in "async def _wrapper()"
+        self._clean_aio_tasks()
+
 
 
 class TickTask(Task):
@@ -189,8 +228,9 @@ class DelayTask(Task):
             return (t - self._t0) >= self._delay
 
     def run(self):
-        super(DelayTask, self).run()
+        r = super(DelayTask, self).run()
         self._valid = False # run only one time
+        return r
 
 
 class AtTask(Task):
@@ -243,6 +283,10 @@ class Scheduler(object):
         self.r_lock = threading.RLock()
         self._running = False
 
+    @property
+    def is_running(self):
+        return self._running
+
     def add(self, task):
         with self.r_lock:
             self.tasks.append(task)
@@ -252,102 +296,57 @@ class Scheduler(object):
             if task in self.tasks:
                 self.tasks.remove(task)
 
-    def _get(self, task_id):
-        for task in self.tasks:
-            if task.id == task_id:
-                return task
-
     def process(self):
         now = time.time()
         to_run = []
 
         with self.r_lock:
-            for task in self.tasks:
-                if task.is_time_to_run(now):
-                    to_run.append(task)
+            for task in self.tasks[:]:
+                if task.is_valid():
+                    if task.is_time_to_run(now):
+                        to_run.append(task)
+                else:
+                    # not valid anymore
+                    self.tasks.remove(task)
 
         # release the lock before running
         for task in to_run:
-
             task.run()
 
-            if not task.is_valid():
-                self.remove(task)
+    async def run(self):
+        if self._running:
+            raise Exception('Scheduler already running')
 
-    def clear(self):
-        """
-        Remove all registered tasks.
-        """
-        with self.r_lock:
-            del self.tasks[:]
-
-    def execute(self, task):
-        task.execute()
-
-    def run(self):
         self._running = True
+
+        LOGGER.info("scheduler started")
+
+        # loop
         while self._running:
             self.process()
-            time.sleep(TICK_INTERVAL)
+            await asyncio.sleep(TICK_INTERVAL)
+
+        LOGGER.info("scheduler stopping ... cancelling running tasks")
+
+        # cancel any running tasks
+        for task in self.tasks:
+            await task.cancel()
+
+        LOGGER.info("scheduler stopped")
+
+    def start(self):
+        """
+        start the scheduler in the current event loop
+        """
+
+        if self._running:
+            raise Exception('Scheduler already running')
+
+        asyncio.create_task(self.run(), name="Scheduler")
 
     def stop(self):
         self._running = False
 
-
-class ThreadingScheduler(Scheduler):
-    """
-
-    Execute the Scheduler instance and the tasks in separate threads !
-
-    Example::
-
-        from ething.scheduler import *
-
-        scheduler = ThreadingScheduler()
-
-        @scheduler.tick()
-        def tick():
-            print('tick')
-
-
-
-    """
-
-    def __init__(self, auto_start=False):
-        super(ThreadingScheduler, self).__init__()
-        self._t = None
-        if auto_start:
-            self.run()
-
-    def execute(self, task):
-        # execute the task in a new thread
-        if not task.allow_multiple:
-            if hasattr(task, '_p'):
-                p = task._p
-                if p and p.is_alive():
-                    LOGGER.debug('task "%s" already running: skipped', task.name)
-                    return
-
-        t = threading.Thread(name="scheduler.%s" % task.name, target=task.execute, daemon=True)
-        t.start()
-        task._p = t
-
-    def run(self):
-        t = self._t
-
-        if t is not None and t.is_alive():
-            # already running
-            return
-
-        t = threading.Thread(name="scheduler", target=super(ThreadingScheduler, self).run, daemon=True)
-        t.start()
-        self._t = t
-
-    def stop(self):
-        super(ThreadingScheduler, self).stop()
-        if self._t is not None:
-            self._t.join()
-            self._t = None
 
 
 _scheduler = None
@@ -358,7 +357,7 @@ def global_instance():
 
     if _scheduler is None:
         # start the global instance
-        _scheduler = ThreadingScheduler()
+        _scheduler = Scheduler()
 
     return _scheduler
 

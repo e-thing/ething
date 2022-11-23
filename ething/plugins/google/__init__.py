@@ -41,11 +41,12 @@ class Google(Plugin):
 
     JS_INDEX = './js/index.js'
 
-    def load(self):
+    async def load(self):
         self.session = dict()
         self.calendar_events = []
+        await self.core.db.os.load(GoogleAccount)
 
-    def setup(self):
+    async def setup(self):
 
         # install specific http routes
         self._webserver_install()

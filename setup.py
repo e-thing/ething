@@ -37,6 +37,8 @@ install_requires = [
     "btlewrap",
     "psutil",
     "unidecode",
+    "aiosqlite",
+    "aiofiles",
 
     # --webserver
     "Flask>=1.0.2",

@@ -1,59 +1,17 @@
 # coding: utf-8
+from abc import ABC
 
-from ..db import Driver_Base, LOGGER
+from ..db import DriverBase, LOGGER
 from ..env import USER_DIR
-import threading
-from ..green import make_it_green
 import os
 import json
 import pickle
 import datetime
 import pytz
 import time
-import sys
-import sqlite3
+import aiosqlite
+import aiofiles.os
 from dateutil import parser
-
-
-if sys.version_info >= (3, 0):
-    py3 = True
-else:
-    py3 = False
-
-class Cursor(sqlite3.Cursor):
-  """ A greenlet friendly sub-class of sqlite3.Cursor. """
-
-
-for method in [sqlite3.Cursor.executemany,
-            sqlite3.Cursor.executescript,
-            sqlite3.Cursor.fetchone,
-            sqlite3.Cursor.fetchmany,
-            sqlite3.Cursor.fetchall]:
-  setattr(Cursor, method.__name__, make_it_green(method))
-
-setattr(Cursor, 'execute', make_it_green(sqlite3.Cursor.execute))
-
-
-class Connection(sqlite3.Connection):
-  """ A greenlet friendly sub-class of sqlite3.Connection. """
-
-  def __init__(self, *args, **kwargs):
-      # by default [py]sqlite3 checks that object methods are run in the same
-      # thread as the one that created the Connection or Cursor. If it finds
-      # they are not then an exception is raised.
-      # <https://docs.python.org/2/library/sqlite3.html#multithreading>
-      # Luckily for us we can switch this check off.
-      kwargs['check_same_thread'] = False
-      super(Connection, self).__init__(*args, **kwargs)
-
-  def cursor(self):
-      return Cursor(self)
-
-setattr(Connection, 'execute', make_it_green(sqlite3.Connection.execute))
-
-for method in [sqlite3.Connection.commit,
-            sqlite3.Connection.rollback]:
-  setattr(Connection, method.__name__, make_it_green(method))
 
 
 class Encoder(json.JSONEncoder):
@@ -63,7 +21,7 @@ class Encoder(json.JSONEncoder):
                 "_type": "datetime",
                 "value": obj.isoformat()
             }
-        if py3 and isinstance(obj, bytes):
+        if isinstance(obj, bytes):
             return {
                 "_type": "bytes",
                 "value": obj.decode('utf8')
@@ -90,12 +48,13 @@ class Decoder(json.JSONDecoder):
                 return obj['value'].encode('utf8')
         return obj
 
+
 def to_timestamp(d):
     if d is not None:
         return time.mktime(d.timetuple())
 
 
-class SQLiteDriver(Driver_Base):
+class SQLiteDriver(DriverBase):
 
     def __init__(self, database):
         super(SQLiteDriver, self).__init__()
@@ -103,130 +62,132 @@ class SQLiteDriver(Driver_Base):
             self.file = None
         else:
             self.file = os.path.join(USER_DIR, '%s.db' % database)
-        self._lock = threading.Lock() # SecureLock(name='sqlite')
 
-    def connect(self):
-        with self._lock:
-            self.db = sqlite3.connect(self.file or ':memory:', check_same_thread=False, factory=Connection)
+        self.db = None
 
-            if self.db is None:
-                raise Exception('unable to connect to the database')
+    async def connect(self):
+        if self.db is not None:
+            # already connected
+            return
 
-            LOGGER.info('connected to database: %s' % (self.file or 'memory'))
+        self.db = await aiosqlite.connect(self.file or ':memory:')
 
-            c = self.db.cursor()
-            c.execute('CREATE TABLE IF NOT EXISTS __fs_data (id char(7), content blob)')
-            self.db.commit()
-            c.close()
+        if self.db is None:
+            raise Exception('unable to connect to the database')
 
-    def disconnect(self):
-        if hasattr(self, 'db'):
-            with self._lock:
-                self.db.commit()
-                self.db.close()
-                delattr(self, 'db')
+        LOGGER.info('connected to database: %s' % (self.file or 'memory'))
 
-    def load_table_data(self, table_name):
-        if not hasattr(self, 'db'):
+        cursor = await self.db.execute('CREATE TABLE IF NOT EXISTS __fs_data (id char(7), content blob)')
+        await self.db.commit()
+        await cursor.close()
+
+    async def disconnect(self):
+        if self.db is not None:
+            await self.db.commit()
+            await self.db.close()
+            self.db = None
+
+    async def load_table_data(self, table_name):
+        if self.db is None:
             return []
 
-        with self._lock:
-            c = self.db.cursor()
-            c.execute("SELECT data FROM '%s'" % (table_name,))
-            _rows = c.fetchall()
-            c.close()
+        cursor = await self.db.execute("SELECT data FROM '%s'" % (table_name,))
+        _rows = await cursor.fetchall()
+        await cursor.close()
 
         return [pickle.loads(row[0]) for row in _rows]
 
-    def get_table_length(self, table_name):
-        with self._lock:
-            c = self.db.cursor()
-            c.execute("SELECT COUNT(1) FROM '%s'" % (table_name,))
-            data = c.fetchone()
-            l = data[0]
-            c.close()
-        return l
+    async def get_table_length(self, table_name):
+        if self.db is None:
+            return 0
 
-    def list_tables(self):
-        with self._lock:
-            c = self.db.cursor()
-            c.execute("SELECT name FROM sqlite_master WHERE type='table'")
-            tables = c.fetchall()
-            c.close()
+        cursor = await self.db.execute("SELECT COUNT(1) FROM '%s'" % (table_name,))
+        data = await cursor.fetchone()
+        table_len = data[0]
+        await cursor.close()
+
+        return table_len
+
+    async def list_tables(self):
+        if self.db is None:
+            return []
+
+        cursor = await self.db.execute("SELECT name FROM sqlite_master WHERE type='table'")
+        tables = await cursor.fetchall()
+        await cursor.close()
+
         return [t[0] for t in tables if not t[0].startswith('__')]
 
-    def get_file_content(self, file_id):
+    async def get_file_content(self, file_id):
         content = None
-        with self._lock:
-            c = self.db.cursor()
-            c.execute('SELECT content FROM __fs_data WHERE id = ? LIMIT 1', (file_id,))
+        if self.db is not None:
+            cursor = await self.db.execute('SELECT content FROM __fs_data WHERE id = ? LIMIT 1', (file_id,))
 
-            file = c.fetchone()
+            file = await cursor.fetchone()
             if file:
                 content = file[0]
-                if not py3 and isinstance(content, buffer):
-                    content = str(content)  # convert buffer to string
 
-            c.close()
+            await cursor.close()
         return content
 
-    def _process_command(self, c, cmd):
+    async def _process_command(self, c, cmd):
 
         if cmd.name == 'update':
-            c.execute(
+            await c.execute(
                 "UPDATE '%s' SET data = ?, date = ? WHERE id = ?" % cmd.table_name,
                 (pickle.dumps(cmd.doc), to_timestamp(cmd.doc.get('date')), cmd.doc_id))
 
         elif cmd.name == 'insert':
-            c.execute("INSERT INTO '%s' (id, date, data) VALUES (?, ?, ?)" % cmd.table_name,
-                      (cmd.doc_id, to_timestamp(cmd.doc.get('date')), pickle.dumps(cmd.doc)))
+            await c.execute("INSERT INTO '%s' (id, date, data) VALUES (?, ?, ?)" % cmd.table_name,
+                            (cmd.doc_id, to_timestamp(cmd.doc.get('date')), pickle.dumps(cmd.doc)))
 
         elif cmd.name == 'delete':
-            c.execute("DELETE FROM '%s' WHERE id = ?" % cmd.table_name, (cmd.doc_id,))
+            await c.execute("DELETE FROM '%s' WHERE id = ?" % cmd.table_name, (cmd.doc_id,))
 
         elif cmd.name == 'create':
-            c.execute("CREATE TABLE '%s' (id char(7), date integer, data text)" % (cmd.table_name,))
+            await c.execute("CREATE TABLE '%s' (id char(7), date integer, data text)" % (cmd.table_name,))
 
         elif cmd.name == 'drop':
-            c.execute("DROP TABLE '%s'" % (cmd.table_name,))
+            await c.execute("DROP TABLE '%s'" % (cmd.table_name,))
 
         elif cmd.name == 'clear':
-            c.execute("DELETE FROM '%s'" % cmd.table_name)
+            await c.execute("DELETE FROM '%s'" % cmd.table_name)
 
         elif cmd.name == 'fs.write':
-            c.execute("INSERT INTO __fs_data (id, content) VALUES (?, ?)",
-                        (cmd.file_id, sqlite3.Binary(cmd.content)))
+            await c.execute("INSERT INTO __fs_data (id, content) VALUES (?, ?)",
+                            (cmd.file_id, memoryview(cmd.content)))
 
         elif cmd.name == 'fs.delete':
-            c.execute("DELETE FROM __fs_data WHERE id = ?", (cmd.file_id,))
+            await c.execute("DELETE FROM __fs_data WHERE id = ?", (cmd.file_id,))
 
         else:
             LOGGER.error('unknown command %s' % cmd)
 
-    def commit(self, commands):
-        with self._lock:
-            c = self.db.cursor()
+    async def commit(self, commands):
+        if self.db is not None:
+            c = await self.db.cursor()
+            # note: use asyncio.gather ? not sure because the commands needs to be executed one after another
             for cmd in commands:
-                self._process_command(c, cmd)
-            c.close()
-            self.db.commit()
+                await self._process_command(c, cmd)
+            await c.close()
+            await self.db.commit()
 
-    def clear(self):
-        connected = hasattr(self, 'db')
+    async def clear(self):
+        connected = self.db is not None
         if connected:
-          self.disconnect()
+            await self.disconnect()
         db_file = self.file
         try:
-          if db_file:
-              os.remove(db_file)
+            if db_file:
+                # os.remove(db_file)
+                await aiofiles.os.remove(db_file)
         finally:
-          if connected:
-            self.connect()
-    
-    def get_usage(self):
+            if connected:
+                await self.connect()
+
+    async def get_usage(self):
         try:
             db_file = self.file
-            return os.path.getsize(db_file) if db_file else 0
+            return aiofiles.os.path.getsize(db_file) if db_file else 0
         except:
             return 0
-

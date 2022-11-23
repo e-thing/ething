@@ -117,7 +117,9 @@ class Auth(object):
                 raise ServerException('invalid credentials', 401)
 
 
-def install_auth(app):
+async def install_auth(app):
+
+    await app.core.db.os.load(Apikey)
 
     auth = Auth(app, app.conf)
 

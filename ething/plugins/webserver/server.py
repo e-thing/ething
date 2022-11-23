@@ -104,7 +104,7 @@ class FlaskApp(Flask):
         compress.init_app(self)
 
         # auth
-        self.auth = install_auth(self)
+        self.auth = await install_auth(self)
 
         # socketio
         socketio = SocketIO()
@@ -142,7 +142,8 @@ class FlaskApp(Flask):
         self.running = threading.Event()
 
         # routes
-        install_routes(core=self.core, app=self, auth=self.auth, debug=self.debug)
+        # todo : move from __init__
+        await install_routes(core=self.core, app=self, auth=self.auth, debug=self.debug)
 
         self.port = self.conf.get('port', 80)
 

@@ -75,7 +75,8 @@ class Client(Entity):
         self.modifiedDate = utcnow()  # update the modification time
 
 
-def install (app):
+# todo: make it async
+async def install (app):
 
     app.get_client = lambda cid: get_client(app, cid)
 
@@ -83,6 +84,9 @@ def install (app):
         return notify_client(app, *args, **kwargs)
 
     app.notify_client = _notify_client
+
+    # load clients database
+    await app.core.db.os.load(Client)
 
     app.core.db.os[Client].update_context({
         'app': app

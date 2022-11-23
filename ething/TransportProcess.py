@@ -10,9 +10,7 @@ import logging
 from queue import Queue, Empty
 import os
 
-
 LOGGER = logging.getLogger(__name__)
-
 
 win = True if os.name == 'nt' else False
 
@@ -21,7 +19,7 @@ class Transport(object):
 
     def __init__(self):
         self._opened = threading.Event()
-    
+
     def open(self):
         self._opened.set()
 
@@ -40,6 +38,7 @@ class Transport(object):
 
     def wait_open(self, timeout=None):
         return self._opened.wait(timeout)
+
 
 class SerialTransport(Transport):
 
@@ -62,13 +61,13 @@ class SerialTransport(Transport):
     def read(self):
         if self.serial is not None:
             if self.serial.is_open:
-                if win and self.serial.in_waiting==0:
+                if win and self.serial.in_waiting == 0:
                     # on windows the serial.read() is blocking gevent
                     t0 = time.time()
                     timeout = self.serial.timeout
                     read = False
                     while time.time() - t0 < timeout:
-                        if self.serial.in_waiting>0:
+                        if self.serial.in_waiting > 0:
                             read = True
                             break
                         time.sleep(0.1)
@@ -94,6 +93,7 @@ class SerialTransport(Transport):
                 self.serial.close()
                 self.serial = None
                 LOGGER.info("(serial) closed from port=%s baudrate=%d" % (self.port, self.baudrate))
+
 
 class NetTransport(Transport):
 
@@ -152,7 +152,7 @@ class UdpTransport(Transport):
         self.port = port
 
     def open(self):
-        
+
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)  # UDP
 
         self.sock.bind(("0.0.0.0", self.port))
@@ -172,7 +172,6 @@ class UdpTransport(Transport):
 
         LOGGER.info("(udp): connection opened, host: %s , port: %d" % (
             str(self.host), self.port))
-
 
     def read(self):
         if self.sock is not None:
@@ -207,18 +206,19 @@ class Protocol(object):
 
     def init(self, transport):
         self.transport = transport
-    
+
     def connection_made(self):
         pass
 
     def data_received(self, data):
-        """Called with snippets received from the serial port"""
-    
+        """Called each time new data arrives"""
+
     def loop(self):
+        """used mainly for regular check such as timeout..."""
         pass
 
     def connection_lost(self, exc):
-        #if isinstance(exc, Exception):
+        # if isinstance(exc, Exception):
         #    LOGGER.error("Exception in transport process: %s" % str(exc))
         pass
 
@@ -230,7 +230,7 @@ class Packetizer(Protocol):
     The class also keeps track of the transport.
     """
 
-    def __init__(self, terminator = b'\0'):
+    def __init__(self, terminator=b'\0'):
         super(Packetizer, self).__init__()
         self.buffer = bytearray()
         self.terminator = terminator
@@ -252,7 +252,7 @@ class LineReader(Packetizer):
     The encoding is applied.
     """
 
-    def __init__(self, terminator = b'\r\n', encoding = 'utf-8', unicode_handling = 'replace'):
+    def __init__(self, terminator=b'\r\n', encoding='utf-8', unicode_handling='replace'):
         super(LineReader, self).__init__(terminator)
         self.encoding = encoding
         self.unicode_handling = unicode_handling
@@ -264,7 +264,7 @@ class LineReader(Packetizer):
         """Process one line - to be overridden by subclassing"""
         raise NotImplementedError()
 
-    def write_line(self, text, encode = True):
+    def write_line(self, text, encode=True):
         """
         Write text to the transport. ``text`` is a Unicode string and the encoding
         is applied before sending ans also the newline is append.
@@ -277,7 +277,8 @@ class LineReader(Packetizer):
 
 class TransportProcess(Process):
 
-    def __init__(self, transport, protocol, reconnect = True, reconnect_delay = 15, open_state_changed_handler = None, logger = LOGGER, **kwargs):
+    def __init__(self, transport, protocol, reconnect=True, reconnect_delay=15, open_state_changed_handler=None,
+                 logger=LOGGER, **kwargs):
         super(TransportProcess, self).__init__(**kwargs)
         self.transport = transport
         self.protocol = protocol
@@ -303,11 +304,11 @@ class TransportProcess(Process):
     def run(self):
 
         self.protocol.init(self.transport)
-        
+
         while self.is_running:
-        
+
             error = None
-            
+
             try:
                 self.transport.open()
             except Exception as e:
@@ -364,10 +365,9 @@ class TransportProcess(Process):
             except Exception as e:
                 self.logger.exception('exception in protocol.connection_lost()')
 
-            
             if not self.reconnect:
                 break
-            
+
             if self.reconnect_delay > 0:
                 t_end = time.time() + self.reconnect_delay
                 while self.is_running and time.time() < t_end:
@@ -375,54 +375,54 @@ class TransportProcess(Process):
                 self.logger.debug('reconnecting...')
 
 
-class QueueProtocol(Protocol):
-    def __init__(self, queue):
-        super(QueueProtocol, self).__init__()
-        self._q = queue
+# class QueueProtocol(Protocol):
+#     def __init__(self, queue):
+#         super(QueueProtocol, self).__init__()
+#         self._q = queue
+#
+#     def data_received(self, data):
+#         self._q.put(data)
+#
+#
+# class ThreadedTransport(Transport):
+#
+#     def __init__(self, transport, timeout=1):
+#         super(ThreadedTransport, self).__init__()
+#         self._transport = transport
+#         self._q = Queue()
+#         self._thread = None
+#         self._timeout = timeout
+#
+#     def open(self):
+#         if self._thread:
+#             raise Exception('already opened')
+#         self._thread = TransportProcess(transport=self._transport, protocol=QueueProtocol(self._q))
+#         self._thread.start()
+#         # wait for the Process to be opened
+#         if self._transport.wait_open(5):
+#             super(ThreadedTransport, self).open()
+#
+#     def read(self):
+#         try:
+#             data = self._q.get(timeout=self._timeout)
+#         except Empty:
+#             return None
+#
+#         return data
+#
+#     def write(self, *args, **kwargs):
+#         return self._transport.write(*args, **kwargs)
+#
+#     def close(self):
+#         if self._thread:
+#             super(ThreadedTransport, self).close()
+#             self._thread.stop()
+#             self._thread = None
 
-    def data_received(self, data):
-        self._q.put(data)
 
+class AsyncResult(object):
 
-class ThreadedTransport(Transport):
-
-    def __init__(self, transport, timeout=1):
-        super(ThreadedTransport, self).__init__()
-        self._transport = transport
-        self._q = Queue()
-        self._thread = None
-        self._timeout = timeout
-
-    def open(self):
-        if self._thread:
-            raise Exception('already opened')
-        self._thread = TransportProcess(transport=self._transport, protocol=QueueProtocol(self._q))
-        self._thread.start()
-        # wait for the Process to be opened
-        if self._transport.wait_open(5):
-            super(ThreadedTransport, self).open()
-
-    def read(self):
-        try:
-            data = self._q.get(timeout=self._timeout)
-        except Empty:
-            return None
-
-        return data
-
-    def write(self, *args, **kwargs):
-        return self._transport.write(*args, **kwargs)
-
-    def close(self):
-        if self._thread:
-            super(ThreadedTransport, self).close()
-            self._thread.stop()
-            self._thread = None
-
-
-class AsyncResult (object):
-
-    def __init__(self, command = None, done = None, err = None):
+    def __init__(self, command=None, done=None, err=None):
         self.__command = command
         self.__on_done = done
         self.__on_err = err
@@ -447,14 +447,14 @@ class AsyncResult (object):
     def send_ts(self):
         return self.__send_ts
 
-    def resolve(self, data = None, args = (), kwargs = {}):
+    def resolve(self, data=None, args=(), kwargs={}):
         if not self.__event.is_set():
             self.__data = data
             if self.__on_done:
                 self.__on_done(self, *args, **kwargs)
             self.__event.set()
 
-    def reject(self, error, args = (), kwargs = {}):
+    def reject(self, error, args=(), kwargs={}):
         if not self.__event.is_set():
             self.__error = error
 
@@ -463,5 +463,5 @@ class AsyncResult (object):
 
             self.__event.set()
 
-    def wait(self, timeout = None):
+    def wait(self, timeout=None):
         self.__event.wait(timeout)

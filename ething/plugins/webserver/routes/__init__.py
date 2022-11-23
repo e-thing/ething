@@ -16,7 +16,8 @@ from . import client
 from . import notification
 
 
-def install_routes(**kwargs):
+# todo: async
+async def install_routes(**kwargs):
     core.install(**kwargs)
     static.install(**kwargs)
     file.install(**kwargs)
@@ -29,5 +30,5 @@ def install_routes(**kwargs):
     resource.install(**kwargs)
     plugin.install(**kwargs)
     apikey.install(**kwargs)
-    client.install(**kwargs)
+    await client.install(**kwargs)
     notification.install(**kwargs)

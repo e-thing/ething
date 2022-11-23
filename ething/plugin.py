@@ -224,7 +224,7 @@ class Plugin(with_metaclass(PluginMetaClass, Entity, SignalEmitter)):
 
     def load(self):
         """
-        Is called right after this plugin was instanciated.
+        Is called right after this plugin was instanciated. Is called before db is available.
         """
         pass
 

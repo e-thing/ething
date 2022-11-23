@@ -6,7 +6,7 @@ from .reg import get_registered_class, get_definition_name
 from .Config import Config
 from .version import __version__
 from .plugin import search_plugin_cls, import_plugins
-from .scheduler import set_interval, global_instance
+from .scheduler import set_interval, global_instance as scheduler_instance
 from .dispatcher import SignalEmitter
 from .processes import ProcessCollection
 from .utils import get_info
@@ -25,7 +25,6 @@ import sys
 import time
 
 DEFAULT_COMMIT_INTERVAL = 5
-DEFAULT_GARBAGE_COLLECTOR_PERIOD = 300
 
 LOGGER = logging.getLogger(__name__)
 
@@ -55,6 +54,13 @@ class _PluginCollection(collections.abc.Mapping):
             if get_definition_name(p) == typename:
                 return p
         raise KeyError
+
+    async def call(self, method, *args, **kwargs):
+        for p in self._plugins:
+            try:
+                await getattr(p, method)(*args, **kwargs)
+            except:
+                LOGGER.exception("plugin %s: error while executing '%s'" % (p.name, method))
 
 
 class PairingUpdated(Signal):
@@ -97,7 +103,7 @@ class Core(SignalEmitter):
                     return instance
 
     def __init__(self, name=None, debug=False, database=None, clear_db=False, commit_interval=None,
-                 garbage_collector_period=None, plugins=True, **plugins_options):
+                 plugins=True, **plugins_options):
         """
 
         :param name: the name of the core instance. Default to None.
@@ -106,7 +112,6 @@ class Core(SignalEmitter):
         :param clear_db: If True, the database will be cleared.
         :param logger: A logger instance. By default, a new logger instance will be created.
         :param commit_interval: The interval the database will be synchronized. Default to 5sec.
-        :param garbage_collector_period: The period after which the database cache will be remove. Default to 300sec.
 
         .. attribute:: db
 
@@ -142,8 +147,7 @@ class Core(SignalEmitter):
         LOGGER.info("DEBUG      : %s", debug)
 
         # load db
-        self._init_database(database, clear_db=clear_db, commit_interval=commit_interval,
-                            garbage_collector_period=garbage_collector_period)
+        self._init_database(database, clear_db=clear_db, commit_interval=commit_interval)
 
         self.config = Config(self)
 
@@ -155,17 +159,18 @@ class Core(SignalEmitter):
 
         generate_event_nodes()
 
+        # todo: parallelise
         for p in plugin_modules:
-            self.use(p)
+            await self.use(p)
 
         # load all resources
-        self.db.os[Resource].load()
+        await self.db.os[Resource].load()
 
         # setup plugins
-        self._plugins_call('setup')
+        await self._plugins_coll.call('setup')
 
         # start the scheduler
-        global_instance().run()
+        scheduler_instance().start()
 
         # devices activity timeout
         def devices_activity_check():
@@ -208,7 +213,7 @@ class Core(SignalEmitter):
         """
         return self._notification
 
-    def use(self, something):
+    async def use(self, something):
         """
         Load a plugin.
 
@@ -227,7 +232,7 @@ class Core(SignalEmitter):
         # instanciate:
         try:
             plugin = plugin_cls(self)
-            plugin.load()
+            await plugin.load()
         except:
             LOGGER.exception('plugin %s: unable to load' % plugin_name)
         else:
@@ -240,7 +245,7 @@ class Core(SignalEmitter):
             LOGGER.info('plugin %s loaded, info: %s' % (plugin.name, info))
             return plugin
 
-    def _init_database(self, database=None, clear_db=False, commit_interval=None, garbage_collector_period=None):
+    async def _init_database(self, database=None, clear_db=False, commit_interval=None):
         if database is None:
             database = 'database'
 
@@ -254,9 +259,12 @@ class Core(SignalEmitter):
         else:
             raise Exception('unknown db_type %s' % db_type)
 
-        self.db = Db(driver, auto_commit=False, cache_delay=3600, auto_connect=True)
+        self.db = Db(driver, auto_commit=False, cache_delay=3600)
+        await self.db.connect()
 
         self.db.os.context.update({'core': self})
+
+        await self.db.os.load(Resource)
 
         if clear_db:
             LOGGER.info('clear db')
@@ -274,22 +282,20 @@ class Core(SignalEmitter):
             set_interval(commit_interval, self.db.commit,
                          condition=lambda _: self.db.connected and self.db.need_commit())
 
-        # run garbage collector regularly
-        if garbage_collector_period is None:
-            garbage_collector_period = DEFAULT_GARBAGE_COLLECTOR_PERIOD
-        set_interval(garbage_collector_period, self.db.run_garbage_collector, condition=lambda _: self.db.connected)
-
     @property
     def version(self):
         return __version__
 
-    def close(self):
-        LOGGER.info("close")
+    async def stop(self):
+        LOGGER.info("stopping...")
 
-        self._plugins_call('unload')
+        await self._plugins_coll.call('unload')
+
+        # stop the scheduler
+        scheduler_instance().stop()
 
         if hasattr(self, 'db'):
-            self.db.disconnect()
+            await self.db.disconnect()
 
     def start_pairing(self):
         if not self._pairing:
@@ -395,10 +401,3 @@ class Core(SignalEmitter):
                 raise Exception('the type "%s" is unknown' % cls_name)
         attributes['type'] = get_definition_name(cls)
         return self.db.os.create(cls, attributes)
-
-    def _plugins_call(self, method, *args, **kwargs):
-        for p in self._plugins:
-            try:
-                getattr(p, method)(*args, **kwargs)
-            except:
-                LOGGER.exception("plugin %s: error while executing '%s'" % (p.name, method))

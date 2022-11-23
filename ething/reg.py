@@ -331,6 +331,7 @@ def is_dirty(obj):
     return False
   return reg.dirty
 
+# reset dirty flag
 def clean(obj):
   install(obj).clean()
 

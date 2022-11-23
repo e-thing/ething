@@ -1,4 +1,3 @@
-
 # coding: utf-8
 from future.utils import string_types
 from queue import Queue, Empty
@@ -11,12 +10,13 @@ from time import time
 import inspect
 import logging
 import re
-
+import abc
+import asyncio
 
 LOGGER = logging.getLogger(__name__)
 
 
-class Driver_Base(object):
+class DriverBase(metaclass=abc.ABC):
 
     def connect(self):
         pass
@@ -24,31 +24,35 @@ class Driver_Base(object):
     def disconnect(self):
         pass
 
+    @abc.abstractmethod
     def load_table_data(self, table_name):
-        raise NotImplementedError()
+        pass
 
     def get_table_length(self, table_name):
         # if it returns None, the length will be calculated by another way
         return None
 
+    @abc.abstractmethod
     def list_tables(self):
-        raise NotImplementedError()
+        pass
 
+    @abc.abstractmethod
     def get_file_content(self, file_id):
-        raise NotImplementedError()
+        pass
 
+    @abc.abstractmethod
     def process_command(self, command):
-        raise NotImplementedError()
-    
+        pass
+
     def commit(self, commands):
-      for cmd in commands:
-          self.process_command(cmd)
-    
+        for cmd in commands:
+            self.process_command(cmd)
+
     def get_usage(self):
-      return 0
+        return 0
 
 
-class Dummy_Driver(Driver_Base):
+class DummyDriver(DriverBase):
     def load_table_data(self, table_name):
         return []
 
@@ -66,13 +70,14 @@ class Db(object):
     """
     Example::
 
-        db = Db(Dummy_Driver())
+        mydb = Db(DummyDriver())
 
+        await mydb.connect()
 
         ## Table manipulation
 
         # the table will be automatically created if it does not exist.
-        table = db['my_table'] # returns a Table instance
+        table = mydb['my_table'] # returns a Table instance
 
         # insert a new document
         table.insert({
@@ -112,9 +117,9 @@ class Db(object):
 
         ## Store
 
-        # use the db.store instance for saving and retrieving data from a key-value store.
+        # use the mydb.store instance for saving and retrieving data from a key-value store.
 
-        store = db.store
+        store = mydb.store
 
         # add a new entry or update an existing one
         store['foo'] = 'bar'
@@ -132,9 +137,9 @@ class Db(object):
 
         ## File system
 
-        # use the db.fs instance for storing and retrieving files
+        # use the mydb.fs instance for storing and retrieving files
 
-        fs = db.fs
+        fs = mydb.fs
 
         # create a new file
         file = fs.create('foo.txt') # return a File instance
@@ -162,17 +167,27 @@ class Db(object):
 
         ## Object system
 
-        # use the db.os instance for storing and retrieving entities (see reg.py).
+        # use the mydb.os instance for storing and retrieving entities (see reg.py).
 
         # first define a new entity class
         @attr('name', type="string") # register some attribute
         @uid() # register a 'id' attribute with an unique id generated for each instance
-        @db(database=db) # the Foo entities are automatically saved in the db database
+        @db(database=mydb) # the Foo entities are automatically saved in the db database
         class Foo:
             pass
 
+        # first load it
+        await db_load(Foo)
+        # or
+        await mydb.os.load(Foo)
+
         # create a new Foo entity
         foo = db_create(Foo, {
+            'name': 'bar'
+        }) # returns a Foo instance
+
+        # or using the mydb.os instance
+        foo = mydb.os.create(Foo, {
             'name': 'bar'
         }) # returns a Foo instance
 
@@ -189,18 +204,17 @@ class Db(object):
         remove(foo)
 
     """
-    def __init__(self, driver, auto_commit=False, cache_delay=3600, auto_connect=True):
+
+    def __init__(self, driver, auto_commit=False, cache_delay=3600):
         self._driver = driver
+        self._commit_task = None
         self._auto_commit = auto_commit
-        self._cache_delay = cache_delay
+        self._cache_delay = cache_delay # todo: deprecated, need to remove explicitely the memory
         self._fs = FS(self)
         self._os = OS(self)
         self._store = Store(self)
         self._connected = False
         self._commiting = False
-
-        if auto_connect:
-            self.connect()
 
     @property
     def auto_commit(self):
@@ -210,23 +224,36 @@ class Db(object):
     def cache_delay(self):
         return self._cache_delay
 
-    def connect(self):
+    async def connect(self):
         self._journal = Queue()
         self._tables = []
 
-        self._driver.connect()
+        await self._driver.connect()
 
-        for table_name in self._driver.list_tables():
+        for table_name in await self._driver.list_tables():
             table = Table(self, table_name)
             self._tables.append(table)
 
+        # load FS
+        await self._fs.load()
+
+        # load Store
+        await self._store.load()
+
         self._connected = True
 
-    def disconnect(self):
+    async def disconnect(self):
         if self._connected:
+
+            # free
+            self._fs.free()
+            self._store.free()
+
+            # commit any changes before disconnecting
+            await self.commit()
+            # disconnect
+            await self._driver.disconnect()
             self._connected = False
-            self.commit()
-            self._driver.disconnect()
 
     @property
     def connected(self):
@@ -235,7 +262,7 @@ class Db(object):
     @property
     def fs(self):
         return self._fs
-    
+
     @property
     def os(self):
         return self._os
@@ -244,8 +271,8 @@ class Db(object):
     def store(self):
         return self._store
 
-    def get_usage(self):
-        return self._driver.get_usage()
+    async def get_usage(self):
+        return await self._driver.get_usage()
 
     # table
     def table_get(self, table_name, autocreate=True):
@@ -253,9 +280,9 @@ class Db(object):
             if t.name == table_name:
                 return t
         if autocreate:
-          return self.table_create(table_name)
+            return self.table_create(table_name)
         else:
-          raise KeyError('the table %s does not exist' % table_name)
+            raise KeyError('the table %s does not exist' % table_name)
 
     def table_exists(self, table_name):
         for t in self._tables:
@@ -271,11 +298,10 @@ class Db(object):
         if self.table_exists(table_name):
             raise Exception('create error: table "%s" already exists' % table_name)
 
-        self._add_cmd(Create_Command(table_name))
         table = Table(self, table_name, True)
         self._tables.append(table)
 
-        self._commit()
+        self._execute(Create_Command(table_name))
 
         return table
 
@@ -285,18 +311,21 @@ class Db(object):
         for i in range(len(self._tables)):
             if self._tables[i].name == table_name:
                 table = self._tables[i]
-                self._add_cmd(Drop_Command(table_name))
+
                 del self._tables[i]
                 table.free()
+
+                self._execute(Drop_Command(table_name))
+
                 break
         else:
             if not silent:
                 raise Exception('drop error: table "%s" does not exist' % table_name)
-        self._commit()
 
-    #
-    def commit(self):
-        if self._commiting: return
+    # execute the pending db commands
+    async def __commit(self):
+        if self._commiting:
+            return # avoid multiple commit a time
 
         self._commiting = True
 
@@ -310,22 +339,12 @@ class Db(object):
                 except Empty:
                     break
             if cmds:
-                self._driver.commit(cmds)
+                await self._driver.commit(cmds)
         finally:
             self._commiting = False
 
     def need_commit(self):
         return not self._journal.empty() or self.os.need_commit()
-
-    def run_garbage_collector(self):
-        now = time()
-        for table in self._tables:
-            if table.loaded:
-                if now - table.activity > self._cache_delay:
-                    table.free()
-
-        if self._fs is not None:
-            self._fs.run_garbage_collector()
 
     def clear(self):
         if self._fs is not None:
@@ -334,26 +353,30 @@ class Db(object):
         for table_name in list(map(lambda t: t.name, self._tables)):
             self.table_drop(table_name)
 
-    def _commit(self):
+    # do the commit if auto_commit is enabled without waiting
+    def _execute(self, cmd):
+        self._journal.put(cmd)
         if self._auto_commit:
             self.commit()
-    
+
+    def commit(self):
+        if self._commit_task is not None:
+            if not self._commit_task.done():
+                return self._commit_task # a previous commit call is pending
+        self._commit_task = asyncio.create_task(self.__commit(), name="DB_commit")
+        return self._commit_task
+
     def __getitem__(self, table_name):
         return self.table_get(table_name)
 
-    def _add_cmd(self, cmd):
-        self._journal.put(cmd)
 
-
-class Table(MutableMapping):
+class Table(object):
     def __init__(self, db, name, empty=False):
         self._db = db
         self._driver = self._db._driver
         self._name = name
         self._loaded = bool(empty)
-        self._cached_length = None
         self._data = OrderedDict()
-        self._activity = time() if empty else None
 
     def __repr__(self):
         return str(self)
@@ -361,13 +384,38 @@ class Table(MutableMapping):
     def __str__(self):
         return '<%s name=%s>' % (type(self).__name__, self._name)
 
+    async def load(self):
+        if self._loaded:
+            return # already loaded
+
+        await self._db.commit()  # force to commit any cached changes
+        table_data = await self._driver.load_table_data(self.name)
+
+        # Note : table_data must be ordered by inserting date !
+
+        self._loaded = True
+
+        cached = list(self._data) # note:  necessary ?
+
+        for doc in table_data:
+            doc_id = doc.get('id')
+            if doc_id not in cached:
+                self._data[doc_id] = doc
+
+    def free(self):
+        self._loaded = False
+        self._data.clear()
+
+    def __enter__(self):
+        self.load()
+        return self
+
+    def __exit__(self, type, value, traceback):
+        self.free()
+
     @property
     def name(self):
         return self._name
-
-    @property
-    def activity(self):
-        return self._activity
 
     @property
     def loaded(self):
@@ -375,27 +423,7 @@ class Table(MutableMapping):
 
     @property
     def length(self):
-        if self._loaded:
-            return len(self._data)
-
-        if self._cached_length is not None:
-            return self._cached_length
-
-        # get the length from the driver
-        self._db.commit()  # force to commit any cached changes
-        l = self._driver.get_table_length(self.name)
-        if l is None:
-            # fall back to the hard way !
-            self._lazy_load()
-            l = len(self._data)
-
-        self._cached_length = l
-
-        return l
-
-    def get_doc(self, doc_id):
-        self._lazy_load()
-        return copy.deepcopy(self._data[doc_id])
+        return len(self._data)
 
     def __getitem__(self, doc_id):
         return self.get_doc(doc_id)
@@ -410,37 +438,16 @@ class Table(MutableMapping):
         return self.length
 
     def __iter__(self):
-        self._lazy_load()
         return iter(self._data)
 
-    def _load(self):
-        self._db.commit() # force to commit any cached changes
-        table_data = self._driver.load_table_data(self.name)
-
-        # Note : table_data must be ordered by inserting date !
-
-        self._loaded = True
-
-        cached = list(self._data)
-
-        for doc in table_data:
-            doc_id = doc.get('id')
-            if doc_id not in cached:
-                self._data[doc_id] = doc
-
-    def _lazy_load(self):
-        self._activity = time()
+    def get_doc(self, doc_id):
         if not self._loaded:
-            self._load()
-
-    def free(self):
-        self._loaded = False
-        self._cached_length = None
-        self._data.clear()
-        self._activity = None
+            raise Exception('internal error: table not loaded')
+        return copy.deepcopy(self._data[doc_id])
 
     def select(self, sort=None, filter_fn=None, start=0, length=None):
-        self._lazy_load()
+        if not self._loaded:
+            raise Exception('internal error: table not loaded')
 
         if filter_fn is not None:
             data = list(filter(filter_fn, self._data.values()))
@@ -464,46 +471,36 @@ class Table(MutableMapping):
         if doc_id in self._data:
             raise KeyError('insert error: doc with id %s already exist' % doc_id)
 
-        self._db._add_cmd(Insert_Command(self.name, doc))
         self._data[doc_id] = doc
-        self._commit()
+        self._db._execute(Insert_Command(self.name, doc))
 
         return doc
 
     def update(self, doc, doc_id=None):
-        self._lazy_load()
-
         if doc_id is None:
             doc_id = doc['id']
 
         if doc_id in self._data:
             # update
-            self._db._add_cmd(Update_Command(self.name, doc))
             self._data[doc_id].update(doc)
-            self._commit()
+            self._db._execute(Update_Command(self.name, doc))
         else:
             # insert
             self.insert(doc)
 
     def delete(self, doc_id):
-        self._lazy_load()
+        if not self._loaded:
+            raise Exception('internal error: table not loaded')
 
         if doc_id not in self._data:
             raise KeyError('delete error: doc with id %s does not exist' % doc_id)
 
-        self._db._add_cmd(Delete_Command(self.name, doc_id))
         del self._data[doc_id]
-        self._commit()
+        self._db._execute(Delete_Command(self.name, doc_id))
 
     def clear(self):
         self._data.clear()
-        self._db._add_cmd(Clear_Command(self.name))
-        self._commit()
-
-    def _commit(self):
-        self._cached_length = None # not valid anymore
-        self._activity = time()
-        self._db._commit()
+        self._db._execute(Clear_Command(self.name))
 
 
 class FS(Iterable):
@@ -514,28 +511,28 @@ class FS(Iterable):
         self.__table = None
         self.__files = None
 
-    @property
-    def _meta(self):
-        if self.__table is None:
-            if not self._db.table_exists('fs'):
-                self._db.table_create('fs')
-            self.__table = self._db['fs']
-        return self.__table
+    async def load(self):
+        if not self._db.table_exists('fs'):
+            self._db.table_create('fs')
+        self.__table = self._db['fs']
 
-    @property
-    def _files(self):
-        if self.__files is None:
-            self.__files = dict()
-            for file_meta in self._meta.select():
-                file = File(self, meta=file_meta)
-                self.__files[file.id] = file
-        return self.__files
+        await self.__table.load()
+
+        self.__files = dict()
+        for file_meta in self.__table.select():
+            file = File(self, meta=file_meta)
+            self.__files[file.id] = file
+
+    def free(self):
+        self.__table.free()
+        self.__table = None
+        self.__files = None
 
     def list(self):
-        return list(self._files.values())
+        return list(self.__files.values())
 
     def exists(self, file_id):
-        return file_id in self._files
+        return file_id in self.__files
 
     def create(self, filename, content=None, **metadata):
 
@@ -547,18 +544,18 @@ class FS(Iterable):
             'size': 0
         })
 
-        self._meta.insert(metadata)
+        self.__table.insert(metadata)
 
         file = File(self, data=b'', meta=metadata)
-        self._files[file_id] = file
+        self.__files[file_id] = file
 
         if content is not None:
-          file.write(content)
-        
+            file.write(content)
+
         return file
 
     def __iter__(self):
-        return iter(self._files.values())
+        return iter(self.__files.values())
 
     def __getitem__(self, file_id):
         return self.get(file_id)
@@ -566,41 +563,27 @@ class FS(Iterable):
     def get(self, file_id):
         if isinstance(file_id, File):
             file_id = file_id.id
-        #if file_id not in self._files:
-        #    meta = self._meta[file_id]
+        # if file_id not in self._files:
+        #    meta = self.__table[file_id]
         #    file = File(self, meta=meta)#
         #    self._files[file_id] = file
-        if file_id not in self._files:
+        if file_id not in self.__files:
             raise Exception('fs error: file %s does not exist' % file_id)
-        return self._files[file_id]
+        return self.__files[file_id]
 
     def remove(self, file_id):
         if isinstance(file_id, File):
             file_id = file_id.id
-        self._meta.delete(file_id)
-        if file_id in self._files:
-            file = self._files[file_id]
-            del self._files[file_id]
+        self.__table.delete(file_id)
+        if file_id in self.__files:
+            file = self.__files[file_id]
+            del self.__files[file_id]
             file.free()
-        self._db._add_cmd(FS_Delete_Command(file_id))
-        self._commit()
-
-    def run_garbage_collector(self):
-        if self.__files is None: return # nothing loaded from now
-        now = time()
-        for file_id in self._files:
-            file = self._files[file_id]
-            if file.loaded:
-                if now - file.activity > self._db._cache_delay:
-                    file.free()
+        self._db._execute(FS_Delete_Command(file_id))
 
     def clear(self):
-        for file_id in map(lambda f: f.id, self.list()):
+        for file_id in map(lambda f: f.id, list(self.__files.values())):
             self.remove(file_id)
-        self.__table = None
-
-    def _commit(self):
-        self._db._commit()
 
 
 class File(object):
@@ -611,13 +594,19 @@ class File(object):
         self._meta = meta or dict()
         self._meta.setdefault('size', 0)
         self._data = data
-        self._activity = None
 
     def __repr__(self):
         return str(self)
 
     def __str__(self):
         return '<%s id=%s filename=%s size=%d>' % (type(self).__name__, self.id, self.filename, self.size)
+
+    def __enter__(self):
+        self.load()
+        return self
+
+    def __exit__(self, type, value, traceback):
+        self.free()
 
     @property
     def id(self):
@@ -636,10 +625,6 @@ class File(object):
         return copy.deepcopy(self._meta)
 
     @property
-    def activity(self):
-        return self._activity
-
-    @property
     def loaded(self):
         return self._data is not None
 
@@ -650,33 +635,26 @@ class File(object):
         self._meta[key] = value
         self._fs._meta.update(self._meta)
 
-    def _lazy_load(self):
-        self._activity = time()
+    async def load(self):
         if self._data is None:
             self._db.commit()  # force to commit any cached changes
-            self._data = self._driver.get_file_content(self.id)
+            self._data = await self._driver.get_file_content(self.id)
 
     def free(self):
+        # free memory
         self._data = None
-        self._activity = None
 
-    def read(self):
-        self._lazy_load()
+    async def read(self):
+        await self.load()
         return self._data
 
     def write(self, content):
         self._data = content
         self._meta['size'] = len(content)
-        self._db._add_cmd(FS_Write_Command(self.id, content))
-        self._commit()
+        self._db._execute(FS_Write_Command(self.id, content))
 
     def clear(self):
         self.write(b'')
-
-    def _commit(self):
-        self._activity = time()
-        self._db._commit()
-
 
 
 class Command_Base(object):
@@ -765,237 +743,279 @@ class FS_Write_Command(File_Command_Base):
 
 class OS(object):
 
-  def __init__(self, db):
-    self._db = db
-    self._dirty = False
-    self.__items = dict()
-    self._context = {
-      '__db': self._db
-    }
+    def __init__(self, db):
+        self._db = db
+        self._dirty = False
+        self.__items = dict()
+        self._context = {
+            '__db': self._db
+        }
 
-  @property
-  def context(self):
-    return self._context
-    
-  def _get_os(self, cls):
-    if not inspect.isclass(cls):
-      cls = type(cls)
-    
-    table_name = get_meta(cls, 'table', cls.__name__)
+    @property
+    def context(self):
+        return self._context
 
-    if table_name not in self.__items:
-      self.__items[table_name] = OS_item(cls, self)
-    
-    return self.__items[table_name]
+    async def load(self, cls):
+        if not inspect.isclass(cls):
+            cls = type(cls)
 
-  def __getitem__(self, cls):
-    return self._get_os(cls)
+        table_name = get_meta(cls, 'table', cls.__name__)
 
-  def update_context(self, cls, context):
-    return self._get_os(cls).update_context(context)
-  
-  def find(self, cls, *args, **kwargs):
-    return self._get_os(cls).find(*args, **kwargs)
-  
-  def get(self, cls, id):
-    return self._get_os(cls).get(id)
-  
-  def save(self, obj):
-    return self._get_os(obj).save(obj)
-  
-  def remove(self, obj):
-    return self._get_os(obj).remove(obj)
-  
-  def create(self, cls, data=None):
-    return self._get_os(cls).create(cls, data)
-  
-  def commit(self):
-    self._dirty = False
-    for table_name in self.__items:
-      os_item = self.__items[table_name]
-      os_item.commit()
+        if table_name not in self.__items:
+            os_item = OS_item(cls, self)
+            self.__items[table_name] = os_item
+            await os_item.load()
 
-  def need_commit(self):
-      return self._dirty
+        return self.__items[table_name]
+
+    def _get_os(self, cls):
+        if not inspect.isclass(cls):
+            cls = type(cls)
+
+        table_name = get_meta(cls, 'table', cls.__name__)
+
+        if table_name not in self.__items:
+            raise Exception("OS '%s' not loaded !" % table_name)
+
+        return self.__items[table_name]
+
+    def __getitem__(self, cls):
+        return self._get_os(cls)
+
+    def update_context(self, cls, context):
+        return self._get_os(cls).update_context(context)
+
+    def find(self, cls, *args, **kwargs):
+        return self._get_os(cls).find(*args, **kwargs)
+
+    def get(self, cls, id):
+        return self._get_os(cls).get(id)
+
+    def save(self, obj):
+        return self._get_os(obj).save(obj)
+
+    def remove(self, obj):
+        return self._get_os(obj).remove(obj)
+
+    def create(self, cls, data=None):
+        return self._get_os(cls).create(cls, data)
+
+    def commit(self):
+        self._dirty = False
+        for table_name in self.__items:
+            os_item = self.__items[table_name]
+            os_item.commit()
+
+    def need_commit(self):
+        return self._dirty
 
 
 class OS_item(object):
 
-  def __init__(self, cls, os):
-    cls = get_meta(cls, 'db_cls', cls)
-    self._os = os
-    self._db = os._db
-    self._cls = cls
-    self._auto_commit = self._db._auto_commit
-    self._ref = dict()
-    self._dirty_obj = set() # only if auto_commit is False
-    self._loaded = False
-    self._saving = set()
-    self._table_name = get_meta(cls, 'table', cls.__name__)
-    self._id_key = get_meta(cls, 'id_key', 'id')
-    if not has_registered_attr(cls, self._id_key):
-      raise Exception('%s class has no attribute "%s"' % (cls.__name__, self._id_key))
-    self._table = self._db[self._table_name]
-    self._context = dict()
+    def __init__(self, cls, os):
+        cls = get_meta(cls, 'db_cls', cls)
+        self._os = os
+        self._db = os._db
+        self._cls = cls
+        self._auto_commit = self._db._auto_commit
+        self._ref = dict()
+        self._dirty_obj = set()  # only if auto_commit is False
+        self._loaded = False
+        self._saving = set()
+        self._table_name = get_meta(cls, 'table', cls.__name__)
+        self._id_key = get_meta(cls, 'id_key', 'id')
+        if not has_registered_attr(cls, self._id_key):
+            raise Exception('%s class has no attribute "%s"' % (cls.__name__, self._id_key))
+        self._table = self._db[self._table_name]
+        self._context = dict()
 
-  @property
-  def context(self):
-      c = self._os.context.copy()
-      c.update(self._context)
-      return c
+    @property
+    def context(self):
+        c = self._os.context.copy()
+        c.update(self._context)
+        return c
 
-  def update_context(self, c):
-      self._context.update(c)
+    def update_context(self, c):
+        self._context.update(c)
 
-  def create(self, cls, data=None):
-    obj = create(cls, data, self.context)
-    self.save(obj)
-    return obj
-  
-  def load(self):
-    if self._loaded:
-      return
+    async def load(self):
+        if self._loaded:
+            return
 
-    self._loaded = True
+        LOGGER.debug("load OS '%s'", self._table_name)
+        await self._table.load()
 
-    context = self.context
-    rows = self._table.select()
-    skipped = 0
-    for doc in rows:
-      try:
-          obj = unserialize(self._cls, doc, context)
-          id = getattr(obj, self._id_key)
-          if id not in self._ref: # do not erase previous reference
-            self._ref[id] = obj
-      except Exception as e:
-          skipped += 1
-          extra_info = list()
-          for k in [self._id_key, 'name', 'type']:
-              if k in doc:
-                  extra_info.append('%s=%s' % (k, doc.get(k)))
-          LOGGER.error('unable to unserialize a %s %s : %s' % (self._cls.__name__, ' '.join(extra_info), str(e)))
+        self._loaded = True
 
-    LOGGER.debug('[%s] %d items loaded, %d skipped' % (self._cls.__name__, len(self._ref), skipped))
+        context = self.context
+        rows = self._table.select()
+        skipped = 0
+        for doc in rows:
+            try:
+                obj = unserialize(self._cls, doc, context)
+                id = getattr(obj, self._id_key)
+                if id not in self._ref:  # do not erase previous reference
+                    self._ref[id] = obj
+            except Exception as e:
+                skipped += 1
+                extra_info = list()
+                for k in [self._id_key, 'name', 'type']:
+                    if k in doc:
+                        extra_info.append('%s=%s' % (k, doc.get(k)))
+                LOGGER.error('unable to unserialize a %s %s : %s' % (self._cls.__name__, ' '.join(extra_info), str(e)))
 
-  def find(self, query=None, sort=None, skip=None, limit=None):
-    self.load()
+        LOGGER.debug('[%s] %d items loaded, %d skipped' % (self._cls.__name__, len(self._ref), skipped))
 
-    objs = list(self._ref.values())
+    def free(self):
+        self._table.free()
+        self._ref.clear()
+        self._loaded = False
 
-    if query:
-        objs = [r for r in objs if query(r)]
+    def create(self, cls, data=None):
+        if not self._loaded:
+            raise Exception("internal error, must be loaded first")
 
-    if isinstance(sort, string_types):
-        m = re.search('^([+-]?)(.+)$', sort)
-        if m is not None:
-            asc = m.group(1) != '-'
-            sort_attr = m.group(2)
+        obj = create(cls, data, self.context)
+        self.save(obj)
+        return obj
 
-            objs = object_sort(objs, key=lambda r: getattr(r, sort_attr, None), reverse = not asc)
+    def find(self, query=None, sort=None, skip=None, limit=None):
+        if not self._loaded:
+            raise Exception("internal error, must be loaded first")
 
-    offset = skip or 0
+        objs = list(self._ref.values())
 
-    return objs[offset:(limit + offset if limit is not None else None)]
-  
-  def get(self, id):
-    self.load()
-    return self._ref[id]
-  
-  def save(self, obj, force=False, _create=False):
+        if query:
+            objs = [r for r in objs if query(r)]
 
-    id = getattr(obj, self._id_key)
+        if isinstance(sort, string_types):
+            m = re.search('^([+-]?)(.+)$', sort)
+            if m is not None:
+                asc = m.group(1) != '-'
+                sort_attr = m.group(2)
 
-    if id in self._saving:
-        return
+                objs = object_sort(objs, key=lambda r: getattr(r, sort_attr, None), reverse=not asc)
 
-    reg = install(obj)
-    if '__db' not in reg.context:
-        # no database attached to this instance
-        reg.context['__db'] = self._db
+        offset = skip or 0
 
-    _create = id not in self._ref
+        return objs[offset:(limit + offset if limit is not None else None)]
 
-    if not _create and not force and not is_dirty(obj):
-      return # nothing to save
+    def get(self, id):
+        if not self._loaded:
+            raise Exception("internal error, must be loaded first")
 
-    if hasattr(obj, '__db_save__'):
-        # be careful here, because save() may be called again
-        self._saving.add(id)
+        return self._ref[id]
+
+    def save(self, obj, force=False, _create=False):
+        if not self._loaded:
+            raise Exception("internal error, must be loaded first")
+
+        id = getattr(obj, self._id_key)
+
+        if id in self._saving:
+            return
+
+        reg = install(obj)
+        if '__db' not in reg.context:
+            # no database attached to this instance
+            reg.context['__db'] = self._db
+
+        _create = id not in self._ref
+
+        if not _create and not force and not is_dirty(obj):
+            return  # nothing to save
+
+        if hasattr(obj, '__db_save__'):
+            # be careful here, because save() may be called again
+            self._saving.add(id)
+            try:
+                obj.__db_save__(_create)
+            finally:
+                self._saving.discard(id)
+
+        # LOGGER.debug('[%s] saving %s' % (self._cls.__name__, obj))
+
+        # save the ref
+        self._ref[id] = obj
+
+        if self._auto_commit:
+            self._table.update(serialize(obj))
+        else:
+            self.mark_dirty(id)
+
+        # remove dirty flag
+        clean(obj)
+
+    def remove(self, obj):
+        if not self._loaded:
+            raise Exception("internal error, must be loaded first")
+
+        id = getattr(obj, self._id_key)
+        self._dirty_obj.discard(id)
+        if id in self._ref:
+            if hasattr(obj, '__db_remove__'):
+                obj.__db_remove__()
+            del self._ref[id]
+        else:
+            raise Exception('unable to remove object class=%s id=%s : not exist' % (self._cls.__name__, id))
         try:
-            obj.__db_save__(_create)
-        finally:
-            self._saving.discard(id)
+            self._table.delete(id)
+        except:
+            pass  # silent
 
-    # LOGGER.debug('[%s] saving %s' % (self._cls.__name__, obj))
+    def mark_dirty(self, id):
+        if not self._loaded:
+            raise Exception("internal error, must be loaded first")
 
-    # save the ref
-    self._ref[id] = obj
+        self._dirty_obj.add(id)
+        self._os._dirty = True
 
-    if self._auto_commit:
-      self._table.update(serialize(obj))
-    else:
-      self.mark_dirty(id)
-    
-    clean(obj)
-  
-  def remove(self, obj):
-    id = getattr(obj, self._id_key)
-    self._dirty_obj.discard(id)
-    if id in self._ref:
-        if hasattr(obj, '__db_remove__'):
-            obj.__db_remove__()
-        del self._ref[id]
-    else:
-      if self._loaded:
-        raise Exception('unable to remove object class=%s id=%s : not exist' % (self._cls.__name__, id))
-    try:
-      self._table.delete(id)
-    except:
-      pass # silent
-  
-  def mark_dirty(self, id):
-      self._dirty_obj.add(id)
-      self._os._dirty = True
+    def commit(self):
+        if not self._loaded:
+            raise Exception("internal error, must be loaded first")
 
-  def commit(self):
-    for id in self._dirty_obj:
-      self._table.update(serialize(self._ref[id]))
-    self._dirty_obj.clear()
-  
-  
+        for id in self._dirty_obj:
+            self._table.update(serialize(self._ref[id]))
+        self._dirty_obj.clear()
+
+
 def db(table=None, id_key=None, database=None):
-  def d(cls):
-    set_meta(cls, 'db_cls', cls)
-    if table is not None: set_meta(cls, 'table', table)
-    if id_key is not None: set_meta(cls, 'id_key', id_key)
-    if database is not None: set_meta(cls, 'database', database)
+    def d(cls):
+        set_meta(cls, 'db_cls', cls)
+        if table is not None:
+            set_meta(cls, 'table', table)
+        if id_key is not None:
+            set_meta(cls, 'id_key', id_key)
+        if database is not None:
+            set_meta(cls, 'database', database)
 
-    if issubclass(cls, Entity):
-        # use transaction
-        original_t_end = getattr(cls, '__transaction_end__', None)
+        if issubclass(cls, Entity):
+            # use transaction
+            original_t_end = getattr(cls, '__transaction_end__', None)
 
-        def __transaction_end__(self):
-            if original_t_end is not None:
-                original_t_end(self)
+            def __transaction_end__(self):
+                if original_t_end is not None:
+                    original_t_end(self)
 
-            save(self)
+                save(self)
 
-        setattr(cls, '__transaction_end__', __transaction_end__)
+            setattr(cls, '__transaction_end__', __transaction_end__)
 
-    else:
-        # else save on each change
-        original_watch = getattr(cls, '__watch__', None)
+        else:
+            # else save on each change
+            original_watch = getattr(cls, '__watch__', None)
 
-        def __watch__(self, attribute, val, old_val):
-          if original_watch is not None:
-            original_watch(self, attribute, val, old_val)
+            def __watch__(self, attribute, val, old_val):
+                if original_watch is not None:
+                    original_watch(self, attribute, val, old_val)
 
-          save(self)
+                save(self)
 
-        setattr(cls, '__watch__', __watch__)
+            setattr(cls, '__watch__', __watch__)
 
-    return cls
-  return d
+        return cls
+
+    return d
 
 
 def _get_db(obj):
@@ -1018,16 +1038,20 @@ def remove(obj):
     return _get_db(obj).os.remove(obj)
 
 
+async def db_load(cls):
+    return await get_meta(cls, 'database').os.load(cls)
+
+
 def db_create(cls, data=None):
     return get_meta(cls, 'database').os.create(cls, data)
 
 
 def db_get(cls, id):
-  return get_meta(cls, 'database').os.get(cls, id)
+    return get_meta(cls, 'database').os.get(cls, id)
 
 
 def db_find(cls, *args, **kwargs):
-  return get_meta(cls, 'database').os.find(cls, *args, **kwargs)
+    return get_meta(cls, 'database').os.find(cls, *args, **kwargs)
 
 
 def db_id(obj):
@@ -1039,61 +1063,73 @@ def db_id(obj):
 
 class Store(MutableMapping):
 
-    def __init__(self, db):
+    def __init__(self, db, id=1):
         self._db = db
-        self._id = 1
-        self._store = {
-            'id': self._id
-        }
-        self._loaded = False
+        self._id = id
+        self._store = None
         self.__table = None
 
     @property
-    def _table(self):
+    def loaded(self):
+        return self.__table is not None
+
+    async def load(self):
         if self.__table is None:
             self.__table = self._db['store']
-        return self.__table
+            await self.__table.load()
 
-    def _load(self):
-        if not self._loaded:
-            self._loaded = True
+            self._store = {
+                'id': self._id
+            }
+
             try:
-                store = self._table[self._id]
+                store = self.__table[self._id]
             except KeyError:
                 pass
             else:
                 store.update(self._store)
                 self._store = store
 
-    def _commit(self):
-        self._table[self._id] = self._store
+    def free(self):
+        self.__table.free()
+        self.__table = None
+        self._store = None
+
+    def _write(self):
+        self.__table[self._id] = self._store
 
     def __getitem__(self, key):
         if key == 'id':
             raise KeyError('invalid key')
-        self._load()
+        if self.__table is None:
+            raise Exception('internal error: not loaded')
         return self._store[key]
 
     def __setitem__(self, key, value):
         if key == 'id':
             raise KeyError('invalid key')
+        if self.__table is None:
+            raise Exception('internal error: not loaded')
         self._store[key] = value
-        self._commit()
+        self._write()
 
     def __delitem__(self, key):
         if key == 'id':
             raise KeyError('invalid key')
-        self._load()
+        if self.__table is None:
+            raise Exception('internal error: not loaded')
         if key in self._store:
             del self._store[key]
-            self._commit()
+            self._write()
 
     def __len__(self):
-        self._load()
+        if self.__table is None:
+            raise Exception('internal error: not loaded')
         return len(self._store) - 1
 
     def __iter__(self):
-        self._load()
+        if self.__table is None:
+            raise Exception('internal error: not loaded')
         return iter([k for k in self._store if k != 'id'])
 
 
@@ -1184,10 +1220,7 @@ class M_Array_WeakDBLink(M_Array):
         self._llist = value
 
 
-class WeakDBLinkArray (Array):
+class WeakDBLinkArray(Array):
 
     def __init__(self, typ, max_len=None, **attributes):
         super(WeakDBLinkArray, self).__init__(typ, max_len=max_len, container_cls=M_Array_WeakDBLink, **attributes)
-
-
-
